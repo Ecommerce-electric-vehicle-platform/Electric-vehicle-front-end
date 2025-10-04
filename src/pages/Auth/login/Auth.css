@@ -1,0 +1,342 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body,
+input,
+button {
+    font-family: "Poppins", sans-serif;
+}
+
+/* ============== CONTAINER ============== */
+.container {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    overflow: hidden;
+    background: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* nền xanh tròn */
+.container::before {
+    content: "";
+    position: absolute;
+    height: 2000px;
+    width: 2000px;
+    top: -10%;
+    right: 48%;
+    transform: translateY(-50%);
+    background: linear-gradient(-45deg, #00a86b, #6be4a4);
+    border-radius: 50%;
+    z-index: 1;
+}
+
+/* ============== FORMS ============== */
+.forms-container {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.signin-signup {
+    position: absolute;
+    top: 50%;
+    left: 70%;
+    transform: translate(-50%, -50%);
+    width: 45%;
+    display: grid;
+    grid-template-columns: 1fr;
+    z-index: 10;
+    pointer-events: all;
+}
+
+/* form */
+form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* ✅ căn giữa dọc */
+    padding: 0 3rem;
+    text-align: center;
+    position: relative;
+    z-index: 10;
+    background: transparent;
+}
+
+/* ============== LOGO ============== */
+.gt-logo {
+    width: 200px;
+    /* ✅ vừa phải, không đẩy form */
+    height: auto;
+    margin-bottom: 10px;
+    /* giảm margin để logo không đẩy xuống */
+    object-fit: contain;
+    transition: transform 0.3s ease;
+}
+
+.gt-logo:hover {
+    transform: scale(1.05);
+}
+
+/* ============== TITLE ============== */
+.title {
+    font-size: 1.8rem;
+    color: #00a86b;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+/* ============== INPUTS ============== */
+.input-field {
+    max-width: 380px;
+    width: 100%;
+    height: 50px;
+    display: grid;
+    grid-template-columns: 15% 85%;
+    background: #f0f0f0;
+    border-radius: 50px;
+    padding: 0 0.5rem;
+    margin: 10px 0;
+}
+
+.input-field i {
+    text-align: center;
+    line-height: 50px;
+    color: #6b6b6b;
+}
+
+.input-field input {
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    color: #333;
+}
+
+/* ============== FORGOT PASSWORD ============== */
+.forgot-password {
+    display: block;
+    width: 100%;
+    max-width: 380px;
+    text-align: left;
+    font-size: 0.9rem;
+    margin: 5px 0 15px 0;
+    color: #5b2e91;
+    text-decoration: underline;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.forgot-password:hover {
+    color: #7a42c4;
+}
+
+/* ============== BUTTONS ============== */
+.btn {
+    width: 380px;
+    height: 45px;
+    border: none;
+    border-radius: 45px;
+    background: #00a86b;
+    color: #fff;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin: 10px 0;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn:hover {
+    background: #008b58;
+}
+
+/* ============== DIVIDER ============== */
+.divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 15px 0;
+    width: 100%;
+    max-width: 380px;
+    color: #777;
+    font-size: 0.9rem;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #ccc;
+    margin: 0 10px;
+}
+
+/* ============== GOOGLE BUTTON ============== */
+.google-btn {
+    background: #fff;
+    border: 1px solid #ddd;
+    color: #333;
+    width: 380px;
+    height: 45px;
+    border-radius: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: 0.3s;
+}
+
+.google-btn img {
+    width: 20px;
+    height: 20px;
+}
+
+/* ============== AGREEMENT ============== */
+.agree {
+    font-size: 0.95rem;
+    color: #555;
+    margin-top: 10px;
+    text-align: left;
+    width: 100%;
+    max-width: 380px;
+}
+
+.agree input {
+    margin-right: 8px;
+    transform: scale(1.1);
+    cursor: pointer;
+}
+
+.agree a {
+    color: #00a86b;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.agree a:hover {
+    text-decoration: underline;
+}
+
+/* ============== PANELS ============== */
+.panels-container {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    z-index: 2;
+}
+
+.panel {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3rem 2rem;
+}
+
+.panel .content {
+    max-width: 420px;
+    z-index: 5;
+    color: #fff;
+}
+
+.panel .btn {
+    pointer-events: all;
+    position: relative;
+    z-index: 10;
+}
+
+.image {
+    width: 80%;
+    position: relative;
+    z-index: 1;
+    margin-top: 2rem;
+}
+
+/* trạng thái mặc định (SignIn) */
+.left-panel {
+    pointer-events: all;
+    opacity: 1;
+}
+
+.right-panel {
+    pointer-events: none;
+    opacity: 0;
+}
+
+/* ============== SIGN-UP MODE ============== */
+.container.sign-up-mode::before {
+    transform: translate(100%, -50%);
+    right: 52%;
+}
+
+.container.sign-up-mode .signin-signup {
+    left: 30%;
+}
+
+.container.sign-up-mode form.sign-up-form {
+    opacity: 1;
+    z-index: 2;
+}
+
+.container.sign-up-mode form.sign-in-form {
+    opacity: 0;
+    z-index: 1;
+}
+
+.container.sign-up-mode .left-panel {
+    pointer-events: none;
+    opacity: 0;
+}
+
+.container.sign-up-mode .left-panel .image,
+.container.sign-up-mode .left-panel .content {
+    transform: translateX(-800px);
+}
+
+.container.sign-up-mode .right-panel {
+    pointer-events: all;
+    opacity: 1;
+}
+
+.container.sign-up-mode .right-panel .image,
+.container.sign-up-mode .right-panel .content {
+    transform: translateX(0);
+}
+
+/* ============== RESPONSIVE ============== */
+@media (max-width: 870px) {
+    .signin-signup {
+        width: 100%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .panels-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+    }
+
+    .panel {
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 2rem;
+    }
+
+    .image {
+        display: none;
+    }
+}
