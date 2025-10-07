@@ -106,7 +106,7 @@ export default function SignUp() {
         }
 
         try {
-            // ✅ Dùng api tách riêng, không gọi axios trực tiếp
+            //  Dùng api tách riêng, không gọi axios trực tiếp
             const response = await authApi.signup(formData);
             setIsOtpStep(true);
             setBackendError("");
