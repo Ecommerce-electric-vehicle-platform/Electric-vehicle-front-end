@@ -1,8 +1,8 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./Auth.css";
-import logImg from "../../../assets/img/log.svg";
-import registerImg from "../../../assets/img/register.svg";
+import logImg from "../../../assets/imgs/log.svg";
+import registerImg from "../../../assets/imgs/register.svg";
 import SignIn from "./SignIn.jsx";
 import SignUp from "./SignUp.jsx";
 
