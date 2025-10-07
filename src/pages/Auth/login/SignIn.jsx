@@ -10,8 +10,7 @@ export default function SignIn() {
     const [formData, setFormData] = useState({ username: "", password: "" });
     const [errors, setErrors] = useState({});
     const [backendError, setBackendError] = useState("");
-    const [isAgreed, setIsAgreed] = useState(false);
-    const [showAgreeError, setShowAgreeError] = useState(false);
+    
 
     // ===== VALIDATION =====
     const validateField = (name, value) => {
@@ -61,40 +60,37 @@ export default function SignIn() {
     };
 
     // ===== SUBMIT =====
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const allValid = validateAll();
+   const handleSubmit = async (e) => {
+    e.preventDefault();
+    const allValid = validateAll();
 
-        if (!allValid) {
-            setShowAgreeError(false);
-            return;
+    if (!allValid) {
+        console.log("Form không hợp lệ, kiểm tra lại username/password");
+        return;
+    }
+
+    try {
+        const response = await authApi.signin(formData);
+        const resData = response?.data?.data;
+
+        if (resData?.accessToken && resData?.refreshToken) {
+            // lưu token vào localStorage
+            localStorage.setItem("accessToken", resData.accessToken);
+            localStorage.setItem("refreshToken", resData.refreshToken);
+            localStorage.setItem("username", resData.username);
         }
-        if (!isAgreed) {
-            setShowAgreeError(true);
-            return;
-        }
 
-        try {
-            const response = await authApi.signin(formData);
-            const resData = response?.data?.data;
+        setBackendError("");
+        console.log("Login success:", resData);
+        navigate("/");
+    } catch (error) {
+        console.error("Signin error:", error.response?.data || error.message);
+        const backendMsg =
+            error.response?.data?.message || "Login failed. Try again.";
+        setBackendError(backendMsg);
+    }
+};
 
-            if (resData?.accessToken && resData?.refreshToken) {
-                // ✅ lưu token vào localStorage
-                localStorage.setItem("accessToken", resData.accessToken);
-                localStorage.setItem("refreshToken", resData.refreshToken);
-                localStorage.setItem("username", resData.username);
-            }
-
-            setBackendError("");
-            console.log("✅ Login success:", resData);
-            navigate("/");
-        } catch (error) {
-            console.error("❌ Signin error:", error.response?.data || error.message);
-            const backendMsg =
-                error.response?.data?.message || "Login failed. Try again.";
-            setBackendError(backendMsg);
-        }
-    };
 
     // ===== UI =====
     return (
@@ -136,26 +132,7 @@ export default function SignIn() {
                 Forgot password?
             </a>
 
-            <div className="agree-wrapper">
-                <label className="agree">
-                    <input
-                        type="checkbox"
-                        checked={isAgreed}
-                        onChange={(e) => {
-                            setIsAgreed(e.target.checked);
-                            setShowAgreeError(false);
-                        }}
-                    />{" "}
-                    I agree to <a href="#">Terms & Privacy</a>
-                </label>
-
-                {showAgreeError && (
-                    <div className="agree-error">
-                        <span className="warning-icon">⚠️</span>
-                        Please check this box if you want to proceed.
-                    </div>
-                )}
-            </div>
+            
 
             <input type="submit" value="Sign in" className="btn solid" />
 
