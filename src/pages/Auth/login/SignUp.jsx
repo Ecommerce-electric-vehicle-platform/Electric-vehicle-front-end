@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import logo from "../../../assets/logo/Logo 2.png";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
-import authApi from "../../../api/authApi"; // ✅ import api từ file riêng
+import authApi from "../../../api/authApi"; //  import api từ file riêng
 
 export default function SignUp() {
     const navigate = useNavigate();
@@ -19,6 +19,7 @@ export default function SignUp() {
     const [isOtpStep, setIsOtpStep] = useState(false);
     const [isAgreed, setIsAgreed] = useState(false);
     const [showAgreeError, setShowAgreeError] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState(""); // thêm state loading
 
     // ========== VALIDATION ==========
     const validateField = (name, value) => {
@@ -106,11 +107,18 @@ export default function SignUp() {
         }
 
         try {
-            //  Dùng api tách riêng, không gọi axios trực tiếp
+            // 🟢 hiển thị thông báo chờ
+            setLoadingMessage("Please check your email. Redirecting to OTP page...");
             const response = await authApi.signup(formData);
-            setIsOtpStep(true);
-            setBackendError("");
+
+            // 🕒 giả lập delay để hiển thị message 2.5s
+            setTimeout(() => {
+                setIsOtpStep(true);
+                setBackendError("");
+                setLoadingMessage("");
+            }, 2500);
         } catch (error) {
+            setLoadingMessage("");
             console.error("Signup error:", error.response?.data || error.message);
             const backendMsg =
                 error.response?.data?.message || "Signup failed. Try again.";
@@ -264,6 +272,16 @@ export default function SignUp() {
                         </a>
                     </p>
                 </>
+            )}
+
+            {/*  Overlay loading */}
+            {loadingMessage && (
+                <div className="loading-overlay">
+                    <div className="loading-content">
+                        <p>📩 {loadingMessage}</p>
+                        <div className="spinner"></div>
+                    </div>
+                </div>
             )}
         </form>
     );
