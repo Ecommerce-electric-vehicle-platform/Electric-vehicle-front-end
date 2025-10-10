@@ -1,13 +1,14 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AuthLayout from "./pages/Auth/login/AuthLayout";
+import PersonalProfilePage from "./components/PersonalProfilePage";
 import HomePage from "./homepage/HomePage";
 
 export default function App() {
   return (
     <Router>
       <Routes>
-        {/* Mặc định vào HomePage */}
+{/* Mặc định vào HomePage */}
         <Route path="/" element={<Navigate to="/home" />} />
 
         {/* Trang HomePage */}
@@ -16,6 +17,9 @@ export default function App() {
         {/* Trang Auth */}
         <Route path="/signin" element={<AuthLayout page="signin" />} />
         <Route path="/signup" element={<AuthLayout page="signup" />} />
+
+        {/* Trang Profile */}
+        <Route path="/profile" element={<PersonalProfilePage />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/home" />} />
