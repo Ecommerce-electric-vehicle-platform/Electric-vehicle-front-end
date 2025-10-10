@@ -82,7 +82,7 @@ export default function SignIn() {
 
         setBackendError("");
         console.log("Login success:", resData);
-        navigate("/");
+        navigate("/profile");
     } catch (error) {
         console.error("Signin error:", error.response?.data || error.message);
         const backendMsg =
