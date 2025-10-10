@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import AuthLayout from "./pages/Auth/login/AuthLayout";
 import PersonalProfilePage from "./components/PersonalProfilePage";
 import HomePage from "./homepage/HomePage";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
 
 export default function App() {
   return (
