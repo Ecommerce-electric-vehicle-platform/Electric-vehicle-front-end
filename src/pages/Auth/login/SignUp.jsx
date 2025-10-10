@@ -237,63 +237,16 @@ const handleGoogleError = () => {
                 Please check this box if you want to proceed.
               </div>
             )}
-          </div>
 
-          <input type="submit" value="Sign up" className="btn solid" />
-        </>
-      ) : (
-        <>
-          <div className="input-field">
-            <i className="fas fa-key"></i>
-            <input
-              type="text"
-              placeholder="Enter OTP"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              required
-            />
-          </div>
-
-          {backendError && (
-            <p className="error-message" style={{ textAlign: "center" }}>
-              {backendError}
-            </p>
-          )}
-
-          <input type="submit" value="Verify OTP" className="btn solid" />
-        </>
-      )}
-
-      {!isOtpStep && (
-        <>
-          <p className="divider">
-            <span>or Sign up with</span>
-          </p>
-
-          <div className="google-login-wrapper">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              shape="pill"
-              text="signup_with"
-              width="280"
-            />
-          </div>
-
-          <p className="switch-text">
-            Already have an account?{" "}
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate("/signin");
-              }}
-            >
-              Sign in
-            </a>
-          </p>
-        </>
-      )}
-    </form>
-  );
+            {/*  Overlay loading */}
+            {loadingMessage && (
+                <div className="loading-overlay">
+                    <div className="loading-content">
+                        <p>📩 {loadingMessage}</p>
+                        <div className="spinner"></div>
+                    </div>
+                </div>
+            )}
+        </form>
+    );
 }
