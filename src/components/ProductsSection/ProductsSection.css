@@ -1,0 +1,55 @@
+/* Products Section Styles */
+.products-section {
+    padding: 2rem 0;
+    position: relative;
+    scroll-margin-top: 100px;
+    /* Đảm bảo không bị che bởi header fixed */
+    opacity: 0.8;
+    transition: all 0.6s ease;
+}
+
+.products-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Hiệu ứng khi section được cuộn đến */
+.products-section.section-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.products-section.section-visible::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #22c55e, #16a34a, #22c55e);
+    animation: sectionGlow 1s ease forwards;
+}
+
+@keyframes sectionGlow {
+    0% {
+        opacity: 0;
+        transform: scaleX(0);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scaleX(1);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .products-section {
+        padding: 1rem 0;
+    }
+
+    .products-container {
+        padding: 0 0.5rem;
+    }
+}
