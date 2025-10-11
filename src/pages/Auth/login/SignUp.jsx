@@ -141,148 +141,236 @@ export default function SignUp() {
 
     // ========== UI ==========
     return (
-        <form
-            className="sign-up-form"
-            onSubmit={isOtpStep ? handleVerifyOtp : handleSubmit}
-            noValidate
-        >
-            <img src={logo} alt="GreenTrade Logo" className="gt-logo" />
-            <h2 className="title">
-                {isOtpStep ? "Verify your OTP" : "Join the Green Revolution"}
-            </h2>
-
-            {!isOtpStep ? (
-                <>
-                    <div className={`input-field ${errors.username ? "error" : ""}`}>
-                        <i className="fas fa-user"></i>
-                        <input
-                            type="text"
-                            name="username"
-                            placeholder="Username"
-                            value={formData.username}
-                            onChange={handleChange}
-                        />
+        <div className="auth-form-container">
+            <form
+                className="sign-up-form"
+                onSubmit={isOtpStep ? handleVerifyOtp : handleSubmit}
+                noValidate
+            >
+                <div className="form-header">
+                    <div className="logo-container">
+                        <div className="greentrade-text">
+                            <span className="green-text">Green</span>
+                            <span className="trade-text">Trade</span>
+                        </div>
+                        <div className="logo-glow"></div>
                     </div>
-                    {errors.username && (
-                        <p className="error-message">{errors.username}</p>
-                    )}
-
-                    <div className={`input-field ${errors.password ? "error" : ""}`}>
-                        <i className="fas fa-lock"></i>
-                        <input
-                            type="password"
-                            name="password"
-                            placeholder="Password"
-                            value={formData.password}
-                            onChange={handleChange}
-                        />
-                    </div>
-                    {errors.password && (
-                        <p className="error-message">{errors.password}</p>
-                    )}
-
-                    <div className={`input-field ${errors.email ? "error" : ""}`}>
-                        <i className="fas fa-envelope"></i>
-                        <input
-                            type="text"
-                            name="email"
-                            placeholder="Email"
-                            value={formData.email}
-                            onChange={handleChange}
-                        />
-                    </div>
-                    {errors.email && <p className="error-message">{errors.email}</p>}
-
-                    {backendError && (
-                        <p className="error-message" style={{ textAlign: "center" }}>
-                            {backendError}
-                        </p>
-                    )}
-
-                    <div className="agree-wrapper">
-                        <label className="agree">
-                            <input
-                                type="checkbox"
-                                checked={isAgreed}
-                                onChange={(e) => {
-                                    setIsAgreed(e.target.checked);
-                                    setShowAgreeError(false);
-                                }}
-                            />{" "}
-                            I agree to <a href="#">Terms & Privacy</a>
-                        </label>
-
-                        {showAgreeError && (
-                            <div className="agree-error">
-                                <span className="warning-icon">⚠️</span>
-                                Please check this box if you want to proceed.
-                            </div>
+                    <h2 className="title">
+                        {isOtpStep ? (
+                            <>
+                                <span className="title-main">Xác thực OTP</span>
+                                <span className="title-sub">Nhập mã xác thực từ email</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="title-main">Đăng ký</span>
+                                <span className="title-sub">Tham gia cuộc cách mạng xanh!</span>
+                            </>
                         )}
-                    </div>
-
-                    <input type="submit" value="Sign up" className="btn solid" />
-                </>
-            ) : (
-                <>
-                    <div className="input-field">
-                        <i className="fas fa-key"></i>
-                        <input
-                            type="text"
-                            placeholder="Enter OTP"
-                            value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
-                            required
-                        />
-                    </div>
-
-                    {backendError && (
-                        <p className="error-message" style={{ textAlign: "center" }}>
-                            {backendError}
-                        </p>
-                    )}
-
-                    <input type="submit" value="Verify OTP" className="btn solid" />
-                </>
-            )}
-
-            {!isOtpStep && (
-                <>
-                    <p className="divider">
-                        <span>or Sign up with</span>
-                    </p>
-
-                    <button type="button" className="btn google-btn">
-                        <img
-                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                            alt="Google Icon"
-                        />
-                        Sign up with Google
-                    </button>
-
-                    <p className="switch-text">
-                        Already have an account?{" "}
-                        <a
-                            href="#"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                navigate("/signin");
-                            }}
-                        >
-                            Sign in
-                        </a>
-                    </p>
-                </>
-            )}
-
-            {/*  Overlay loading */}
-            {loadingMessage && (
-                <div className="loading-overlay">
-                    <div className="loading-content">
-                        <p>📩 {loadingMessage}</p>
-                        <div className="spinner"></div>
-                    </div>
+                    </h2>
                 </div>
-            )}
-        </form>
+
+                <div className="form-body">
+                    {!isOtpStep ? (
+                        <>
+                            <div className="input-group">
+                                <div className={`input-field ${errors.username ? "error" : ""}`}>
+                                    <div className="input-icon">
+                                        <i className="fas fa-user"></i>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        name="username"
+                                        placeholder="Tên đăng nhập"
+                                        value={formData.username}
+                                        onChange={handleChange}
+                                    />
+                                    <div className="input-border"></div>
+                                </div>
+                                {errors.username && (
+                                    <div className="error-message">
+                                        <i className="fas fa-exclamation-circle"></i>
+                                        <span>{errors.username}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="input-group">
+                                <div className={`input-field ${errors.password ? "error" : ""}`}>
+                                    <div className="input-icon">
+                                        <i className="fas fa-lock"></i>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        placeholder="Mật khẩu"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                    />
+                                    <div className="input-border"></div>
+                                </div>
+                                {errors.password && (
+                                    <div className="error-message">
+                                        <i className="fas fa-exclamation-circle"></i>
+                                        <span>{errors.password}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="input-group">
+                                <div className={`input-field ${errors.email ? "error" : ""}`}>
+                                    <div className="input-icon">
+                                        <i className="fas fa-envelope"></i>
+                                    </div>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        placeholder="Email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                    />
+                                    <div className="input-border"></div>
+                                </div>
+                                {errors.email && (
+                                    <div className="error-message">
+                                        <i className="fas fa-exclamation-circle"></i>
+                                        <span>{errors.email}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {backendError && (
+                                <div className="backend-error">
+                                    <i className="fas fa-times-circle"></i>
+                                    <span>{backendError}</span>
+                                </div>
+                            )}
+
+                            <div className="agree-wrapper">
+                                <label className="agree">
+                                    <input
+                                        type="checkbox"
+                                        checked={isAgreed}
+                                        onChange={(e) => {
+                                            setIsAgreed(e.target.checked);
+                                            setShowAgreeError(false);
+                                        }}
+                                    />
+                                    <span className="checkmark"></span>
+                                    <span className="label-text">
+                                        Tôi đồng ý với <a href="#">Điều khoản & Chính sách</a>
+                                    </span>
+                                </label>
+
+                                {showAgreeError && (
+                                    <div className="agree-error">
+                                        <i className="fas fa-exclamation-triangle"></i>
+                                        <span>Vui lòng đồng ý với điều khoản để tiếp tục.</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button type="submit" className="btn primary-btn">
+                                <span className="btn-text">Đăng ký</span>
+                                <div className="btn-shine"></div>
+                                <i className="fas fa-user-plus btn-icon"></i>
+                            </button>
+
+                            <div className="divider">
+                                <span className="divider-text">hoặc đăng ký bằng</span>
+                            </div>
+
+                            <button type="button" className="btn google-btn">
+                                <div className="google-icon">
+                                    <img
+                                        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                                        alt="Google Icon"
+                                    />
+                                </div>
+                                <span className="btn-text">Google</span>
+                                <div className="btn-shine"></div>
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <div className="otp-container">
+                                <div className="otp-icon">
+                                    <i className="fas fa-shield-alt"></i>
+                                </div>
+                                <p className="otp-description">
+                                    Chúng tôi đã gửi mã xác thực đến email <strong>{formData.email}</strong>
+                                </p>
+                            </div>
+
+                            <div className="input-group">
+                                <div className="input-field">
+                                    <div className="input-icon">
+                                        <i className="fas fa-key"></i>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Nhập mã OTP"
+                                        value={otp}
+                                        onChange={(e) => setOtp(e.target.value)}
+                                        required
+                                        maxLength="6"
+                                    />
+                                    <div className="input-border"></div>
+                                </div>
+                            </div>
+
+                            {backendError && (
+                                <div className="backend-error">
+                                    <i className="fas fa-times-circle"></i>
+                                    <span>{backendError}</span>
+                                </div>
+                            )}
+
+                            <button type="submit" className="btn primary-btn">
+                                <span className="btn-text">Xác thực OTP</span>
+                                <div className="btn-shine"></div>
+                                <i className="fas fa-check btn-icon"></i>
+                            </button>
+
+                            <div className="resend-otp">
+                                <p>Không nhận được mã? <a href="#">Gửi lại</a></p>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                {!isOtpStep && (
+                    <div className="form-footer">
+                        <p className="switch-text">
+                            Đã có tài khoản?{" "}
+                            <a
+                                href="#"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    navigate("/signin");
+                                }}
+                                className="switch-link"
+                            >
+                                Đăng nhập ngay
+                            </a>
+                        </p>
+                    </div>
+                )}
+
+                {/* Loading Overlay */}
+                {loadingMessage && (
+                    <div className="loading-overlay">
+                        <div className="loading-content">
+                            <div className="loading-icon">
+                                <i className="fas fa-envelope"></i>
+                            </div>
+                            <h3>Đang gửi email...</h3>
+                            <p>{loadingMessage}</p>
+                            <div className="spinner"></div>
+                        </div>
+                    </div>
+                )}
+            </form>
+        </div>
     );
 }

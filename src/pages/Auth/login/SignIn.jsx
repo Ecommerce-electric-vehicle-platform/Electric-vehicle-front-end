@@ -10,7 +10,7 @@ export default function SignIn() {
     const [formData, setFormData] = useState({ username: "", password: "" });
     const [errors, setErrors] = useState({});
     const [backendError, setBackendError] = useState("");
-    
+
 
     // ===== VALIDATION =====
     const validateField = (name, value) => {
@@ -60,36 +60,36 @@ export default function SignIn() {
     };
 
     // ===== SUBMIT =====
-   const handleSubmit = async (e) => {
-    e.preventDefault();
-    const allValid = validateAll();
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const allValid = validateAll();
 
-    if (!allValid) {
-        console.log("Form không hợp lệ, kiểm tra lại username/password");
-        return;
-    }
-
-    try {
-        const response = await authApi.signin(formData);
-        const resData = response?.data?.data;
-
-        if (resData?.accessToken && resData?.refreshToken) {
-            // lưu token vào localStorage
-            localStorage.setItem("accessToken", resData.accessToken);
-            localStorage.setItem("refreshToken", resData.refreshToken);
-            localStorage.setItem("username", resData.username);
+        if (!allValid) {
+            console.log("Form không hợp lệ, kiểm tra lại username/password");
+            return;
         }
 
-        setBackendError("");
-        console.log("Login success:", resData);
-        navigate("/");
-    } catch (error) {
-        console.error("Signin error:", error.response?.data || error.message);
-        const backendMsg =
-            error.response?.data?.message || "Login failed. Try again.";
-        setBackendError(backendMsg);
-    }
-};
+        try {
+            const response = await authApi.signin(formData);
+            const resData = response?.data?.data;
+
+            if (resData?.accessToken && resData?.refreshToken) {
+                // lưu token vào localStorage
+                localStorage.setItem("accessToken", resData.accessToken);
+                localStorage.setItem("refreshToken", resData.refreshToken);
+                localStorage.setItem("username", resData.username);
+            }
+
+            setBackendError("");
+            console.log("Login success:", resData);
+            navigate("/");
+        } catch (error) {
+            console.error("Signin error:", error.response?.data || error.message);
+            const backendMsg =
+                error.response?.data?.message || "Login failed. Try again.";
+            setBackendError(backendMsg);
+        }
+    };
 
 
     // ===== UI =====
@@ -132,7 +132,7 @@ export default function SignIn() {
                 Forgot password?
             </a>
 
-            
+
 
             <input type="submit" value="Sign in" className="btn solid" />
 
