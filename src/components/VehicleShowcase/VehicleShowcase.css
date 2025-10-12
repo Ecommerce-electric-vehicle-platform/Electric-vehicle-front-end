@@ -330,6 +330,38 @@
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
+/* Status Badge */
+.status-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.status-badge.available {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.status-badge.sold {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.status-badge.pending {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
 .card-actions {
   position: absolute;
   top: 1rem;
@@ -404,6 +436,15 @@
   flex: 1;
   font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
   letter-spacing: -0.01em;
+}
+
+.card-brand {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+  font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+  letter-spacing: 0.025em;
 }
 
 .card-rating {

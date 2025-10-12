@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AuthLayout from "./pages/Auth/login/AuthLayout";
 import { Home } from "./pages/Home/Home";
+import { ProductDetail } from "./pages/ProductDetail/ProductDetail";
 
 export default function App() {
   return (
@@ -15,6 +16,9 @@ export default function App() {
         {/* ✅ Auth pages */}
         <Route path="/signin" element={<AuthLayout page="signin" />} />
         <Route path="/signup" element={<AuthLayout page="signup" />} />
+
+        {/* ✅ Product Detail page */}
+        <Route path="/product/:id" element={<ProductDetail />} />
       </Routes>
     </Router>
   );

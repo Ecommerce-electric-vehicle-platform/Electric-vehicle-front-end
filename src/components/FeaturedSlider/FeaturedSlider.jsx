@@ -1,56 +1,26 @@
-import React from "react"
+import React, { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import Slider from "react-slick"
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import { ArrowLeft, ArrowRight, Eye, MapPin } from "lucide-react"
 import "./FeaturedSlider.css"
-
-// 🏍 ẢNH XE ĐIỆN
-import xe1 from "../../assets/imgs_old/1.jpg"
-import xe2 from "../../assets/imgs_old/2.jpg"
-import xe3 from "../../assets/imgs_old/3.jpg"
-import xe4 from "../../assets/imgs_old/4.jpg"
-
-// 🔋 ẢNH PIN XE ĐIỆN
-import pin1 from "../../assets/imgs_pin/Cell-pin-Lipo-1.jpg"
-import pin2 from "../../assets/imgs_pin/Pin-xe-dap-dien-Bridgestone-36V-10Ah-600x600.jpg"
+import { vehicleProducts, batteryProducts, formatCurrency } from "../../data/productsData"
 
 export function FeaturedSlider() {
+    const navigate = useNavigate()
+
+    // Lấy sản phẩm nổi bật từ dữ liệu mới
     const featuredItems = [
-        {
-            id: 1,
-            name: "VinFast Feliz S",
-            price: 20800000,
-            image: xe1,
-            link: "/products/vinfast-feliz-s",
-        },
-        {
-            id: 2,
-            name: "YADEA Xmen Neo",
-            price: 19000000,
-            image: xe2,
-            link: "/products/yadea-xmen-neo",
-        },
-        {
-            id: 3,
-            name: "Giant M133S",
-            price: 16500000,
-            image: xe3,
-            link: "/products/giant-m133s",
-        },
-        {
-            id: 4,
-            name: "Pin Bridgestone 36V 10Ah",
-            price: 1050000,
-            image: pin2,
-            link: "/products/pin-bridgestone-36v",
-        },
-        {
-            id: 5,
-            name: "Cell Pin Lipo 3.7V 6000mAh",
-            price: 850000,
-            image: pin1,
-            link: "/products/pin-lipo-6000mah",
-        },
+        vehicleProducts[0], // VinFast Feliz S
+        vehicleProducts[1], // YADEA Xmen Neo
+        vehicleProducts[2], // Giant M133S
+        batteryProducts[0], // Pin Bridgestone
+        batteryProducts[2], // Cell Pin Lipo
     ]
+
+    // Xử lý click xem chi tiết
+    const handleViewDetails = (product) => {
+        navigate(`/product/${product.id}`)
+    }
 
     // ⚙️ Cấu hình slider
     const settings = {
@@ -75,10 +45,6 @@ export function FeaturedSlider() {
         }
     }
 
-    // 💵 Hàm định dạng giá tiền VNĐ
-    const formatCurrency = (value) =>
-        value.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
-
     return (
         <section className="featured-slider-wrapper">
             {/* 🌿 Header */}
@@ -90,25 +56,35 @@ export function FeaturedSlider() {
             {/* 🌟 Slider */}
             <div className="featured-slider-container">
                 <Slider {...settings}>
-                    {featuredItems.map((item) => (
+                    {featuredItems.map((product) => (
                         <div
-                            key={item.id}
+                            key={product.id}
                             className="featured-slide"
-                            onClick={() => (window.location.href = item.link)}
                         >
-                            <img src={item.image} alt={item.name} className="featured-image" />
+                            <img src={product.image} alt={product.title} className="featured-image" />
                             <div className="featured-overlay">
-                                <h3 className="featured-name">{item.name}</h3>
-                                <p className="featured-price">{formatCurrency(item.price)}</p>
-                                <button className="featured-btn">
+                                <h3 className="featured-name">{product.title}</h3>
+                                <p className="featured-brand">{product.brand} - {product.model}</p>
+                                <p className="featured-price">{formatCurrency(product.price)}</p>
+
+                                <div className="featured-location">
+                                    <MapPin className="detail-icon" />
+                                    <span>{product.locationTrading}</span>
+                                </div>
+
+                                <button
+                                    className="featured-btn"
+                                    onClick={() => handleViewDetails(product)}
+                                >
+                                    <Eye className="btn-icon" />
                                     <span>Xem chi tiết</span>
-                                    <span>→</span>
                                 </button>
                             </div>
                         </div>
                     ))}
                 </Slider>
             </div>
+
         </section>
     )
 }

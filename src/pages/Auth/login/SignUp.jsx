@@ -26,25 +26,25 @@ export default function SignUp() {
         let message = "";
 
         if (name === "username") {
-            if (!value.trim()) message = "Username required.";
-            else if (!/^[A-Za-z]+$/.test(value)) message = "Only letters allowed.";
-            else if (value.length < 8) message = "At least 8 letters.";
+            if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
+            else if (!/^[A-Za-z]+$/.test(value)) message = "Chỉ được phép sử dụng chữ cái.";
+            else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
         }
 
         if (name === "password") {
-            if (!value.trim()) message = "Password required.";
-            else if (/\s/.test(value)) message = "No spaces.";
-            else if (value.length < 8) message = "At least 8 chars.";
+            if (!value.trim()) message = "Mật khẩu là bắt buộc.";
+            else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
+            else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
             else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-                message = "Include letters, numbers, symbols.";
+                message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
         }
 
         if (name === "email") {
-            if (!value.trim()) message = "Email required.";
+            if (!value.trim()) message = "Email là bắt buộc.";
             else if (
                 !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value)
             )
-                message = "Invalid email.";
+                message = "Email không hợp lệ.";
         }
 
         setErrors((prev) => ({ ...prev, [name]: message }));
@@ -62,25 +62,25 @@ export default function SignUp() {
         Object.entries(formData).forEach(([key, value]) => {
             let message = "";
             if (key === "username") {
-                if (!value.trim()) message = "Username required.";
-                else if (!/^[A-Za-z]+$/.test(value)) message = "Only letters allowed.";
-                else if (value.length < 8) message = "At least 8 letters.";
+                if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
+                else if (!/^[A-Za-z]+$/.test(value)) message = "Chỉ được phép sử dụng chữ cái.";
+                else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
             }
 
             if (key === "password") {
-                if (!value.trim()) message = "Password required.";
-                else if (/\s/.test(value)) message = "No spaces.";
-                else if (value.length < 8) message = "At least 8 chars.";
+                if (!value.trim()) message = "Mật khẩu là bắt buộc.";
+                else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
+                else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
                 else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-                    message = "Include letters, numbers, symbols.";
+                    message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
             }
 
             if (key === "email") {
-                if (!value.trim()) message = "Email required.";
+                if (!value.trim()) message = "Email là bắt buộc.";
                 else if (
                     !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value)
                 )
-                    message = "Invalid email.";
+                    message = "Email không hợp lệ.";
             }
 
             if (message) newErrors[key] = message;
@@ -108,7 +108,7 @@ export default function SignUp() {
 
         try {
             // 🟢 hiển thị thông báo chờ
-            setLoadingMessage("Please check your email. Redirecting to OTP page...");
+            setLoadingMessage("Vui lòng kiểm tra email. Đang chuyển đến trang OTP...");
             const response = await authApi.signup(formData);
 
             // 🕒 giả lập delay để hiển thị message 2.5s
@@ -119,9 +119,9 @@ export default function SignUp() {
             }, 2500);
         } catch (error) {
             setLoadingMessage("");
-            console.error("Signup error:", error.response?.data || error.message);
+            console.error("Lỗi đăng ký:", error.response?.data || error.message);
             const backendMsg =
-                error.response?.data?.message || "Signup failed. Try again.";
+                error.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
             setBackendError(backendMsg);
         }
     };
@@ -135,7 +135,7 @@ export default function SignUp() {
             });
             navigate("/signin");
         } catch (error) {
-            setBackendError("Invalid OTP or expired.");
+            setBackendError("Mã OTP không hợp lệ hoặc đã hết hạn.");
         }
     };
 
@@ -162,10 +162,7 @@ export default function SignUp() {
                                 <span className="title-sub">Nhập mã xác thực từ email</span>
                             </>
                         ) : (
-                            <>
-                                <span className="title-main">Đăng ký</span>
-                                <span className="title-sub">Tham gia cuộc cách mạng xanh!</span>
-                            </>
+                            "Đăng ký"
                         )}
                     </h2>
                 </div>
@@ -270,10 +267,8 @@ export default function SignUp() {
                                 )}
                             </div>
 
-                            <button type="submit" className="btn primary-btn">
-                                <span className="btn-text">Đăng ký</span>
-                                <div className="btn-shine"></div>
-                                <i className="fas fa-user-plus btn-icon"></i>
+                            <button type="submit" className="btn solid">
+                                Đăng ký
                             </button>
 
                             <div className="divider">
@@ -281,14 +276,11 @@ export default function SignUp() {
                             </div>
 
                             <button type="button" className="btn google-btn">
-                                <div className="google-icon">
-                                    <img
-                                        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                                        alt="Google Icon"
-                                    />
-                                </div>
-                                <span className="btn-text">Google</span>
-                                <div className="btn-shine"></div>
+                                <img
+                                    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                                    alt="Google Icon"
+                                />
+                                Google
                             </button>
                         </>
                     ) : (
@@ -326,10 +318,8 @@ export default function SignUp() {
                                 </div>
                             )}
 
-                            <button type="submit" className="btn primary-btn">
-                                <span className="btn-text">Xác thực OTP</span>
-                                <div className="btn-shine"></div>
-                                <i className="fas fa-check btn-icon"></i>
+                            <button type="submit" className="btn solid">
+                                Xác thực OTP
                             </button>
 
                             <div className="resend-otp">
