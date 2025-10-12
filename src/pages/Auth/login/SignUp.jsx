@@ -2,9 +2,8 @@ import React, { useState } from "react";
 import logo from "../../../assets/logo/Logo 2.png";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
-import authApi from "../../../api/authApi"; // import api từ file riêng
+import authApi from "../../../api/authApi";
 import { GoogleLogin } from "@react-oauth/google";
-import { jwtDecode } from "jwt-decode";
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -21,8 +20,9 @@ export default function SignUp() {
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [isAgreed, setIsAgreed] = useState(false);
   const [showAgreeError, setShowAgreeError] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(""); // thêm biến này để tránh lỗi undefined
 
-  // ========== VALIDATION ==========
+  // ================= VALIDATION =================
   const validateField = (name, value) => {
     let message = "";
 
@@ -106,57 +106,52 @@ export default function SignUp() {
     }
 
     try {
-      //  Dùng api tách riêng, không gọi axios trực tiếp
+      setLoadingMessage("Sending OTP...");
       const response = await authApi.signup(formData);
       setIsOtpStep(true);
       setBackendError("");
+      setLoadingMessage("");
     } catch (error) {
       console.error("Signup error:", error.response?.data || error.message);
       const backendMsg =
         error.response?.data?.message || "Signup failed. Try again.";
       setBackendError(backendMsg);
+      setLoadingMessage("");
     }
   };
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     try {
+      setLoadingMessage("Verifying OTP...");
       await authApi.verifyOtp({
         email: formData.email,
         otp: otp,
       });
+      setLoadingMessage("");
       navigate("/signin");
     } catch (error) {
       setBackendError("Invalid OTP or expired.");
+      setLoadingMessage("");
     }
   };
 
   // ======== GOOGLE SIGNUP =========
-const handleGoogleSuccess = async (response) => {
-  try {
-    const userInfo = jwtDecode(response.credential);
-    console.log("Google user info:", userInfo);
+  const handleGoogleSuccess = async (response) => {
+    console.log(">>> Google response:", response);
+    try {
+      const res = await authApi.googleSignin(response.credential);
+      navigate("/signin");
+    } catch (error) {
+      console.error("Google signup error:", error.response || error);
+      setBackendError("Google sign up failed. Please try again.");
+    }
+  };
 
-    // Gửi dữ liệu này lên backend để tạo tài khoản
-    const res = await authApi.googleSignup({
-      email: userInfo.email,
-      name: userInfo.name,
-      googleId: userInfo.sub, // ID duy nhất của tài khoản GG
-    });
-
-    console.log("Server response:", res);
-    navigate("/signin"); // hoặc điều hướng vào trang chính nếu muốn
-  } catch (error) {
-    console.error("Google signup error:", error);
-    setBackendError("Google sign up failed. Please try again.");
-  }
-};
-
-const handleGoogleError = () => {
-  console.log("Google login failed");
-  setBackendError("Google sign up failed.");
-};
-
+  const handleGoogleError = () => {
+    console.log("Google login failed");
+    setBackendError("Google sign up failed.");
+  };
 
   // ========== UI ==========
   return (
@@ -237,16 +232,39 @@ const handleGoogleError = () => {
                 Please check this box if you want to proceed.
               </div>
             )}
+          </div>
 
-            {/*  Overlay loading */}
-            {loadingMessage && (
-                <div className="loading-overlay">
-                    <div className="loading-content">
-                        <p>📩 {loadingMessage}</p>
-                        <div className="spinner"></div>
-                    </div>
-                </div>
-            )}
-        </form>
-    );
+          <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+        </>
+      ) : (
+        <>
+          <div className="input-field">
+            <i className="fas fa-key"></i>
+            <input
+              type="text"
+              placeholder="Enter OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+            />
+          </div>
+          {backendError && (
+            <p className="error-message">{backendError}</p>
+          )}
+          <button type="submit" className="btn solid">
+            Verify OTP
+          </button>
+        </>
+      )}
+
+      {/* Overlay loading */}
+      {loadingMessage && (
+        <div className="loading-overlay">
+          <div className="loading-content">
+            <p>📩 {loadingMessage}</p>
+            <div className="spinner"></div>
+          </div>
+        </div>
+      )}
+    </form>
+  );
 }
