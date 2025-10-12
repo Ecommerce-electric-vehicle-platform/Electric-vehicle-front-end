@@ -78,6 +78,8 @@ export default function SignIn() {
             localStorage.setItem("accessToken", resData.accessToken);
             localStorage.setItem("refreshToken", resData.refreshToken);
             localStorage.setItem("username", resData.username);
+            localStorage.setItem("buyerId", resData.buyerId);
+            localStorage.setItem("userEmail", resData.email);
         }
 
         setBackendError("");
