@@ -1,0 +1,416 @@
+/* Upgrade Section Styles */
+.upgrade-section {
+    background: linear-gradient(135deg, #0d4f3c 0%, #1a5f4a 50%, #2d7a5f 100%);
+    padding: 5rem 0;
+    position: relative;
+    overflow: hidden;
+    scroll-margin-top: 100px;
+    /* Đảm bảo không bị che bởi header fixed */
+}
+
+.upgrade-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(76, 175, 80, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 70% 80%, rgba(139, 195, 74, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.upgrade-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.upgrade-header {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.upgrade-title {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 1rem;
+    background: linear-gradient(45deg, #4caf50, #8bc34a, #ffffff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.upgrade-subtitle {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 1.3rem;
+    color: #e8f5e8;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+.packages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    align-items: stretch;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.package-card {
+    background: linear-gradient(145deg, #1b5e20, #2e7d32);
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(76, 175, 80, 0.2);
+    max-width: 320px;
+    margin: 0 auto;
+}
+
+.package-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 35px rgba(76, 175, 80, 0.3);
+    border-color: rgba(76, 175, 80, 0.5);
+}
+
+.package-card.featured {
+    transform: scale(1.02);
+    border: 3px solid #4caf50;
+    background: linear-gradient(145deg, #2e7d32, #388e3c);
+    box-shadow: 0 12px 30px rgba(76, 175, 80, 0.4);
+}
+
+.package-card.featured:hover {
+    transform: scale(1.02) translateY(-8px);
+    box-shadow: 0 18px 40px rgba(76, 175, 80, 0.5);
+}
+
+.featured-badge {
+    position: absolute;
+    top: 20px;
+    right: -30px;
+    background: linear-gradient(45deg, #4caf50, #66bb6a);
+    color: white;
+    padding: 8px 40px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transform: rotate(45deg);
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+    z-index: 2;
+}
+
+.package-header {
+    background: linear-gradient(135deg, #4caf50 0%, #66bb6a 50%, #8bc34a 100%);
+    padding: 1.5rem 1.2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.package-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s ease;
+}
+
+.package-card:hover .package-header::before {
+    left: 100%;
+}
+
+.package-icon {
+    font-size: 1.8rem;
+    margin-bottom: 0.8rem;
+    display: block;
+}
+
+.package-name {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.package-price {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.price {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    letter-spacing: -0.01em;
+}
+
+.duration {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 1rem;
+    color: #f1f8e9;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.package-divider {
+    background: #ffffff;
+    height: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.wave-divider {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.package-content {
+    padding: 1.5rem 1.2rem;
+    background: linear-gradient(145deg, #1b5e20, #2e7d32);
+}
+
+.features-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem 0;
+}
+
+.feature-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid rgba(76, 175, 80, 0.2);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.feature-item:last-child {
+    border-bottom: none;
+}
+
+.feature-item:hover {
+    background: linear-gradient(90deg, rgba(76, 175, 80, 0.15), rgba(139, 195, 74, 0.1));
+    padding-left: 0.8rem;
+    border-radius: 12px;
+    border-left: 4px solid #4caf50;
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+}
+
+.feature-text {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    color: #f8f9fa;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    flex: 1;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+.check-icon {
+    color: #4caf50;
+    font-weight: 900;
+    font-size: 1.2rem;
+    margin-left: 1rem;
+    flex-shrink: 0;
+    text-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.upgrade-button {
+    width: 100%;
+    background: linear-gradient(45deg, #4caf50, #66bb6a);
+    color: white;
+    border: none;
+    padding: 1rem 1.2rem;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    border: 2px solid transparent;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.upgrade-button:hover {
+    background: linear-gradient(45deg, #66bb6a, #8bc34a);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+    border-color: #4caf50;
+}
+
+.upgrade-button:active {
+    transform: translateY(0);
+}
+
+.button-icon {
+    font-size: 1.1rem;
+}
+
+.button-text {
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .upgrade-section {
+        padding: 3rem 0;
+    }
+
+    .upgrade-title {
+        font-size: 2.2rem;
+        font-weight: 800;
+    }
+
+    .upgrade-subtitle {
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+
+    .packages-grid {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+        max-width: 350px;
+    }
+
+    .package-card.featured {
+        transform: none;
+    }
+
+    .package-card.featured:hover {
+        transform: translateY(-8px);
+    }
+
+    .package-header {
+        padding: 1.2rem 1rem;
+    }
+
+    .package-content {
+        padding: 1.2rem 1rem;
+    }
+
+    .featured-badge {
+        top: 15px;
+        right: -25px;
+        padding: 6px 30px;
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .upgrade-container {
+        padding: 0 0.5rem;
+    }
+
+    .upgrade-title {
+        font-size: 1.9rem;
+        font-weight: 800;
+    }
+
+    .package-name {
+        font-size: 1.4rem;
+        font-weight: 800;
+    }
+
+    .price {
+        font-size: 1.7rem;
+        font-weight: 900;
+    }
+
+    .feature-text {
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+}
+
+/* Animation for cards */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.package-card {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+.package-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.package-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.package-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+/* Hiệu ứng khi section được cuộn đến */
+.upgrade-section {
+    opacity: 0.8;
+    transition: all 0.6s ease;
+}
+
+.upgrade-section.section-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.upgrade-section.section-visible .upgrade-title {
+    animation: titleGlow 1s ease forwards;
+}
+
+@keyframes titleGlow {
+    0% {
+        text-shadow: none;
+    }
+
+    100% {
+        text-shadow: 0 0 30px rgba(76, 175, 80, 0.8), 0 0 60px rgba(139, 195, 74, 0.4);
+    }
+}
