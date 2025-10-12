@@ -3,9 +3,11 @@ import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import "./index.css";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { Environment } from "./environments/environment.js";
 
-const clientId = Environment.GG_CLIENT_ID;
+const clientId = import.meta.env.VITE_GG_CLIENT_ID;
+// console.log("Google Client ID:", clientId); // test
+
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <GoogleOAuthProvider clientId={clientId}>
