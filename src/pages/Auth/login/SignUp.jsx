@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import logo from "../../../assets/logo/Logo 2.png";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
-import authApi from "../../../api/authApi"; // import api từ file riêng
+import authApi from "../../../api/authApi";
 import { GoogleLogin } from "@react-oauth/google";
 
 export default function SignUp() {
@@ -20,8 +20,9 @@ export default function SignUp() {
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [isAgreed, setIsAgreed] = useState(false);
   const [showAgreeError, setShowAgreeError] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(""); // thêm biến này để tránh lỗi undefined
 
-  // ========== VALIDATION ==========
+  // ================= VALIDATION =================
   const validateField = (name, value) => {
     let message = "";
 
@@ -105,28 +106,33 @@ export default function SignUp() {
     }
 
     try {
-      //  Dùng api tách riêng, không gọi axios trực tiếp
+      setLoadingMessage("Sending OTP...");
       const response = await authApi.signup(formData);
       setIsOtpStep(true);
       setBackendError("");
+      setLoadingMessage("");
     } catch (error) {
       console.error("Signup error:", error.response?.data || error.message);
       const backendMsg =
         error.response?.data?.message || "Signup failed. Try again.";
       setBackendError(backendMsg);
+      setLoadingMessage("");
     }
   };
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     try {
+      setLoadingMessage("Verifying OTP...");
       await authApi.verifyOtp({
         email: formData.email,
         otp: otp,
       });
+      setLoadingMessage("");
       navigate("/signin");
     } catch (error) {
       setBackendError("Invalid OTP or expired.");
+      setLoadingMessage("");
     }
   };
 
@@ -134,9 +140,7 @@ export default function SignUp() {
   const handleGoogleSuccess = async (response) => {
     console.log(">>> Google response:", response);
     try {
-      console.log(">>> response credential:", response.credential);
       const res = await authApi.googleSignin(response.credential);
-      console.log("Backend response:", res.data);
       navigate("/signin");
     } catch (error) {
       console.error("Google signup error:", error.response || error);
@@ -230,7 +234,7 @@ export default function SignUp() {
             )}
           </div>
 
-          <input type="submit" value="Sign up" className="btn solid" />
+          <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
         </>
       ) : (
         <>
@@ -241,49 +245,25 @@ export default function SignUp() {
               placeholder="Enter OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
-              required
             />
           </div>
-
           {backendError && (
-            <p className="error-message" style={{ textAlign: "center" }}>
-              {backendError}
-            </p>
+            <p className="error-message">{backendError}</p>
           )}
-
-          <input type="submit" value="Verify OTP" className="btn solid" />
+          <button type="submit" className="btn solid">
+            Verify OTP
+          </button>
         </>
       )}
 
-      {!isOtpStep && (
-        <>
-          <p className="divider">
-            <span>or Sign up with</span>
-          </p>
-
-          <div className="google-login-wrapper">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              shape="pill"
-              text="signup_with"
-              width="280"
-            />
+      {/* Overlay loading */}
+      {loadingMessage && (
+        <div className="loading-overlay">
+          <div className="loading-content">
+            <p>📩 {loadingMessage}</p>
+            <div className="spinner"></div>
           </div>
-
-          <p className="switch-text">
-            Already have an account?{" "}
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate("/signin");
-              }}
-            >
-              Sign in
-            </a>
-          </p>
-        </>
+        </div>
       )}
     </form>
   );
