@@ -1,15 +1,7 @@
-import React from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-} from "react-router-dom";
-
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AuthLayout from "./pages/Auth/login/AuthLayout";
-import PersonalProfilePage from "./components/PersonalProfilePage";
-import HomePage from "./homepage/HomePage";
+import { Home } from "./pages/Home/Home";
+import { ProductDetail } from "./pages/ProductDetail/ProductDetail";
 
 // Component bảo vệ route (chỉ cho vào khi đã đăng nhập)
 function ProtectedRoute({ children }) {
@@ -28,29 +20,20 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        {/* Mặc định chuyển về /home */}
-        <Route path="/" element={<Navigate to="/home" replace />} />
+        {/*  Giữ trang chủ tại / để tránh thay đổi route gốc */}
+        <Route path="/" element={<Home />} />
 
-        {/* Trang Home */}
-        <Route path="/home" element={<HomePage />} />
+        {/*  Nếu vẫn muốn dùng /home thì chỉ dùng nó làm alias */}
+        <Route path="/home" element={<Navigate to="/" />} />
 
-        {/* Trang Auth */}
+        {/* Auth pages */}
         <Route path="/signin" element={<AuthLayout page="signin" />} />
         <Route path="/signup" element={<AuthLayout page="signup" />} />
 
-        {/* Trang Profile (phải đăng nhập mới vào được) */}
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <PersonalProfilePage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Fallback nếu route sai */}
-        <Route path="*" element={<Navigate to="/home" replace />} />
+        {/* Product Detail page */}
+        <Route path="/product/:id" element={<ProductDetail />} />
       </Routes>
     </Router>
   );
 }
+
