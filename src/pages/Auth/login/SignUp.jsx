@@ -2,15 +2,87 @@ import React, { useState } from "react";
 import logo from "../../../assets/logo/Logo 2.png";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
-import authApi from "../../../api/authApi"; //  import api từ file riêng
+import authApi from "../../../api/authApi";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function SignUp() {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
-    const [formData, setFormData] = useState({
-        username: "",
-        password: "",
-        email: "",
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+    email: "",
+  });
+
+  const [errors, setErrors] = useState({});
+  const [backendError, setBackendError] = useState("");
+  const [otp, setOtp] = useState("");
+  const [isOtpStep, setIsOtpStep] = useState(false);
+  const [isAgreed, setIsAgreed] = useState(false);
+  const [showAgreeError, setShowAgreeError] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(""); // thêm biến này để tránh lỗi undefined
+
+  // ================= VALIDATION =================
+  const validateField = (name, value) => {
+    let message = "";
+
+    if (name === "username") {
+      if (!value.trim()) message = "Username required.";
+      else if (!/^[A-Za-z]+$/.test(value)) message = "Only letters allowed.";
+      else if (value.length < 8) message = "At least 8 letters.";
+    }
+
+    if (name === "password") {
+      if (!value.trim()) message = "Password required.";
+      else if (/\s/.test(value)) message = "No spaces.";
+      else if (value.length < 8) message = "At least 8 chars.";
+      else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
+        message = "Include letters, numbers, symbols.";
+    }
+
+    if (name === "email") {
+      if (!value.trim()) message = "Email required.";
+      else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value))
+        message = "Invalid email.";
+    }
+
+    setErrors((prev) => ({ ...prev, [name]: message }));
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    validateField(name, value);
+    setBackendError("");
+  };
+
+  const validateAll = () => {
+    const newErrors = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      let message = "";
+      if (key === "username") {
+        if (!value.trim()) message = "Username required.";
+        else if (!/^[A-Za-z]+$/.test(value)) message = "Only letters allowed.";
+        else if (value.length < 8) message = "At least 8 letters.";
+      }
+
+      if (key === "password") {
+        if (!value.trim()) message = "Password required.";
+        else if (/\s/.test(value)) message = "No spaces.";
+        else if (value.length < 8) message = "At least 8 chars.";
+        else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
+          message = "Include letters, numbers, symbols.";
+      }
+
+      if (key === "email") {
+        if (!value.trim()) message = "Email required.";
+        else if (
+          !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value)
+        )
+          message = "Invalid email.";
+      }
+
+      if (message) newErrors[key] = message;
     });
 
     const [errors, setErrors] = useState({});
@@ -107,11 +179,11 @@ export default function SignUp() {
         }
 
         try {
-            // 🟢 hiển thị thông báo chờ
+            // hiển thị thông báo chờ
             setLoadingMessage("Vui lòng kiểm tra email. Đang chuyển đến trang OTP...");
             const response = await authApi.signup(formData);
 
-            // 🕒 giả lập delay để hiển thị message 2.5s
+            // giả lập delay để hiển thị message 2.5s
             setTimeout(() => {
                 setIsOtpStep(true);
                 setBackendError("");
