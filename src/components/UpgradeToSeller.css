@@ -1,0 +1,131 @@
+.upgrade-to-seller {
+  padding: 40px;
+  max-width: 800px;
+}
+
+.upgrade-to-seller h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  /* Center the heading */
+  text-align: center;
+}
+
+.welcome-text {
+  text-align: left;
+  margin-bottom: 32px;
+  font-size: 16px;
+  color: #333;
+}
+
+.upgrade-to-seller form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.form-group label {
+  min-width: 180px;
+  /* Changed from right to left alignment */
+  text-align: left;
+  font-size: 14px;
+  color: #333;
+}
+
+.form-group input[type="text"] {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 24px;
+  font-size: 14px;
+  outline: none;
+}
+
+.form-group input[type="text"]:focus {
+  border-color: #86efac;
+}
+
+.upload-instruction {
+  font-size: 13px;
+  color: #666;
+  margin: 8px 0;
+  padding-left: 196px;
+}
+
+.file-upload-group {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Reduced gap between label and button from 16px to 8px */
+}
+
+.file-upload-group > label {
+  min-width: 180px;
+  text-align: left; /* Changed from right to left alignment */
+  font-size: 14px;
+  color: #333;
+}
+
+.file-upload-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.add-file-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background-color: white;
+  border: 1px solid #4a9eff;
+  border-radius: 6px;
+  color: #4a9eff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-file-btn:hover {
+  background-color: #f0f8ff;
+}
+
+.download-icon {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.file-name {
+  font-size: 13px;
+  color: #666;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.submit-btn {
+  align-self: center;
+  padding: 12px 48px;
+  /* Match sidebar green color */
+  background-color: #86efac;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: background-color 0.2s;
+}
+
+.submit-btn:hover {
+  /* Darker green on hover */
+  background-color: #6ee89b;
+}
