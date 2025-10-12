@@ -60,13 +60,26 @@ export default function SignIn() {
     };
 
     // ===== SUBMIT =====
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const allValid = validateAll();
+   const handleSubmit = async (e) => {
+    e.preventDefault();
+    const allValid = validateAll();
 
-        if (!allValid) {
-            console.log("Form không hợp lệ, vui lòng kiểm tra lại thông tin");
-            return;
+    if (!allValid) {
+        console.log("Form không hợp lệ, kiểm tra lại username/password");
+        return;
+    }
+
+    try {
+        const response = await authApi.signin(formData);
+        const resData = response?.data?.data;
+
+        if (resData?.accessToken && resData?.refreshToken) {
+            // lưu token vào localStorage
+            localStorage.setItem("accessToken", resData.accessToken);
+            localStorage.setItem("refreshToken", resData.refreshToken);
+            localStorage.setItem("username", resData.username);
+            localStorage.setItem("buyerId", resData.buyerId);
+            localStorage.setItem("userEmail", resData.email);
         }
 
         try {
