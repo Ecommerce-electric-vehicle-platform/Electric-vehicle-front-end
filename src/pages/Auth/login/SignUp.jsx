@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import "./auth.css";
 import authApi from "../../../api/authApi"; // import api từ file riêng
 import { GoogleLogin } from "@react-oauth/google";
-import { jwtDecode } from "jwt-decode";
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -132,31 +131,23 @@ export default function SignUp() {
   };
 
   // ======== GOOGLE SIGNUP =========
-const handleGoogleSuccess = async (response) => {
-  try {
-    const userInfo = jwtDecode(response.credential);
-    console.log("Google user info:", userInfo);
+  const handleGoogleSuccess = async (response) => {
+    console.log(">>> Google response:", response);
+    try {
+      console.log(">>> response credential:", response.credential);
+      const res = await authApi.googleSignin(response.credential);
+      console.log("Backend response:", res.data);
+      navigate("/signin");
+    } catch (error) {
+      console.error("Google signup error:", error.response || error);
+      setBackendError("Google sign up failed. Please try again.");
+    }
+  };
 
-    // Gửi dữ liệu này lên backend để tạo tài khoản
-    const res = await authApi.googleSignup({
-      email: userInfo.email,
-      name: userInfo.name,
-      googleId: userInfo.sub, // ID duy nhất của tài khoản GG
-    });
-
-    console.log("Server response:", res);
-    navigate("/signin"); // hoặc điều hướng vào trang chính nếu muốn
-  } catch (error) {
-    console.error("Google signup error:", error);
-    setBackendError("Google sign up failed. Please try again.");
-  }
-};
-
-const handleGoogleError = () => {
-  console.log("Google login failed");
-  setBackendError("Google sign up failed.");
-};
-
+  const handleGoogleError = () => {
+    console.log("Google login failed");
+    setBackendError("Google sign up failed.");
+  };
 
   // ========== UI ==========
   return (
