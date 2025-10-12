@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import logo from "../../../assets/logo/Logo 2.png";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
 import authApi from "../../../api/authApi";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function SignIn() {
     const navigate = useNavigate();
@@ -10,22 +10,22 @@ export default function SignIn() {
     const [formData, setFormData] = useState({ username: "", password: "" });
     const [errors, setErrors] = useState({});
     const [backendError, setBackendError] = useState("");
-    
+
 
     // ===== VALIDATION =====
     const validateField = (name, value) => {
         let message = "";
         if (name === "username") {
-            if (!value.trim()) message = "Username required.";
-            else if (!/^[A-Za-z]+$/.test(value)) message = "Only letters allowed.";
-            else if (value.length < 8) message = "At least 8 letters.";
+            if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
+            else if (!/^[A-Za-z]+$/.test(value)) message = "Chỉ được phép sử dụng chữ cái.";
+            else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
         }
         if (name === "password") {
-            if (!value.trim()) message = "Password required.";
-            else if (/\s/.test(value)) message = "No spaces.";
-            else if (value.length < 8) message = "At least 8 chars.";
+            if (!value.trim()) message = "Mật khẩu là bắt buộc.";
+            else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
+            else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
             else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-                message = "Include letters, numbers, symbols.";
+                message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
         }
         setErrors((prev) => ({ ...prev, [name]: message }));
     };
@@ -42,16 +42,16 @@ export default function SignIn() {
         Object.entries(formData).forEach(([key, value]) => {
             let message = "";
             if (key === "username") {
-                if (!value.trim()) message = "Username required.";
-                else if (!/^[A-Za-z]+$/.test(value)) message = "Only letters allowed.";
-                else if (value.length < 8) message = "At least 8 letters.";
+                if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
+                else if (!/^[A-Za-z]+$/.test(value)) message = "Chỉ được phép sử dụng chữ cái.";
+                else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
             }
             if (key === "password") {
-                if (!value.trim()) message = "Password required.";
-                else if (/\s/.test(value)) message = "No spaces.";
-                else if (value.length < 8) message = "At least 8 chars.";
+                if (!value.trim()) message = "Mật khẩu là bắt buộc.";
+                else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
+                else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
                 else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-                    message = "Include letters, numbers, symbols.";
+                    message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
             }
             if (message) newErrors[key] = message;
         });
@@ -82,30 +82,47 @@ export default function SignIn() {
             localStorage.setItem("userEmail", resData.email);
         }
 
-        setBackendError("");
-        console.log("Login success:", resData);
-        navigate("/profile");
-    } catch (error) {
-        console.error("Signin error:", error.response?.data || error.message);
-        const backendMsg =
-            error.response?.data?.message || "Login failed. Try again.";
-        setBackendError(backendMsg);
-    }
-};
+        try {
+            const response = await authApi.signin(formData);
+            const resData = response?.data?.data;
+
+            if (resData?.accessToken && resData?.refreshToken) {
+                // lưu token vào localStorage
+                localStorage.setItem("accessToken", resData.accessToken);
+                localStorage.setItem("refreshToken", resData.refreshToken);
+                localStorage.setItem("username", resData.username);
+            }
+
+            setBackendError("");
+            console.log("Đăng nhập thành công:", resData);
+            navigate("/");
+        } catch (error) {
+            console.error("Lỗi đăng nhập:", error.response?.data || error.message);
+            const backendMsg =
+                error.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+            setBackendError(backendMsg);
+        }
+    };
 
 
     // ===== UI =====
     return (
         <form className="sign-in-form" onSubmit={handleSubmit} noValidate>
-            <img src={logo} alt="GreenTrade Logo" className="gt-logo" />
-            <h2 className="title">Sign in</h2>
+            <div className="logo-container">
+                <div className="greentrade-text">
+                    <span className="green-text">Green</span>
+                    <span className="trade-text">Trade</span>
+                </div>
+                <div className="logo-glow"></div>
+            </div>
+            <h2 className="title">Đăng nhập</h2>
 
             <div className={`input-field ${errors.username ? "error" : ""}`}>
                 <i className="fas fa-user"></i>
                 <input
                     type="text"
                     name="username"
-                    placeholder="Username"
+                    placeholder="Tên đăng nhập"
                     value={formData.username}
                     onChange={handleChange}
                 />
@@ -117,7 +134,7 @@ export default function SignIn() {
                 <input
                     type="password"
                     name="password"
-                    placeholder="Password"
+                    placeholder="Mật khẩu"
                     value={formData.password}
                     onChange={handleChange}
                 />
@@ -131,15 +148,15 @@ export default function SignIn() {
             )}
 
             <a href="#" className="forgot-password">
-                Forgot password?
+                Quên mật khẩu?
             </a>
 
-            
 
-            <input type="submit" value="Sign in" className="btn solid" />
+
+            <input type="submit" value="Đăng nhập" className="btn solid" />
 
             <p className="divider">
-                <span>or Sign in with</span>
+                <span>hoặc đăng nhập bằng</span>
             </p>
 
             <button type="button" className="btn google-btn">
@@ -147,11 +164,11 @@ export default function SignIn() {
                     src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                     alt="Google Icon"
                 />
-                Sign in with Google
+                Google
             </button>
 
             <p className="switch-text">
-                Don’t have an account?{" "}
+                Chưa có tài khoản?{" "}
                 <a
                     href="#"
                     onClick={(e) => {
@@ -159,7 +176,7 @@ export default function SignIn() {
                         navigate("/signup");
                     }}
                 >
-                    Sign up
+                    Đăng ký ngay
                 </a>
             </p>
         </form>
