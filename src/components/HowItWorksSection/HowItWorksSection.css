@@ -1,0 +1,154 @@
+.how-it-works-section {
+  padding: 5rem 0;
+  background-color: white;
+}
+
+@media (min-width: 768px) {
+  .how-it-works-section {
+    padding: 6rem 0;
+  }
+}
+
+.how-it-works-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 768px) {
+  .how-it-works-container {
+    padding: 0 1.5rem;
+  }
+}
+
+.how-it-works-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+@media (min-width: 768px) {
+  .how-it-works-header {
+    margin-bottom: 4rem;
+  }
+}
+
+.how-it-works-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-wrap: balance;
+}
+
+@media (min-width: 768px) {
+  .how-it-works-title {
+    font-size: 2.5rem;
+  }
+}
+
+.how-it-works-description {
+  font-size: 1.125rem;
+  color: #6b7280;
+  max-width: 42rem;
+  margin: 0 auto;
+  text-wrap: pretty;
+}
+
+.steps-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .steps-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .steps-container {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.step-wrapper {
+  position: relative;
+}
+
+.step-card {
+  padding: 2rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  text-align: center;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.step-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-4px);
+}
+
+.step-number {
+  position: absolute;
+  top: -1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  background-color: #22c55e; /* Updated to eco green */
+  color: white;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+}
+
+.step-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 9999px;
+  background-color: rgba(34, 197, 94, 0.1); /* Updated to eco green */
+  margin: 0 auto 1rem;
+}
+
+.step-icon {
+  width: 2rem;
+  height: 2rem;
+  color: #22c55e; /* Updated to eco green */
+}
+
+.step-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.step-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.step-connector {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .step-connector {
+    display: block;
+    position: absolute;
+    top: 3rem;
+    right: -2rem;
+    width: 4rem;
+    height: 2px;
+    background: linear-gradient(to right, #22c55e, transparent); /* Updated to eco green */
+  }
+}

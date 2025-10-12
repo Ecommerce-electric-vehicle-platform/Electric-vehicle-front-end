@@ -1,12 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App.jsx";
 import "./index.css";
-import { GoogleOAuthProvider } from "@react-oauth/google";
+import App from "./App.jsx";
 
-const clientId = import.meta.env.VITE_GG_CLIENT_ID;
-// console.log("Google Client ID:", clientId); // test
-
+// Thêm 2 dòng này để đồng bộ với trang cũ
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
