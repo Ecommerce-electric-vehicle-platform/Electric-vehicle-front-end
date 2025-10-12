@@ -1,24 +1,7 @@
 import { ArrowRight, Search, Zap, Shield, Recycle, TrendingUp } from "lucide-react"
-import { CategorySidebar } from "../CategorySidebar/CategorySidebar"
-import { useState, useEffect } from "react"
 import "./HeroSection.css"
 
 export function HeroSection() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-
-  // Disable scroll when menu is open
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.classList.add('menu-open')
-    } else {
-      document.body.classList.remove('menu-open')
-    }
-
-    // Cleanup function
-    return () => {
-      document.body.classList.remove('menu-open')
-    }
-  }, [isMenuOpen])
 
   // Hàm smooth scroll đến section
   const scrollToSection = (sectionId) => {
@@ -43,15 +26,6 @@ export function HeroSection() {
     scrollToSection('upgrade-section')
   }
 
-  // Xử lý toggle menu
-  const handleToggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen)
-  }
-
-  // Xử lý đóng menu
-  const handleCloseMenu = () => {
-    setIsMenuOpen(false)
-  }
 
   return (
     <section className="hero-section">
@@ -67,29 +41,6 @@ export function HeroSection() {
       </div>
 
       <div className="hero-container">
-        {/* Hamburger Menu Button */}
-        <div className="hero-menu-button">
-          <button
-            className="hamburger-btn"
-            onClick={handleToggleMenu}
-          >
-            <div className="hamburger-line"></div>
-            <div className="hamburger-line"></div>
-            <div className="hamburger-line"></div>
-          </button>
-        </div>
-
-        {/* Overlay Backdrop */}
-        <div
-          className={`hero-overlay ${isMenuOpen ? 'active' : ''}`}
-          onClick={handleCloseMenu}
-        ></div>
-
-        {/* Category Sidebar - Hidden by default */}
-        <div className={`hero-sidebar ${isMenuOpen ? 'active' : ''}`}>
-          <CategorySidebar />
-        </div>
-
         <div className="hero-content">
           {/* Badge */}
           <div className="hero-badge">

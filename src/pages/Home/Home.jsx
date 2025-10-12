@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { Header } from "../../components/Header/Header"
 import { HeroSection } from "../../components/HeroSection/HeroSection"
 import { FeaturedSlider } from "../../components/FeaturedSlider/FeaturedSlider"
@@ -11,6 +12,33 @@ import { ScrollToTop } from "../../components/ScrollToTop/ScrollToTop"
 import "./Home.css"
 
 export function Home() {
+  // Xử lý hash navigation khi trang load
+  useEffect(() => {
+    const handleHashNavigation = () => {
+      const hash = window.location.hash;
+      if (hash) {
+        const sectionId = hash.substring(1); // Bỏ dấu #
+        const section = document.getElementById(sectionId);
+        if (section) {
+          // Delay một chút để đảm bảo trang đã render xong
+          setTimeout(() => {
+            section.scrollIntoView({ behavior: "smooth" });
+          }, 100);
+        }
+      }
+    };
+
+    // Xử lý khi component mount
+    handleHashNavigation();
+
+    // Xử lý khi hash thay đổi
+    window.addEventListener('hashchange', handleHashNavigation);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashNavigation);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* ✅ Header cố định đầu trang */}
@@ -42,7 +70,9 @@ export function Home() {
         <CTASection />
 
         {/* 💎 Upgrade Section - Nâng cấp buyer lên seller */}
-        <UpgradeSection />
+        <section id="upgrade-section">
+          <UpgradeSection />
+        </section>
       </main>
 
       {/* 🦶 Footer cuối trang — thêm ID để cuộn xuống từ Header */}

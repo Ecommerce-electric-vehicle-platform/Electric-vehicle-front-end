@@ -144,13 +144,71 @@
         0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
+.featured-brand {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #a7f3d0;
+    letter-spacing: 0.025em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    margin-bottom: 0.5rem;
+}
+
+/* Featured Location */
+.featured-location {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #e5e7eb;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.featured-location .detail-icon {
+    width: 14px;
+    height: 14px;
+    color: #a7f3d0;
+}
+
 .featured-price {
-    font-size: 1.375rem;
+    font-size: 1rem;
     font-weight: 600;
     color: #86efac;
     letter-spacing: 0.025em;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     margin-bottom: 1rem;
+}
+
+.featured-status {
+    margin-bottom: 1rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+}
+
+.status-badge.available {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.status-badge.sold {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.status-badge.pending {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
 }
 
 .featured-btn {
@@ -200,6 +258,11 @@
 
 .featured-btn:hover span:last-child {
     transform: translateX(4px);
+}
+
+.btn-icon {
+    width: 16px;
+    height: 16px;
 }
 
 /* Nút điều hướng */
@@ -295,7 +358,7 @@
     }
 
     .featured-price {
-        font-size: 1.25rem;
+        font-size: 0.9rem;
     }
 
     .arrow {
@@ -344,7 +407,7 @@
     }
 
     .featured-price {
-        font-size: 1.125rem;
+        font-size: 0.85rem;
     }
 
     .featured-btn {

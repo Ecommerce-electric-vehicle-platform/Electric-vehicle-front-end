@@ -1,8 +1,6 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./Auth.css";
-import logImg from "../../../assets/imgs/log.svg";
-import registerImg from "../../../assets/imgs/register.svg";
 import SignIn from "./SignIn.jsx";
 import SignUp from "./SignUp.jsx";
 
@@ -24,37 +22,36 @@ export default function AuthLayout() {
             <div className="panels-container">
                 <div className="panel left-panel">
                     <div className="content">
-                        <h3>New here ?</h3>
+                        <h3>Lần đầu đến đây?</h3>
                         <p>
-                            Discover <b>GreenTrade</b> — a trusted marketplace for{" "}
-                            <b>second-hand EVs and batteries</b>. Drive sustainability with
-                            every trade!
+                            Khám phá <b>GreenTrade</b> — nền tảng giao dịch hàng đầu cho{" "}
+                            <b>xe điện và pin đã qua sử dụng</b>. Tìm kiếm những sản phẩm chất lượng cao với giá cả phải chăng,
+                            góp phần bảo vệ môi trường và tiết kiệm chi phí!
                         </p>
                         <button
                             className="btn transparent"
                             onClick={() => navigate("/signup")}
                         >
-                            Sign up
+                            Đăng ký
                         </button>
                     </div>
-                    <img src={registerImg} className="image" alt="Sign up" />
                 </div>
 
                 <div className="panel right-panel">
                     <div className="content">
-                        <h3>One of us?</h3>
+                        <h3>Chào mừng trở lại!</h3>
                         <p>
-                            Log in to continue exploring <b>eco-friendly deals</b> and connect
-                            with verified EV owners across Vietnam.
+                            Chào mừng bạn quay trở lại với <b>GreenTrade</b>! Tiếp tục khám phá những
+                            <b>sản phẩm xe điện và pin chất lượng</b> với giá cả hợp lý. Cộng đồng của chúng ta
+                            luôn sẵn sàng hỗ trợ bạn tìm được những giao dịch tốt nhất!
                         </p>
                         <button
                             className="btn transparent"
                             onClick={() => navigate("/signin")}
                         >
-                            Sign in
+                            Đăng nhập
                         </button>
                     </div>
-                    <img src={logImg} className="image" alt="Sign in" />
                 </div>
             </div>
         </div>

@@ -41,109 +41,7 @@
   }
 }
 
-/* Hamburger Menu Button */
-.hero-menu-button {
-  position: fixed;
-  top: 6rem;
-  left: 2rem;
-  z-index: 1000;
-}
 
-.hamburger-btn {
-  width: 50px;
-  height: 50px;
-  background: rgba(0, 255, 128, 0.9);
-  border: none;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 25px rgba(0, 255, 128, 0.3);
-  backdrop-filter: blur(10px);
-}
-
-.hamburger-btn:hover {
-  background: rgba(0, 255, 128, 1);
-  transform: scale(1.05);
-  box-shadow: 0 12px 35px rgba(0, 255, 128, 0.4);
-}
-
-.hamburger-line {
-  width: 20px;
-  height: 2px;
-  background: #000;
-  border-radius: 1px;
-  transition: all 0.3s ease;
-}
-
-.hamburger-btn:hover .hamburger-line {
-  background: #fff;
-}
-
-/* Overlay Backdrop */
-.hero-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(5px);
-  z-index: 999;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.hero-overlay.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* Prevent body scroll when menu is open */
-body.menu-open {
-  overflow: hidden;
-  position: fixed;
-  width: 100%;
-}
-
-/* Category Sidebar - Hidden by default */
-.hero-sidebar {
-  position: fixed;
-  top: 10rem;
-  left: 2rem;
-  z-index: 1000;
-  transform: translateY(-20px);
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  max-height: calc(100vh - 12rem);
-  overflow-y: auto;
-}
-
-.hero-sidebar .category-sidebar {
-  position: relative;
-  top: 0;
-  left: 0;
-  width: 350px;
-  height: auto;
-  border-radius: 16px;
-  margin: 0;
-  max-height: none;
-  animation: none;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-}
-
-.hero-sidebar.active {
-  transform: translateY(0);
-  opacity: 1;
-  visibility: visible;
-}
 
 
 .hero-content {
@@ -418,24 +316,7 @@ body.menu-open {
     padding: 0 1rem;
   }
 
-  .hero-menu-button {
-    top: 5rem;
-    left: 1rem;
-  }
 
-  .hamburger-btn {
-    width: 45px;
-    height: 45px;
-  }
-
-  .hero-sidebar {
-    top: 8rem;
-    left: 1rem;
-  }
-
-  .hero-sidebar .category-sidebar {
-    width: 300px;
-  }
 
   .hero-title {
     font-size: 2.5rem;
