@@ -1,8 +1,12 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { UpgradeConfirmationModal } from '../UpgradeConfirmationModal/UpgradeConfirmationModal';
 import './UpgradeSection.css';
 
 export function UpgradeSection() {
     const sectionRef = useRef(null);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         // Thêm hiệu ứng highlight khi section được cuộn đến
@@ -76,9 +80,17 @@ export function UpgradeSection() {
     ];
 
     const handleUpgrade = (packageId) => {
-        // Xử lý logic nâng cấp
-        console.log(`Nâng cấp lên gói: ${packageId}`);
-        // Có thể chuyển hướng đến trang thanh toán hoặc hiển thị modal
+        // Hiển thị modal xác nhận nâng cấp
+        setShowUpgradeModal(true);
+    };
+
+    const handleConfirmUpgrade = () => {
+        // Chuyển hướng đến trang Upgrade to Seller trong PersonalProfilePage
+        navigate('/profile?tab=upgrade');
+    };
+
+    const handleCloseModal = () => {
+        setShowUpgradeModal(false);
     };
 
     return (
@@ -140,6 +152,13 @@ export function UpgradeSection() {
                     ))}
                 </div>
             </div>
+
+            {/* Upgrade Confirmation Modal */}
+            <UpgradeConfirmationModal
+                isOpen={showUpgradeModal}
+                onClose={handleCloseModal}
+                onConfirm={handleConfirmUpgrade}
+            />
         </section>
     );
 }

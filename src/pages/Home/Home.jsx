@@ -1,87 +1,61 @@
-import { useEffect } from "react"
-import { Header } from "../../components/Header/Header"
-import { HeroSection } from "../../components/HeroSection/HeroSection"
-import { FeaturedSlider } from "../../components/FeaturedSlider/FeaturedSlider"
-import { FeaturesSection } from "../../components/FeaturesSection/FeaturesSection"
-import { VehicleShowcase } from "../../components/VehicleShowcase/VehicleShowcase"
-import { CTASection } from "../../components/CTASection/CTASection"
-import { UpgradeSection } from "../../components/UpgradeSection/UpgradeSection"
-import { ProductsSection } from "../../components/ProductsSection/ProductsSection"
-import { Footer } from "../../components/Footer/Footer"
-import { ScrollToTop } from "../../components/ScrollToTop/ScrollToTop"
+import { useEffect, useState } from "react"
+import { useLocation } from "react-router-dom"
+import { HomeGuest } from "../../components/HomeGuest/HomeGuest"
+import { HomeUser } from "../../components/HomeUser/HomeUser"
 import "./Home.css"
 
 export function Home() {
-  // Xử lý hash navigation khi trang load
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const location = useLocation();
+
+  // Kiểm tra trạng thái đăng nhập
   useEffect(() => {
-    const handleHashNavigation = () => {
-      const hash = window.location.hash;
-      if (hash) {
-        const sectionId = hash.substring(1); // Bỏ dấu #
-        const section = document.getElementById(sectionId);
-        if (section) {
-          // Delay một chút để đảm bảo trang đã render xong
-          setTimeout(() => {
-            section.scrollIntoView({ behavior: "smooth" });
-          }, 100);
-        }
-      }
+    const checkAuthStatus = () => {
+      const token = localStorage.getItem("token");
+      setIsAuthenticated(!!token);
     };
 
-    // Xử lý khi component mount
-    handleHashNavigation();
+    // Kiểm tra lần đầu
+    checkAuthStatus();
 
-    // Xử lý khi hash thay đổi
-    window.addEventListener('hashchange', handleHashNavigation);
+    // Lắng nghe thay đổi localStorage
+    const handleStorageChange = () => {
+      checkAuthStatus();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Cũng lắng nghe sự kiện custom khi đăng nhập/đăng xuất
+    window.addEventListener('authStatusChanged', handleStorageChange);
 
     return () => {
-      window.removeEventListener('hashchange', handleHashNavigation);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('authStatusChanged', handleStorageChange);
     };
   }, []);
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      {/* ✅ Header cố định đầu trang */}
-      <Header />
+  // Xử lý hash trong URL để scroll đến section tương ứng
+  useEffect(() => {
+    const handleHashScroll = () => {
+      const hash = location.hash;
+      if (hash) {
+        // Đợi một chút để đảm bảo component đã render xong
+        setTimeout(() => {
+          const element = document.querySelector(hash);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth" });
+          }
+        }, 100);
+      }
+    };
 
-      <main className="flex-grow">
-        {/* 🚀 Hero Section */}
-        <HeroSection />
+    handleHashScroll();
+  }, [location.hash]);
 
-        {/* ⚡ Featured Slider (sản phẩm nổi bật) */}
-        <section className="featured-section">
-          <FeaturedSlider />
-        </section>
+  // Render component phù hợp dựa trên trạng thái đăng nhập
+  if (isAuthenticated) {
+    return <HomeUser />;
+  }
 
-        {/* 🌿 Sản phẩm mới nhất với bộ lọc danh mục */}
-        <section id="products-section">
-          <ProductsSection />
-        </section>
-
-        {/* 🚗 Vehicle & Batteries Section — thêm ID để cuộn xuống từ Header */}
-        <section id="vehicleshowcase-section">
-          <VehicleShowcase />
-        </section>
-
-        {/* 💡 Features Section */}
-        <FeaturesSection />
-
-        {/* 🚀 CTA */}
-        <CTASection />
-
-        {/* 💎 Upgrade Section - Nâng cấp buyer lên seller */}
-        <section id="upgrade-section">
-          <UpgradeSection />
-        </section>
-      </main>
-
-      {/* 🦶 Footer cuối trang — thêm ID để cuộn xuống từ Header */}
-      <footer id="footer">
-        <Footer />
-      </footer>
-
-      {/* ⬆️ Nút cuộn lên đầu trang */}
-      <ScrollToTop />
-    </div>
-  )
+  return <HomeGuest />;
 }

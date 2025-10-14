@@ -163,6 +163,82 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  gap: 1rem;
+}
+
+/* ===========================
+     👤 USER ACTIONS
+     =========================== */
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.action-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-icon-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.action-icon-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.action-icon {
+  width: 20px;
+  height: 20px;
+  color: #374151;
+  transition: color 0.3s ease;
+}
+
+.action-icon-btn:hover .action-icon {
+  color: #059669;
+}
+
+.notification-btn {
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+}
+
+.seller-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* ===========================
@@ -263,6 +339,42 @@
 }
 
 /* ===========================
+     🏪 SELLER BUTTONS
+     =========================== */
+.btn-seller-secondary {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+  color: #374151;
+  border: 1px solid #d1d5db;
+  backdrop-filter: blur(10px);
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+  min-width: 100px;
+}
+
+.btn-seller-secondary:hover {
+  background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+  color: #1f2937;
+  border-color: #9ca3af;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.btn-seller-primary {
+  background: linear-gradient(135deg, #374151, #4b5563);
+  color: white;
+  border: 1px solid transparent;
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+  min-width: 100px;
+}
+
+.btn-seller-primary:hover {
+  background: linear-gradient(135deg, #1f2937, #374151);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(55, 65, 81, 0.3);
+}
+
+/* ===========================
      📱 RESPONSIVE
      =========================== */
 .mobile-menu-btn {
@@ -335,6 +447,36 @@
     min-width: 75px;
   }
 
+  /* User actions responsive */
+  .user-actions {
+    gap: 0.5rem;
+  }
+
+  .action-icons {
+    gap: 0.3rem;
+  }
+
+  .action-icon-btn {
+    width: 35px;
+    height: 35px;
+  }
+
+  .action-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .seller-buttons {
+    gap: 0.3rem;
+  }
+
+  .btn-seller-secondary,
+  .btn-seller-primary {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+    min-width: 80px;
+  }
+
   /* Hamburger menu responsive */
   .hamburger-menu-btn {
     width: 45px;
@@ -370,6 +512,42 @@
 
   .auth-buttons {
     gap: 0.3rem;
+  }
+
+  /* User actions cho mobile nhỏ */
+  .user-actions {
+    gap: 0.3rem;
+  }
+
+  .action-icons {
+    gap: 0.2rem;
+  }
+
+  .action-icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .action-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .notification-badge {
+    font-size: 9px;
+    min-width: 14px;
+    height: 14px;
+  }
+
+  .seller-buttons {
+    gap: 0.2rem;
+  }
+
+  .btn-seller-secondary,
+  .btn-seller-primary {
+    font-size: 0.7rem;
+    padding: 0.35rem 0.6rem;
+    min-width: 70px;
   }
 
   /* Hamburger menu cho mobile nhỏ */
@@ -531,4 +709,81 @@
 /* Ngăn scroll khi menu mở */
 body.hamburger-menu-open {
   overflow: hidden;
+}
+
+/* ===========================
+   👤 USER INFO STYLES
+   =========================== */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-details {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.user-icon {
+  width: 20px;
+  height: 20px;
+  color: #16a34a;
+}
+
+.username {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+  background: #dc2626;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.logout-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Responsive cho user info */
+@media (max-width: 768px) {
+  .user-info {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .user-details {
+    padding: 0.4rem 0.8rem;
+  }
+
+  .username {
+    font-size: 0.8rem;
+  }
+
+  .logout-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
 }

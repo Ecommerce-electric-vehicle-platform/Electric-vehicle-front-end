@@ -1,0 +1,382 @@
+/* ===========================
+   🎯 UPGRADE CONFIRMATION MODAL
+   =========================== */
+
+.upgrade-confirmation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(12px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow: auto;
+    min-height: 100vh;
+}
+
+.upgrade-confirmation-modal {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 24px;
+    box-shadow:
+        0 32px 64px -12px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    max-width: 600px;
+    width: 100%;
+    position: relative;
+    animation: slideUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow: hidden;
+    margin: auto;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Modal Header */
+.upgrade-confirmation-header {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    padding: 2rem;
+    border-radius: 24px 24px 0 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.upgrade-confirmation-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+    pointer-events: none;
+}
+
+.upgrade-confirmation-header-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    margin-right: 1rem;
+    backdrop-filter: blur(10px);
+}
+
+.crown-icon {
+    width: 32px;
+    height: 32px;
+    color: white;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    animation: pulse 2s infinite;
+}
+
+.upgrade-confirmation-title {
+    color: white;
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    letter-spacing: -0.025em;
+    flex: 1;
+}
+
+.upgrade-confirmation-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+    color: white;
+    backdrop-filter: blur(10px);
+}
+
+.upgrade-confirmation-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.upgrade-confirmation-close:active {
+    transform: scale(0.95);
+}
+
+/* Modal Content */
+.upgrade-confirmation-content {
+    padding: 2.5rem;
+    background: white;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Main Message */
+.main-message {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.message-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 1rem 0;
+    line-height: 1.3;
+}
+
+.message-description {
+    font-size: 1.1rem;
+    color: #4b5563;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Benefits Section */
+.benefits-section {
+    margin-bottom: 2rem;
+}
+
+.benefits-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 1.5rem 0;
+    text-align: center;
+}
+
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.benefit-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.benefit-item:hover {
+    background: #f1f5f9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.benefit-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 10px;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.benefit-icon .icon {
+    width: 20px;
+    height: 20px;
+    color: white;
+}
+
+.benefit-content h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 0.25rem 0;
+}
+
+.benefit-content p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* CTA Section */
+.cta-section {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border-radius: 16px;
+    border: 1px solid #bbf7d0;
+}
+
+.cta-text {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #166534;
+    margin: 0 0 0.5rem 0;
+}
+
+.cta-subtext {
+    font-size: 0.95rem;
+    color: #15803d;
+    margin: 0;
+}
+
+/* Action Buttons */
+.upgrade-confirmation-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.upgrade-confirmation-btn-secondary {
+    background: #f9fafb;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+    flex: 1;
+    max-width: 150px;
+}
+
+.upgrade-confirmation-btn-secondary:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.upgrade-confirmation-btn-primary {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    flex: 1;
+    max-width: 200px;
+}
+
+.upgrade-confirmation-btn-primary:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+.upgrade-confirmation-btn-primary:active {
+    transform: translateY(-1px);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .upgrade-confirmation-overlay {
+        padding: 1rem;
+        align-items: flex-start;
+        padding-top: 2rem;
+    }
+
+    .upgrade-confirmation-modal {
+        max-width: 100%;
+        border-radius: 20px;
+        margin: 0;
+        max-height: calc(100vh - 4rem);
+    }
+
+    .upgrade-confirmation-header {
+        padding: 1.5rem;
+    }
+
+    .upgrade-confirmation-title {
+        font-size: 1.5rem;
+    }
+
+    .upgrade-confirmation-content {
+        padding: 1.5rem;
+    }
+
+    .benefits-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .upgrade-confirmation-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .upgrade-confirmation-btn-secondary,
+    .upgrade-confirmation-btn-primary {
+        width: 100%;
+        max-width: none;
+    }
+}

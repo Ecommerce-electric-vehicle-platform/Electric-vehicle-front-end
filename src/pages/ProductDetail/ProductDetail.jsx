@@ -18,7 +18,6 @@ import {
     ShoppingCart
 } from 'lucide-react';
 import { vehicleProducts, batteryProducts, formatCurrency, formatDate } from '../../data/productsData';
-import { Header } from '../../components/Header/Header';
 import { NotificationModal } from '../../components/NotificationModal/NotificationModal';
 import './ProductDetail.css';
 
@@ -142,7 +141,6 @@ export function ProductDetail() {
 
     return (
         <div className={`product-detail-page ${showNotificationModal ? 'modal-open' : ''}`}>
-            <Header />
             <div className="product-detail-container">
                 {/* Breadcrumb Navigation */}
                 <div className="breadcrumb-nav">

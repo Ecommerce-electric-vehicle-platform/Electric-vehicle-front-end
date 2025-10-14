@@ -1,0 +1,331 @@
+/* Page Transition Container */
+.page-transition {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+.page-transition-content {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: opacity, transform;
+    position: relative;
+    z-index: 1;
+}
+
+.page-transition.visible .page-transition-content {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.page-transition.exiting .page-transition-content {
+    opacity: 0;
+    transform: translateY(-30px);
+    transition: all 0.5s cubic-bezier(0.55, 0.06, 0.68, 0.19);
+}
+
+/* Loading Overlay */
+.page-transition-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+    visibility: visible;
+}
+
+.page-transition-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.spinner-ring {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 4px solid transparent;
+    border-radius: 50%;
+    animation: spin 1.5s linear infinite;
+}
+
+.spinner-ring:nth-child(1) {
+    border-top-color: #ffffff;
+    animation-delay: 0s;
+}
+
+.spinner-ring:nth-child(2) {
+    border-right-color: #ffffff;
+    animation-delay: 0.2s;
+    width: 90%;
+    height: 90%;
+    top: 5%;
+    left: 5%;
+}
+
+.spinner-ring:nth-child(3) {
+    border-bottom-color: #ffffff;
+    animation-delay: 0.4s;
+    width: 80%;
+    height: 80%;
+    top: 10%;
+    left: 10%;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Fade in animation for page content */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Slide animations */
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInFromLeft {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInFromBottom {
+    from {
+        transform: translateY(100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+/* Scale animation */
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Page transition variants */
+.page-transition.fade-up .page-transition-content {
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.page-transition.fade-left .page-transition-content {
+    animation: fadeInLeft 0.8s ease-out;
+}
+
+.page-transition.fade-right .page-transition-content {
+    animation: fadeInRight 0.8s ease-out;
+}
+
+.page-transition.slide-right .page-transition-content {
+    animation: slideInFromRight 0.8s ease-out;
+}
+
+.page-transition.slide-left .page-transition-content {
+    animation: slideInFromLeft 0.8s ease-out;
+}
+
+.page-transition.slide-bottom .page-transition-content {
+    animation: slideInFromBottom 0.8s ease-out;
+}
+
+.page-transition.scale .page-transition-content {
+    animation: scaleIn 0.8s ease-out;
+}
+
+/* Special effects for product detail page */
+.page-transition.slide-right .page-transition-content {
+    transform: translateX(100%);
+    animation: slideInFromRight 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.page-transition.slide-right.visible .page-transition-content {
+    transform: translateX(0);
+}
+
+/* Staggered animation for product detail elements */
+.page-transition.slide-right .page-transition-content>* {
+    animation-delay: 0.1s;
+    animation-fill-mode: both;
+}
+
+.page-transition.slide-right .page-transition-content>*:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.page-transition.slide-right .page-transition-content>*:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .page-transition-content {
+        transform: translateY(20px);
+    }
+
+    .page-transition.visible .page-transition-content {
+        transform: translateY(0);
+    }
+
+    .page-transition.exiting .page-transition-content {
+        transform: translateY(-20px);
+    }
+
+    .loading-spinner {
+        width: 60px;
+        height: 60px;
+    }
+}
+
+/* Performance optimizations */
+.page-transition-content {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+}
+
+/* Smooth scrolling for better UX */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Prevent flash of unstyled content */
+.page-transition {
+    opacity: 0;
+    animation: fadeIn 0.1s ease-in forwards;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+/* Global transition effects */
+body.page-transitioning {
+    overflow: hidden;
+}
+
+body.page-transitioning * {
+    pointer-events: none;
+}
+
+/* Product card hover effects during transition */
+.product-card {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.product-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.product-card:active {
+    transform: translateY(-4px) scale(0.98);
+}
+
+/* Button click animation */
+.product-btn {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.product-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.product-btn:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+/* Loading state for buttons */
+.product-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}

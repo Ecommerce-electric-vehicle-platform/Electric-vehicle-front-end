@@ -3,6 +3,61 @@
     min-height: 100vh;
     background: #f8fafc;
     padding: 0;
+    animation: slideInFromRight 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Staggered animation for product detail elements */
+.product-detail-page .breadcrumb-nav {
+    animation: fadeInUp 0.6s ease-out 0.1s both;
+}
+
+.product-detail-page .product-content {
+    animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+.product-detail-page .product-left-column {
+    animation: slideInFromLeft 0.8s ease-out 0.3s both;
+}
+
+.product-detail-page .product-right-column {
+    animation: slideInFromRight 0.8s ease-out 0.4s both;
+}
+
+/* Keyframes for animations */
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .product-detail-container {
