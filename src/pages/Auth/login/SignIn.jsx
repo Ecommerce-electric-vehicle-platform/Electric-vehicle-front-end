@@ -79,9 +79,13 @@ export default function SignIn() {
                 // ✅ Lưu token & thông tin user
                 localStorage.setItem("accessToken", resData.accessToken);
                 localStorage.setItem("refreshToken", resData.refreshToken);
+                localStorage.setItem("token", resData.accessToken); // Thêm token chung
                 localStorage.setItem("username", resData.username);
                 localStorage.setItem("buyerId", resData.buyerId);
                 localStorage.setItem("userEmail", resData.email);
+
+                // Dispatch event để thông báo đăng nhập thành công
+                window.dispatchEvent(new CustomEvent('authStatusChanged'));
             }
 
             setBackendError("");
