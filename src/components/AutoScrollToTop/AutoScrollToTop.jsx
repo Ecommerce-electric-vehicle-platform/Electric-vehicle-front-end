@@ -5,21 +5,10 @@ export function AutoScrollToTop() {
     const location = useLocation();
 
     useEffect(() => {
-        // Scroll to top when route changes
-        // Sử dụng setTimeout để đảm bảo DOM đã render xong
+        // Scroll to top when route changes (không cần delay dài)
         const timer = setTimeout(() => {
-            // Scroll ngay lập tức lên đầu trang
-            window.scrollTo(0, 0);
-
-            // Sau đó scroll smooth để có hiệu ứng đẹp
-            setTimeout(() => {
-                window.scrollTo({
-                    top: 0,
-                    left: 0,
-                    behavior: 'smooth'
-                });
-            }, 50);
-        }, 100);
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        }, 0);
 
         return () => clearTimeout(timer);
     }, [location.pathname]);

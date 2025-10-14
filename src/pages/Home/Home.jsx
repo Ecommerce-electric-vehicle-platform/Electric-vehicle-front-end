@@ -45,7 +45,7 @@ export function Home() {
           if (element) {
             element.scrollIntoView({ behavior: "smooth" });
           }
-        }, 100);
+        }, 20);
       }
     };
 

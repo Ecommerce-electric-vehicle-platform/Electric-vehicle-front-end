@@ -10,7 +10,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 10001;
+    /* cao hơn overlay của PageTransition (9999) */
     animation: fadeIn 0.3s ease-out;
     cursor: pointer;
     /* Đảm bảo modal luôn ở giữa viewport */
@@ -31,7 +32,7 @@
     position: relative;
     animation: slideUp 0.3s ease-out;
     overflow: hidden;
-    z-index: 1001;
+    z-index: 10002;
     border: 2px solid rgba(0, 0, 0, 0.08);
     cursor: default;
     /* Ngăn click events bubble up */
@@ -278,5 +279,11 @@ body.modal-open {
     overflow: hidden;
     position: fixed;
     width: 100%;
+    height: 100%;
+}
+
+/* Khoá cuộn ở html để tránh case một số trình duyệt vẫn lướt */
+html.modal-open {
+    overflow: hidden;
     height: 100%;
 }

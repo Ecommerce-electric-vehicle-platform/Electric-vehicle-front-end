@@ -17,12 +17,12 @@ const PageTransition = ({ children, className = '', showLoading = true }) => {
         // Hiệu ứng vào trang
         const enterTimer = setTimeout(() => {
             setIsVisible(true);
-        }, 100);
+        }, 30);
 
         // Ẩn loading sau khi trang đã load
         const loadingTimer = setTimeout(() => {
             setIsLoading(false);
-        }, 800);
+        }, 250);
 
         return () => {
             clearTimeout(enterTimer);

@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UpgradeConfirmationModal } from '../UpgradeConfirmationModal/UpgradeConfirmationModal';
+import { NotificationModal } from '../NotificationModal/NotificationModal';
 import './UpgradeSection.css';
 
-export function UpgradeSection() {
+export function UpgradeSection({ requireAuth = false }) {
     const sectionRef = useRef(null);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [showAuthModal, setShowAuthModal] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -80,7 +82,10 @@ export function UpgradeSection() {
     ];
 
     const handleUpgrade = (packageId) => {
-        // Hiển thị modal xác nhận nâng cấp
+        if (requireAuth) {
+            setShowAuthModal(true);
+            return;
+        }
         setShowUpgradeModal(true);
     };
 
@@ -91,6 +96,16 @@ export function UpgradeSection() {
 
     const handleCloseModal = () => {
         setShowUpgradeModal(false);
+    };
+
+    const handleGoLogin = () => {
+        setShowAuthModal(false);
+        navigate('/signin');
+    };
+
+    const handleGoRegister = () => {
+        setShowAuthModal(false);
+        navigate('/signup');
     };
 
     return (
@@ -158,6 +173,15 @@ export function UpgradeSection() {
                 isOpen={showUpgradeModal}
                 onClose={handleCloseModal}
                 onConfirm={handleConfirmUpgrade}
+            />
+
+            {/* Auth required for Guest */}
+            <NotificationModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onLogin={handleGoLogin}
+                onRegister={handleGoRegister}
+                notificationType="login"
             />
         </section>
     );

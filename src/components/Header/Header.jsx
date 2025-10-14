@@ -97,9 +97,13 @@ export function Header() {
     navigate(path);
   };
 
-  // ✅ Hàm reload trang khi click logo
+  // ✅ Điều hướng về trang Home theo role (Home.jsx sẽ chọn HomeUser/HomeGuest)
   const handleLogoClick = () => {
-    window.location.reload();
+    if (isHomePage) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      navigate("/");
+    }
   };
 
   // ✅ Hàm toggle hamburger menu
@@ -157,8 +161,7 @@ export function Header() {
 
     switch (iconType) {
       case 'heart':
-        // TODO: Navigate to favorites page
-        console.log('Navigate to favorites');
+        navigate('/favorites');
         break;
       case 'chat':
         navigate('/chat');

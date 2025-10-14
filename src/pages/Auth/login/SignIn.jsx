@@ -90,7 +90,7 @@ export default function SignIn() {
 
             setBackendError("");
             console.log("Đăng nhập thành công:", resData);
-            navigate("/"); // 👉 điều hướng về trang chủ
+            navigate("/"); // 
         } catch (error) {
             console.error("Lỗi đăng nhập:", error.response?.data || error.message);
             const backendMsg =
@@ -102,7 +102,7 @@ export default function SignIn() {
     // ===== GOOGLE LOGIN =====
     const handleGoogleSuccess = (response) => {
         console.log("Google Login Success:", response);
-        // 👉 Sau này bạn có thể gọi API backend để xử lý token từ Google
+
     };
 
     const handleGoogleError = () => {

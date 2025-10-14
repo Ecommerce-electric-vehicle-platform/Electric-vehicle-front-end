@@ -3,12 +3,11 @@ import { HeroSection } from "../HeroSection/HeroSection";
 import { FeaturedSlider } from "../FeaturedSlider/FeaturedSlider";
 import { FeaturesSection } from "../FeaturesSection/FeaturesSection";
 import { VehicleShowcase } from "../VehicleShowcase/VehicleShowcase";
-import { CTASection } from "../CTASection/CTASection";
 import { UpgradeSection } from "../UpgradeSection/UpgradeSection";
 import { ProductsSection } from "../ProductsSection/ProductsSection";
 import "./HomeGuest.css";
 
-export function HomeGuest() {
+export function HomeGuest({ onRequireAuth }) {
     // ✅ Xử lý hash navigation khi load và khi thay đổi hash
     useEffect(() => {
         const handleHashNavigation = () => {
@@ -19,7 +18,7 @@ export function HomeGuest() {
                 if (section) {
                     setTimeout(() => {
                         section.scrollIntoView({ behavior: "smooth" });
-                    }, 100);
+                    }, 20);
                 }
             }
         };
@@ -48,12 +47,11 @@ export function HomeGuest() {
                     <VehicleShowcase />
                 </section>
 
-                <FeaturesSection />
-                <CTASection />
-
                 <section id="upgrade-section">
-                    <UpgradeSection />
+                    <UpgradeSection requireAuth={true} onRequireAuth={onRequireAuth} />
                 </section>
+
+                <FeaturesSection />
             </main>
 
         </div>

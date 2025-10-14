@@ -1,41 +1,52 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import AuthLayout from "./pages/Auth/login/AuthLayout";
 import { Home } from "./pages/Home/Home";
 import { ProductDetail } from "./pages/ProductDetail/ProductDetail";
 import { Chat } from "./pages/Chat/Chat";
+import { Seller } from "./pages/Seller/Seller";
+import { Favorites } from "./pages/Favorites/Favorites";
 import PersonalProfilePage from "./components/PersonalProfilePage";
 import PageTransition from "./components/PageTransition/PageTransition";
 import { Header } from "./components/Header/Header";
 import { ScrollToTop } from "./components/ScrollToTop/ScrollToTop";
 import { AutoScrollToTop } from "./components/AutoScrollToTop/AutoScrollToTop";
 import { Footer } from "./components/Footer/Footer";
+import { NotificationModal } from "./components/NotificationModal/NotificationModal";
+import { useState } from "react";
 
-export default function App() {
+function AppContent() {
+  const location = useLocation();
+  const hideChrome = location.pathname === "/signin" || location.pathname === "/signup";
+  const hideFooter = hideChrome || location.pathname === "/chat";
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const handleGoLogin = () => {
+    setShowAuthModal(false);
+    window.location.href = "/signin";
+  };
+
+  const handleGoRegister = () => {
+    setShowAuthModal(false);
+    window.location.href = "/signup";
+  };
+
   return (
-    <Router>
-      {/* 🧭 Header chung cho toàn bộ ứng dụng */}
-      <Header />
+    <>
+      {!hideChrome && <Header />}
 
-      {/* 🔄 Tự động scroll lên đầu trang khi chuyển route */}
       <AutoScrollToTop />
-
       <ScrollToTop />
 
       <Routes>
-        {/* 🏠 Trang chủ */}
         <Route
           path="/"
           element={
             <PageTransition className="fade-up">
-              <Home />
+              <Home onRequireAuth={() => setShowAuthModal(true)} />
             </PageTransition>
           }
         />
-
-        {/* 🔁 Alias /home → / */}
         <Route path="/home" element={<Navigate to="/" />} />
-
-        {/* 🔐 Auth pages */}
         <Route
           path="/signin"
           element={
@@ -52,8 +63,6 @@ export default function App() {
             </PageTransition>
           }
         />
-
-        {/* 🛒 Product Detail */}
         <Route
           path="/product/:id"
           element={
@@ -62,8 +71,22 @@ export default function App() {
             </PageTransition>
           }
         />
-
-        {/* 👤 Personal Profile */}
+        <Route
+          path="/seller/:id"
+          element={
+            <PageTransition className="fade-up">
+              <Seller />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/favorites"
+          element={
+            <PageTransition className="fade-up">
+              <Favorites />
+            </PageTransition>
+          }
+        />
         <Route
           path="/profile"
           element={
@@ -72,8 +95,6 @@ export default function App() {
             </PageTransition>
           }
         />
-
-        {/* 💬 Chat */}
         <Route
           path="/chat"
           element={
@@ -83,7 +104,25 @@ export default function App() {
           }
         />
       </Routes>
-      <Footer />
+
+      {/* ✅ Global Auth Modal */}
+      <NotificationModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onLogin={handleGoLogin}
+        onRegister={handleGoRegister}
+        notificationType="login"
+      />
+
+      {!hideFooter && <Footer />}
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
