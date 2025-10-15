@@ -14,6 +14,7 @@ import { ScrollToTop } from "./components/ScrollToTop/ScrollToTop";
 import { AutoScrollToTop } from "./components/AutoScrollToTop/AutoScrollToTop";
 import { Footer } from "./components/Footer/Footer";
 import { NotificationModal } from "./components/NotificationModal/NotificationModal";
+import ForgotPassword from "./pages/Auth/login/ForgotPassword"; // 👈 thêm route này
 import { useState } from "react";
 
 function AppContent() {
@@ -65,6 +66,17 @@ function AppContent() {
             </PageTransition>
           }
         />
+
+        {/* 👇 Thêm Forgot Password */}
+        <Route
+          path="/forgot-password"
+          element={
+            <PageTransition className="fade-right">
+              <ForgotPassword />
+            </PageTransition>
+          }
+        />
+
         <Route
           path="/product/:id"
           element={

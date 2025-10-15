@@ -1,61 +1,97 @@
-import { useEffect, useState } from "react"
-import { useLocation } from "react-router-dom"
-import { HomeGuest } from "../../components/HomeGuest/HomeGuest"
-import { HomeUser } from "../../components/HomeUser/HomeUser"
-import "./Home.css"
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+
+// Khi chưa đăng nhập
+import { Header } from "../../components/Header/Header";
+import { HeroSection } from "../../components/HeroSection/HeroSection";
+import { FeaturedSlider } from "../../components/FeaturedSlider/FeaturedSlider";
+import { FeaturesSection } from "../../components/FeaturesSection/FeaturesSection";
+import { VehicleShowcase } from "../../components/VehicleShowcase/VehicleShowcase";
+import { CTASection } from "../../components/CTASection/CTASection";
+import { UpgradeSection } from "../../components/UpgradeSection/UpgradeSection";
+import { ProductsSection } from "../../components/ProductsSection/ProductsSection";
+import { Footer } from "../../components/Footer/Footer";
+import { ScrollToTop } from "../../components/ScrollToTop/ScrollToTop";
+
+// Khi đã đăng nhập
+import { HomeUser } from "../../components/HomeUser/HomeUser";
+import "./Home.css";
 
 export function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const location = useLocation();
 
-  // Kiểm tra trạng thái đăng nhập
   useEffect(() => {
     const checkAuthStatus = () => {
       const token = localStorage.getItem("token");
       setIsAuthenticated(!!token);
     };
 
-    // Kiểm tra lần đầu
     checkAuthStatus();
 
-    // Lắng nghe thay đổi localStorage
     const handleStorageChange = () => {
       checkAuthStatus();
     };
 
-    window.addEventListener('storage', handleStorageChange);
-
-    // Cũng lắng nghe sự kiện custom khi đăng nhập/đăng xuất
-    window.addEventListener('authStatusChanged', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("authStatusChanged", handleStorageChange);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('authStatusChanged', handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("authStatusChanged", handleStorageChange);
     };
   }, []);
 
-  // Xử lý hash trong URL để scroll đến section tương ứng
+  // Khi có hash trong URL thì scroll xuống đúng section
   useEffect(() => {
-    const handleHashScroll = () => {
-      const hash = location.hash;
-      if (hash) {
-        // Đợi một chút để đảm bảo component đã render xong
-        setTimeout(() => {
-          const element = document.querySelector(hash);
-          if (element) {
-            element.scrollIntoView({ behavior: "smooth" });
-          }
-        }, 20);
-      }
-    };
-
-    handleHashScroll();
+    const hash = location.hash;
+    if (hash) {
+      setTimeout(() => {
+        const element = document.querySelector(hash);
+        if (element) element.scrollIntoView({ behavior: "smooth" });
+      }, 20);
+    }
   }, [location.hash]);
 
-  // Render component phù hợp dựa trên trạng thái đăng nhập
+  // Nếu đã đăng nhập → vào trang user
   if (isAuthenticated) {
     return <HomeUser />;
   }
 
-  return <HomeGuest />;
+  // Nếu chưa → hiển thị giao diện marketing
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+
+      <main className="flex-grow">
+        <HeroSection />
+        <section className="featured-section">
+          <FeaturedSlider />
+        </section>
+
+        <section id="products-section">
+          <ProductsSection />
+        </section>
+
+        <section id="vehicleshowcase-section">
+          <VehicleShowcase />
+        </section>
+
+        <FeaturesSection />
+        <CTASection />
+
+        <section id="upgrade-section">
+          <UpgradeSection />
+        </section>
+      </main>
+
+      <footer id="footer">
+        <Footer />
+      </footer>
+
+      <ScrollToTop />
+    </div>
+  );
 }
+
+export default Home;

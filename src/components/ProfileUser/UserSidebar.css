@@ -28,6 +28,49 @@
   margin-bottom: 16px;
   color: #6b7280;
   font-size: 14px;
+  /* Added positioning and cursor for avatar upload */
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+/* Added styles for avatar upload functionality */
+.avatar-label {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: opacity 0.2s;
+}
+
+.plus-icon {
+  color: white;
+  font-size: 48px;
+  font-weight: 300;
+  line-height: 1;
 }
 
 .profile-name {
