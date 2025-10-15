@@ -88,7 +88,9 @@ export default function SignIn() {
       const decoded = jwtDecode(credentialResponse.credential);
       console.log("Google user:", decoded);
 
-      const response = await authApi.googleSignin(credentialResponse.credential);
+      const response = await authApi.googleSignin(
+        credentialResponse.credential
+      );
       const resData = response?.data?.data;
 
       if (resData?.accessToken) {
@@ -168,7 +170,10 @@ export default function SignIn() {
       </p>
 
       <div className="google-login-wrapper">
-        <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+        />
       </div>
 
       <p className="switch-text">

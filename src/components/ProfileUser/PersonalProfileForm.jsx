@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import profileApi from "../api/profileApi"
+import profileApi from "../../api/profileApi"
 import "./PersonalProfileForm.css"
 
 export default function PersonalProfileForm() {
@@ -32,7 +32,7 @@ export default function PersonalProfileForm() {
   }, []);
 
 
-  // 🟩 Xử lý thay đổi input
+  // Xử lý thay đổi input
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))

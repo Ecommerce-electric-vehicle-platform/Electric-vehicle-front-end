@@ -11,7 +11,7 @@ export default function UserSidebar({
   const [avatarImage, setAvatarImage] = useState("/default-avatar.png") // ảnh mặc định
   
 
-  // 🟩 Load avatar từ localStorage
+  //  Load avatar từ localStorage
   const loadAvatar = () => {
     const storedAvatar = localStorage.getItem("buyerAvatar")
     if (storedAvatar) {
@@ -24,7 +24,7 @@ export default function UserSidebar({
   useEffect(() => {
     loadAvatar()
 
-    // 🟩 Lắng nghe event storage để cập nhật realtime khi form cập nhật
+    //  Lắng nghe event storage để cập nhật realtime khi form cập nhật
     const handleStorageChange = () => loadAvatar()
     window.addEventListener("storage", handleStorageChange)
 
