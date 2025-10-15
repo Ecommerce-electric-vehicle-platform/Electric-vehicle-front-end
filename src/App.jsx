@@ -5,6 +5,8 @@ import { ProductDetail } from "./pages/ProductDetail/ProductDetail";
 import { Chat } from "./pages/Chat/Chat";
 import { Seller } from "./pages/Seller/Seller";
 import { Favorites } from "./pages/Favorites/Favorites";
+import { Products } from "./pages/Products/Products";
+import { ComparePlans } from "./pages/ComparePlans/ComparePlans";
 import PersonalProfilePage from "./components/PersonalProfilePage";
 import PageTransition from "./components/PageTransition/PageTransition";
 import { Header } from "./components/Header/Header";
@@ -84,6 +86,22 @@ function AppContent() {
           element={
             <PageTransition className="fade-up">
               <Favorites />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/products"
+          element={
+            <PageTransition className="fade-up">
+              <Products />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/compare-plans"
+          element={
+            <PageTransition className="fade-up">
+              <ComparePlans />
             </PageTransition>
           }
         />

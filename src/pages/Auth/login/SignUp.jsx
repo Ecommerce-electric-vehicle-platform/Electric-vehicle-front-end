@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
 import authApi from "../../../api/authApi";
-import { GoogleLogin } from "@react-oauth/google"; // ✅ Google Login
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function SignUp() {
     const navigate = useNavigate();
@@ -21,7 +21,37 @@ export default function SignUp() {
     const [showAgreeError, setShowAgreeError] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState("");
 
-    // ========== VALIDATION ==========
+    const parseBackendErrors = (error) => {
+        const result = { fieldErrors: {}, message: "" };
+        const data = error?.response?.data;
+
+        if (!data) {
+            result.message = error?.message || "Đã xảy ra lỗi. Vui lòng thử lại.";
+            return result;
+        }
+
+        result.message =
+            data.message || data.error || data.error_description || "Đăng ký thất bại. Vui lòng thử lại.";
+
+        if (data.errors && typeof data.errors === "object") {
+            result.fieldErrors = { ...data.errors };
+        }
+
+        if (Array.isArray(data.fieldErrors)) {
+            data.fieldErrors.forEach((fe) => {
+                if (fe?.field && fe?.message) {
+                    result.fieldErrors[fe.field] = fe.message;
+                }
+            });
+        }
+
+        if (data.path && data.message && typeof data.path === "string") {
+            result.fieldErrors[data.path] = data.message;
+        }
+
+        return result;
+    };
+
     const validateField = (name, value) => {
         let message = "";
 
@@ -53,6 +83,7 @@ export default function SignUp() {
         setFormData({ ...formData, [name]: value });
         validateField(name, value);
         setBackendError("");
+        setErrors((prev) => ({ ...prev, [name]: prev[name] && prev[name].includes("(server)") ? "" : prev[name] }));
     };
 
     const validateAll = () => {
@@ -83,17 +114,14 @@ export default function SignUp() {
         return Object.keys(newErrors).length === 0;
     };
 
-    // ========== HANDLE SUBMIT ==========
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         const allValid = validateAll();
-
         if (!allValid) {
             setShowAgreeError(false);
             return;
         }
-
         if (!isAgreed) {
             setShowAgreeError(true);
             return;
@@ -102,8 +130,6 @@ export default function SignUp() {
         try {
             setLoadingMessage("Vui lòng kiểm tra email. Đang chuyển đến trang OTP...");
             await authApi.signup(formData);
-
-            // Hiển thị overlay 2.5s rồi sang OTP
             setTimeout(() => {
                 setIsOtpStep(true);
                 setBackendError("");
@@ -111,10 +137,22 @@ export default function SignUp() {
             }, 2500);
         } catch (error) {
             setLoadingMessage("");
-            console.error("Lỗi đăng ký:", error.response?.data || error.message);
-            const backendMsg =
-                error.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
-            setBackendError(backendMsg);
+            console.error("🔥 Lỗi đăng ký:", error.response?.data || error.message);
+            const parsed = parseBackendErrors(error);
+
+            // 👉 Nếu có lỗi field cụ thể — vẫn set
+            if (parsed.fieldErrors.email) {
+                setErrors((prev) => ({
+                    ...prev,
+                    email: `${parsed.fieldErrors.email} (server)`,
+                }));
+            }
+            if (Object.keys(parsed.fieldErrors).length > 0) {
+                setErrors((prev) => ({ ...prev, ...parsed.fieldErrors }));
+            }
+
+            // 👉 Luôn hiển thị lỗi tổng
+            setBackendError(parsed.message);
         }
     };
 
@@ -131,17 +169,14 @@ export default function SignUp() {
         }
     };
 
-    // ========== GOOGLE LOGIN ==========
     const handleGoogleSuccess = (response) => {
         console.log("Google Login Success:", response);
-        // 👉 Gửi token này về backend nếu bạn muốn đăng ký bằng Google
     };
 
     const handleGoogleError = () => {
         console.error("Google Login Failed");
     };
 
-    // ========== UI ==========
     return (
         <div className="auth-form-container">
             <form
@@ -241,7 +276,7 @@ export default function SignUp() {
                                 )}
                             </div>
 
-                            {/* Backend Error */}
+                            {/* ✅ Hiển thị lỗi tổng từ backend */}
                             {backendError && (
                                 <div className="backend-error">
                                     <i className="fas fa-times-circle"></i>
@@ -249,7 +284,6 @@ export default function SignUp() {
                                 </div>
                             )}
 
-                            {/* Điều khoản */}
                             <div className="agree-wrapper">
                                 <label className="agree">
                                     <input
@@ -281,7 +315,6 @@ export default function SignUp() {
                                 <span className="divider-text">hoặc đăng ký bằng</span>
                             </div>
 
-                            {/* ✅ Google Login */}
                             <GoogleLogin
                                 onSuccess={handleGoogleSuccess}
                                 onError={handleGoogleError}
@@ -358,7 +391,6 @@ export default function SignUp() {
                     </div>
                 )}
 
-                {/* Loading Overlay */}
                 {loadingMessage && (
                     <div className="loading-overlay">
                         <div className="loading-content">

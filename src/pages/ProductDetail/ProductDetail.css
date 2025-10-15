@@ -227,6 +227,15 @@
     height: 18px;
 }
 
+/* Heart active styles */
+.heart-active {
+    transition: transform 0.1s ease-in;
+}
+
+.save-btn:active .heart-active {
+    transform: scale(0.9);
+}
+
 /* Product Content */
 .product-content {
     display: grid;
