@@ -1,17 +1,17 @@
-import { useEffect } from "react"
-import { Header } from "../../components/Header/Header"
-import { HeroSection } from "../../components/HeroSection/HeroSection"
-import { FeaturedSlider } from "../../components/FeaturedSlider/FeaturedSlider"
-import { FeaturesSection } from "../../components/FeaturesSection/FeaturesSection"
-import { VehicleShowcase } from "../../components/VehicleShowcase/VehicleShowcase"
-import { CTASection } from "../../components/CTASection/CTASection"
-import { UpgradeSection } from "../../components/UpgradeSection/UpgradeSection"
-import { ProductsSection } from "../../components/ProductsSection/ProductsSection"
-import { Footer } from "../../components/Footer/Footer"
-import { ScrollToTop } from "../../components/ScrollToTop/ScrollToTop"
-import "./Home.css"
+import { useEffect } from "react";
+import { Header } from "../../components/Header/Header";
+import { HeroSection } from "../../components/HeroSection/HeroSection";
+import { FeaturedSlider } from "../../components/FeaturedSlider/FeaturedSlider";
+import { FeaturesSection } from "../../components/FeaturesSection/FeaturesSection";
+import { VehicleShowcase } from "../../components/VehicleShowcase/VehicleShowcase";
+import { CTASection } from "../../components/CTASection/CTASection";
+import { UpgradeSection } from "../../components/UpgradeSection/UpgradeSection";
+import { ProductsSection } from "../../components/ProductsSection/ProductsSection";
+import { Footer } from "../../components/Footer/Footer";
+import { ScrollToTop } from "../../components/ScrollToTop/ScrollToTop";
+import "./Home.css";
 
-export function Home() {
+function Home() {
   // Xử lý hash navigation khi trang load
   useEffect(() => {
     const handleHashNavigation = () => {
@@ -32,56 +32,58 @@ export function Home() {
     handleHashNavigation();
 
     // Xử lý khi hash thay đổi
-    window.addEventListener('hashchange', handleHashNavigation);
+    window.addEventListener("hashchange", handleHashNavigation);
 
     return () => {
-      window.removeEventListener('hashchange', handleHashNavigation);
+      window.removeEventListener("hashchange", handleHashNavigation);
     };
   }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* ✅ Header cố định đầu trang */}
+      {/* Header cố định đầu trang */}
       <Header />
 
       <main className="flex-grow">
-        {/* 🚀 Hero Section */}
+        {/* Hero Section */}
         <HeroSection />
 
-        {/* ⚡ Featured Slider (sản phẩm nổi bật) */}
+        {/* Featured Slider (sản phẩm nổi bật) */}
         <section className="featured-section">
           <FeaturedSlider />
         </section>
 
-        {/* 🌿 Sản phẩm mới nhất với bộ lọc danh mục */}
+        {/* Sản phẩm mới nhất với bộ lọc danh mục */}
         <section id="products-section">
           <ProductsSection />
         </section>
 
-        {/* 🚗 Vehicle & Batteries Section — thêm ID để cuộn xuống từ Header */}
+        {/* Vehicle & Batteries Section — thêm ID để cuộn xuống từ Header */}
         <section id="vehicleshowcase-section">
           <VehicleShowcase />
         </section>
 
-        {/* 💡 Features Section */}
+        {/* Features Section */}
         <FeaturesSection />
 
-        {/* 🚀 CTA */}
+        {/* CTA */}
         <CTASection />
 
-        {/* 💎 Upgrade Section - Nâng cấp buyer lên seller */}
+        {/* Upgrade Section - Nâng cấp buyer lên seller */}
         <section id="upgrade-section">
           <UpgradeSection />
         </section>
       </main>
 
-      {/* 🦶 Footer cuối trang — thêm ID để cuộn xuống từ Header */}
+      {/* Footer cuối trang — thêm ID để cuộn xuống từ Header */}
       <footer id="footer">
         <Footer />
       </footer>
 
-      {/* ⬆️ Nút cuộn lên đầu trang */}
+      {/* Nút cuộn lên đầu trang */}
       <ScrollToTop />
     </div>
-  )
+  );
 }
+
+export default Home;

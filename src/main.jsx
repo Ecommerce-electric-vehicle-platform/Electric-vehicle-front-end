@@ -5,11 +5,9 @@ import App from "./App.jsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Environment } from "./environments/environment.js";
 
-
-// Giữ nguyên phần slick carousel
+//Slick Carousel CSS
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <GoogleOAuthProvider clientId={Environment.GG_CLIENT_ID}>

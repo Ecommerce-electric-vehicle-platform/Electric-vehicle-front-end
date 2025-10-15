@@ -22,7 +22,7 @@ import { Header } from '../../components/Header/Header';
 import { NotificationModal } from '../../components/NotificationModal/NotificationModal';
 import './ProductDetail.css';
 
-export function ProductDetail() {
+function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [product, setProduct] = useState(null);
@@ -416,8 +416,8 @@ export function ProductDetail() {
                                 <div className="review-policy-notice">
                                     <p>
                                         {isGuest
-                                            ? "🔒 Đăng nhập để có thể mua hàng và đánh giá"
-                                            : "🛒 Chỉ người đã mua sản phẩm mới có thể đánh giá"
+                                            ? "Đăng nhập để có thể mua hàng và đánh giá"
+                                            : "Chỉ người đã mua sản phẩm mới có thể đánh giá"
                                         }
                                     </p>
                                 </div>
@@ -523,3 +523,5 @@ export function ProductDetail() {
         </div>
     );
 }
+
+export default ProductDetail;

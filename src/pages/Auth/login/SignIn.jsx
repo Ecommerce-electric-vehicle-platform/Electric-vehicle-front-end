@@ -2,193 +2,192 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
 import authApi from "../../../api/authApi";
-import { GoogleLogin } from "@react-oauth/google"; // ✅ Thêm Google Login
+import { GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 
 export default function SignIn() {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
-    const [formData, setFormData] = useState({ username: "", password: "" });
-    const [errors, setErrors] = useState({});
-    const [backendError, setBackendError] = useState("");
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [errors, setErrors] = useState({});
+  const [backendError, setBackendError] = useState("");
 
-    // ===== VALIDATION =====
-    const validateField = (name, value) => {
-        let message = "";
+  // ===== VALIDATION =====
+  const validateField = (name, value) => {
+    let message = "";
 
-        if (name === "username") {
-            if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
-            else if (!/^[A-Za-z]+$/.test(value)) message = "Chỉ được phép sử dụng chữ cái.";
-            else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
-        }
+    if (name === "username") {
+      if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
+      else if (!/^[A-Za-z]+$/.test(value))
+        message = "Chỉ được phép chứa chữ, số, gạch dưới.";
+      else if (value.length < 4) message = "Tối thiểu 4 ký tự.";
+    }
 
-        if (name === "password") {
-            if (!value.trim()) message = "Mật khẩu là bắt buộc.";
-            else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
-            else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
-            else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-                message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
-        }
+    if (name === "password") {
+      if (!value.trim()) message = "Mật khẩu là bắt buộc.";
+      else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
+      else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
+      else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
+        message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
+    }
 
-        setErrors((prev) => ({ ...prev, [name]: message }));
-    };
+    setErrors((prev) => ({ ...prev, [name]: message }));
+  };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-        validateField(name, value);
-        setBackendError("");
-    };
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    validateField(name, value);
+    setBackendError("");
+  };
 
-    const validateAll = () => {
-        const newErrors = {};
-        Object.entries(formData).forEach(([key, value]) => {
-            let message = "";
-            if (key === "username") {
-                if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
-                else if (!/^[A-Za-z]+$/.test(value)) message = "Chỉ được phép sử dụng chữ cái.";
-                else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
-            }
-            if (key === "password") {
-                if (!value.trim()) message = "Mật khẩu là bắt buộc.";
-                else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
-                else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
-                else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-                    message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
-            }
-            if (message) newErrors[key] = message;
-        });
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+  const validateAll = () => {
+    const newErrors = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      validateField(key, value);
+      if (errors[key]) newErrors[key] = errors[key];
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-    // ===== SUBMIT =====
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const allValid = validateAll();
+  // ===== SUBMIT =====
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const allValid = validateAll();
 
-        if (!allValid) {
-            console.log("Form không hợp lệ, kiểm tra lại username/password");
-            return;
-        }
+    if (!allValid) return;
 
-        try {
-            const response = await authApi.signin(formData);
-            const resData = response?.data?.data;
+    try {
+      const response = await authApi.signin(formData);
+      const resData = response?.data?.data;
 
-            if (resData?.accessToken && resData?.refreshToken) {
-                // ✅ Lưu token & thông tin user
-                localStorage.setItem("accessToken", resData.accessToken);
-                localStorage.setItem("refreshToken", resData.refreshToken);
-                localStorage.setItem("token", resData.accessToken); // Thêm token chung
-                localStorage.setItem("username", resData.username);
-                localStorage.setItem("buyerId", resData.buyerId);
-                localStorage.setItem("userEmail", resData.email);
+      if (resData?.accessToken && resData?.refreshToken) {
+        localStorage.setItem("accessToken", resData.accessToken);
+        localStorage.setItem("refreshToken", resData.refreshToken);
+        localStorage.setItem("username", resData.username);
+        localStorage.setItem("buyerId", resData.buyerId);
+        localStorage.setItem("userEmail", resData.email);
+      }
 
-                // Dispatch event để thông báo đăng nhập thành công
-                window.dispatchEvent(new CustomEvent('authStatusChanged'));
-            }
+      console.log("Đăng nhập thành công:", resData);
+      setBackendError("");
+      navigate("/");
+    } catch (error) {
+      console.error("Lỗi đăng nhập:", error.response?.data || error.message);
+      const backendMsg =
+        error.response?.data?.message ||
+        "Đăng nhập thất bại. Vui lòng thử lại.";
+      setBackendError(backendMsg);
+    }
+  };
 
-            setBackendError("");
-            console.log("Đăng nhập thành công:", resData);
-            navigate("/"); // 👉 điều hướng về trang chủ
-        } catch (error) {
-            console.error("Lỗi đăng nhập:", error.response?.data || error.message);
-            const backendMsg =
-                error.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
-            setBackendError(backendMsg);
-        }
-    };
+  // ===== GOOGLE LOGIN =====
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      const decoded = jwtDecode(credentialResponse.credential);
+      console.log("Google user:", decoded);
 
-    // ===== GOOGLE LOGIN =====
-    const handleGoogleSuccess = (response) => {
-        console.log("Google Login Success:", response);
-        // 👉 Sau này bạn có thể gọi API backend để xử lý token từ Google
-    };
+      const response = await authApi.googleSignin(
+        credentialResponse.credential
+      );
+      const resData = response?.data?.data;
 
-    const handleGoogleError = () => {
-        console.error("Google Login Failed");
-    };
+      if (resData?.accessToken) {
+        localStorage.setItem("accessToken", resData.accessToken);
+        localStorage.setItem("username", resData.username);
+      }
 
-    // ===== UI =====
-    return (
-        <form className="sign-in-form" onSubmit={handleSubmit} noValidate>
-            {/* Logo */}
-            <div className="logo-container">
-                <div className="greentrade-text">
-                    <span className="green-text">Green</span>
-                    <span className="trade-text">Trade</span>
-                </div>
-                <div className="logo-glow"></div>
-            </div>
+      navigate("/");
+    } catch (error) {
+      console.error("Google login error:", error);
+      setBackendError("Đăng nhập Google thất bại.");
+    }
+  };
 
-            <h2 className="title">Đăng nhập</h2>
+  const handleGoogleError = () => {
+    setBackendError("Đăng nhập Google thất bại. Vui lòng thử lại.");
+  };
 
-            {/* Username */}
-            <div className={`input-field ${errors.username ? "error" : ""}`}>
-                <i className="fas fa-user"></i>
-                <input
-                    type="text"
-                    name="username"
-                    placeholder="Tên đăng nhập"
-                    value={formData.username}
-                    onChange={handleChange}
-                />
-            </div>
-            {errors.username && <p className="error-message">{errors.username}</p>}
+  // ===== UI =====
+  return (
+    <form className="sign-in-form" onSubmit={handleSubmit} noValidate>
+      <div className="logo-container">
+        <div className="greentrade-text">
+          <span className="green-text">Green</span>
+          <span className="trade-text">Trade</span>
+        </div>
+        <div className="logo-glow"></div>
+      </div>
 
-            {/* Password */}
-            <div className={`input-field ${errors.password ? "error" : ""}`}>
-                <i className="fas fa-lock"></i>
-                <input
-                    type="password"
-                    name="password"
-                    placeholder="Mật khẩu"
-                    value={formData.password}
-                    onChange={handleChange}
-                />
-            </div>
-            {errors.password && <p className="error-message">{errors.password}</p>}
+      <h2 className="title">Đăng nhập</h2>
 
-            {/* Backend Error */}
-            {backendError && (
-                <p className="error-message" style={{ textAlign: "center" }}>
-                    {backendError}
-                </p>
-            )}
+      <div className={`input-field ${errors.username ? "error" : ""}`}>
+        <i className="fas fa-user"></i>
+        <input
+          type="text"
+          name="username"
+          placeholder="Tên đăng nhập"
+          value={formData.username}
+          onChange={handleChange}
+        />
+      </div>
+      {errors.username && <p className="error-message">{errors.username}</p>}
 
-            <a href="#" className="forgot-password">
-                Quên mật khẩu?
-            </a>
+      <div className={`input-field ${errors.password ? "error" : ""}`}>
+        <i className="fas fa-lock"></i>
+        <input
+          type="password"
+          name="password"
+          placeholder="Mật khẩu"
+          value={formData.password}
+          onChange={handleChange}
+        />
+      </div>
+      {errors.password && <p className="error-message">{errors.password}</p>}
 
-            {/* Submit */}
-            <input type="submit" value="Đăng nhập" className="btn solid" />
+      {backendError && (
+        <p className="error-message" style={{ textAlign: "center" }}>
+          {backendError}
+        </p>
+      )}
 
-            <p className="divider">
-                <span>hoặc đăng nhập bằng</span>
-            </p>
+      <a
+        href="#"
+        className="forgot-password"
+        onClick={(e) => {
+          e.preventDefault();
+          navigate("/forgot-password"); //điều hướng đúng trang
+        }}
+      >
+        Quên mật khẩu?
+      </a>
 
-            {/* ✅ GOOGLE LOGIN */}
-            <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                theme="outline"
-                size="large"
-                shape="rectangular"
-                text="signin_with"
-            />
+      <input type="submit" value="Đăng nhập" className="btn solid" />
 
-            <p className="switch-text">
-                Chưa có tài khoản?{" "}
-                <a
-                    href="#"
-                    onClick={(e) => {
-                        e.preventDefault();
-                        navigate("/signup");
-                    }}
-                >
-                    Đăng ký ngay
-                </a>
-            </p>
-        </form>
-    );
+      <p className="divider">
+        <span>hoặc đăng nhập bằng</span>
+      </p>
+
+      <div className="google-login-wrapper">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+        />
+      </div>
+
+      <p className="switch-text">
+        Chưa có tài khoản?{" "}
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/signup");
+          }}
+        >
+          Đăng ký ngay
+        </a>
+      </p>
+    </form>
+  );
 }
