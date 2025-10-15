@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Slider from "react-slick";
 import "./ProductCarousel.css";
 import { MapPin, Car, Battery, Eye } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { usePageTransition } from "../../hooks/usePageTransition";
 import {
     vehicleProducts,
     batteryProducts,
@@ -11,7 +11,7 @@ import {
 
 export function ProductCarousel({ title, showCategoryToggle = false }) {
     const [activeCategory, setActiveCategory] = useState("vehicles");
-    const navigate = useNavigate();
+    const { navigateToProduct, isTransitioning } = usePageTransition();
 
     // ⚙️ Slider config
     const settings = {
@@ -32,9 +32,9 @@ export function ProductCarousel({ title, showCategoryToggle = false }) {
     const products =
         activeCategory === "vehicles" ? vehicleProducts : batteryProducts;
 
-    // Xử lý click xem chi tiết
+    // Xử lý click xem chi tiết với hiệu ứng transition
     const handleViewDetails = (product) => {
-        navigate(`/product/${product.id}`);
+        navigateToProduct(product.id);
     };
 
     return (
@@ -111,9 +111,10 @@ export function ProductCarousel({ title, showCategoryToggle = false }) {
                                 <button
                                     className="product-btn"
                                     onClick={() => handleViewDetails(product)}
+                                    disabled={isTransitioning}
                                 >
                                     <Eye className="btn-icon" />
-                                    Xem chi tiết
+                                    {isTransitioning ? 'Đang chuyển...' : 'Xem chi tiết'}
                                 </button>
                             </div>
                         </div>

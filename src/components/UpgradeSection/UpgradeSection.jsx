@@ -1,11 +1,18 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { UpgradeConfirmationModal } from '../UpgradeConfirmationModal/UpgradeConfirmationModal';
+import { NotificationModal } from '../NotificationModal/NotificationModal';
 import './UpgradeSection.css';
 
-export function UpgradeSection() {
+export function UpgradeSection({ requireAuth = false }) {
     const sectionRef = useRef(null);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const navigate = useNavigate();
+    const location = useLocation();
 
+    // 🪄 Hiệu ứng fade-in khi section vào viewport
     useEffect(() => {
-        // Thêm hiệu ứng highlight khi section được cuộn đến
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
@@ -18,67 +25,126 @@ export function UpgradeSection() {
         );
 
         const currentSection = sectionRef.current;
-        if (currentSection) {
-            observer.observe(currentSection);
-        }
+        if (currentSection) observer.observe(currentSection);
 
         return () => {
-            if (currentSection) {
-                observer.unobserve(currentSection);
-            }
+            if (currentSection) observer.unobserve(currentSection);
         };
     }, []);
 
+    // 🌐 Global trigger từ URL hoặc hàm ngoài
+    useEffect(() => {
+        const scrollToSection = () => {
+            const el = sectionRef.current;
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+
+        window.openUpgradePlans = () => {
+            scrollToSection();
+            setTimeout(() => setShowUpgradeModal(true), 450);
+        };
+
+        const params = new URLSearchParams(location.search);
+        if (location.hash === '#upgrade' || params.get('openUpgrade') === '1') {
+            scrollToSection();
+            if (params.get('openUpgrade') === '1') {
+                setTimeout(() => setShowUpgradeModal(true), 450);
+            }
+        }
+
+        return () => {
+            try { delete window.openUpgradePlans; } catch { /* noop */ }
+        };
+    }, [location]);
+
     const packages = [
         {
-            id: 'basic',
-            name: 'GÓI CƠ BẢN',
-            price: '299,000₫',
-            duration: '1 tháng',
-            features: [
-                'Đăng bán tối đa 5 sản phẩm',
-                'Hiển thị thông tin liên hệ',
-                'Tạo cửa hàng cá nhân',
-                'Nhận đánh giá từ khách hàng',
-                'Hỗ trợ cơ bản 24/7'
-            ],
-            icon: '⭐'
-        },
-        {
-            id: 'premium',
-            name: 'GÓI PREMIUM',
-            price: '799,000₫',
-            duration: '6 tháng',
-            features: [
-                'Đăng bán không giới hạn sản phẩm',
-                'Ưu tiên hiển thị trong tìm kiếm',
-                'Thống kê bán hàng chi tiết',
-                'Quảng cáo miễn phí 1 tuần',
-                'Hỗ trợ ưu tiên và tư vấn chuyên sâu'
-            ],
+            id: 'standard',
+            name: 'Standard Package',
+            tagline: 'Phù hợp cá nhân dùng thử',
             icon: '⭐',
-            featured: true
+            featured: false,
+            benefits: [
+                'Quản lý & Sản phẩm: tối đa 10 sản phẩm, 5 ảnh/sản phẩm',
+                'Hiển thị & Thương hiệu: hiển thị cơ bản trong danh mục và tìm kiếm',
+                'Hỗ trợ & Phí: hỗ trợ email/chat, thời gian phản hồi tiêu chuẩn. Hoa hồng ~7%'
+            ],
+            prices: [
+                { label: '1 tháng', value: '200,000 VND' },
+                { label: '3 tháng', value: '540,000 VND' },
+                { label: '6 tháng', value: '900,000 VND' }
+            ]
         },
         {
-            id: 'enterprise',
-            name: 'GÓI DOANH NGHIỆP',
-            price: '1,999,000₫',
-            duration: '1 năm',
-            features: [
-                'Toàn quyền của gói Premium',
-                'Quản lý nhiều cửa hàng',
-                'Tích hợp hệ thống thanh toán',
-                'API và công cụ quản lý nâng cao',
-                'Hỗ trợ chuyên nghiệp 1-1'
+            id: 'pro',
+            name: 'Pro Package',
+            tagline: 'Dành cho cửa hàng nhỏ',
+            icon: '🌟',
+            featured: true,
+            benefits: [
+                'Quản lý & Sản phẩm: tối đa 30 sản phẩm, 7 ảnh/sản phẩm',
+                'Hiển thị & Thương hiệu: ưu tiên trong danh mục (xếp hạng cao hơn Standard)',
+                'Hỗ trợ & Phí: phản hồi nhanh hơn (email/chat, hotline giờ hành chính). Hoa hồng ~5%'
             ],
-            icon: '⭐'
+            prices: [
+                { label: '1 tháng', value: '400,000 VND' },
+                { label: '3 tháng', value: '1,080,000 VND' },
+                { label: '6 tháng', value: '1,800,000 VND' }
+            ]
+        },
+        {
+            id: 'vip',
+            name: 'VIP Package',
+            tagline: 'Cho doanh nghiệp',
+            icon: '🏆',
+            featured: false,
+            benefits: [
+                'Quản lý & Sản phẩm: tối đa 100 sản phẩm, 10 ảnh/sản phẩm; duyệt ưu tiên khi đăng mới',
+                'Hiển thị & Thương hiệu: ưu tiên cao trong kết quả tìm kiếm tổng; hiển thị logo thương hiệu',
+                'Hỗ trợ & Phí: hỗ trợ ưu tiên 24/7, phản hồi nhanh nhất. Hoa hồng ~3%'
+            ],
+            prices: [
+                { label: '1 tháng', value: '1,200,000 VND' },
+                { label: '3 tháng', value: '3,240,000 VND' },
+                { label: '6 tháng', value: '5,400,000 VND' }
+            ]
         }
     ];
 
-    const handleUpgrade = (packageId) => {
-        // Xử lý logic nâng cấp
-        console.log(`Nâng cấp lên gói: ${packageId}`);
-        // Có thể chuyển hướng đến trang thanh toán hoặc hiển thị modal
+    // 🟢 Khi click: mở modal ngay, sau đó cuộn xuống section
+    const handleUpgrade = () => {
+        // ✅ Hiển thị modal tức thì
+        if (requireAuth) setShowAuthModal(true);
+        else setShowUpgradeModal(true);
+
+        // 📜 Sau đó mới cuộn xuống UpgradeSection (modal vẫn ở giữa viewport)
+        const sectionEl = sectionRef.current;
+        if (sectionEl) {
+            setTimeout(() => {
+                sectionEl.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }, 100);
+        }
+    };
+
+    const handleConfirmUpgrade = () => {
+        navigate('/profile?tab=upgrade');
+    };
+
+    const handleCloseModal = () => {
+        setShowUpgradeModal(false);
+    };
+
+    const handleGoLogin = () => {
+        setShowAuthModal(false);
+        navigate('/signin');
+    };
+
+    const handleGoRegister = () => {
+        setShowAuthModal(false);
+        navigate('/signup');
     };
 
     return (
@@ -96,6 +162,10 @@ export function UpgradeSection() {
                         <div
                             key={pkg.id}
                             className={`package-card ${pkg.featured ? 'featured' : ''}`}
+                            onClick={handleUpgrade}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleUpgrade(); }}
                         >
                             {pkg.featured && (
                                 <div className="featured-badge">
@@ -106,10 +176,7 @@ export function UpgradeSection() {
                             <div className="package-header">
                                 <div className="package-icon">{pkg.icon}</div>
                                 <h3 className="package-name">{pkg.name}</h3>
-                                <div className="package-price">
-                                    <span className="price">{pkg.price}</span>
-                                    <span className="duration">cho {pkg.duration}</span>
-                                </div>
+                                {pkg.tagline && <div className="package-tagline">{pkg.tagline}</div>}
                             </div>
 
                             <div className="package-divider">
@@ -120,18 +187,36 @@ export function UpgradeSection() {
 
                             <div className="package-content">
                                 <ul className="features-list">
-                                    {pkg.features.map((feature, index) => (
+                                    {pkg.benefits.map((benefit, index) => (
                                         <li key={index} className="feature-item">
-                                            <span className="feature-text">{feature}</span>
+                                            <span className="feature-text">{benefit}</span>
                                             <span className="check-icon">✓</span>
                                         </li>
                                     ))}
                                 </ul>
 
-                                <button
-                                    className="upgrade-button"
-                                    onClick={() => handleUpgrade(pkg.id)}
-                                >
+                                <div className="package-prices">
+                                    {pkg.prices.map((p, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="price-tier"
+                                            style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                padding: '10px 12px',
+                                                border: '1px dashed #d1d5db',
+                                                borderRadius: 10,
+                                                marginBottom: 8
+                                            }}
+                                        >
+                                            <span style={{ fontWeight: 700 }}>{p.label}</span>
+                                            <span style={{ fontWeight: 800, color: '#065f46' }}>{p.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <button className="upgrade-button" onClick={handleUpgrade}>
                                     <span className="button-icon">💳</span>
                                     <span className="button-text">Nâng cấp ngay</span>
                                 </button>
@@ -140,6 +225,23 @@ export function UpgradeSection() {
                     ))}
                 </div>
             </div>
+
+            {/* Modal nâng cấp */}
+            <UpgradeConfirmationModal
+                isOpen={showUpgradeModal}
+                onClose={handleCloseModal}
+                onConfirm={handleConfirmUpgrade}
+                anchorRef={sectionRef}
+            />
+
+            {/* Modal đăng nhập khi chưa có tài khoản */}
+            <NotificationModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onLogin={handleGoLogin}
+                onRegister={handleGoRegister}
+                notificationType="login"
+            />
         </section>
     );
 }

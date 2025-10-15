@@ -1,46 +1,158 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import AuthLayout from "./pages/Auth/login/AuthLayout";
-import PersonalProfilePage from "./components/PersonalProfilePage";
-import Home from "./pages/Home/Home"; 
+import { Home } from "./pages/Home/Home";
 import ProductDetail from "./pages/ProductDetail/ProductDetail";
-import ForgotPassword from "./pages/Auth/login/ForgotPassword";
-import { useLocation } from "react-router-dom";
+import { Chat } from "./pages/Chat/Chat";
+import { Seller } from "./pages/Seller/Seller";
+import { Favorites } from "./pages/Favorites/Favorites";
+import { Products } from "./pages/Products/Products";
+import { ComparePlans } from "./pages/ComparePlans/ComparePlans";
+import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
+import PageTransition from "./components/PageTransition/PageTransition";
+import { Header } from "./components/Header/Header";
+import { ScrollToTop } from "./components/ScrollToTop/ScrollToTop";
+import { AutoScrollToTop } from "./components/AutoScrollToTop/AutoScrollToTop";
+import { Footer } from "./components/Footer/Footer";
+import { NotificationModal } from "./components/NotificationModal/NotificationModal";
+import ForgotPassword from "./pages/Auth/login/ForgotPassword"; // 👈 thêm route này
+import { useState } from "react";
 
-// Component bảo vệ route (chỉ cho vào khi đã đăng nhập)
-function ProtectedRoute({ children }) {
-  const isAuthenticated = !!localStorage.getItem("token");
+function AppContent() {
   const location = useLocation();
+  const hideChrome = location.pathname === "/signin" || location.pathname === "/signup";
+  const hideFooter = hideChrome || location.pathname === "/chat";
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
-  if (!isAuthenticated) {
-    // Lưu lại trang người dùng đang ở, để sau khi login xong có thể quay lại
-    return <Navigate to="/signin" state={{ from: location }} replace />;
-  }
+  const handleGoLogin = () => {
+    setShowAuthModal(false);
+    window.location.href = "/signin";
+  };
 
-  return children;
+  const handleGoRegister = () => {
+    setShowAuthModal(false);
+    window.location.href = "/signup";
+  };
+
+  return (
+    <>
+      {!hideChrome && <Header />}
+
+      <AutoScrollToTop />
+      <ScrollToTop />
+
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <PageTransition className="fade-up">
+              <Home onRequireAuth={() => setShowAuthModal(true)} />
+            </PageTransition>
+          }
+        />
+        <Route path="/home" element={<Navigate to="/" />} />
+        <Route
+          path="/signin"
+          element={
+            <PageTransition className="fade-left">
+              <AuthLayout page="signin" />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <PageTransition className="fade-right">
+              <AuthLayout page="signup" />
+            </PageTransition>
+          }
+        />
+
+        {/* 👇 Thêm Forgot Password */}
+        <Route
+          path="/forgot-password"
+          element={
+            <PageTransition className="fade-right">
+              <ForgotPassword />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/product/:id"
+          element={
+            <PageTransition className="slide-right" showLoading={false}>
+              <ProductDetail />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/seller/:id"
+          element={
+            <PageTransition className="fade-up">
+              <Seller />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/favorites"
+          element={
+            <PageTransition className="fade-up">
+              <Favorites />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/products"
+          element={
+            <PageTransition className="fade-up">
+              <Products />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/compare-plans"
+          element={
+            <PageTransition className="fade-up">
+              <ComparePlans />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <PageTransition className="fade-up">
+              <PersonalProfilePage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <PageTransition className="fade-up">
+              <Chat />
+            </PageTransition>
+          }
+        />
+      </Routes>
+
+      {/* ✅ Global Auth Modal */}
+      <NotificationModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onLogin={handleGoLogin}
+        onRegister={handleGoRegister}
+        notificationType="login"
+      />
+
+      {!hideFooter && <Footer />}
+    </>
+  );
 }
 
 export default function App() {
   return (
     <Router>
-      <Routes>
-        {/* Trang chủ */}
-        <Route path="/" element={<Home />} />
-
-        {/* Alias: /home → / */}
-        <Route path="/home" element={<Navigate to="/" />} />
-
-        {/* Auth pages */}
-        <Route path="/signin" element={<AuthLayout page="signin" />} />
-        <Route path="/signup" element={<AuthLayout page="signup" />} />
-
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-
-        {/* Product Detail */}
-        <Route path="/product/:id" element={<ProductDetail />} />
-
-        {/* Personal Profile */}
-        <Route path="/profile" element={<PersonalProfilePage />} />
-      </Routes>
+      <AppContent />
     </Router>
   );
 }

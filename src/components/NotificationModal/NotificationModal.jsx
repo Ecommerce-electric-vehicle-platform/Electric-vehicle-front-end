@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, User } from "lucide-react";
 import "./NotificationModal.css";
 
@@ -42,7 +43,7 @@ export function NotificationModal({ isOpen, onClose, onLogin, onRegister, notifi
         }
     };
 
-    return (
+    return createPortal(
         <div className="notification-modal-overlay" onClick={handleOverlayClick}>
             <div className="notification-modal-container" onClick={(e) => e.stopPropagation()}>
                 {/* Close Button */}
@@ -119,6 +120,7 @@ export function NotificationModal({ isOpen, onClose, onLogin, onRegister, notifi
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

@@ -1,0 +1,12 @@
+/* HomeUser.css - Styles cho trang chủ của người dùng đã đăng nhập */
+.user-dashboard-section {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    padding: 2rem 0;
+}
+
+.featured-section {
+    padding: 4rem 0;
+    background: white;
+}
+
+/* Có thể thêm các styles đặc biệt cho user nếu cần */

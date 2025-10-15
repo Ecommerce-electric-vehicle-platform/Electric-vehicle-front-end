@@ -12,7 +12,6 @@ export default function SignUp() {
     password: "",
     email: "",
   });
-
   const [errors, setErrors] = useState({});
   const [backendError, setBackendError] = useState("");
   const [otp, setOtp] = useState("");
@@ -21,17 +20,14 @@ export default function SignUp() {
   const [showAgreeError, setShowAgreeError] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
 
-  // ========== VALIDATION ==========
+  // ===== VALIDATION =====
   const validateField = (name, value) => {
     let message = "";
-
     if (name === "username") {
       if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
-      else if (!/^[A-Za-z]+$/.test(value))
-        message = "Chỉ được phép sử dụng chữ cái.";
+      else if (!/^[A-Za-z]+$/.test(value)) message = "Chỉ được phép sử dụng chữ cái.";
       else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
     }
-
     if (name === "password") {
       if (!value.trim()) message = "Mật khẩu là bắt buộc.";
       else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
@@ -39,13 +35,11 @@ export default function SignUp() {
       else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
         message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
     }
-
     if (name === "email") {
       if (!value.trim()) message = "Email là bắt buộc.";
       else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value))
         message = "Email không hợp lệ.";
     }
-
     setErrors((prev) => ({ ...prev, [name]: message }));
   };
 
@@ -59,57 +53,26 @@ export default function SignUp() {
   const validateAll = () => {
     const newErrors = {};
     Object.entries(formData).forEach(([key, value]) => {
-      let message = "";
-      if (key === "username") {
-        if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
-        else if (!/^[A-Za-z]+$/.test(value))
-          message = "Chỉ được phép sử dụng chữ cái.";
-        else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
-      }
-      if (key === "password") {
-        if (!value.trim()) message = "Mật khẩu là bắt buộc.";
-        else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
-        else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
-        else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-          message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
-      }
-      if (key === "email") {
-        if (!value.trim()) message = "Email là bắt buộc.";
-        else if (
-          !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value)
-        )
-          message = "Email không hợp lệ.";
-      }
-      if (message) newErrors[key] = message;
+      validateField(key, value);
+      if (errors[key]) newErrors[key] = errors[key];
     });
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // ========== HANDLE SUBMIT ==========
+  // ===== SUBMIT =====
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const allValid = validateAll();
-
-    if (!allValid) {
-      setShowAgreeError(false);
-      return;
-    }
-
+    if (!allValid) return;
     if (!isAgreed) {
       setShowAgreeError(true);
       return;
     }
 
     try {
-      setLoadingMessage(
-        "Vui lòng kiểm tra email. Đang chuyển đến trang OTP..."
-      );
+      setLoadingMessage("Vui lòng kiểm tra email. Đang chuyển đến trang OTP...");
       await authApi.signup(formData);
-
-      // Hiển thị overlay 2.5s rồi sang OTP
       setTimeout(() => {
         setIsOtpStep(true);
         setBackendError("");
@@ -137,24 +100,16 @@ export default function SignUp() {
     }
   };
 
-  //============= GOOGLE SIGNUP =============
+  // ===== GOOGLE SIGNUP =====
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const idToken = credentialResponse?.credential;
-
-      // Log toàn bộ token ra console để kiểm tra
-      console.log("Google ID Token nhận được:", idToken);
-
       if (!idToken) {
         setBackendError("Không nhận được token từ Google. Vui lòng thử lại.");
         return;
       }
-
       const response = await authApi.googleSignin(idToken);
       console.log("Google signin/signup response:", response.data);
-
-      // Nếu backend tự đăng nhập luôn THÌ -> điều hướng về trang chính
-      // Nếu backend chỉ đăng ký trước THÌ -> điều hướng về trang đăng nhập
       navigate("/signin");
     } catch (error) {
       console.error("Google signup error:", error);
@@ -163,7 +118,7 @@ export default function SignUp() {
         status === 401
           ? "Token Google không hợp lệ hoặc đã hết hạn."
           : error.response?.data?.message ||
-            "Đăng nhập/Đăng ký Google thất bại. Vui lòng thử lại.";
+          "Đăng nhập/Đăng ký Google thất bại. Vui lòng thử lại.";
       setBackendError(message);
     }
   };
@@ -172,7 +127,7 @@ export default function SignUp() {
     setBackendError("Đăng nhập Google thất bại. Vui lòng thử lại.");
   };
 
-  // ===================== UI ==========================
+  // ===== UI =====
   return (
     <div className="auth-form-container">
       <form
@@ -180,6 +135,7 @@ export default function SignUp() {
         onSubmit={isOtpStep ? handleVerifyOtp : handleSubmit}
         noValidate
       >
+        {/* Header */}
         <div className="form-header">
           <div className="logo-container">
             <div className="greentrade-text">
@@ -205,9 +161,7 @@ export default function SignUp() {
             <>
               {/* Username */}
               <div className="input-group">
-                <div
-                  className={`input-field ${errors.username ? "error" : ""}`}
-                >
+                <div className={`input-field ${errors.username ? "error" : ""}`}>
                   <div className="input-icon">
                     <i className="fas fa-user"></i>
                   </div>
@@ -230,9 +184,7 @@ export default function SignUp() {
 
               {/* Password */}
               <div className="input-group">
-                <div
-                  className={`input-field ${errors.password ? "error" : ""}`}
-                >
+                <div className={`input-field ${errors.password ? "error" : ""}`}>
                   <div className="input-icon">
                     <i className="fas fa-lock"></i>
                   </div>
@@ -393,7 +345,6 @@ export default function SignUp() {
           </div>
         )}
 
-        {/* Loading Overlay */}
         {loadingMessage && (
           <div className="loading-overlay">
             <div className="loading-content">

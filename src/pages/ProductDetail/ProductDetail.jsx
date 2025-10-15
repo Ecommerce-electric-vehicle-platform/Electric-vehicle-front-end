@@ -18,28 +18,36 @@ import {
     ShoppingCart
 } from 'lucide-react';
 import { vehicleProducts, batteryProducts, formatCurrency, formatDate } from '../../data/productsData';
-import { Header } from '../../components/Header/Header';
 import { NotificationModal } from '../../components/NotificationModal/NotificationModal';
 import './ProductDetail.css';
+import { toggleFavorite, isFavorite } from '../../utils/favorites';
 
 function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [product, setProduct] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [isGuest] = useState(true); // Giả sử là guest, có thể lấy từ context/auth
+    const [isGuest, setIsGuest] = useState(true);
     const [hasPurchased] = useState(false); // Giả sử chưa mua sản phẩm này
     const [rating, setRating] = useState(0);
     const [review, setReview] = useState('');
     const [reviews, setReviews] = useState([]);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [notificationType, setNotificationType] = useState('login'); // 'login' hoặc 'purchase'
+    const [fav, setFav] = useState(false);
+
+    // Xác định trạng thái đăng nhập
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        setIsGuest(!token);
+    }, []);
 
     // Tìm sản phẩm theo ID
     useEffect(() => {
         const allProducts = [...vehicleProducts, ...batteryProducts];
         const foundProduct = allProducts.find(p => p.id === parseInt(id));
         setProduct(foundProduct);
+        if (foundProduct) setFav(isFavorite(foundProduct.id));
     }, [id]);
 
     // Xử lý chuyển ảnh
@@ -142,7 +150,6 @@ function ProductDetail() {
 
     return (
         <div className={`product-detail-page ${showNotificationModal ? 'modal-open' : ''}`}>
-            <Header />
             <div className="product-detail-container">
                 {/* Breadcrumb Navigation */}
                 <div className="breadcrumb-nav">
@@ -281,10 +288,10 @@ function ProductDetail() {
                             <div className="product-actions-top">
                                 <button
                                     className={`save-btn ${isGuest ? 'disabled' : ''}`}
-                                    onClick={isGuest ? handleRequireLogin : undefined}
+                                    onClick={isGuest ? handleRequireLogin : () => { const added = toggleFavorite({ ...product, type: product.batteryType ? 'battery' : 'vehicle' }); setFav(added); }}
                                 >
-                                    <Heart className="action-icon" />
-                                    <span>Lưu</span>
+                                    <Heart className={`action-icon ${fav ? 'heart-active' : ''}`} color={fav ? '#dc3545' : 'currentColor'} fill={fav ? '#dc3545' : 'none'} />
+                                    <span>{fav ? 'Đã lưu' : 'Lưu'}</span>
                                 </button>
                             </div>
 
@@ -337,7 +344,7 @@ function ProductDetail() {
                         <div className="buy-section">
                             <button
                                 className={`buy-btn ${isGuest ? 'disabled' : ''}`}
-                                onClick={isGuest ? handleRequireLogin : undefined}
+                                onClick={isGuest ? handleRequireLogin : () => alert('Mua ngay - hành động dành cho user đăng nhập')}
                             >
                                 <ShoppingCart className="btn-icon" />
                                 <span>Mua ngay</span>
@@ -349,14 +356,14 @@ function ProductDetail() {
                             <div className="contact-buttons">
                                 <button
                                     className={`contact-btn phone-btn ${isGuest ? 'disabled' : ''}`}
-                                    onClick={isGuest ? handleRequireLogin : undefined}
+                                    onClick={isGuest ? handleRequireLogin : () => alert('Hiện số điện thoại người bán: 093682****')}
                                 >
                                     <Phone className="btn-icon" />
                                     <span>{isGuest ? 'Hiện số 093682****' : 'Hiện số 093682****'}</span>
                                 </button>
                                 <button
                                     className={`contact-btn chat-btn ${isGuest ? 'disabled' : ''}`}
-                                    onClick={isGuest ? handleRequireLogin : undefined}
+                                    onClick={isGuest ? handleRequireLogin : () => { window.location.href = '/chat'; }}
                                 >
                                     <MessageCircle className="btn-icon" />
                                     <span>Chat</span>

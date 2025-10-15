@@ -84,6 +84,9 @@ export function VehicleShowcase() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="search-input"
               />
+              {searchTerm && (
+                <button className="search-clear" onClick={() => setSearchTerm("")}>Xoá</button>
+              )}
             </div>
 
             <div className="filter-controls">

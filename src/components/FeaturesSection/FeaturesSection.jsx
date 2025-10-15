@@ -41,13 +41,6 @@ export function FeaturesSection() {
     },
   ]
 
-  const benefits = [
-    "Giao dịch an toàn 100%",
-    "Kiểm tra kỹ thuật miễn phí",
-    "Bảo hành 12 tháng",
-    "Hỗ trợ vận chuyển"
-  ]
-
   return (
     <section className="features-section" id="features">
       <div className="features-container">
@@ -84,19 +77,7 @@ export function FeaturesSection() {
           })}
         </div>
 
-        <div className="features-benefits">
-          <div className="benefits-header">
-            <h3>Lợi ích khi sử dụng</h3>
-          </div>
-          <div className="benefits-grid">
-            {benefits.map((benefit, index) => (
-              <div key={index} className="benefit-item">
-                <CheckCircle className="benefit-icon" />
-                <span>{benefit}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Đã loại bỏ phần Lợi ích khi sử dụng theo yêu cầu */}
       </div>
     </section>
   )

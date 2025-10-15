@@ -1,86 +1,94 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+
+// Khi chưa đăng nhập
 import { Header } from "../../components/Header/Header";
 import { HeroSection } from "../../components/HeroSection/HeroSection";
 import { FeaturedSlider } from "../../components/FeaturedSlider/FeaturedSlider";
 import { FeaturesSection } from "../../components/FeaturesSection/FeaturesSection";
 import { VehicleShowcase } from "../../components/VehicleShowcase/VehicleShowcase";
-import { CTASection } from "../../components/CTASection/CTASection";
+// import { CTASection } from "../../components/CTASection/CTASection";
 import { UpgradeSection } from "../../components/UpgradeSection/UpgradeSection";
 import { ProductsSection } from "../../components/ProductsSection/ProductsSection";
 import { Footer } from "../../components/Footer/Footer";
 import { ScrollToTop } from "../../components/ScrollToTop/ScrollToTop";
+
+// Khi đã đăng nhập
+import { HomeUser } from "../../components/HomeUser/HomeUser";
 import "./Home.css";
 
-function Home() {
-  // Xử lý hash navigation khi trang load
+export function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const location = useLocation();
+
   useEffect(() => {
-    const handleHashNavigation = () => {
-      const hash = window.location.hash;
-      if (hash) {
-        const sectionId = hash.substring(1); // Bỏ dấu #
-        const section = document.getElementById(sectionId);
-        if (section) {
-          // Delay một chút để đảm bảo trang đã render xong
-          setTimeout(() => {
-            section.scrollIntoView({ behavior: "smooth" });
-          }, 100);
-        }
-      }
+    const checkAuthStatus = () => {
+      const token = localStorage.getItem("token");
+      setIsAuthenticated(!!token);
     };
 
-    // Xử lý khi component mount
-    handleHashNavigation();
+    checkAuthStatus();
 
-    // Xử lý khi hash thay đổi
-    window.addEventListener("hashchange", handleHashNavigation);
+    const handleStorageChange = () => {
+      checkAuthStatus();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("authStatusChanged", handleStorageChange);
 
     return () => {
-      window.removeEventListener("hashchange", handleHashNavigation);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("authStatusChanged", handleStorageChange);
     };
   }, []);
 
+  // Khi có hash trong URL thì scroll xuống đúng section
+  useEffect(() => {
+    const hash = location.hash;
+    if (hash) {
+      setTimeout(() => {
+        const element = document.querySelector(hash);
+        if (element) element.scrollIntoView({ behavior: "smooth" });
+      }, 20);
+    }
+  }, [location.hash]);
+
+  // Nếu đã đăng nhập → vào trang user
+  if (isAuthenticated) {
+    return <HomeUser />;
+  }
+
+  // Nếu chưa → hiển thị giao diện marketing
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header cố định đầu trang */}
-      <Header />
+      {/* <Header /> */}
 
       <main className="flex-grow">
-        {/* Hero Section */}
         <HeroSection />
-
-        {/* Featured Slider (sản phẩm nổi bật) */}
         <section className="featured-section">
           <FeaturedSlider />
         </section>
 
-        {/* Sản phẩm mới nhất với bộ lọc danh mục */}
         <section id="products-section">
           <ProductsSection />
         </section>
 
-        {/* Vehicle & Batteries Section — thêm ID để cuộn xuống từ Header */}
         <section id="vehicleshowcase-section">
           <VehicleShowcase />
         </section>
 
-        {/* Features Section */}
         <FeaturesSection />
+        {/* <CTASection /> */}
 
-        {/* CTA */}
-        <CTASection />
-
-        {/* Upgrade Section - Nâng cấp buyer lên seller */}
         <section id="upgrade-section">
           <UpgradeSection />
         </section>
       </main>
 
-      {/* Footer cuối trang — thêm ID để cuộn xuống từ Header */}
-      <footer id="footer">
+      {/* <footer id="footer">
         <Footer />
-      </footer>
+      </footer> */}
 
-      {/* Nút cuộn lên đầu trang */}
       <ScrollToTop />
     </div>
   );
