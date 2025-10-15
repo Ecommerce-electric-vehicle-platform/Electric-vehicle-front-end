@@ -4,7 +4,7 @@ import PersonalProfilePage from "./components/PersonalProfilePage";
 import Home from "./pages/Home/Home"; 
 import ProductDetail from "./pages/ProductDetail/ProductDetail";
 import ForgotPassword from "./pages/Auth/login/ForgotPassword";
-
+import { useLocation } from "react-router-dom";
 
 // Component bảo vệ route (chỉ cho vào khi đã đăng nhập)
 function ProtectedRoute({ children }) {

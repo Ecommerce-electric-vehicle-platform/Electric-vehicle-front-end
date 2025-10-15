@@ -328,27 +328,6 @@ form:hover {
     color: #6be4a4;
 }
 
-/* ==== FIX: tránh icon đè lên placeholder ==== */
-.input-field {
-  position: relative;
-}
-
-.input-icon {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6be4a4;
-  font-size: 1.1rem;
-  pointer-events: none; /* để click được vào input */
-  z-index: 2;
-}
-
-/* tăng khoảng cách giữa icon và text */
-.input-field input {
-  padding-left: 42px !important;
-}
-
 /* ============== INPUT ERROR ============== */
 .input-field.error {
     border-color: #ff4d4f !important;
