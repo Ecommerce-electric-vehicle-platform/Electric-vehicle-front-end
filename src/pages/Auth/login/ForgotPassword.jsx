@@ -14,6 +14,8 @@ export default function ForgotPassword() {
     otp: "",
     newPassword: "",
     confirmPassword: "",
+    email: "",
+    token: "", // token sẽ nhận được từ BE sau khi verify OTP
   });
   const [status, setStatus] = useState({
     error: "",
@@ -61,7 +63,25 @@ export default function ForgotPassword() {
           username: formData.username,
         });
 
-        console.log("Response verify username:", res.data);
+        // Log full response
+        console.log("Response verify username (full):", res);
+
+        // Trích xuất email đúng từ response BE
+        const extractedEmail =
+          res?.data?.data?.data?.email ||
+          res?.data?.email ||
+          res?.data?.gmail ||
+          res?.data?.data?.email ||
+          res?.data?.data?.gmail ||
+          null;
+
+        // Lưu email/gmail vào state (sử dụng key `email` trong front-end)
+        setFormData((prev) => ({
+          ...prev,
+          email: extractedEmail,
+        }));
+
+        console.log("Extracted email/gmail from response:", extractedEmail);
 
         setStatus({
           error: "",
@@ -76,10 +96,24 @@ export default function ForgotPassword() {
         // Verify OTP
         if (!formData.otp.trim()) throw new Error("Vui lòng nhập OTP.");
 
-        const res = await authApi.verifyOtpForgotPassword({
-          username: formData.username, // truyền username để backend xác thực xem gmail có khớp với username không
+        // Sử dụng email đã lưu trong state, không dùng form input
+        const gmailToSend = formData.email || null;
+
+        const otpPayload = {
+          username: formData.username,
           otp: formData.otp,
-        });
+          email: gmailToSend, // đổi từ gmail sang email
+        };
+
+        console.log("Sending OTP verification data:", otpPayload);
+
+        const res = await authApi.verifyOtpForgotPassword(otpPayload);
+
+        // Lưu token từ response của BE
+        setFormData((prev) => ({
+          ...prev,
+          token: res.data.token,
+        }));
 
         console.log("Response verify OTP:", res.data);
 
