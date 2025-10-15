@@ -7,7 +7,7 @@ import { HeroSection } from "../../components/HeroSection/HeroSection";
 import { FeaturedSlider } from "../../components/FeaturedSlider/FeaturedSlider";
 import { FeaturesSection } from "../../components/FeaturesSection/FeaturesSection";
 import { VehicleShowcase } from "../../components/VehicleShowcase/VehicleShowcase";
-import { CTASection } from "../../components/CTASection/CTASection";
+// import { CTASection } from "../../components/CTASection/CTASection";
 import { UpgradeSection } from "../../components/UpgradeSection/UpgradeSection";
 import { ProductsSection } from "../../components/ProductsSection/ProductsSection";
 import { Footer } from "../../components/Footer/Footer";
@@ -61,7 +61,7 @@ export function Home() {
   // Nếu chưa → hiển thị giao diện marketing
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      {/* <Header /> */}
 
       <main className="flex-grow">
         <HeroSection />
@@ -78,16 +78,16 @@ export function Home() {
         </section>
 
         <FeaturesSection />
-        <CTASection />
+        {/* <CTASection /> */}
 
         <section id="upgrade-section">
           <UpgradeSection />
         </section>
       </main>
 
-      <footer id="footer">
+      {/* <footer id="footer">
         <Footer />
-      </footer>
+      </footer> */}
 
       <ScrollToTop />
     </div>

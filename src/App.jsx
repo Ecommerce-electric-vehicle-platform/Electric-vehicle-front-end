@@ -1,13 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import AuthLayout from "./pages/Auth/login/AuthLayout";
 import { Home } from "./pages/Home/Home";
-import { ProductDetail } from "./pages/ProductDetail/ProductDetail";
+import ProductDetail from "./pages/ProductDetail/ProductDetail";
 import { Chat } from "./pages/Chat/Chat";
 import { Seller } from "./pages/Seller/Seller";
 import { Favorites } from "./pages/Favorites/Favorites";
 import { Products } from "./pages/Products/Products";
 import { ComparePlans } from "./pages/ComparePlans/ComparePlans";
-import PersonalProfilePage from "./components/PersonalProfilePage";
+import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
 import PageTransition from "./components/PageTransition/PageTransition";
 import { Header } from "./components/Header/Header";
 import { ScrollToTop } from "./components/ScrollToTop/ScrollToTop";
