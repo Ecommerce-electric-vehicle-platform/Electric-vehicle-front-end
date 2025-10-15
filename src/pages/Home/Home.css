@@ -1,0 +1,79 @@
+/* Home page specific styles */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+/* Đảm bảo có khoảng cách cho header fixed */
+#products-section,
+#upgrade-section {
+  scroll-margin-top: 100px;
+  /* Khoảng cách từ header fixed */
+}
+
+/* Layout cho phần Featured Slider */
+.featured-section {
+  width: 100%;
+  max-width: 1200px;
+  margin: 3rem auto 4rem;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Đảm bảo các section sau slider có khoảng cách đồng đều */
+section {
+  margin-bottom: 4rem;
+}
+
+/* Giữ Hero và Slider không quá sát nhau */
+.hero-section+.featured-section {
+  margin-top: 1rem;
+}/* Home page specific styles */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+/* Đảm bảo có khoảng cách cho header fixed */
+#products-section,
+#upgrade-section {
+  scroll-margin-top: 100px;
+  /* Khoảng cách từ header fixed */
+}
+
+/* Layout cho phần Featured Slider */
+.featured-section {
+  width: 100%;
+  max-width: 1200px;
+  margin: 3rem auto 4rem;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Đảm bảo các section sau slider có khoảng cách đồng đều */
+section {
+  margin-bottom: 4rem;
+}
+
+/* Giữ Hero và Slider không quá sát nhau */
+.hero-section+.featured-section {
+  margin-top: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .featured-section {
+    margin: 2rem auto;
+    padding: 0 0.5rem;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .featured-section {
+    margin: 2rem auto;
+    padding: 0 0.5rem;
+  }
+}

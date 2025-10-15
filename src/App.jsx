@@ -1,30 +1,45 @@
-import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AuthLayout from "./pages/Auth/login/AuthLayout";
 import PersonalProfilePage from "./components/PersonalProfilePage";
-import HomePage from "./homepage/HomePage";
-import { GoogleOAuthProvider } from "@react-oauth/google";
+import Home from "./pages/Home/Home"; 
+import ProductDetail from "./pages/ProductDetail/ProductDetail";
+import ForgotPassword from "./pages/Auth/login/ForgotPassword";
 
+
+// Component bảo vệ route (chỉ cho vào khi đã đăng nhập)
+function ProtectedRoute({ children }) {
+  const isAuthenticated = !!localStorage.getItem("token");
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    // Lưu lại trang người dùng đang ở, để sau khi login xong có thể quay lại
+    return <Navigate to="/signin" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
 
 export default function App() {
   return (
     <Router>
       <Routes>
-{/* Mặc định vào HomePage */}
-        <Route path="/" element={<Navigate to="/home" />} />
+        {/* Trang chủ */}
+        <Route path="/" element={<Home />} />
 
-        {/* Trang HomePage */}
-        <Route path="/home" element={<HomePage />} />
+        {/* Alias: /home → / */}
+        <Route path="/home" element={<Navigate to="/" />} />
 
-        {/* Trang Auth */}
+        {/* Auth pages */}
         <Route path="/signin" element={<AuthLayout page="signin" />} />
         <Route path="/signup" element={<AuthLayout page="signup" />} />
 
-        {/* Trang Profile */}
-        <Route path="/profile" element={<PersonalProfilePage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/home" />} />
+        {/* Product Detail */}
+        <Route path="/product/:id" element={<ProductDetail />} />
+
+        {/* Personal Profile */}
+        <Route path="/profile" element={<PersonalProfilePage />} />
       </Routes>
     </Router>
   );

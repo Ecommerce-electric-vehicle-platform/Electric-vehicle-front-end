@@ -79,3 +79,23 @@
 .submit-button:hover {
   background-color: #4ade80;
 }
+
+/* Input đỏ khi có lỗi */
+.input-error {
+  border-color: red;
+}
+
+/* Text lỗi hiển thị dưới input */
+.error-text {
+  color: red;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  display: block;
+}
+.input-wrapper {
+  display: flex;
+  flex-direction: column; /* input trên, lỗi dưới */
+  flex: 1;                /* chiếm hết không gian còn lại của form-field */
+}
+
+
