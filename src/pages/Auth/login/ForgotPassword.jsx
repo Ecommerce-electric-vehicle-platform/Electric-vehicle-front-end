@@ -27,17 +27,25 @@ export default function ForgotPassword() {
   const validateUsername = (value) => {
     if (!value.trim()) return "Tên đăng nhập là bắt buộc.";
     if (!/^[A-Za-z]+$/.test(value))
-      return "Chỉ được phép chứa chữ, số, gạch dưới.";
-    if (value.length < 4) return "Tên đăng nhập phải có ít nhất 4 ký tự.";
+      return "Chỉ được phép chứa chữ cái.";
+    if (value.length < 8) return "Tối thiểu 8 ký tự.";
     return "";
   };
 
+  // Validate mật khẩu theo yêu cầu an toàn
   const validatePassword = (value) => {
     if (!value.trim()) return "Mật khẩu là bắt buộc.";
-    if (value.length < 8) return "Tối thiểu 8 ký tự.";
     if (/\s/.test(value)) return "Không được có khoảng trắng.";
+    if (value.length < 8) return "Tối thiểu 8 ký tự.";
     if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-      return "Phải gồm chữ cái, số và ký tự đặc biệt.";
+      return "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
+    return "";
+  };
+
+  // Validate xác nhận mật khẩu
+  const validateConfirmPassword = (password, confirmPassword) => {
+    if (!confirmPassword.trim()) return "Xác nhận mật khẩu là bắt buộc.";
+    if (password !== confirmPassword) return "Mật khẩu xác nhận không khớp.";
     return "";
   };
 
@@ -45,7 +53,23 @@ export default function ForgotPassword() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setStatus({ error: "", success: "", loading: false });
+    
+    // Validate realtime
+    let error = "";
+    if (name === "username") {
+      error = validateUsername(value);
+    } else if (name === "newPassword") {
+      error = validatePassword(value);
+    } else if (name === "confirmPassword") {
+      error = validateConfirmPassword(formData.newPassword, value);
+    }
+
+    setStatus(prev => ({
+      ...prev,
+      error: error,
+      success: "",
+      loading: false
+    }));
   };
 
   // ========== SUBMIT HANDLER ==========
@@ -127,10 +151,13 @@ export default function ForgotPassword() {
 
       // B3: Đặt lại mật khẩu
       else if (step === 3) {
+        // Validate mật khẩu mới
         const pwError = validatePassword(formData.newPassword);
         if (pwError) throw new Error(pwError);
-        if (formData.newPassword !== formData.confirmPassword)
-          throw new Error("Mật khẩu xác nhận không khớp.");
+
+        // Validate xác nhận mật khẩu
+        const confirmError = validateConfirmPassword(formData.newPassword, formData.confirmPassword);
+        if (confirmError) throw new Error(confirmError);
 
         const res = await authApi.forgotPassword({
           username: formData.username,
@@ -196,33 +223,54 @@ export default function ForgotPassword() {
         </div>
       )}
 
-      {/* Step 3 - New Password */}
+        {/* Step 3 - New Password */}
       {step === 3 && (
         <>
-          <div className="input-field">
-            <i className="fas fa-lock"></i>
-            <input
-              type="password"
-              name="newPassword"
-              placeholder="Mật khẩu mới"
-              value={formData.newPassword}
-              onChange={handleChange}
-            />
+          <div className="input-group">
+            <div className={`input-field ${status.error && formData.newPassword ? "error" : ""}`}>
+              <div className="input-icon">
+                <i className="fas fa-lock"></i>
+              </div>
+              <input
+                type="password"
+                name="newPassword"
+                placeholder="Mật khẩu mới"
+                value={formData.newPassword}
+                onChange={handleChange}
+              />
+              <div className="input-border"></div>
+            </div>
+            {status.error && formData.newPassword && (
+              <div className="error-message">
+                <i className="fas fa-exclamation-circle"></i>
+                <span>{status.error}</span>
+              </div>
+            )}
           </div>
-          <div className="input-field">
-            <i className="fas fa-lock"></i>
-            <input
-              type="password"
-              name="confirmPassword"
-              placeholder="Xác nhận mật khẩu"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-            />
+
+          <div className="input-group">
+            <div className={`input-field ${status.error && formData.confirmPassword ? "error" : ""}`}>
+              <div className="input-icon">
+                <i className="fas fa-lock"></i>
+              </div>
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Xác nhận mật khẩu"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+              />
+              <div className="input-border"></div>
+            </div>
+            {status.error && formData.confirmPassword && (
+              <div className="error-message">
+                <i className="fas fa-exclamation-circle"></i>
+                <span>{status.error}</span>
+              </div>
+            )}
           </div>
         </>
-      )}
-
-      {status.error && <p className="error-message">{status.error}</p>}
+      )}      {status.error && <p className="error-message">{status.error}</p>}
       {status.success && <p className="success-message">{status.success}</p>}
 
       <input

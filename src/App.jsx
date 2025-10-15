@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AuthLayout from "./pages/Auth/login/AuthLayout";
-import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
+import PersonalProfilePage from "./components/PersonalProfilePage";
 import Home from "./pages/Home/Home"; 
 import ProductDetail from "./pages/ProductDetail/ProductDetail";
 import ForgotPassword from "./pages/Auth/login/ForgotPassword";

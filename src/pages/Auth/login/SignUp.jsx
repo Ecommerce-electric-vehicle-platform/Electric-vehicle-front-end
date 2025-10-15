@@ -321,6 +321,7 @@ export default function SignUp() {
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={handleGoogleError}
+                  text="signup_with"
                 />
               </div>
             </>
