@@ -137,29 +137,24 @@ export default function SignUp() {
     }
   };
 
- const handleGoogleSuccess = async (credentialResponse) => {
+  //============= GOOGLE SIGNUP =============
+  const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const idToken = credentialResponse?.credential;
 
+      // Log toàn bộ token ra console để kiểm tra
+      console.log("Google ID Token nhận được:", idToken);
 
       if (!idToken) {
         setBackendError("Không nhận được token từ Google. Vui lòng thử lại.");
         return;
       }
 
-
-      console.log(
-        "Gửi ID Token lên backend:",
-        idToken.substring(0, 30) + "..."
-      );
-
-
       const response = await authApi.googleSignin(idToken);
       console.log("Google signin/signup response:", response.data);
 
-
-      // Nếu backend tự đăng nhập luôn → điều hướng về trang chính
-      // Nếu backend chỉ đăng ký trước → điều hướng về trang đăng nhập
+      // Nếu backend tự đăng nhập luôn THÌ -> điều hướng về trang chính
+      // Nếu backend chỉ đăng ký trước THÌ -> điều hướng về trang đăng nhập
       navigate("/signin");
     } catch (error) {
       console.error("Google signup error:", error);
@@ -173,12 +168,11 @@ export default function SignUp() {
     }
   };
 
-
   const handleGoogleError = () => {
     setBackendError("Đăng nhập Google thất bại. Vui lòng thử lại.");
   };
 
-  // ========== UI ==========
+  // ===================== UI ==========================
   return (
     <div className="auth-form-container">
       <form
@@ -327,6 +321,7 @@ export default function SignUp() {
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={handleGoogleError}
+                  text="signup_with"
                 />
               </div>
             </>
