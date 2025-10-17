@@ -11,20 +11,20 @@ export default function PersonalProfileForm() {
     defaultShippingAddress: "",
   });
   const [avatarUrl, setAvatarUrl] = useState(null);
-  const [userId, setUserId] = useState(null);
+  //const [userId, setUserId] = useState(null);
   const [errors, setErrors] = useState({}); // chứa lỗi từ backend
   // Lấy email & userId từ localStorage khi load trang
   useEffect(() => {
     const storedEmail = localStorage.getItem("userEmail");
-    const storedUserId = localStorage.getItem("buyerId");
+    //const storedUserId = localStorage.getItem("buyerId");
     setFormData((prev) => ({
       ...prev,
       email: storedEmail || "",
     }));
     // Nếu có buyerId lưu trong localStorage thì đặt vào state
-    if (storedUserId) {
-      setUserId(storedUserId);
-    }
+    // if (storedUserId) {
+    //   setUserId(storedUserId);
+    // }
   }, []);
   // Xử lý thay đổi input
   const handleChange = (e) => {
@@ -52,6 +52,13 @@ export default function PersonalProfileForm() {
     }
     // B2: Gửi API nếu không có lỗi
     try {
+      // ensure we have a userId (buyerId). fallback to localStorage if not present in state
+      // const effectiveUserId = userId || localStorage.getItem("buyerId");
+      // if (!effectiveUserId) {
+      //   console.log("Không tìm thấy buyerId. Vui lòng đăng nhập lại.");
+      //   return;
+      // }
+      
       const formBody = new FormData();
       formBody.append("fullName", formData.fullName);
       formBody.append("phoneNumber", formData.phoneNumber);
@@ -59,13 +66,14 @@ export default function PersonalProfileForm() {
       formBody.append("gender", formData.gender.toUpperCase());
       formBody.append("dob", formData.dob);
       formBody.append("avatar_url", avatarUrl);
-      await profileApi.uploadProfile(userId, formBody);
+      
+      await profileApi.uploadProfile(formBody);
       alert("Lưu hồ sơ thành công!");
       setErrors({});
     } catch (error) {
       if (error.response?.data?.errors) {
         // lỗi từ backend (validate)
-        setErrors(error.response.data.errors);
+        setErrors(error.response.data.errors || {});
       } else {
         alert(error.response?.data?.message || "Không thể lưu hồ sơ.");
       }

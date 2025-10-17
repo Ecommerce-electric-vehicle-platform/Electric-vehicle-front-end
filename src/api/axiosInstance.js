@@ -17,7 +17,7 @@
 
 
 
-// 📂 src/api/axiosInstance.js
+//  src/api/axiosInstance.js
 import axios from "axios";
 
 const axiosInstance = axios.create({
@@ -25,7 +25,7 @@ const axiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// ✅ Danh sách endpoint PUBLIC — KHÔNG đính token
+//  Danh sách endpoint PUBLIC — KHÔNG đính token
 const publicEndpoints = [
   "/api/v1/auth/signup",
   "/api/v1/auth/signin",
@@ -36,7 +36,7 @@ const publicEndpoints = [
   "/api/v1/auth/forgot-password",
 ];
 
-// ✅ Request interceptor
+//  Request interceptor
 axiosInstance.interceptors.request.use((config) => {
   const isPublic = publicEndpoints.some((url) => config.url.includes(url));
 
@@ -50,11 +50,11 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-// ✅ Response interceptor — xử lý lỗi tập trung
+// Response interceptor — xử lý lỗi tập trung
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("❌ API Error:", error.response?.data || error.message);
+    console.error(" API Error:", error.response?.data || error.message);
 
     if (error.response && error.response.data) {
       const message =
