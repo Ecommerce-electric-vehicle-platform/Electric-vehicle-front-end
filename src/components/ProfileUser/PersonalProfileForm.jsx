@@ -1,112 +1,139 @@
-import { useState, useEffect } from "react"
-import profileApi from "../../api/profileApi"
-import "./PersonalProfileForm.css"
-
+import { useState, useEffect } from "react";
+import profileApi from "../../api/profileApi";
+import "./PersonalProfileForm.css";
 export default function PersonalProfileForm() {
   const [formData, setFormData] = useState({
-    fullname: "",
-    phone: "",
+    fullName: "",
+    phoneNumber: "",
     email: "",
     gender: "male",
-    birthday: "",
-    province: "",
-    district: "",
-    commune: "",
-    address: "",
-  })
-
-  const [avatarFile, setAvatarFile] = useState(null)
-  const [userId, setUserId] = useState(null)
-
-  //  Lấy email & userId từ localStorage khi load trang
+    dob: "",
+    defaultShippingAddress: "",
+  });
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [errors, setErrors] = useState({}); // chứa lỗi từ backend
+  // Lấy email & userId từ localStorage khi load trang
   useEffect(() => {
     const storedEmail = localStorage.getItem("userEmail");
     const storedUserId = localStorage.getItem("buyerId");
-
     setFormData((prev) => ({
       ...prev,
       email: storedEmail || "",
     }));
-
-    if (storedUserId) setUserId(storedUserId);
+    // Nếu có buyerId lưu trong localStorage thì đặt vào state
+    if (storedUserId) {
+      setUserId(storedUserId);
+    }
   }, []);
-
-
   // Xử lý thay đổi input
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  //  Gửi dữ liệu profile lên backend
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" })); // clear lỗi khi user gõ lại
+  };
+  // Gửi dữ liệu profile lên backend
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!userId) return alert("User ID not found");
-    if (!avatarFile) return alert("Please select an avatar"); // bắt buộc
-
+    // B1: Check local validation (frontend)
+    const newErrors = {};
+    if (!formData.fullName.trim()) newErrors.fullName = "Vui lòng nhập họ và tên.";
+    if (!formData.phoneNumber.trim()) newErrors.phoneNumber = "Vui lòng nhập số điện thoại.";
+    if (!formData.defaultShippingAddress.trim())
+      newErrors.defaultShippingAddress = "Vui lòng nhập địa chỉ giao hàng.";
+    if (!formData.dob.trim()) newErrors.dob = "Vui lòng chọn ngày sinh.";
+    if (!formData.gender) newErrors.gender = "Vui lòng chọn giới tính.";
+    if (!avatarUrl) newErrors.avatarUrl = "Vui lòng chọn ảnh đại diện.";
+    // Nếu có lỗi, hiển thị alert và highlight từng field
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      alert("Vui lòng điền đầy đủ các thông tin bắt buộc.");
+      return;
+    }
+    // B2: Gửi API nếu không có lỗi
     try {
-      const fullAddress = `${formData.address}, ${formData.commune}, ${formData.district}, ${formData.province}`;
       const formBody = new FormData();
-      formBody.append("fullName", formData.fullname);
-      formBody.append("phoneNumber", formData.phone);
-      formBody.append("defaultShippingAddress", fullAddress);
+      formBody.append("fullName", formData.fullName);
+      formBody.append("phoneNumber", formData.phoneNumber);
+      formBody.append("defaultShippingAddress", formData.defaultShippingAddress);
       formBody.append("gender", formData.gender.toUpperCase());
-      formBody.append("dob", formData.birthday);
-      formBody.append("avatar_url", avatarFile); //  gửi avatar
-
-      const response = await profileApi.uploadProfile(userId, formBody);
-      alert("Profile saved successfully!");
+      formBody.append("dob", formData.dob);
+      formBody.append("avatar_url", avatarUrl);
+      await profileApi.uploadProfile(userId, formBody);
+      alert("Lưu hồ sơ thành công!");
+      setErrors({});
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to save profile");
+      if (error.response?.data?.errors) {
+        // lỗi từ backend (validate)
+        setErrors(error.response.data.errors);
+      } else {
+        alert(error.response?.data?.message || "Không thể lưu hồ sơ.");
+      }
     }
   };
-
-
-
   return (
     <div className="profile-form-container">
       <h2 className="form-title">Personal profile</h2>
-
       <form onSubmit={handleSubmit} className="profile-form">
+        {/* Full name */}
         <div className="form-field">
-          <label htmlFor="fullname" className="form-label">Fullname*</label>
-          <input
-            id="fullname"
-            type="text"
-            value={formData.fullname}
-            onChange={(e) =>
-              setFormData({ ...formData, fullname: e.target.value })
-            }
-            className="form-input"
-          />
+          <label htmlFor="fullName" className="form-label">
+            Full name*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="fullName"
+              name="fullName"
+              type="text"
+              value={formData.fullName}
+              onChange={handleChange}
+              className={`form-input ${errors.fullName ? "input-error" : ""}`}
+            />
+            {errors.fullName && (
+              <span className="error-text">{errors.fullName}</span>
+            )}
+          </div>
         </div>
-
+        {/* Phone number */}
         <div className="form-field">
-          <label htmlFor="phone" className="form-label">Phone number*</label>
-          <input
-            id="phone"
-            type="tel"
-            value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
-            className="form-input"
-          />
+          <label htmlFor="phoneNumber" className="form-label">
+            Phone number*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="phoneNumber"
+              name="phoneNumber"
+              type="tel"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              className={`form-input ${errors.phoneNumber ? "input-error" : ""
+                }`}
+            />
+            {errors.phoneNumber && (
+              <span className="error-text">{errors.phoneNumber}</span>
+            )}
+          </div>
         </div>
-
+        {/* Email */}
         <div className="form-field">
-          <label htmlFor="email" className="form-label">Email*</label>
-          <input
-            id="email"
-            type="email"
-            value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
-            className="form-input"
-          />
+          <label htmlFor="email" className="form-label">
+            Email*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              className={`form-input ${errors.email ? "input-error" : ""}`}
+            />
+            {errors.email && (
+              <span className="error-text">{errors.email}</span>
+            )}
+          </div>
         </div>
-
+        {/* Gender */}
         <div className="form-field">
           <label className="form-label">Gender*</label>
           <div className="radio-group">
@@ -116,9 +143,7 @@ export default function PersonalProfileForm() {
                 name="gender"
                 value="male"
                 checked={formData.gender === "male"}
-                onChange={(e) =>
-                  setFormData({ ...formData, gender: e.target.value })
-                }
+                onChange={handleChange}
               />
               <span>Male</span>
             </label>
@@ -128,103 +153,77 @@ export default function PersonalProfileForm() {
                 name="gender"
                 value="female"
                 checked={formData.gender === "female"}
-                onChange={(e) =>
-                  setFormData({ ...formData, gender: e.target.value })
-                }
+                onChange={handleChange}
               />
               <span>Female</span>
             </label>
           </div>
+          {errors.gender && <span className="error-text">{errors.gender}</span>}
         </div>
-
+        {/* Birthday */}
         <div className="form-field">
-          <label htmlFor="birthday" className="form-label">Birthday*</label>
-          <input
-            id="birthday"
-            type="date"
-            value={formData.birthday}
-            onChange={(e) =>
-              setFormData({ ...formData, birthday: e.target.value })
-            }
-            className="form-input"
-          />
+          <label htmlFor="dob" className="form-label">
+            Birthday*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="dob"
+              name="dob"
+              type="date"
+              value={formData.dob}
+              onChange={handleChange}
+              className={`form-input ${errors.dob ? "input-error" : ""}`}
+            />
+            {errors.dob && <span className="error-text">{errors.dob}</span>}
+          </div>
         </div>
-
-
+        {/* Address */}
         <div className="form-field">
-          <label htmlFor="province" className="form-label">Province/City*</label>
-          <input
-            id="province"
-            type="text"
-            placeholder="e.g. Ho Chi Minh City"
-            value={formData.province}
-            onChange={(e) =>
-              setFormData({ ...formData, province: e.target.value })
-            }
-            className="form-input"
-          />
+          <label htmlFor="defaultShippingAddress" className="form-label">
+            Address*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="defaultShippingAddress"
+              name="defaultShippingAddress"
+              type="text"
+              placeholder="7 Đ. D1, Long Thạnh Mỹ, Thủ Đức, Hồ Chí Minh"
+              value={formData.defaultShippingAddress}
+              onChange={handleChange}
+              className={`form-input ${errors.defaultShippingAddress ? "input-error" : ""
+                }`}
+            />
+            {errors.defaultShippingAddress && (
+              <span className="error-text">
+                {errors.defaultShippingAddress}
+              </span>
+            )}
+          </div>
         </div>
-
-
+        {/* Avatar */}
+        {/* Avatar */}
         <div className="form-field">
-          <label htmlFor="district" className="form-label">District*</label>
-          <input
-            id="district"
-            type="text"
-            placeholder="e.g. District 1"
-            value={formData.district}
-            onChange={(e) =>
-              setFormData({ ...formData, district: e.target.value })
-            }
-            className="form-input"
-          />
+          <label htmlFor="avatarUrl" className="form-label">
+            Ảnh đại diện*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="avatarUrl"
+              type="file"
+              accept="image/*"
+              onChange={(e) => setAvatarUrl(e.target.files[0])}
+              className={`form-input ${errors.avatarUrl ? "input-error" : ""}`}
+            />
+            {errors.avatarUrl && <span className="error-text">{errors.avatarUrl}</span>}
+          </div>
         </div>
-
-
-        <div className="form-field">
-          <label htmlFor="commune" className="form-label">Commune/Ward*</label>
-          <input
-            id="commune"
-            type="text"
-            placeholder="e.g. Ward 5"
-            value={formData.commune}
-            onChange={(e) =>
-              setFormData({ ...formData, commune: e.target.value })
-            }
-            className="form-input"
-          />
-        </div>
-
-
-        <div className="form-field">
-          <label htmlFor="address" className="form-label">Address*</label>
-          <input
-            id="address"
-            type="text"
-            placeholder="123/123 Nguyen Trai"
-            value={formData.address}
-            onChange={(e) =>
-              setFormData({ ...formData, address: e.target.value })
-            }
-            className="form-input"
-          />
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="avatar" className="form-label">Avatar*</label>
-          <input
-            id="avatar"
-            type="file"
-            accept="image/*"
-            onChange={(e) => setAvatarFile(e.target.files[0])}
-            className="form-input"
-          />
-        </div>
-
         <div className="form-submit">
-          <button type="submit" className="submit-button">Save Change</button>
+          <button type="submit" className="submit-button">
+            Save Change
+          </button>
         </div>
       </form>
     </div>
-  )
+  );
 }
+

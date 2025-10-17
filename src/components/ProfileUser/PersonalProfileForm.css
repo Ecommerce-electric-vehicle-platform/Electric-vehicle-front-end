@@ -1,55 +1,37 @@
-/* 🧭 Tổng thể bố cục */
-.profile-form-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 40px 20px;
-  background-color: #f9fafb;
-  min-height: 100vh;
-}
-
 .profile-form-container {
-  width: 100%;
-  max-width: 600px;
-  background: #ffffff;
-  padding: 2rem;
-  border-radius: 15px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  max-width: 900px; 
+  margin: 0 auto;
+  padding: 24px;
 }
 
-/* 📝 Tiêu đề */
 .form-title {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 32px;
   text-align: center;
-  background: linear-gradient(135deg, #1e40af, #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 30px;
 }
 
-/* 🧾 Form */
 .profile-form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
 }
 
+/* Added align-items: flex-start to prevent fields from stretching */
 .form-field {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
 }
 
 .form-label {
   width: 160px;
-  text-align: right;
+  text-align: left; /* Changed from right to left alignment */
   font-size: 14px;
-  font-weight: 500;
-  color: #374151;
+  padding-top: 10px;
+  flex-shrink: 0;
 }
 
-/* ✍️ Input */
 .form-input {
   flex: 1;
   padding: 10px 14px;
@@ -57,27 +39,16 @@
   border-radius: 8px;
   font-size: 14px;
   outline: none;
-  background: white;
-  transition: all 0.2s ease;
-  color: #374151;
 }
 
 .form-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: #86efac;
+  box-shadow: 0 0 0 3px rgba(134, 239, 172, 0.1);
 }
 
-/* 🖼️ File input */
-.file-input {
-  padding: 6px;
-  background-color: #f9fafb;
-}
-
-/* 🧍 Gender group */
 .radio-group {
   display: flex;
   gap: 32px;
-  flex: 1;
 }
 
 .radio-label {
@@ -86,60 +57,38 @@
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #374151;
 }
 
 .radio-label input[type="radio"] {
   cursor: pointer;
-  accent-color: #2563eb;
 }
 
-/* 🟦 Nút Submit */
 .form-submit {
   display: flex;
   justify-content: center;
-  margin-top: 20px;
+  padding-top: 16px;
 }
 
 .submit-button {
-  background-color: #2563eb;
+  padding: 10px 48px;
+  background-color: #86efac;
   color: white;
   border: none;
-  padding: 12px 24px;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s;
 }
 
 .submit-button:hover {
-  background-color: #1e40af;
+  background-color: #4ade80;
 }
 
-/* 📱 Responsive */
-@media (max-width: 640px) {
-  .form-field {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .form-label {
-    text-align: left;
-    width: 100%;
-  }
-
-  .form-input {
-    width: 100%;
-  }
-}
-
-/* Input đỏ khi có lỗi */
 .input-error {
   border-color: red;
 }
 
-/* Text lỗi hiển thị dưới input */
 .error-text {
   color: red;
   font-size: 0.85rem;
@@ -150,7 +99,5 @@
 .input-wrapper {
   display: flex;
   flex-direction: column;
-  /* input trên, lỗi dưới */
   flex: 1;
-  /* chiếm hết không gian còn lại của form-field */
 }
