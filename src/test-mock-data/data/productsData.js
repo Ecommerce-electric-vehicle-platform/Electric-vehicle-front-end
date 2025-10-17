@@ -26,7 +26,17 @@ export const vehicleProducts = [
             "/src/assets/imgs_old/3.jpg",
             "/src/assets/imgs_old/4.jpg"
         ],
-        discount: 10
+        discount: 10,
+        seller: {
+            id: "seller_001",
+            name: "Nguyễn Văn Minh",
+            email: "minh.nguyen@email.com",
+            phone: "0901234567",
+            address: "123 Đường ABC, Quận 1, TP.HCM",
+            rating: 4.9,
+            totalSales: 156,
+            joinDate: "2023-06-15"
+        }
     },
     {
         id: 2,
@@ -70,7 +80,17 @@ export const vehicleProducts = [
         status: "available",
         createdAt: "2024-01-20",
         image: "/src/assets/imgs_old/3.jpg",
-        discount: 6
+        discount: 6,
+        seller: {
+            id: "seller_002",
+            name: "Trần Thị Hương",
+            email: "huong.tran@email.com",
+            phone: "0907654321",
+            address: "456 Đường XYZ, Quận Hải Châu, Đà Nẵng",
+            rating: 4.7,
+            totalSales: 89,
+            joinDate: "2023-08-20"
+        }
     },
     {
         id: 4,

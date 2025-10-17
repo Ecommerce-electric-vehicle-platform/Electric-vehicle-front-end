@@ -1,0 +1,226 @@
+/* DebugPanel.css */
+.debug-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+}
+
+.debug-panel {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    animation: debugSlideIn 0.3s ease;
+}
+
+@keyframes debugSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.debug-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e9ecef;
+    background-color: #f8f9fa;
+    border-radius: 12px 12px 0 0;
+}
+
+.debug-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.debug-close {
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.debug-close:hover {
+    background-color: #e9ecef;
+    color: #dc3545;
+}
+
+.debug-content {
+    padding: 24px;
+}
+
+.debug-section {
+    margin-bottom: 32px;
+}
+
+.debug-section:last-of-type {
+    margin-bottom: 24px;
+}
+
+.debug-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f8f9fa;
+}
+
+.debug-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.debug-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.debug-option:hover {
+    background-color: #e9ecef;
+    border-color: #007bff;
+}
+
+.debug-option input[type="radio"] {
+    margin: 0;
+}
+
+.debug-option input[type="radio"]:checked+.option-label {
+    color: #007bff;
+    font-weight: 600;
+}
+
+.debug-option:has(input[type="radio"]:checked) {
+    background-color: #e7f3ff;
+    border-color: #007bff;
+}
+
+.option-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #495057;
+    transition: all 0.2s ease;
+}
+
+.debug-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #e9ecef;
+}
+
+.debug-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+}
+
+.debug-btn-reset {
+    background-color: #6c757d;
+    color: white;
+}
+
+.debug-btn-reset:hover {
+    background-color: #545b62;
+    transform: translateY(-1px);
+}
+
+.debug-btn-close {
+    background-color: #007bff;
+    color: white;
+}
+
+.debug-btn-close:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+.debug-instructions {
+    background-color: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.debug-instructions h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 8px;
+}
+
+.debug-instructions ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.debug-instructions li {
+    font-size: 13px;
+    color: #6c757d;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .debug-panel {
+        margin: 10px;
+        max-height: 90vh;
+    }
+
+    .debug-content {
+        padding: 20px;
+    }
+
+    .debug-actions {
+        flex-direction: column;
+    }
+
+    .debug-btn {
+        width: 100%;
+    }
+}

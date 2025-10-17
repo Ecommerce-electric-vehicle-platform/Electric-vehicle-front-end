@@ -5,12 +5,8 @@ import {
     LogOut,
     ChevronDown,
     Heart,
-    History,
-    Settings,
-    Edit3,
-    Star,
-    Bookmark,
-    Coins
+    Package,
+    Plus
 } from "lucide-react"
 import "./UserDropdown.css"
 
@@ -33,35 +29,61 @@ export function UserDropdown({ userInfo, onLogout }) {
         }
     }, [])
 
-    // Menu items theo giao diện trong ảnh - chỉ hiển thị trong dropdown
-    const utilityItems = [
+    // Menu items theo giao diện trong ảnh
+    const accountItems = [
         {
-            id: 'saved-posts',
-            label: 'Tin đăng đã lưu',
+            id: 'profile',
+            label: 'Hồ sơ',
+            icon: <User className="menu-icon" />
+        },
+        {
+            id: 'wishlist',
+            label: 'Yêu thích',
             icon: <Heart className="menu-icon" />
         },
         {
-            id: 'saved-searches',
-            label: 'Tìm kiếm đã lưu',
-            icon: <Bookmark className="menu-icon" />
+            id: 'my-orders',
+            label: 'Đơn hàng của tôi',
+            icon: <Package className="menu-icon" />
+        }
+    ]
+
+    const postItems = [
+        {
+            id: 'post-management',
+            label: 'Quản lý tin đăng',
+            icon: <Plus className="menu-icon" />
         },
         {
-            id: 'view-history',
-            label: 'Lịch sử xem tin',
-            icon: <History className="menu-icon" />
-        },
-        {
-            id: 'my-reviews',
-            label: 'Đánh giá từ tôi',
-            icon: <Star className="menu-icon" />
+            id: 'create-new-post',
+            label: 'Tạo tin đăng mới',
+            icon: <Plus className="menu-icon" />
         }
     ]
 
 
     const handleMenuClick = (item) => {
-        // Chỉ hiển thị thông báo hoặc xử lý logic trong dropdown
-        console.log(`Clicked: ${item.label}`)
-        // Có thể thêm logic xử lý khác ở đây nếu cần
+        switch (item.id) {
+            case 'profile':
+                navigate('/profile')
+                break
+            case 'wishlist':
+                navigate('/favorites')
+                break
+            case 'my-orders':
+                navigate('/orders')
+                break
+            case 'post-management':
+                navigate('/seller-dashboard')
+                break
+            case 'create-new-post':
+                // TODO: Navigate to create post page
+                console.log('Navigate to create post')
+                break
+            default:
+                console.log(`Clicked: ${item.label}`)
+        }
+        setIsOpen(false)
     }
 
     const handleLogout = () => {
@@ -69,10 +91,6 @@ export function UserDropdown({ userInfo, onLogout }) {
         setIsOpen(false)
     }
 
-    const handleSettingsClick = () => {
-        navigate('/profile')
-        setIsOpen(false)
-    }
 
     return (
         <div className="user-dropdown" ref={dropdownRef}>
@@ -92,74 +110,43 @@ export function UserDropdown({ userInfo, onLogout }) {
             {/* Dropdown Menu */}
             {isOpen && (
                 <div className="dropdown-menu">
-                    {/* User Profile Section */}
-                    <div className="profile-section">
-                        <div className="profile-avatar-container">
-                            <div className="profile-avatar">
-                                <User className="profile-avatar-icon" />
-                            </div>
-                            <button className="edit-avatar-btn">
-                                <Edit3 className="edit-icon" />
+                    {/* Header */}
+                    <div className="dropdown-header">
+                        <span className="header-title">Tài khoản của tôi</span>
+                    </div>
+
+                    {/* Account Items */}
+                    <div className="dropdown-section">
+                        {accountItems.map((item) => (
+                            <button
+                                key={item.id}
+                                className="dropdown-item"
+                                onClick={() => handleMenuClick(item)}
+                            >
+                                <div className="item-icon">{item.icon}</div>
+                                <span className="item-label">{item.label}</span>
                             </button>
-                        </div>
-                        <div className="profile-name">{userInfo?.username}</div>
-                        <div className="profile-stats">
-                            <span>Người theo dõi 0</span>
-                            <span>Đang theo dõi 0</span>
-                        </div>
+                        ))}
                     </div>
 
-                    {/* Đồng Tốt Section */}
-                    <div className="coins-section">
-                        <div className="coins-header">
-                            <Coins className="coins-icon" />
-                            <span>Đồng Tốt</span>
-                        </div>
-                        <div className="coins-balance">0</div>
-                        <button className="recharge-btn">Nạp ngay</button>
+                    {/* Post Management Items */}
+                    <div className="dropdown-section">
+                        {postItems.map((item) => (
+                            <button
+                                key={item.id}
+                                className="dropdown-item"
+                                onClick={() => handleMenuClick(item)}
+                            >
+                                <div className="item-icon">{item.icon}</div>
+                                <span className="item-label">{item.label}</span>
+                            </button>
+                        ))}
                     </div>
 
-                    {/* Tiện ích Section */}
-                    <div className="utilities-section">
-                        <div className="section-title">Tiện ích</div>
-                        <div className="utility-items">
-                            {utilityItems.map((item) => (
-                                <button
-                                    key={item.id}
-                                    className="utility-item"
-                                    onClick={() => handleMenuClick(item)}
-                                >
-                                    <div className="utility-icon">{item.icon}</div>
-                                    <span className="utility-label">{item.label}</span>
-                                    <ChevronDown className="utility-arrow" />
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-
-                    {/* Settings & Logout */}
-                    <div className="menu-footer">
-                        <button className="menu-item settings-item" onClick={handleSettingsClick}>
-                            <div className="menu-item-content">
-                                <div className="menu-item-icon">
-                                    <Settings className="menu-icon" />
-                                </div>
-                                <div className="menu-item-text">
-                                    <div className="menu-item-label">Cài đặt</div>
-                                </div>
-                            </div>
-                        </button>
-
-                        <button className="menu-item logout-item" onClick={handleLogout}>
-                            <div className="menu-item-content">
-                                <div className="menu-item-icon">
-                                    <LogOut className="menu-icon" />
-                                </div>
-                                <div className="menu-item-text">
-                                    <div className="menu-item-label">Đăng xuất</div>
-                                </div>
-                            </div>
+                    {/* Logout */}
+                    <div className="dropdown-section">
+                        <button className="dropdown-item logout-item" onClick={handleLogout}>
+                            <span className="item-label">Đăng xuất</span>
                         </button>
                     </div>
                 </div>

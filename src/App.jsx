@@ -7,7 +7,11 @@ import { Seller } from "./pages/Seller/Seller";
 import { Favorites } from "./pages/Favorites/Favorites";
 import { Products } from "./pages/Products/Products";
 import { ComparePlans } from "./pages/ComparePlans/ComparePlans";
+import PlaceOrder from "./pages/PlaceOrder/PlaceOrder";
+import OrderTracking from "./pages/OrderTracking/OrderTracking";
+import OrderList from "./pages/OrderList/OrderList";
 import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
+import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
 import PageTransition from "./components/PageTransition/PageTransition";
 import { Header } from "./components/Header/Header";
 import { ScrollToTop } from "./components/ScrollToTop/ScrollToTop";
@@ -20,7 +24,7 @@ import { useState } from "react";
 function AppContent() {
   const location = useLocation();
   const hideChrome = location.pathname === "/signin" || location.pathname === "/signup";
-  const hideFooter = hideChrome || location.pathname === "/chat";
+  const hideFooter = hideChrome || location.pathname === "/chat" || location.pathname.startsWith("/place-order") || location.pathname.startsWith("/order-tracking");
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleGoLogin = () => {
@@ -82,6 +86,38 @@ function AppContent() {
           element={
             <PageTransition className="slide-right" showLoading={false}>
               <ProductDetail />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/place-order/:id"
+          element={
+            <PageTransition className="slide-left">
+              <PlaceOrder />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/order-tracking/:orderId"
+          element={
+            <PageTransition className="slide-right">
+              <OrderTracking />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <PageTransition className="fade-up">
+              <OrderList />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/seller-dashboard"
+          element={
+            <PageTransition className="fade-up">
+              <SellerDashboard />
             </PageTransition>
           }
         />

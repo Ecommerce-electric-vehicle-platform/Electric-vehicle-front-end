@@ -15,9 +15,13 @@ import {
     Send,
     ArrowLeft,
     Home,
-    ShoppingCart
+    ShoppingCart,
+    Zap,
+    Shield,
+    Info,
+    Eye
 } from 'lucide-react';
-import { vehicleProducts, batteryProducts, formatCurrency, formatDate } from '../../data/productsData';
+import { vehicleProducts, batteryProducts } from '../../test-mock-data/data/productsData';
 import { NotificationModal } from '../../components/NotificationModal/NotificationModal';
 import './ProductDetail.css';
 import { toggleFavorite, isFavorite } from '../../utils/favorites';
@@ -31,10 +35,27 @@ function ProductDetail() {
     const [hasPurchased] = useState(false); // Giả sử chưa mua sản phẩm này
     const [rating, setRating] = useState(0);
     const [review, setReview] = useState('');
-    const [reviews, setReviews] = useState([]);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [notificationType, setNotificationType] = useState('login'); // 'login' hoặc 'purchase'
     const [fav, setFav] = useState(false);
+    const [showPhoneNumber, setShowPhoneNumber] = useState(false);
+
+    // Helper functions
+    const formatPrice = (price) => {
+        return new Intl.NumberFormat("vi-VN", {
+            style: "currency",
+            currency: "VND",
+        }).format(price);
+    };
+
+    const formatDate = (dateString) => {
+        return new Intl.DateTimeFormat("vi-VN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        }).format(new Date(dateString));
+    };
+
 
     // Xác định trạng thái đăng nhập
     useEffect(() => {
@@ -63,43 +84,13 @@ function ProductDetail() {
         }
     };
 
-    // Xử lý gửi đánh giá
-    const handleSubmitReview = () => {
-        if (canReview && rating > 0 && review.trim()) {
-            const newReview = {
-                id: Date.now(),
-                user: 'Bạn',
-                rating: rating,
-                content: review,
-                time: 'Vừa xong'
-            };
-            setReviews([...reviews, newReview]);
-            setReview('');
-            setRating(0);
-        }
-    };
-
-    // Xử lý click sao
-    const handleStarClick = (starRating) => {
-        if (canReview) {
-            setRating(starRating);
-        } else {
-            handleRequireLogin();
-        }
-    };
 
     // Xử lý quay lại
     const handleGoBack = () => {
         navigate(-1); // Quay lại trang trước đó
     };
 
-    // Xử lý về trang chủ
-    const handleGoHome = () => {
-        navigate('/');
-    };
 
-    // Kiểm tra quyền đánh giá
-    const canReview = !isGuest && hasPurchased;
 
     // Xử lý mở modal thông báo
     const handleRequireLogin = () => {
@@ -148,374 +139,876 @@ function ProductDetail() {
     // Tạo danh sách ảnh (giả sử có nhiều ảnh)
     const productImages = product.images || [product.image];
 
+    // Market price data
+    const marketPriceData = {
+        lowest: 8260000,
+        highest: 10100000,
+        currentDiscount: 21,
+    };
+
+    const pricePercentage = ((product.price - marketPriceData.lowest) / (marketPriceData.highest - marketPriceData.lowest)) * 100;
+
     return (
-        <div className={`product-detail-page ${showNotificationModal ? 'modal-open' : ''}`}>
-            <div className="product-detail-container">
-                {/* Breadcrumb Navigation */}
-                <div className="breadcrumb-nav">
-                    <button className="breadcrumb-btn" onClick={handleGoHome}>
-                        <Home size={16} />
-                        <span>Trang chủ</span>
-                    </button>
-                    <span className="breadcrumb-separator">/</span>
-                    <button className="breadcrumb-btn" onClick={handleGoBack}>
-                        <ArrowLeft size={16} />
-                        <span>Quay lại</span>
-                    </button>
-                    <span className="breadcrumb-separator">/</span>
-                    <span className="breadcrumb-current">Chi tiết sản phẩm</span>
+        <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
+            {/* Header */}
+            <header
+                style={{
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 50,
+                    borderBottom: "1px solid #e5e7eb",
+                    backgroundColor: "rgba(255, 255, 255, 0.95)",
+                    backdropFilter: "blur(8px)",
+                }}
+            >
+                <div
+                    style={{
+                        maxWidth: "1280px",
+                        margin: "0 auto",
+                        display: "flex",
+                        height: "64px",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "0 16px",
+                    }}
+                >
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                        <button
+                            onClick={handleGoBack}
+                            style={{
+                                padding: "8px",
+                                border: "none",
+                                background: "transparent",
+                                cursor: "pointer",
+                                borderRadius: "6px",
+                            }}
+                        >
+                            <ChevronLeft />
+                        </button>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Zap />
+                            <span style={{ fontSize: "18px", fontWeight: 600 }}>GREENTRADE</span>
+                        </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <button
+                            onClick={() => {
+                                if (isGuest) {
+                                    handleRequireLogin();
+                                } else {
+                                    const added = toggleFavorite({ ...product, type: product.batteryType ? 'battery' : 'vehicle' });
+                                    setFav(added);
+                                }
+                            }}
+                            style={{
+                                padding: "8px",
+                                border: "none",
+                                background: "transparent",
+                                cursor: "pointer",
+                                color: fav ? "#ef4444" : "#6b7280",
+                            }}
+                        >
+                            <Heart fill={fav ? "#ef4444" : "none"} />
+                        </button>
+                        <button style={{ padding: "8px", border: "none", background: "transparent", cursor: "pointer" }}>
+                            <Share2 />
+                        </button>
+                        <button style={{ padding: "8px", border: "none", background: "transparent", cursor: "pointer" }}>
+                            <MoreHorizontal />
+                        </button>
+                    </div>
                 </div>
+            </header>
 
-                <div className="product-content">
-                    {/* Cột trái - Image Gallery */}
-                    <div className="product-left-column">
-                        {/* Image Gallery */}
-                        <div className="image-gallery">
-                            <div className="main-image-container">
-                                <img
-                                    src={productImages[currentImageIndex]}
-                                    alt={product.title}
-                                    className="main-image"
-                                />
+            <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 16px" }}>
+                {/* Breadcrumb */}
+                <nav
+                    style={{
+                        marginBottom: "24px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        fontSize: "14px",
+                        color: "#6b7280",
+                    }}
+                >
+                    <Home size={16} />
+                    <span>Trang chủ</span>
+                    <ChevronRight size={16} />
+                    <span>Quay lại</span>
+                    <ChevronRight size={16} />
+                    <span style={{ color: "#111827" }}>Chi tiết sản phẩm</span>
+                </nav>
 
-                                {/* Navigation arrows */}
-                                {productImages.length > 1 && (
-                                    <>
-                                        <button className="nav-arrow nav-arrow-left" onClick={prevImage}>
+                <div style={{ display: "grid", gap: "32px", gridTemplateColumns: "1fr", maxWidth: "100%" }}>
+                    <div style={{ display: "grid", gap: "32px", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+                        {/* Left Column */}
+                        <div style={{ minWidth: 0 }}>
+                            {/* Image Gallery */}
+                            <div
+                                style={{
+                                    borderRadius: "12px",
+                                    overflow: "hidden",
+                                    border: "1px solid #e5e7eb",
+                                    backgroundColor: "#fff",
+                                }}
+                            >
+                                <div style={{ position: "relative", paddingBottom: "75%", backgroundColor: "#f3f4f6" }}>
+                                    <img
+                                        src={productImages[currentImageIndex] || "/placeholder.svg"}
+                                        alt={`${product.title} - Image ${currentImageIndex + 1}`}
+                                        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                                    />
+                                    <div
+                                        style={{
+                                            position: "absolute",
+                                            right: "16px",
+                                            top: "16px",
+                                            borderRadius: "9999px",
+                                            backgroundColor: "rgba(255, 255, 255, 0.8)",
+                                            padding: "4px 12px",
+                                            fontSize: "14px",
+                                            fontWeight: 500,
+                                            backdropFilter: "blur(8px)",
+                                        }}
+                                    >
+                                        {currentImageIndex + 1}/{productImages.length}
+                                    </div>
+                                    <div
+                                        style={{
+                                            position: "absolute",
+                                            inset: 0,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            padding: "16px",
+                                        }}
+                                    >
+                                        <button
+                                            onClick={prevImage}
+                                            style={{
+                                                width: "40px",
+                                                height: "40px",
+                                                borderRadius: "9999px",
+                                                backgroundColor: "rgba(255, 255, 255, 0.8)",
+                                                border: "none",
+                                                cursor: "pointer",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                backdropFilter: "blur(8px)",
+                                            }}
+                                        >
                                             <ChevronLeft />
                                         </button>
-                                        <button className="nav-arrow nav-arrow-right" onClick={nextImage}>
+                                        <button
+                                            onClick={nextImage}
+                                            style={{
+                                                width: "40px",
+                                                height: "40px",
+                                                borderRadius: "9999px",
+                                                backgroundColor: "rgba(255, 255, 255, 0.8)",
+                                                border: "none",
+                                                cursor: "pointer",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                backdropFilter: "blur(8px)",
+                                            }}
+                                        >
                                             <ChevronRight />
                                         </button>
-                                    </>
-                                )}
-
-                                {/* Image counter */}
-                                <div className="image-counter">
-                                    {currentImageIndex + 1}/{productImages.length}
-                                </div>
-
-                                {/* Action buttons */}
-                                <div className="image-actions">
-                                    <button className="image-action-btn">
-                                        <Share2 />
-                                    </button>
-                                    <button className="image-action-btn">
-                                        <MoreHorizontal />
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Thumbnails */}
-                            {productImages.length > 1 && (
-                                <div className="thumbnails">
-                                    {productImages.map((image, index) => (
+                            <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px" }}>
+                                {productImages.map((image, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setCurrentImageIndex(index)}
+                                        style={{
+                                            position: "relative",
+                                            paddingBottom: "100%",
+                                            overflow: "hidden",
+                                            borderRadius: "8px",
+                                            border: index === currentImageIndex ? "2px solid #10b981" : "2px solid transparent",
+                                            cursor: "pointer",
+                                            background: "transparent",
+                                        }}
+                                    >
                                         <img
-                                            key={index}
-                                            src={image}
-                                            alt={`${product.title} ${index + 1}`}
-                                            className={`thumbnail ${index === currentImageIndex ? 'active' : ''}`}
-                                            onClick={() => setCurrentImageIndex(index)}
+                                            src={image || "/placeholder.svg"}
+                                            alt={`Thumbnail ${index + 1}`}
+                                            style={{
+                                                position: "absolute",
+                                                top: 0,
+                                                left: 0,
+                                                width: "100%",
+                                                height: "100%",
+                                                objectFit: "cover",
+                                            }}
                                         />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Mô tả chi tiết */}
-                        <div className="product-description">
-                            <h3>Mô tả chi tiết</h3>
-                            <div className="description-content">
-                                <p>{product.description}</p>
-                                <ul className="description-list">
-                                    <li>Tình trạng: {product.conditionLevel}</li>
-                                    <li>Năm sản xuất: {product.manufactureYear}</li>
-                                    <li>Thời gian sử dụng: {product.usedDuration}</li>
-                                    {product.batteryType && <li>Loại pin: {product.batteryType}</li>}
-                                    {product.range && <li>Tầm xa: {product.range}</li>}
-                                </ul>
-                            </div>
-                        </div>
-
-                        {/* Thông tin chi tiết */}
-                        <div className="product-specs">
-                            <h3>Thông tin chi tiết</h3>
-                            <div className="specs-grid">
-                                <div className="spec-item">
-                                    <span className="spec-label">Hãng:</span>
-                                    <span className="spec-value">{product.brand}</span>
-                                </div>
-                                <div className="spec-item">
-                                    <span className="spec-label">Model:</span>
-                                    <span className="spec-value">{product.model}</span>
-                                </div>
-                                <div className="spec-item">
-                                    <span className="spec-label">Tình trạng:</span>
-                                    <span className="spec-value">{product.conditionLevel}</span>
-                                </div>
-                                <div className="spec-item">
-                                    <span className="spec-label">Năm sản xuất:</span>
-                                    <span className="spec-value">{product.manufactureYear}</span>
-                                </div>
-                                <div className="spec-item">
-                                    <span className="spec-label">Thời gian sử dụng:</span>
-                                    <span className="spec-value">{product.usedDuration}</span>
-                                </div>
-                                {product.batteryType && (
-                                    <div className="spec-item">
-                                        <span className="spec-label">Loại pin:</span>
-                                        <span className="spec-value">{product.batteryType}</span>
-                                    </div>
-                                )}
-                                {product.range && (
-                                    <div className="spec-item">
-                                        <span className="spec-label">Tầm xa:</span>
-                                        <span className="spec-value">{product.range}</span>
-                                    </div>
-                                )}
-                                <div className="spec-item">
-                                    <span className="spec-label">Địa điểm:</span>
-                                    <span className="spec-value">{product.locationTrading}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Cột phải - Thông tin sản phẩm và người bán */}
-                    <div className="product-right-column">
-                        {/* Product Header - Di chuyển từ trên xuống */}
-                        <div className="product-header-right">
-                            <div className="product-actions-top">
-                                <button
-                                    className={`save-btn ${isGuest ? 'disabled' : ''}`}
-                                    onClick={isGuest ? handleRequireLogin : () => { const added = toggleFavorite({ ...product, type: product.batteryType ? 'battery' : 'vehicle' }); setFav(added); }}
-                                >
-                                    <Heart className={`action-icon ${fav ? 'heart-active' : ''}`} color={fav ? '#dc3545' : 'currentColor'} fill={fav ? '#dc3545' : 'none'} />
-                                    <span>{fav ? 'Đã lưu' : 'Lưu'}</span>
-                                </button>
+                                    </button>
+                                ))}
                             </div>
 
-                            <div className="product-title-section">
-                                <h1 className="product-title">{product.title}</h1>
-                                <p className="product-subtitle">{product.brand} • {product.model}</p>
-                                <div className="product-price">{formatCurrency(product.price)}</div>
-                            </div>
-
-                            <div className="product-meta">
-                                <div className="location-info">
-                                    <MapPin className="meta-icon" />
-                                    <span>{product.locationTrading}</span>
-                                </div>
-                                <div className="update-time">
-                                    <Clock className="meta-icon" />
-                                    <span>Cập nhật {formatDate(product.createdAt)}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Giá xe mới trên thị trường */}
-                        <div className="market-price-section">
-                            <div className="market-price-header">
-                                <h3>Giá xe mới trên thị trường</h3>
-                                <div className="info-icon">ⓘ</div>
-                            </div>
-                            <p className="market-price-note">Giá thực tế của loại xe này trên thị trường</p>
-
-                            <div className="price-comparison">
-                                <div className="price-item">
-                                    <div className="price-label">Giá thấp nhất</div>
-                                    <div className="price-value low-price">8.26 tr</div>
-                                </div>
-
-                                <div className="price-item current">
-                                    <div className="price-label">Giá hiện tại</div>
-                                    <div className="price-value current-price">6.5 tr</div>
-                                    <div className="price-badge">Tiết kiệm 21%</div>
-                                </div>
-
-                                <div className="price-item">
-                                    <div className="price-label">Giá cao nhất</div>
-                                    <div className="price-value high-price">10.1 tr</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Nút mua hàng */}
-                        <div className="buy-section">
-                            <button
-                                className={`buy-btn ${isGuest ? 'disabled' : ''}`}
-                                onClick={isGuest ? handleRequireLogin : () => alert('Mua ngay - hành động dành cho user đăng nhập')}
+                            {/* Mô tả chi tiết */}
+                            <div
+                                style={{
+                                    marginTop: "32px",
+                                    padding: "24px",
+                                    borderRadius: "12px",
+                                    border: "1px solid #e5e7eb",
+                                    backgroundColor: "#fff",
+                                }}
                             >
-                                <ShoppingCart className="btn-icon" />
-                                <span>Mua ngay</span>
-                            </button>
+                                <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "16px" }}>Mô tả chi tiết</h3>
+                                <p style={{ color: "#6b7280", lineHeight: 1.6, marginBottom: "16px" }}>
+                                    Xe điện {product.brand} {product.model} với thiết kế thể thao, phù hợp cho người dùng yêu thích tốc độ.
+                                </p>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            paddingBottom: "8px",
+                                            borderBottom: "1px solid #f3f4f6",
+                                        }}
+                                    >
+                                        <span style={{ color: "#6b7280" }}>Tình trạng:</span>
+                                        <span style={{ fontWeight: 600 }}>Tốt 80%</span>
+                                    </div>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            paddingBottom: "8px",
+                                            borderBottom: "1px solid #f3f4f6",
+                                        }}
+                                    >
+                                        <span style={{ color: "#6b7280" }}>Năm sản xuất:</span>
+                                        <span style={{ fontWeight: 600 }}>{product.manufactureYear}</span>
+                                    </div>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            paddingBottom: "8px",
+                                            borderBottom: "1px solid #f3f4f6",
+                                        }}
+                                    >
+                                        <span style={{ color: "#6b7280" }}>Thời gian sử dụng:</span>
+                                        <span style={{ fontWeight: 600 }}>{product.usedDuration.toLocaleString()} km</span>
+                                    </div>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            paddingBottom: "8px",
+                                            borderBottom: "1px solid #f3f4f6",
+                                        }}
+                                    >
+                                        <span style={{ color: "#6b7280" }}>Loại pin:</span>
+                                        <span style={{ fontWeight: 600 }}>Lithium-ion</span>
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                        <span style={{ color: "#6b7280" }}>Tầm xa:</span>
+                                        <span style={{ fontWeight: 600 }}>100 km</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Thông tin chi tiết */}
+                            <div
+                                style={{
+                                    marginTop: "24px",
+                                    padding: "24px",
+                                    borderRadius: "12px",
+                                    border: "1px solid #e5e7eb",
+                                    backgroundColor: "#fff",
+                                }}
+                            >
+                                <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "16px" }}>Thông tin chi tiết</h3>
+                                <div
+                                    style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}
+                                >
+                                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+                                        <span style={{ color: "#6b7280" }}>Hãng:</span>
+                                        <span style={{ fontWeight: 500 }}>{product.brand}</span>
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+                                        <span style={{ color: "#6b7280" }}>Model:</span>
+                                        <span style={{ fontWeight: 500 }}>{product.model}</span>
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+                                        <span style={{ color: "#6b7280" }}>Tình trạng:</span>
+                                        <span style={{ fontWeight: 500 }}>Tốt 80%</span>
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+                                        <span style={{ color: "#6b7280" }}>Năm sản xuất:</span>
+                                        <span style={{ fontWeight: 500 }}>{product.manufactureYear}</span>
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+                                        <span style={{ color: "#6b7280" }}>Thời gian sử dụng:</span>
+                                        <span style={{ fontWeight: 500 }}>{product.usedDuration.toLocaleString()} km</span>
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+                                        <span style={{ color: "#6b7280" }}>Loại pin:</span>
+                                        <span style={{ fontWeight: 500 }}>Lithium-ion</span>
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+                                        <span style={{ color: "#6b7280" }}>Tầm xa:</span>
+                                        <span style={{ fontWeight: 500 }}>100 km</span>
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+                                        <span style={{ color: "#6b7280" }}>Địa điểm:</span>
+                                        <span style={{ fontWeight: 500 }}>{product.locationTrading}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Thông tin người bán */}
-                        <div className="seller-section">
-                            <div className="contact-buttons">
-                                <button
-                                    className={`contact-btn phone-btn ${isGuest ? 'disabled' : ''}`}
-                                    onClick={isGuest ? handleRequireLogin : () => alert('Hiện số điện thoại người bán: 093682****')}
+                        {/* Right Column */}
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ position: "sticky", top: "96px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                                {/* Pricing Card */}
+                                <div
+                                    style={{
+                                        padding: "24px",
+                                        borderRadius: "12px",
+                                        border: "1px solid #e5e7eb",
+                                        backgroundColor: "#fff",
+                                    }}
                                 >
-                                    <Phone className="btn-icon" />
-                                    <span>{isGuest ? 'Hiện số 093682****' : 'Hiện số 093682****'}</span>
-                                </button>
-                                <button
-                                    className={`contact-btn chat-btn ${isGuest ? 'disabled' : ''}`}
-                                    onClick={isGuest ? handleRequireLogin : () => { window.location.href = '/chat'; }}
-                                >
-                                    <MessageCircle className="btn-icon" />
-                                    <span>Chat</span>
-                                </button>
-                            </div>
-
-                            <div className="seller-profile">
-                                <div className="seller-avatar">
-                                    <User />
-                                </div>
-                                <div className="seller-info">
-                                    <div className="seller-name">
-                                        <span>Người bán</span>
-                                        <div className="verified-badge">✓</div>
-                                    </div>
-                                    <div className="seller-activity">Hoạt động 7 giờ trước</div>
-                                    <div className="seller-stats">
-                                        <span>Phản hồi: 86%</span>
-                                        <span>77 Đã bán</span>
-                                        <span>4.6 ⭐ 23 đánh giá</span>
-                                    </div>
-                                    <button className="view-profile-btn">Xem trang</button>
-                                </div>
-                            </div>
-
-                            {/* Quick chat options */}
-                            <div className="quick-chat">
-                                <div className="quick-chat-options">
-                                    <button
-                                        className={`quick-chat-btn ${isGuest ? 'disabled' : ''}`}
-                                        onClick={isGuest ? handleRequireLogin : undefined}
+                                    <div
+                                        style={{
+                                            marginBottom: "16px",
+                                            display: "flex",
+                                            alignItems: "start",
+                                            justifyContent: "space-between",
+                                        }}
                                     >
-                                        Sản phẩm này còn không?
-                                    </button>
-                                    <button
-                                        className={`quick-chat-btn ${isGuest ? 'disabled' : ''}`}
-                                        onClick={isGuest ? handleRequireLogin : undefined}
-                                    >
-                                        Bạn có ship hàng không?
-                                    </button>
-                                    <button
-                                        className={`quick-chat-btn ${isGuest ? 'disabled' : ''}`}
-                                        onClick={isGuest ? handleRequireLogin : undefined}
-                                    >
-                                        Sản phẩm còn bảo hành không?
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Đánh giá */}
-                        <div className="reviews-section">
-                            <h3>Đánh giá sản phẩm</h3>
-
-                            {/* Thông báo về chính sách đánh giá */}
-                            {!canReview && (
-                                <div className="review-policy-notice">
-                                    <p>
-                                        {isGuest
-                                            ? "Đăng nhập để có thể mua hàng và đánh giá"
-                                            : "Chỉ người đã mua sản phẩm mới có thể đánh giá"
-                                        }
-                                    </p>
-                                </div>
-                            )}
-
-                            {reviews.length === 0 ? (
-                                <div className="no-reviews">
-                                    <Star className="review-icon" />
-                                    <p>Chưa có đánh giá nào. Hãy để lại đánh giá cho sản phẩm này.</p>
-                                </div>
-                            ) : (
-                                <div className="reviews-list">
-                                    {reviews.map(review => (
-                                        <div key={review.id} className="review-item">
-                                            <div className="review-avatar">
-                                                <User />
-                                            </div>
-                                            <div className="review-content">
-                                                <div className="review-header">
-                                                    <span className="review-user">{review.user}</span>
-                                                    <div className="review-rating">
-                                                        {[...Array(5)].map((_, index) => (
-                                                            <Star
-                                                                key={index}
-                                                                className={`star ${index < review.rating ? 'filled' : 'empty'}`}
-                                                                size={16}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    <span className="review-time">{review.time}</span>
-                                                </div>
-                                                <p className="review-text">{review.content}</p>
-                                            </div>
+                                        <div>
+                                            <h2 style={{ marginBottom: "4px", fontSize: "24px", fontWeight: 700 }}>{product.title}</h2>
+                                            <p style={{ fontSize: "14px", color: "#6b7280" }}>
+                                                {product.brand} • {product.model}
+                                            </p>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            <div className="review-input">
-                                <div className="review-avatar">
-                                    <User />
-                                </div>
-                                <div className="review-form">
-                                    <div className="rating-input">
-                                        <span className="rating-label">Đánh giá:</span>
-                                        <div className="stars">
-                                            {[...Array(5)].map((_, index) => (
-                                                <Star
-                                                    key={index}
-                                                    className={`star ${index < rating ? 'filled' : 'empty'} ${canReview ? 'clickable' : 'disabled'}`}
-                                                    size={20}
-                                                    onClick={() => handleStarClick(index + 1)}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="review-text-input">
-                                        <textarea
-                                            placeholder={canReview
-                                                ? "Viết đánh giá của bạn..."
-                                                : (isGuest
-                                                    ? "Đăng nhập để viết đánh giá..."
-                                                    : "Chỉ người đã mua sản phẩm mới có thể đánh giá..."
-                                                )
-                                            }
-                                            value={review}
-                                            onChange={(e) => setReview(e.target.value)}
-                                            disabled={!canReview}
-                                            className={!canReview ? 'disabled' : ''}
-                                            onClick={!canReview ? handleRequireLogin : undefined}
-                                            rows={3}
-                                        />
                                         <button
-                                            className="submit-btn"
-                                            onClick={canReview ? handleSubmitReview : handleRequireLogin}
-                                            disabled={canReview && (!review.trim() || rating === 0)}
+                                            onClick={() => {
+                                                if (isGuest) {
+                                                    handleRequireLogin();
+                                                } else {
+                                                    const added = toggleFavorite({ ...product, type: product.batteryType ? 'battery' : 'vehicle' });
+                                                    setFav(added);
+                                                }
+                                            }}
+                                            style={{
+                                                padding: "8px",
+                                                border: "none",
+                                                background: "transparent",
+                                                cursor: "pointer",
+                                                color: fav ? "#ef4444" : "#6b7280",
+                                            }}
                                         >
-                                            <Send />
-                                            {canReview
-                                                ? 'Gửi đánh giá'
-                                                : (isGuest
-                                                    ? 'Đăng nhập để mua hàng và đánh giá'
-                                                    : 'Chỉ người đã mua mới được đánh giá'
-                                                )
-                                            }
+                                            <Heart fill={fav ? "#ef4444" : "none"} />
+                                        </button>
+                                    </div>
+
+                                    <div style={{ marginBottom: "8px", fontSize: "32px", fontWeight: 700, color: "#10b981" }}>
+                                        {formatPrice(product.price)}
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            marginBottom: "8px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                            fontSize: "14px",
+                                            color: "#6b7280",
+                                        }}
+                                    >
+                                        <MapPin size={16} />
+                                        <span>{product.locationTrading}</span>
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            marginBottom: "16px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                            fontSize: "14px",
+                                            color: "#6b7280",
+                                        }}
+                                    >
+                                        <Clock size={16} />
+                                        <span>Cập nhật {formatDate(product.createdAt)}</span>
+                                    </div>
+
+                                    <div style={{ height: "1px", backgroundColor: "#e5e7eb", margin: "16px 0" }} />
+
+                                    {/* Market Price */}
+                                    <div
+                                        style={{ marginBottom: "16px", borderRadius: "8px", backgroundColor: "#f9fafb", padding: "16px" }}
+                                    >
+                                        <div
+                                            style={{
+                                                marginBottom: "8px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                                fontSize: "14px",
+                                            }}
+                                        >
+                                            <span style={{ fontWeight: 500 }}>Giá xe mới trên thị trường</span>
+                                            <Info size={16} />
+                                        </div>
+                                        <p style={{ marginBottom: "12px", fontSize: "12px", color: "#6b7280" }}>
+                                            Giá thực tế của loại xe này trên thị trường
+                                        </p>
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                                fontSize: "14px",
+                                            }}
+                                        >
+                                            <div>
+                                                <p style={{ fontSize: "12px", color: "#6b7280" }}>Giá thấp nhất</p>
+                                                <p style={{ fontWeight: 600 }}>{(marketPriceData.lowest / 1000000).toFixed(1)} tr</p>
+                                            </div>
+                                            <div style={{ textAlign: "right" }}>
+                                                <p style={{ fontSize: "12px", color: "#6b7280" }}>Giá cao nhất</p>
+                                                <p style={{ fontWeight: 600 }}>{(marketPriceData.highest / 1000000).toFixed(1)} tr</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Price Progress */}
+                                    <div style={{ marginBottom: "24px" }}>
+                                        <div
+                                            style={{
+                                                marginBottom: "8px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                                fontSize: "14px",
+                                            }}
+                                        >
+                                            <span style={{ fontWeight: 500 }}>Giá hiện tại</span>
+                                            <span
+                                                style={{
+                                                    padding: "2px 8px",
+                                                    borderRadius: "4px",
+                                                    backgroundColor: "rgba(16, 185, 129, 0.1)",
+                                                    color: "#10b981",
+                                                    fontSize: "12px",
+                                                    fontWeight: 600,
+                                                }}
+                                            >
+                                                Giá kiến {marketPriceData.currentDiscount}%
+                                            </span>
+                                        </div>
+                                        <div
+                                            style={{
+                                                position: "relative",
+                                                height: "8px",
+                                                width: "100%",
+                                                overflow: "hidden",
+                                                borderRadius: "9999px",
+                                                backgroundColor: "#f3f4f6",
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    height: "100%",
+                                                    background: "linear-gradient(to right, #10b981, #3b82f6)",
+                                                    width: `${pricePercentage}%`,
+                                                    transition: "width 0.3s",
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={isGuest ? handleRequireLogin : () => navigate(`/place-order/${product.id}`, { state: { product } })}
+                                        style={{
+                                            marginBottom: "12px",
+                                            width: "100%",
+                                            padding: "12px 24px",
+                                            borderRadius: "8px",
+                                            border: "none",
+                                            backgroundColor: "#10b981",
+                                            color: "#fff",
+                                            fontSize: "16px",
+                                            fontWeight: 600,
+                                            cursor: "pointer",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: "8px",
+                                        }}
+                                    >
+                                        <Zap />
+                                        Mua ngay
+                                    </button>
+
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                                        <button
+                                            onClick={() => setShowPhoneNumber(!showPhoneNumber)}
+                                            style={{
+                                                padding: "12px 16px",
+                                                borderRadius: "8px",
+                                                border: "1px solid #e5e7eb",
+                                                backgroundColor: "transparent",
+                                                cursor: "pointer",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: "8px",
+                                                fontSize: "14px",
+                                                fontWeight: 500,
+                                            }}
+                                        >
+                                            <Phone size={16} />
+                                            {showPhoneNumber ? "093682****" : "Hiện số"}
+                                        </button>
+                                        <button
+                                            onClick={isGuest ? handleRequireLogin : () => { window.location.href = '/chat'; }}
+                                            style={{
+                                                padding: "12px 16px",
+                                                borderRadius: "8px",
+                                                border: "1px solid #fbbf24",
+                                                backgroundColor: "rgba(251, 191, 36, 0.1)",
+                                                color: "#f59e0b",
+                                                cursor: "pointer",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: "8px",
+                                                fontSize: "14px",
+                                                fontWeight: 500,
+                                            }}
+                                        >
+                                            <MessageCircle size={16} />
+                                            Chat
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Seller Info */}
+                                <div
+                                    style={{
+                                        padding: "24px",
+                                        borderRadius: "12px",
+                                        border: "1px solid #e5e7eb",
+                                        backgroundColor: "#fff",
+                                    }}
+                                >
+                                    <div style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "16px" }}>
+                                        <div
+                                            style={{
+                                                width: "48px",
+                                                height: "48px",
+                                                overflow: "hidden",
+                                                borderRadius: "9999px",
+                                                backgroundColor: "#f3f4f6",
+                                            }}
+                                        >
+                                            <img
+                                                src="/professional-seller-avatar.jpg"
+                                                alt="Seller"
+                                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ marginBottom: "4px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                                <h3 style={{ fontWeight: 600 }}>Người bán</h3>
+                                                <span
+                                                    style={{
+                                                        height: "20px",
+                                                        padding: "0 8px",
+                                                        borderRadius: "4px",
+                                                        backgroundColor: "rgba(16, 185, 129, 0.1)",
+                                                        color: "#10b981",
+                                                        fontSize: "12px",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "4px",
+                                                    }}
+                                                >
+                                                    <Shield size={12} />
+                                                    Đã xác minh
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: "14px", color: "#6b7280" }}>Hoạt động 7 giờ trước</p>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            marginBottom: "16px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            fontSize: "14px",
+                                        }}
+                                    >
+                                        <span style={{ color: "#6b7280" }}>Phản hồi:</span>
+                                        <span style={{ fontWeight: 600 }}>86%</span>
+                                    </div>
+                                    <div style={{ marginBottom: "16px", fontSize: "14px", color: "#6b7280" }}>77 Đã bán</div>
+                                    <div style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "4px" }}>
+                                        <span style={{ fontWeight: 600 }}>4.6</span>
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <Star key={star} size={16} fill={star <= 4 ? "#fbbf24" : "none"} />
+                                        ))}
+                                        <span style={{ marginLeft: "4px", fontSize: "14px", color: "#6b7280" }}>(23 đánh giá)</span>
+                                    </div>
+
+                                    <button
+                                        style={{
+                                            width: "100%",
+                                            padding: "8px 16px",
+                                            borderRadius: "8px",
+                                            border: "1px solid #e5e7eb",
+                                            backgroundColor: "transparent",
+                                            cursor: "pointer",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: "8px",
+                                            fontSize: "14px",
+                                            fontWeight: 500,
+                                        }}
+                                    >
+                                        <Eye size={16} />
+                                        Xem trang
+                                    </button>
+                                </div>
+
+                                {/* FAQ */}
+                                <div
+                                    style={{
+                                        padding: "24px",
+                                        borderRadius: "12px",
+                                        border: "1px solid #e5e7eb",
+                                        backgroundColor: "#fff",
+                                    }}
+                                >
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                        <button
+                                            style={{
+                                                width: "100%",
+                                                padding: "8px 16px",
+                                                borderRadius: "8px",
+                                                border: "1px solid #e5e7eb",
+                                                backgroundColor: "transparent",
+                                                cursor: "pointer",
+                                                textAlign: "left",
+                                                fontSize: "14px",
+                                            }}
+                                        >
+                                            Sản phẩm này còn không?
+                                        </button>
+                                        <button
+                                            style={{
+                                                width: "100%",
+                                                padding: "8px 16px",
+                                                borderRadius: "8px",
+                                                border: "1px solid #e5e7eb",
+                                                backgroundColor: "transparent",
+                                                cursor: "pointer",
+                                                textAlign: "left",
+                                                fontSize: "14px",
+                                            }}
+                                        >
+                                            Bạn có ship hàng không?
+                                        </button>
+                                        <button
+                                            style={{
+                                                width: "100%",
+                                                padding: "8px 16px",
+                                                borderRadius: "8px",
+                                                border: "1px solid #e5e7eb",
+                                                backgroundColor: "transparent",
+                                                cursor: "pointer",
+                                                textAlign: "left",
+                                                fontSize: "14px",
+                                            }}
+                                        >
+                                            Sản phẩm còn bảo hành không?
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Safety Tips */}
+                                <div
+                                    style={{
+                                        padding: "24px",
+                                        borderRadius: "12px",
+                                        border: "1px solid rgba(16, 185, 129, 0.2)",
+                                        backgroundColor: "rgba(16, 185, 129, 0.05)",
+                                    }}
+                                >
+                                    <h3
+                                        style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px", fontWeight: 600 }}
+                                    >
+                                        <Shield size={16} />
+                                        Lưu ý an toàn
+                                    </h3>
+                                    <ul
+                                        style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "8px",
+                                            fontSize: "14px",
+                                            color: "#6b7280",
+                                            paddingLeft: 0,
+                                            listStyle: "none",
+                                        }}
+                                    >
+                                        <li>• Luôn kiểm tra xe trực tiếp</li>
+                                        <li>• Xác minh giấy tờ pháp lý</li>
+                                        <li>• Không chuyển tiền trước</li>
+                                        <li>• Gặp tại nơi công cộng</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
+            </main>
+
+            {/* Đánh giá sản phẩm */}
+            <div
+                style={{
+                    marginTop: "24px",
+                    padding: "24px",
+                    borderRadius: "12px",
+                    border: "1px solid #e5e7eb",
+                    backgroundColor: "#fff",
+                }}
+            >
+                <h2 style={{ fontSize: "20px", fontWeight: 600, marginBottom: "16px" }}>Đánh giá sản phẩm</h2>
+
+                <div
+                    style={{
+                        marginBottom: "24px",
+                        borderRadius: "8px",
+                        border: "1px solid rgba(16, 185, 129, 0.3)",
+                        backgroundColor: "rgba(16, 185, 129, 0.05)",
+                        padding: "16px",
+                    }}
+                >
+                    <div
+                        style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#6b7280" }}
+                    >
+                        <Info size={16} />
+                        <span>Chỉ người đã mua sản phẩm mới có thể đánh giá</span>
+                    </div>
+                </div>
+
+                <div
+                    style={{
+                        marginBottom: "24px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        padding: "32px 0",
+                    }}
+                >
+                    <div style={{ marginBottom: "12px", color: "#d1d5db" }}>
+                        <Star size={48} />
+                    </div>
+                    <p style={{ textAlign: "center", color: "#6b7280" }}>
+                        Chưa có đánh giá nào. Hãy để lại đánh giá cho sản phẩm này.
+                    </p>
+                </div>
+
+                <div style={{ height: "1px", backgroundColor: "#e5e7eb", margin: "24px 0" }} />
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <div>
+                        <label
+                            style={{
+                                marginBottom: "8px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                fontSize: "14px",
+                                fontWeight: 500,
+                            }}
+                        >
+                            <User size={16} />
+                            Đánh giá:
+                        </label>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                    key={star}
+                                    onClick={() => setRating(star)}
+                                    style={{
+                                        border: "none",
+                                        background: "transparent",
+                                        cursor: "pointer",
+                                        color: star <= rating ? "#10b981" : "#d1d5db",
+                                        transition: "transform 0.2s",
+                                    }}
+                                >
+                                    <Star size={20} fill={star <= rating ? "#10b981" : "none"} />
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style={{ marginBottom: "8px", display: "block", fontSize: "14px", fontWeight: 500 }}>
+                            Nhận xét của bạn:
+                        </label>
+                        <textarea
+                            value={review}
+                            onChange={(e) => setReview(e.target.value)}
+                            placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..."
+                            style={{
+                                minHeight: "120px",
+                                width: "100%",
+                                borderRadius: "8px",
+                                border: "1px solid #d1d5db",
+                                backgroundColor: "#fff",
+                                padding: "12px 16px",
+                                fontSize: "14px",
+                                outline: "none",
+                            }}
+                        />
+                    </div>
+
+                    <button
+                        disabled
+                        style={{
+                            width: "100%",
+                            padding: "12px 24px",
+                            borderRadius: "8px",
+                            border: "none",
+                            backgroundColor: "#d1d5db",
+                            color: "#fff",
+                            fontSize: "16px",
+                            fontWeight: 600,
+                            cursor: "not-allowed",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "8px",
+                        }}
+                    >
+                        <Zap />
+                        Chỉ người đã mua mới được đánh giá
+                    </button>
                 </div>
             </div>
 

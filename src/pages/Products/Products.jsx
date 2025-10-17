@@ -4,7 +4,7 @@ import { Battery, Car, MapPin, Search, Filter, SortAsc, ArrowRight } from "lucid
 import "../../components/VehicleShowcase/VehicleShowcase.css";
 import "./Products.css";
 
-import { vehicleProducts, batteryProducts, formatCurrency } from "../../data/productsData";
+import { vehicleProducts, batteryProducts, formatCurrency } from "../../test-mock-data/data/productsData";
 
 export function Products() {
     const navigate = useNavigate();
