@@ -6,6 +6,7 @@ import PersonalProfileForm from "./PersonalProfileForm"
 import "./PersonalProfilePage.css"
 import ChangePassword from "./ChangePassword"
 import UpgradeToSeller from "./UpgradeToSeller"
+import PersonalEWallet from "./PersonalEWallet"
 
 export default function PersonalProfilePage() {
   const [activeSection, setActiveSection] = useState("Personal profile")
@@ -44,9 +45,7 @@ export default function PersonalProfilePage() {
         {activeSection === "My order" && (
           <div>My order content coming soon...</div>
         )}
-        {activeSection === "Personal E-wallet" && (
-          <div>Personal E-wallet content coming soon...</div>
-        )}
+        {activeSection === "Personal E-wallet" && <PersonalEWallet />}
         {activeSection === "Upgrade to Seller" && <UpgradeToSeller />}
       </main>
     </div>

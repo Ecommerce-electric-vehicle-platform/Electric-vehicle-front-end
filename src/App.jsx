@@ -9,6 +9,8 @@ import { Products } from "./pages/Products/Products";
 import { ComparePlans } from "./pages/ComparePlans/ComparePlans";
 import PlaceOrder from "./pages/PlaceOrder/PlaceOrder";
 import OrderTracking from "./pages/OrderTracking/OrderTracking";
+import WalletDeposit from "./pages/WalletDeposit/WalletDeposit";
+import VnPayReturn from "./pages/WalletDeposit/VnPayReturn";
 import OrderList from "./pages/OrderList/OrderList";
 import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
 import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
@@ -166,6 +168,23 @@ function AppContent() {
           element={
             <PageTransition className="fade-up">
               <Chat />
+            </PageTransition>
+          }
+        />
+        {/* 💳 Wallet deposit & VNPay return */}
+        <Route
+          path="/wallet/deposit"
+          element={
+            <PageTransition className="fade-up">
+              <WalletDeposit />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/vnpay/return"
+          element={
+            <PageTransition className="fade-up">
+              <VnPayReturn />
             </PageTransition>
           }
         />

@@ -101,10 +101,12 @@ export function ProductCarousel({ title, showCategoryToggle = false }) {
                                         )}
                                 </div>
 
-                                {/* 📍 Địa điểm */}
-                                <div className="product-details">
-                                    <MapPin className="detail-icon" />
-                                    <span>{product.locationTrading}</span>
+                                {/* 📍 Địa điểm đẹp hơn */}
+                                <div className="product-location-card">
+                                    <div className="location-icon-wrap">
+                                        <MapPin className="location-icon" />
+                                    </div>
+                                    <div className="location-text">{product.locationTrading}</div>
                                 </div>
 
                                 {/* 👁️ Nút xem chi tiết */}
