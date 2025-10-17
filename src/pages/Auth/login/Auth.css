@@ -1,14 +1,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap");
 
-* {
+.auth-page * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-body,
-input,
-button {
+.auth-page body,
+.auth-page input,
+.auth-page button {
     font-family: "Inter", "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
@@ -16,7 +16,7 @@ button {
 }
 
 /* ============== CONTAINER ============== */
-.container {
+.auth-page .container {
     position: relative;
     width: 100%;
     min-height: 100vh;
@@ -111,7 +111,7 @@ button {
     pointer-events: none;
 }
 
-.signin-signup {
+.auth-page .signin-signup {
     position: absolute;
     top: 50%;
     left: 70%;
@@ -125,7 +125,7 @@ button {
 }
 
 /* form với glassmorphism effect tối - khung đen */
-form {
+.auth-page form {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -149,7 +149,7 @@ form {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-form:hover {
+.auth-page form:hover {
     transform: translateY(-2px);
     box-shadow:
         0 30px 60px 0 rgba(0, 0, 0, 0.5),
@@ -295,7 +295,7 @@ form:hover {
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.input-field::before {
+.auth-page .input-field::before {
     content: '';
     position: absolute;
     top: 0;
@@ -310,7 +310,7 @@ form:hover {
     left: 100%;
 }
 
-.input-field:hover {
+.auth-page .input-field:hover {
     border-color: rgba(107, 228, 164, 0.4);
     transform: translateY(-3px);
     box-shadow:
@@ -331,7 +331,7 @@ form:hover {
             rgba(255, 255, 255, 0.08) 100%);
 }
 
-.input-field i {
+.auth-page .input-field i {
     margin-right: 12px;
     color: #6be4a4;
     font-size: 1.1rem;
@@ -343,7 +343,7 @@ form:hover {
     color: #8ef5c4;
 }
 
-.input-field input {
+.auth-page .input-field input {
     flex: 1;
     background: none;
     border: none;
@@ -366,7 +366,7 @@ form:hover {
     transition: all 0.3s ease;
 }
 
-.input-field:focus-within input::placeholder {
+.auth-page .input-field:focus-within input::placeholder {
     transform: translateY(-20px);
     font-size: 0.8rem;
     color: #6be4a4;
@@ -381,7 +381,7 @@ form:hover {
     transform: translateY(-2px);
 }
 
-.input-field.error i {
+.auth-page .input-field.error i {
     color: #ff4d4f !important;
     animation: pulse 0.5s ease-in-out;
 }
@@ -525,7 +525,7 @@ form:hover {
 }
 
 /* ============== BUTTONS ============== */
-.btn {
+.auth-page .btn {
     width: 100%;
     height: 48px;
     border: none;
@@ -554,7 +554,7 @@ form:hover {
     padding: 0 20px;
 }
 
-.btn::before {
+.auth-page .btn::before {
     content: '';
     position: absolute;
     top: 0;
@@ -565,11 +565,11 @@ form:hover {
     transition: left 0.5s;
 }
 
-.btn:hover::before {
+.auth-page .btn:hover::before {
     left: 100%;
 }
 
-.btn:hover {
+.auth-page .btn:hover {
     transform: translateY(-4px);
     box-shadow:
         0 12px 35px rgba(107, 228, 164, 0.5),
@@ -578,7 +578,7 @@ form:hover {
     border-color: rgba(107, 228, 164, 0.5);
 }
 
-.btn:active {
+.auth-page .btn:active {
     transform: translateY(-2px);
     box-shadow:
         0 8px 25px rgba(107, 228, 164, 0.4),
@@ -586,7 +586,7 @@ form:hover {
 }
 
 /* ============== DIVIDER ============== */
-.divider {
+.auth-page .divider {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -602,8 +602,8 @@ form:hover {
     position: relative;
 }
 
-.divider::before,
-.divider::after {
+.auth-page .divider::before,
+.auth-page .divider::after {
     content: "";
     flex: 1;
     height: 1px;
@@ -612,7 +612,7 @@ form:hover {
 }
 
 /* ============== GOOGLE BUTTON ============== */
-.google-btn {
+.auth-page .google-btn {
     background: linear-gradient(135deg,
             rgba(255, 255, 255, 0.15) 0%,
             rgba(255, 255, 255, 0.1) 100%);
@@ -642,7 +642,7 @@ form:hover {
     margin: 16px 0;
 }
 
-.google-btn::before {
+.auth-page .google-btn::before {
     content: '';
     position: absolute;
     top: 0;
@@ -653,11 +653,11 @@ form:hover {
     transition: left 0.5s;
 }
 
-.google-btn:hover::before {
+.auth-page .google-btn:hover::before {
     left: 100%;
 }
 
-.google-btn:hover {
+.auth-page .google-btn:hover {
     transform: translateY(-4px);
     box-shadow:
         0 12px 35px rgba(0, 0, 0, 0.4),
@@ -668,25 +668,25 @@ form:hover {
             rgba(255, 255, 255, 0.15) 100%);
 }
 
-.google-btn:active {
+.auth-page .google-btn:active {
     transform: translateY(-2px);
     box-shadow:
         0 8px 25px rgba(0, 0, 0, 0.3),
         0 4px 15px rgba(107, 228, 164, 0.1);
 }
 
-.google-btn img {
+.auth-page .google-btn img {
     width: 22px;
     height: 22px;
     transition: transform 0.3s ease;
 }
 
-.google-btn:hover img {
+.auth-page .google-btn:hover img {
     transform: scale(1.1);
 }
 
 /* ============== AGREEMENT ============== */
-.agree {
+.auth-page .agree {
     font-size: 0.9rem;
     color: #ffffff;
     margin-top: 12px;
@@ -699,24 +699,24 @@ form:hover {
     line-height: 1.5;
 }
 
-.agree input {
+.auth-page .agree input {
     margin-right: 8px;
     transform: scale(1.1);
     cursor: pointer;
 }
 
-.agree a {
+.auth-page .agree a {
     color: #6be4a4;
     font-weight: 700;
     text-decoration: none;
 }
 
-.agree a:hover {
+.auth-page .agree a:hover {
     text-decoration: underline;
 }
 
 /* ⚠️ Cảnh báo checkbox */
-.agree-wrapper {
+.auth-page .agree-wrapper {
     position: relative;
     display: flex;
     flex-direction: column;
@@ -724,7 +724,7 @@ form:hover {
     margin-top: 10px;
 }
 
-.agree-error {
+.auth-page .agree-error {
     width: 100%;
     max-width: 100%;
     background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%);
@@ -747,7 +747,7 @@ form:hover {
     overflow: hidden;
 }
 
-.agree-error::before {
+.auth-page .agree-error::before {
     content: '';
     position: absolute;
     top: 0;
@@ -776,7 +776,7 @@ form:hover {
 }
 
 /* ============== BACKEND ERROR MESSAGE ============== */
-.backend-error {
+.auth-page .backend-error {
     width: 100%;
     max-width: 100%;
     background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
@@ -799,7 +799,7 @@ form:hover {
     overflow: hidden;
 }
 
-.backend-error::before {
+.auth-page .backend-error::before {
     content: '';
     position: absolute;
     top: 0;
@@ -810,14 +810,14 @@ form:hover {
     border-radius: 2px 0 0 2px;
 }
 
-.backend-error i {
+.auth-page .backend-error i {
     color: #ff6b6b;
     font-size: 1rem;
     animation: pulse 1s ease-in-out infinite;
 }
 
 /* ============== PANELS ============== */
-.panels-container {
+.auth-page .panels-container {
     position: absolute;
     inset: 0;
     display: grid;
@@ -825,7 +825,7 @@ form:hover {
     z-index: 2;
 }
 
-.panel {
+.auth-page .panel {
     position: relative;
     z-index: 2;
     display: flex;
@@ -837,7 +837,7 @@ form:hover {
     transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.panel .content {
+.auth-page .panel .content {
     max-width: 420px;
     z-index: 5;
     color: #fff;
@@ -883,7 +883,7 @@ form:hover {
     box-shadow: 0 4px 15px rgba(0, 168, 107, 0.1);
 }
 
-.panel .btn {
+.auth-page .panel .btn {
     pointer-events: all;
     position: relative;
     z-index: 10;
@@ -902,7 +902,7 @@ form:hover {
         0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.panel .btn:hover {
+.auth-page .panel .btn:hover {
     background: linear-gradient(135deg,
             rgba(255, 255, 255, 0.95) 0%,
             rgba(0, 168, 107, 0.1) 100%);
@@ -947,53 +947,53 @@ form:hover {
 }
 
 /* trạng thái mặc định (SignIn) */
-.left-panel {
+.auth-page .left-panel {
     pointer-events: all;
     opacity: 1;
 }
 
-.right-panel {
+.auth-page .right-panel {
     pointer-events: none;
     opacity: 0;
 }
 
 /* ============== SIGN-UP MODE ============== */
-.container.sign-up-mode::before {
+.auth-page .container.sign-up-mode::before {
     transform: translate(100%, -50%);
     right: 52%;
 }
 
-.container.sign-up-mode .signin-signup {
+.auth-page .container.sign-up-mode .signin-signup {
     left: 30%;
 }
 
-.container.sign-up-mode form.sign-up-form {
+.auth-page .container.sign-up-mode form.sign-up-form {
     opacity: 1;
     z-index: 2;
 }
 
-.container.sign-up-mode form.sign-in-form {
+.auth-page .container.sign-up-mode form.sign-in-form {
     opacity: 0;
     z-index: 1;
 }
 
-.container.sign-up-mode .left-panel {
+.auth-page .container.sign-up-mode .left-panel {
     pointer-events: none;
     opacity: 0;
 }
 
-.container.sign-up-mode .left-panel .image,
-.container.sign-up-mode .left-panel .content {
+.auth-page .container.sign-up-mode .left-panel .image,
+.auth-page .container.sign-up-mode .left-panel .content {
     transform: translateX(-800px);
 }
 
-.container.sign-up-mode .right-panel {
+.auth-page .container.sign-up-mode .right-panel {
     pointer-events: all;
     opacity: 1;
 }
 
-.container.sign-up-mode .right-panel .image,
-.container.sign-up-mode .right-panel .content {
+.auth-page .container.sign-up-mode .right-panel .image,
+.auth-page .container.sign-up-mode .right-panel .content {
     transform: translateX(0);
 }
 

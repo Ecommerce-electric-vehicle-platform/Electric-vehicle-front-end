@@ -3,25 +3,17 @@ import axiosInstance from "./axiosInstance";
 
 const profileApi = {
   uploadProfile: (userId, formData) => {
-    const token = localStorage.getItem("token");
+    if (!userId) throw new Error("User ID is missing — please login again.");
 
     return axiosInstance.post(`/api/v1/buyer/${userId}/upload-profile`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        "Authorization": `Bearer ${token}`,
-      },
+      headers: { "Content-Type": "multipart/form-data" },
     });
   },
 
   updateProfile: (userId, profileData) => {
-    const token = localStorage.getItem("token");
+    if (!userId) throw new Error("User ID is missing — please login again.");
 
-    return axiosInstance.put(`/api/v1/buyer/${userId}/update-profile`, profileData, {
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-    });
+    return axiosInstance.put(`/api/v1/buyer/${userId}/update-profile`, profileData);
   },
 };
 
