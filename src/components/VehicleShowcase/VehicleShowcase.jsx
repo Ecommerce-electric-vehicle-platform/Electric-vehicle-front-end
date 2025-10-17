@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Battery, Car, MapPin, Search, Eye, Heart, ArrowRight, Filter, SortAsc, Zap } from "lucide-react"
 import "./VehicleShowcase.css"
 import { useNavigate } from "react-router-dom"
-import { vehicleProducts, batteryProducts, formatCurrency } from "../../data/productsData"
+import { vehicleProducts, batteryProducts, formatCurrency } from "../../test-mock-data/data/productsData"
 
 import placeholder from "../../assets/imgs/placeholder.svg"
 

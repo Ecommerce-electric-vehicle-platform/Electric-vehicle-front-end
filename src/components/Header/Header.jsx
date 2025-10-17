@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -8,6 +6,9 @@ import {
   Heart,
   MessageCircle,
   Bell,
+  Package,
+  User,
+  ChevronDown,
 } from "lucide-react";
 import { CategorySidebar } from '../CategorySidebar/CategorySidebar';
 import { UserDropdown } from '../UserDropdown/UserDropdown';
@@ -15,7 +16,6 @@ import { UpgradeNotificationModal } from '../UpgradeNotificationModal/UpgradeNot
 import "./Header.css";
 
 export function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hamburgerMenuOpen, setHamburgerMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
@@ -166,6 +166,9 @@ export function Header() {
       case 'chat':
         navigate('/chat');
         break;
+      case 'orders':
+        navigate('/orders');
+        break;
       case 'bell':
         // TODO: Navigate to notifications page
         console.log('Navigate to notifications');
@@ -176,122 +179,115 @@ export function Header() {
   };
 
   return (
-    <header className="header">
-      <div className="header-container">
-        {/* 🍔 Hamburger Menu Button */}
-        <button
-          className="hamburger-menu-btn"
-          onClick={toggleHamburgerMenu}
-          aria-label="Mở menu danh mục"
-        >
-          <Menu className="hamburger-icon" />
-        </button>
-
-        {/* 🌿 Logo */}
-        <div className="header-logo" onClick={handleLogoClick}>
-          <h1 className="logo-text">
-            <span className="logo-green">GREEN</span>
-            <span className="logo-trade">TRADE</span>
-          </h1>
-        </div>
-
-        {/* 🌎 Navigation */}
-        <nav className="header-nav">
-          <button className="nav-link" onClick={() => handleSmartNavigation("vehicleshowcase-section")}>
-            Sản phẩm
+    <nav className="navbar">
+      <div className="navbar-container">
+        <div className="navbar-content">
+          {/* Hamburger Menu */}
+          <button
+            className="navbar-hamburger"
+            onClick={toggleHamburgerMenu}
+            aria-label="Mở menu danh mục"
+          >
+            <Menu className="navbar-hamburger-icon" />
           </button>
-          <button className="nav-link" onClick={() => handleSmartNavigation("upgrade-section")}>
-            Đăng tin
-          </button>
-          <button className="nav-link" onClick={() => handleSmartNavigation("footer")}>
-            Về chúng tôi
-          </button>
-        </nav>
 
-        {/* 🧭 Actions */}
-        <div className="header-actions">
-          {isAuthenticated ? (
-            /* 👤 User Actions */
-            <div className="user-actions">
-              {/* Icons */}
-              <div className="action-icons">
+          {/* Logo */}
+          <div className="navbar-logo" onClick={handleLogoClick}>
+            <span className="navbar-logo-green">GREEN</span>
+            <span className="navbar-logo-orange">TRADE</span>
+          </div>
+
+          {/* Navigation Menu */}
+          <nav className="navbar-nav">
+            <button className="nav-link" onClick={() => handleSmartNavigation("vehicleshowcase-section")}>
+              Sản phẩm
+            </button>
+            <button className="nav-link" onClick={() => handleSmartNavigation("upgrade-section")}>
+              Đăng tin
+            </button>
+            <button className="nav-link" onClick={() => handleSmartNavigation("footer")}>
+              Về chúng tôi
+            </button>
+          </nav>
+
+          {/* Spacer */}
+          <div className="navbar-spacer" />
+
+          {/* User Actions */}
+          <div className="navbar-actions">
+            {isAuthenticated ? (
+              <>
+                {/* Icon Buttons */}
                 <button
-                  className="action-icon-btn"
+                  className="navbar-icon-button"
                   onClick={() => handleIconClick('heart')}
                   aria-label="Yêu thích"
                 >
-                  <Heart className="action-icon" />
+                  <Heart className="navbar-icon" />
                 </button>
-
                 <button
-                  className="action-icon-btn"
+                  className="navbar-icon-button"
                   onClick={() => handleIconClick('chat')}
                   aria-label="Tin nhắn"
                 >
-                  <MessageCircle className="action-icon" />
+                  <MessageCircle className="navbar-icon" />
                 </button>
-
                 <button
-                  className="action-icon-btn notification-btn"
+                  className="navbar-icon-button"
+                  onClick={() => handleIconClick('orders')}
+                  aria-label="Đơn hàng"
+                >
+                  <Package className="navbar-icon" />
+                </button>
+                <button
+                  className="navbar-notification-button"
                   onClick={() => handleIconClick('bell')}
                   aria-label="Thông báo"
                 >
-                  <Bell className="action-icon" />
+                  <Bell className="navbar-icon" />
                   {notificationCount > 0 && (
-                    <span className="notification-badge">{notificationCount}</span>
+                    <span className="navbar-notification-badge">{notificationCount}</span>
                   )}
                 </button>
-              </div>
 
-              {/* Người bán Buttons */}
-              <div className="seller-buttons">
+                {/* Action Buttons */}
                 <button
-                  className="btn btn-seller-secondary"
+                  className="navbar-action-button"
                   onClick={() => handleSellerAction('Quản lý tin')}
                 >
-                  Quản lý tin
+                  QUẢN LÝ TIN
                 </button>
                 <button
-                  className="btn btn-seller-primary"
+                  className="navbar-action-button"
                   onClick={() => handleSellerAction('Đăng tin')}
                 >
-                  Đăng tin
+                  ĐĂNG TIN
                 </button>
-              </div>
 
-              {/* User Dropdown */}
-              <UserDropdown
-                userInfo={userInfo}
-                onLogout={handleLogout}
-              />
-            </div>
-          ) : (
-            /* 👤 Auth buttons */
-            <div className="auth-buttons">
-              <button
-                className="btn btn-ghost"
-                onClick={() => handleNavigate("/signin")}
-              >
-                Đăng nhập
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={() => handleNavigate("/signup")}
-              >
-                Đăng ký
-              </button>
-            </div>
-          )}
+                {/* User Avatar Dropdown */}
+                <UserDropdown
+                  userInfo={userInfo}
+                  onLogout={handleLogout}
+                />
+              </>
+            ) : (
+              <>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => handleNavigate("/signin")}
+                >
+                  Đăng nhập
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleNavigate("/signup")}
+                >
+                  Đăng ký
+                </button>
+              </>
+            )}
+          </div>
         </div>
-
-        {/* 📱 Mobile Toggle */}
-        <button
-          className="mobile-menu-btn"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? <X className="menu-icon" /> : <Menu className="menu-icon" />}
-        </button>
       </div>
 
       {/* 🍔 Hamburger Menu Sidebar */}
@@ -318,6 +314,6 @@ export function Header() {
         onUpgrade={handleUpgrade}
         featureName={upgradeFeatureName}
       />
-    </header>
+    </nav>
   );
 }

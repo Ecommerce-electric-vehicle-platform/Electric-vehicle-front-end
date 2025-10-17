@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import Slider from "react-slick"
 import { ArrowLeft, ArrowRight, Eye, MapPin } from "lucide-react"
 import "./FeaturedSlider.css"
-import { vehicleProducts, batteryProducts, formatCurrency } from "../../data/productsData"
+import { vehicleProducts, batteryProducts, formatCurrency } from "../../test-mock-data/data/productsData"
 
 export function FeaturedSlider() {
     const navigate = useNavigate()

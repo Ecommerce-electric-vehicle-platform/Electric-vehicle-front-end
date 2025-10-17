@@ -7,7 +7,7 @@ import {
     vehicleProducts,
     batteryProducts,
     formatCurrency,
-} from "../../data/productsData";
+} from "../../test-mock-data/data/productsData";
 
 export function ProductCarousel({ title, showCategoryToggle = false }) {
     const [activeCategory, setActiveCategory] = useState("vehicles");
