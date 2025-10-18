@@ -191,6 +191,42 @@
     color: #94a3b8;
 }
 
+/* New location card */
+.product-location-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: .9rem 1rem;
+    margin: .6rem 0 1rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.location-icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+    border: 1px solid #e5e7eb;
+}
+
+.location-icon {
+    width: 18px;
+    height: 18px;
+    color: #10b981;
+}
+
+.location-text {
+    font-weight: 700;
+    color: #0f172a;
+}
+
 /* 🟢 Product Button */
 .product-btn {
     width: 100%;

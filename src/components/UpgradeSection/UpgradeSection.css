@@ -68,6 +68,35 @@
     margin: 0 auto;
 }
 
+/* Billing toggle */
+.billing-toggle {
+    display: flex;
+    gap: .5rem;
+    justify-content: center;
+    background: rgba(255, 255, 255, .15);
+    padding: .4rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .25);
+    margin: 0 auto 1.5rem;
+    width: fit-content;
+}
+
+.toggle-btn {
+    background: transparent;
+    color: #e8f5e8;
+    padding: .5rem .9rem;
+    border-radius: 999px;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+.toggle-btn.active {
+    background: #ffffff;
+    color: #065f46;
+    border-color: rgba(0, 0, 0, .05);
+    box-shadow: 0 6px 18px rgba(255, 255, 255, .25);
+}
+
 .package-card {
     background: #ffffff;
     border-radius: 24px;
@@ -216,12 +245,11 @@
 
 .feature-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 0.8rem 0;
+    gap: .5rem;
+    padding: 0.75rem 0;
     border-bottom: 1px solid #eef2f7;
     transition: all 0.3s ease;
-    position: relative;
 }
 
 .feature-item:last-child {
@@ -230,11 +258,9 @@
 
 .feature-item:hover {
     background: rgba(16, 185, 129, 0.08);
-    padding-left: 0.8rem;
-    border-radius: 12px;
+    padding-left: 0.6rem;
+    border-radius: 10px;
     border-left: 4px solid #10b981;
-    transform: translateX(5px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.18);
 }
 
 .feature-text {
@@ -247,14 +273,39 @@
     letter-spacing: 0.01em;
 }
 
-.check-icon {
-    color: #10b981;
+/* Dynamic price */
+.dynamic-price {
+    margin: 0 0 1rem 0;
+}
+
+.price-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border: 1px dashed #d1d5db;
+    border-radius: 10px;
+}
+
+.duration-label {
+    font-weight: 700;
+    color: #065f46;
+}
+
+.price-value {
     font-weight: 900;
-    font-size: 1.2rem;
-    margin-left: 1rem;
-    flex-shrink: 0;
-    text-shadow: none;
-    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    color: #065f46;
+}
+
+.save-ribbon {
+    margin-top: .5rem;
+    display: inline-block;
+    background: linear-gradient(45deg, #22c55e, #16a34a);
+    color: #fff;
+    padding: .25rem .5rem;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: .8rem;
 }
 
 /* Tagline and tier prices for better readability */

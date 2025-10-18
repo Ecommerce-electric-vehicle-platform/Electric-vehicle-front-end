@@ -57,65 +57,33 @@ export function UpgradeConfirmationModal({ isOpen, onClose, onConfirm }) {
                         <div className="header-icon">
                             <Crown className="crown-icon" />
                         </div>
-                        <h2 className="upgrade-confirmation-title">Trở thành Người bán ngay</h2>
+                        <h2 className="upgrade-confirmation-title">Trở thành Người bán</h2>
                         <button className="upgrade-confirmation-close" onClick={onClose}>
                             <X size={20} />
                         </button>
                     </div>
                 </div>
 
-                {/* Content */}
+                {/* Content: phiên bản cô đọng */}
                 <div className="upgrade-confirmation-content">
                     <div className="main-message">
-                        <h3 className="message-title">Mở bán sản phẩm của bạn ngay hôm nay</h3>
-                        <p className="message-description">Đăng bán tức thì, ưu tiên hiển thị và tăng uy tín cửa hàng.</p>
+                        <h3 className="message-title">Đăng bán chỉ trong vài bước</h3>
+                        <p className="message-description">Ưu tiên hiển thị • Tăng uy tín • Tiếp cận khách sẵn nhu cầu</p>
                     </div>
 
-                    <div className="benefits-section">
-                        <h4 className="benefits-title">Lợi ích chính:</h4>
-                        <div className="benefits-grid">
-                            <div className="benefit-item">
-                                <div className="benefit-icon"><DollarSign className="icon" /></div>
-                                <div className="benefit-content">
-                                    <h5>Đăng bán ngay</h5>
-                                    <p>Tiếp cận khách có nhu cầu thực, chốt đơn nhanh</p>
-                                </div>
-                            </div>
-
-                            <div className="benefit-item">
-                                <div className="benefit-icon"><Users className="icon" /></div>
-                                <div className="benefit-content">
-                                    <h5>Ưu tiên hiển thị</h5>
-                                    <p>Vị trí nổi bật giúp tăng lượt xem và liên hệ</p>
-                                </div>
-                            </div>
-
-                            <div className="benefit-item">
-                                <div className="benefit-icon"><TrendingUp className="icon" /></div>
-                                <div className="benefit-content">
-                                    <h5>Uy tín cửa hàng</h5>
-                                    <p>Gắn nhãn người bán, tăng độ tin cậy khi giao dịch</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="cta-section">
-                        <p className="cta-text"><strong>Bắt đầu ngay — chỉ vài bước để trở thành Người bán.</strong></p>
-                        <p className="cta-subtext">Bạn có thể nâng cấp lại bất cứ lúc nào trong trang cá nhân.</p>
+                    <div className="benefits-grid">
+                        <div className="benefit-item"><div className="benefit-icon"><DollarSign className="icon" /></div><div className="benefit-content"><h5>Đăng bán ngay</h5><p>Nhanh chóng tiếp cận khách hàng</p></div></div>
+                        <div className="benefit-item"><div className="benefit-icon"><Users className="icon" /></div><div className="benefit-content"><h5>Ưu tiên hiển thị</h5><p>Tăng lượt xem & liên hệ</p></div></div>
+                        <div className="benefit-item"><div className="benefit-icon"><TrendingUp className="icon" /></div><div className="benefit-content"><h5>Uy tín cửa hàng</h5><p>Gắn nhãn người bán</p></div></div>
                     </div>
 
                     <div className="upgrade-confirmation-actions">
                         <button className="upgrade-confirmation-btn-primary" onClick={handleConfirm}>
-                            <span>Nâng cấp để đăng bán ngay</span>
+                            <span>Nâng cấp ngay</span>
                             <ArrowRight size={16} />
                         </button>
-                        <button
-                            className="upgrade-confirmation-btn-secondary"
-                            onClick={handleCompare}
-                            style={{ background: '#f9fafb', color: '#065f46', border: '1px dashed #10b981' }}
-                        >
-                            So sánh các gói
+                        <button className="upgrade-confirmation-btn-secondary" onClick={handleCompare}>
+                            So sánh gói
                         </button>
                     </div>
                 </div>
