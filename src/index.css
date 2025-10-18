@@ -136,6 +136,13 @@ html {
     scroll-behavior: smooth;
 }
 
+/* Offset sections so sticky header doesn't cover anchors when scrolling */
+#vehicleshowcase-section,
+#upgrade-section,
+#footer {
+    scroll-margin-top: 80px; /* approximate navbar height incl. shadow */
+}
+
 /* Focus styles */
 *:focus {
     outline: 2px solid var(--primary-500);

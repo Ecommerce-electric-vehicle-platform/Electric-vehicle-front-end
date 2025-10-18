@@ -43,7 +43,7 @@ axiosInstance.interceptors.request.use((config) => {
   const isPublic = publicEndpoints.some((url) => config.url.includes(url));
 
   if (!isPublic) {
-    const token = localStorage.getItem("accessToken");
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
