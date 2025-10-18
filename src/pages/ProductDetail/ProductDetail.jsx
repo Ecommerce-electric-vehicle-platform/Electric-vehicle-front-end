@@ -212,10 +212,10 @@ function ProductDetail() {
                         </button>
                         <button style={{ padding: "8px", border: "none", background: "transparent", cursor: "pointer" }}>
                             <Share2 />
-                        </button>
+                    </button>
                         <button style={{ padding: "8px", border: "none", background: "transparent", cursor: "pointer" }}>
                             <MoreHorizontal />
-                        </button>
+                    </button>
                     </div>
                 </div>
             </header>
@@ -244,7 +244,7 @@ function ProductDetail() {
                     <div style={{ display: "grid", gap: "32px", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
                         {/* Left Column */}
                         <div style={{ minWidth: 0 }}>
-                            {/* Image Gallery */}
+                        {/* Image Gallery */}
                             <div
                                 style={{
                                     borderRadius: "12px",
@@ -318,13 +318,13 @@ function ProductDetail() {
                                         >
                                             <ChevronRight />
                                         </button>
-                                    </div>
+                                </div>
                                 </div>
                             </div>
 
                             {/* Thumbnails */}
                             <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px" }}>
-                                {productImages.map((image, index) => (
+                                    {productImages.map((image, index) => (
                                     <button
                                         key={index}
                                         onClick={() => setCurrentImageIndex(index)}
@@ -352,7 +352,7 @@ function ProductDetail() {
                                         />
                                     </button>
                                 ))}
-                            </div>
+                        </div>
 
                             {/* Mô tả chi tiết */}
                             <div
@@ -379,7 +379,7 @@ function ProductDetail() {
                                     >
                                         <span style={{ color: "#6b7280" }}>Tình trạng:</span>
                                         <span style={{ fontWeight: 600 }}>Tốt 80%</span>
-                                    </div>
+                                </div>
                                     <div
                                         style={{
                                             display: "flex",
@@ -390,7 +390,7 @@ function ProductDetail() {
                                     >
                                         <span style={{ color: "#6b7280" }}>Năm sản xuất:</span>
                                         <span style={{ fontWeight: 600 }}>{product.manufactureYear}</span>
-                                    </div>
+                                </div>
                                     <div
                                         style={{
                                             display: "flex",
@@ -401,7 +401,7 @@ function ProductDetail() {
                                     >
                                         <span style={{ color: "#6b7280" }}>Thời gian sử dụng:</span>
                                         <span style={{ fontWeight: 600 }}>{product.usedDuration.toLocaleString()} km</span>
-                                    </div>
+                                </div>
                                     <div
                                         style={{
                                             display: "flex",
@@ -416,9 +416,9 @@ function ProductDetail() {
                                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                                         <span style={{ color: "#6b7280" }}>Tầm xa:</span>
                                         <span style={{ fontWeight: 600 }}>100 km</span>
-                                    </div>
-                                </div>
                             </div>
+                        </div>
+                    </div>
 
                             {/* Thông tin chi tiết */}
                             <div
@@ -437,35 +437,35 @@ function ProductDetail() {
                                     <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
                                         <span style={{ color: "#6b7280" }}>Hãng:</span>
                                         <span style={{ fontWeight: 500 }}>{product.brand}</span>
-                                    </div>
+                            </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
                                         <span style={{ color: "#6b7280" }}>Model:</span>
                                         <span style={{ fontWeight: 500 }}>{product.model}</span>
-                                    </div>
+                            </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
                                         <span style={{ color: "#6b7280" }}>Tình trạng:</span>
                                         <span style={{ fontWeight: 500 }}>Tốt 80%</span>
-                                    </div>
+                                </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
                                         <span style={{ color: "#6b7280" }}>Năm sản xuất:</span>
                                         <span style={{ fontWeight: 500 }}>{product.manufactureYear}</span>
-                                    </div>
+                                </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
                                         <span style={{ color: "#6b7280" }}>Thời gian sử dụng:</span>
                                         <span style={{ fontWeight: 500 }}>{product.usedDuration.toLocaleString()} km</span>
-                                    </div>
+                            </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
                                         <span style={{ color: "#6b7280" }}>Loại pin:</span>
                                         <span style={{ fontWeight: 500 }}>Lithium-ion</span>
-                                    </div>
+                        </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
                                         <span style={{ color: "#6b7280" }}>Tầm xa:</span>
                                         <span style={{ fontWeight: 500 }}>100 km</span>
-                                    </div>
+                            </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
                                         <span style={{ color: "#6b7280" }}>Địa điểm:</span>
                                         <span style={{ fontWeight: 500 }}>{product.locationTrading}</span>
-                                    </div>
+                                </div>
                                 </div>
                             </div>
                         </div>
@@ -496,7 +496,7 @@ function ProductDetail() {
                                                 {product.brand} • {product.model}
                                             </p>
                                         </div>
-                                        <button
+                                <button
                                             onClick={() => {
                                                 if (isGuest) {
                                                     handleRequireLogin();
@@ -514,8 +514,8 @@ function ProductDetail() {
                                             }}
                                         >
                                             <Heart fill={fav ? "#ef4444" : "none"} />
-                                        </button>
-                                    </div>
+                                </button>
+                            </div>
 
                                     <div style={{ marginBottom: "8px", fontSize: "32px", fontWeight: 700, color: "#10b981" }}>
                                         {formatPrice(product.price)}
@@ -533,7 +533,7 @@ function ProductDetail() {
                                     >
                                         <MapPin size={16} />
                                         <span>{product.locationTrading}</span>
-                                    </div>
+                                </div>
 
                                     <div
                                         style={{
@@ -632,8 +632,8 @@ function ProductDetail() {
                                                     transition: "width 0.3s",
                                                 }}
                                             />
-                                        </div>
-                                    </div>
+                                </div>
+                            </div>
 
                                     <button
                                         onClick={isGuest ? handleRequireLogin : () => navigate(`/place-order/${product.id}`, { state: { product } })}
@@ -659,7 +659,7 @@ function ProductDetail() {
                                     </button>
 
                                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                                        <button
+                                    <button
                                             onClick={() => setShowPhoneNumber(!showPhoneNumber)}
                                             style={{
                                                 padding: "12px 16px",
@@ -677,8 +677,8 @@ function ProductDetail() {
                                         >
                                             <Phone size={16} />
                                             {showPhoneNumber ? "093682****" : "Hiện số"}
-                                        </button>
-                                        <button
+                                    </button>
+                                    <button
                                             onClick={isGuest ? handleRequireLogin : () => { window.location.href = '/chat'; }}
                                             style={{
                                                 padding: "12px 16px",
@@ -697,8 +697,8 @@ function ProductDetail() {
                                         >
                                             <MessageCircle size={16} />
                                             Chat
-                                        </button>
-                                    </div>
+                                    </button>
+                                </div>
                                 </div>
 
                                 {/* Seller Info */}
@@ -725,7 +725,7 @@ function ProductDetail() {
                                                 alt="Seller"
                                                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                             />
-                                        </div>
+                                                    </div>
                                         <div style={{ flex: 1 }}>
                                             <div style={{ marginBottom: "4px", display: "flex", alignItems: "center", gap: "8px" }}>
                                                 <h3 style={{ fontWeight: 600 }}>Người bán</h3>
@@ -748,7 +748,7 @@ function ProductDetail() {
                                             </div>
                                             <p style={{ fontSize: "14px", color: "#6b7280" }}>Hoạt động 7 giờ trước</p>
                                         </div>
-                                    </div>
+                                </div>
 
                                     <div
                                         style={{
@@ -761,7 +761,7 @@ function ProductDetail() {
                                     >
                                         <span style={{ color: "#6b7280" }}>Phản hồi:</span>
                                         <span style={{ fontWeight: 600 }}>86%</span>
-                                    </div>
+                                </div>
                                     <div style={{ marginBottom: "16px", fontSize: "14px", color: "#6b7280" }}>77 Đã bán</div>
                                     <div style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "4px" }}>
                                         <span style={{ fontWeight: 600 }}>4.6</span>

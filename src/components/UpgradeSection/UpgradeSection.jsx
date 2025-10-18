@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { CheckCircle, Shield, Store, Image as ImageIcon, Sparkles, Headphones, Clock, TrendingUp, Crown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UpgradeConfirmationModal } from '../UpgradeConfirmationModal/UpgradeConfirmationModal';
 import { NotificationModal } from '../NotificationModal/NotificationModal';
@@ -65,15 +66,11 @@ export function UpgradeSection({ requireAuth = false }) {
             icon: '⭐',
             featured: false,
             benefits: [
-                'Quản lý & Sản phẩm: tối đa 10 sản phẩm, 5 ảnh/sản phẩm',
-                'Hiển thị & Thương hiệu: hiển thị cơ bản trong danh mục và tìm kiếm',
-                'Hỗ trợ & Phí: hỗ trợ email/chat, thời gian phản hồi tiêu chuẩn. Hoa hồng ~7%'
+                { icon: Store, text: 'Tối đa 10 sản phẩm, 5 ảnh/sản phẩm' },
+                { icon: TrendingUp, text: 'Hiển thị cơ bản trong danh mục & tìm kiếm' },
+                { icon: Headphones, text: 'Hỗ trợ email/chat, phản hồi tiêu chuẩn (~7% phí)' }
             ],
-            prices: [
-                { label: '1 tháng', value: '200,000 VND' },
-                { label: '3 tháng', value: '540,000 VND' },
-                { label: '6 tháng', value: '900,000 VND' }
-            ]
+            monthlyPrice: 200000
         },
         {
             id: 'pro',
@@ -82,15 +79,11 @@ export function UpgradeSection({ requireAuth = false }) {
             icon: '🌟',
             featured: true,
             benefits: [
-                'Quản lý & Sản phẩm: tối đa 30 sản phẩm, 7 ảnh/sản phẩm',
-                'Hiển thị & Thương hiệu: ưu tiên trong danh mục (xếp hạng cao hơn Standard)',
-                'Hỗ trợ & Phí: phản hồi nhanh hơn (email/chat, hotline giờ hành chính). Hoa hồng ~5%'
+                { icon: Store, text: 'Tối đa 30 sản phẩm, 7 ảnh/sản phẩm' },
+                { icon: Sparkles, text: 'Ưu tiên hiển thị trong danh mục (trên Standard)' },
+                { icon: Headphones, text: 'Hỗ trợ nhanh (email/chat, hotline giờ hành chính) ~5% phí' }
             ],
-            prices: [
-                { label: '1 tháng', value: '400,000 VND' },
-                { label: '3 tháng', value: '1,080,000 VND' },
-                { label: '6 tháng', value: '1,800,000 VND' }
-            ]
+            monthlyPrice: 400000
         },
         {
             id: 'vip',
@@ -99,17 +92,23 @@ export function UpgradeSection({ requireAuth = false }) {
             icon: '🏆',
             featured: false,
             benefits: [
-                'Quản lý & Sản phẩm: tối đa 100 sản phẩm, 10 ảnh/sản phẩm; duyệt ưu tiên khi đăng mới',
-                'Hiển thị & Thương hiệu: ưu tiên cao trong kết quả tìm kiếm tổng; hiển thị logo thương hiệu',
-                'Hỗ trợ & Phí: hỗ trợ ưu tiên 24/7, phản hồi nhanh nhất. Hoa hồng ~3%'
+                { icon: ImageIcon, text: 'Tối đa 100 sản phẩm, 10 ảnh/sản phẩm; duyệt ưu tiên' },
+                { icon: Crown, text: 'Ưu tiên cao trong tìm kiếm; hiển thị logo thương hiệu' },
+                { icon: Shield, text: 'Hỗ trợ ưu tiên 24/7, phản hồi nhanh nhất (~3% phí)' }
             ],
-            prices: [
-                { label: '1 tháng', value: '1,200,000 VND' },
-                { label: '3 tháng', value: '3,240,000 VND' },
-                { label: '6 tháng', value: '5,400,000 VND' }
-            ]
+            monthlyPrice: 1200000
         }
     ];
+
+    // 🔁 Billing toggle: tháng / quý / năm
+    const [billingCycle, setBillingCycle] = useState('month'); // 'month' | 'quarter' | 'year'
+    const billingMeta = {
+        month: { label: 'Tháng', months: 1, discount: 0 },
+        quarter: { label: 'Quý', months: 3, discount: 0.1 },
+        year: { label: 'Năm', months: 12, discount: 0.2 }
+    };
+
+    const formatVND = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
     // 🟢 Khi click: mở modal ngay, sau đó cuộn xuống section
     const handleUpgrade = () => {
@@ -157,6 +156,21 @@ export function UpgradeSection({ requireAuth = false }) {
                     </p>
                 </div>
 
+                {/* Billing toggle */}
+                <div className="billing-toggle" role="tablist" aria-label="Chọn chu kỳ thanh toán">
+                    {Object.entries(billingMeta).map(([key, meta]) => (
+                        <button
+                            key={key}
+                            role="tab"
+                            aria-selected={billingCycle === key}
+                            className={`toggle-btn ${billingCycle === key ? 'active' : ''}`}
+                            onClick={() => setBillingCycle(key)}
+                        >
+                            {meta.label}
+                        </button>
+                    ))}
+                </div>
+
                 <div className="packages-grid">
                     {packages.map((pkg) => (
                         <div
@@ -187,34 +201,36 @@ export function UpgradeSection({ requireAuth = false }) {
 
                             <div className="package-content">
                                 <ul className="features-list">
-                                    {pkg.benefits.map((benefit, index) => (
-                                        <li key={index} className="feature-item">
-                                            <span className="feature-text">{benefit}</span>
-                                            <span className="check-icon">✓</span>
-                                        </li>
-                                    ))}
+                                    {pkg.benefits.map((benefit, index) => {
+                                        const Icon = benefit.icon || CheckCircle;
+                                        return (
+                                            <li key={index} className="feature-item">
+                                                <Icon size={18} color="#10b981" style={{ marginRight: 8 }} />
+                                                <span className="feature-text">{benefit.text || benefit}</span>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
 
-                                <div className="package-prices">
-                                    {pkg.prices.map((p, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="price-tier"
-                                            style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                padding: '10px 12px',
-                                                border: '1px dashed #d1d5db',
-                                                borderRadius: 10,
-                                                marginBottom: 8
-                                            }}
-                                        >
-                                            <span style={{ fontWeight: 700 }}>{p.label}</span>
-                                            <span style={{ fontWeight: 800, color: '#065f46' }}>{p.value}</span>
+                                {/* dynamic price by billing cycle */}
+                                {(() => {
+                                    const meta = billingMeta[billingCycle];
+                                    const subtotal = pkg.monthlyPrice * meta.months;
+                                    const discountAmount = subtotal * meta.discount;
+                                    const total = subtotal - discountAmount;
+                                    const hasDiscount = meta.discount > 0;
+                                    return (
+                                        <div className="dynamic-price">
+                                            <div className="price-line">
+                                                <span className="duration-label">{meta.label}</span>
+                                                <span className="price-value">{formatVND(total)}</span>
+                                            </div>
+                                            {hasDiscount && (
+                                                <div className="save-ribbon">Tiết kiệm {Math.round(meta.discount * 100)}%</div>
+                                            )}
                                         </div>
-                                    ))}
-                                </div>
+                                    );
+                                })()}
 
                                 <button className="upgrade-button" onClick={handleUpgrade}>
                                     <span className="button-icon">💳</span>

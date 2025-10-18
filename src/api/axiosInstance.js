@@ -34,6 +34,8 @@ const publicEndpoints = [
   "/api/v1/auth/verify-username-forgot-password",
   "/api/v1/auth/verify-otp-forgot-password",
   "/api/v1/auth/forgot-password",
+  // VNPay return là public do gateway redirect về
+  "/api/v1/vnpay/return",
 ];
 
 //  Request interceptor
