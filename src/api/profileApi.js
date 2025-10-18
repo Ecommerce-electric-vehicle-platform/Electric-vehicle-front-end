@@ -2,19 +2,26 @@
 import axiosInstance from "./axiosInstance";
 
 const profileApi = {
-  uploadProfile: (userId, formData) => {
-    if (!userId) throw new Error("User ID is missing — please login again.");
 
-    return axiosInstance.post(`/api/v1/buyer/${userId}/upload-profile`, formData, {
+  uploadProfile: (formData) => {
+    return axiosInstance.post(`/api/v1/buyer/upload-profile`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
 
-  updateProfile: (userId, profileData) => {
-    if (!userId) throw new Error("User ID is missing — please login again.");
-
-    return axiosInstance.put(`/api/v1/buyer/${userId}/update-profile`, profileData);
+  //  Update profile — cũng không cần userId nếu backend dùng token
+  updateProfile: (profileData) => {
+    return axiosInstance.put(`/api/v1/buyer/update-profile`, profileData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
   },
+
+  changePassword: (data) => {
+    // data = { oldPassword, newPassword, confirmPassword }
+    return axiosInstance.post("/api/v1/auth/change-password", data);
+  },
+
 };
+
 
 export default profileApi;
