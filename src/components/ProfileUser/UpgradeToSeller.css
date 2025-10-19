@@ -1,131 +1,325 @@
-.upgrade-to-seller {
-  padding: 40px;
-  max-width: 800px;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.upgrade-to-seller h2 {
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 16px;
-  /* Center the heading */
+.upgrade-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 60px 20px;
+}
+
+
+.upgrade-wrapper {
+  max-width: 900px; /* ⬅ tăng độ rộng */
+  width: 100%;
+  margin: 0 auto;
+  background-color: white;
+  padding: 50px 60px; /* thêm khoảng padding thoáng */
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+
+.upgrade-title {
   text-align: center;
-}
-
-.welcome-text {
-  text-align: left;
-  margin-bottom: 32px;
-  font-size: 16px;
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 40px;
   color: #333;
 }
 
-.upgrade-to-seller form {
+/* Progress Bar */
+.progress-section {
+  margin-bottom: 40px;
+}
+
+.progress-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  padding: 0 20px;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  position: relative;
+  z-index: 2;
+}
+
+.progress-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  border: 2px solid #e0e0e0;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.progress-step.active .progress-circle {
+  background-color: #22c55e;
+  border-color: #22c55e;
+  box-shadow: 0 2px 6px rgba(34, 197, 94, 0.3);
+}
+
+.progress-label {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  max-width: 100px;
+  line-height: 1.4;
+}
+
+.progress-line {
+  position: absolute;
+  top: 13px;
+  height: 2px;
+  z-index: 1;
+  transition: all 0.3s ease;
+  border-top: 2px solid #e0e0e0;
+  background: transparent;
+}
+
+.progress-line.active {
+  border-top-color: #22c55e;
+  border-top-style: solid;
+}
+
+.progress-line.inactive {
+  border-top-color: #e0e0e0;
+  border-top-style: dashed;
+}
+
+.progress-step:nth-child(1) ~ .progress-line:nth-of-type(1) {
+  left: calc(50% - 14px);
+  width: calc(100% / 3 - 14px);
+}
+
+.progress-step:nth-child(3) ~ .progress-line:nth-of-type(2) {
+  left: calc(50% + 14px + 100% / 3);
+  width: calc(100% / 3 - 14px);
+}
+
+/* Form */
+.upgrade-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.required {
+  color: #ef4444;
+}
+
+.form-input {
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.3s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.upload-note {
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
+}
+
+/* File Upload */
+.file-upload-group {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-.form-group {
+.file-upload-item {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.form-group label {
-  min-width: 180px;
-  /* Changed from right to left alignment */
-  text-align: left;
+.file-label {
   font-size: 14px;
+  font-weight: 500;
   color: #333;
 }
 
-.form-group input[type="text"] {
-  flex: 1;
+.file-upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 12px 16px;
-  border: 1px solid #ddd;
-  border-radius: 24px;
-  font-size: 14px;
-  outline: none;
-}
-
-.form-group input[type="text"]:focus {
-  border-color: #86efac;
-}
-
-.upload-instruction {
-  font-size: 13px;
-  color: #666;
-  margin: 8px 0;
-  padding-left: 196px;
-}
-
-.file-upload-group {
-  display: flex;
-  align-items: center;
-  gap: 8px; /* Reduced gap between label and button from 16px to 8px */
-}
-
-.file-upload-group > label {
-  min-width: 180px;
-  text-align: left; /* Changed from right to left alignment */
-  font-size: 14px;
-  color: #333;
-}
-
-.file-upload-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.add-file-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background-color: white;
-  border: 1px solid #4a9eff;
+  border: 1px solid #d1d5db;
   border-radius: 6px;
-  color: #4a9eff;
+  background-color: #fafafa;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-button {
+  color: #3b82f6;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.3s ease;
 }
 
-.add-file-btn:hover {
-  background-color: #f0f8ff;
-}
-
-.download-icon {
-  font-size: 16px;
-  font-weight: bold;
+.file-button:hover {
+  color: #2563eb;
 }
 
 .file-name {
-  font-size: 13px;
-  color: #666;
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 12px;
+  color: #22c55e;
+  margin-top: 4px;
 }
 
-.submit-btn {
-  align-self: center;
-  padding: 12px 48px;
-  /* Match sidebar green color */
-  background-color: #86efac;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
+/* Policy Agreement */
+.policy-agreement {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background-color: #f9fafb;
+  border-radius: 6px;
+}
+
+.checkbox-input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
   cursor: pointer;
-  margin-top: 20px;
-  transition: background-color 0.2s;
+  accent-color: #22c55e;
 }
 
-.submit-btn:hover {
-  /* Darker green on hover */
-  background-color: #6ee89b;
+.agreement-text {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.policy-link {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  margin-left: 4px;
+  transition: color 0.3s ease;
+}
+
+.policy-link:hover {
+  color: #2563eb;
+}
+
+/* Buttons */
+.form-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.btn-submit {
+  background-color: #84cc16;
+  color: white;
+}
+
+.btn-submit:hover {
+  background-color: #65a30d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(132, 204, 22, 0.3);
+}
+
+.btn-submit:active {
+  transform: translateY(0);
+}
+
+.btn-reset {
+  background-color: #e5e7eb;
+  color: #333;
+}
+
+.btn-reset:hover {
+  background-color: #d1d5db;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .upgrade-wrapper {
+    padding: 24px;
+  }
+
+  .upgrade-title {
+    font-size: 24px;
+    margin-bottom: 32px;
+  }
+
+  .progress-bar {
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .progress-circle {
+    width: 24px;
+    height: 24px;
+  }
+
+  .progress-label {
+    font-size: 11px;
+    max-width: 80px;
+  }
+
+  .form-buttons {
+    flex-direction: column;
+  }
+
+  .btn {
+    padding: 14px 20px;
+  }
 }

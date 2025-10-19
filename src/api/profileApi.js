@@ -21,6 +21,16 @@ const profileApi = {
     return axiosInstance.post("/api/v1/auth/change-password", data);
   },
 
+  //  Gọi API verify KYC
+  verifyKyc: (formData) => {
+    // formData phải có:
+    // storeName, taxNumber, identityNumber, front of identity, back of identity,
+    // business license, store policy, selfie
+    return axiosInstance.post("/api/v1/kyc/verify-kyc", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
 };
 
 
