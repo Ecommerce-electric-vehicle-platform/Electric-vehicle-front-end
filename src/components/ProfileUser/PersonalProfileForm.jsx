@@ -1,6 +1,20 @@
 import { useState, useEffect } from "react";
 import profileApi from "../../api/profileApi";
 import "./PersonalProfileForm.css";
+
+// 🔹 Hàm đổi định dạng ngày (2 chiều)
+const formatDateToDDMMYYYY = (dateString) => {
+  if (!dateString) return "";
+  const [year, month, day] = dateString.split("-");
+  return `${day}-${month}-${year}`;
+};
+
+const formatDateToYYYYMMDD = (dateString) => {
+  if (!dateString) return "";
+  const [day, month, year] = dateString.split("-");
+  return `${year}-${month}-${day}`;
+};
+
 export default function PersonalProfileForm() {
   const [formData, setFormData] = useState({
     fullName: "",
@@ -15,23 +29,45 @@ export default function PersonalProfileForm() {
   const [errors, setErrors] = useState({}); // chứa lỗi từ backend
   // Lấy email & userId từ localStorage khi load trang
   useEffect(() => {
-    const storedEmail = localStorage.getItem("userEmail");
-    //const storedUserId = localStorage.getItem("buyerId");
-    setFormData((prev) => ({
-      ...prev,
-      email: storedEmail || "",
-    }));
-    // Nếu có buyerId lưu trong localStorage thì đặt vào state
-    // if (storedUserId) {
-    //   setUserId(storedUserId);
-    // }
-  }, []);
-  // Xử lý thay đổi input
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: "" })); // clear lỗi khi user gõ lại
+  const storedEmail = localStorage.getItem("userEmail");
+
+  const fetchProfile = async () => {
+    try {
+      const response = await profileApi.getProfile(); // 👈 cần có hàm này trong profileApi
+      const data = response.data;
+
+      setFormData({
+        fullName: data.fullName || "",
+        phoneNumber: data.phoneNumber || "",
+        email: data.email || storedEmail || "",
+        gender: data.gender?.toLowerCase() || "male",
+        dob: formatDateToYYYYMMDD(data.dob), // 🔹 chuyển dd-MM-yyyy → yyyy-MM-dd
+        defaultShippingAddress: data.defaultShippingAddress || "",
+      });
+
+      if (data.avatar_url) {
+        setAvatarUrl(data.avatar_url);
+      }
+    } catch (error) {
+      console.error("Không thể tải hồ sơ người dùng:", error);
+      // fallback nếu backend chưa có API getProfile
+      setFormData((prev) => ({
+        ...prev,
+        email: storedEmail || "",
+      }));
+    }
   };
+
+  fetchProfile();
+}, []);
+
+// Xử lý thay đổi input
+const handleChange = (e) => {
+  const { name, value } = e.target;
+  setFormData((prev) => ({ ...prev, [name]: value }));
+  setErrors((prev) => ({ ...prev, [name]: "" })); // clear lỗi khi user gõ lại
+};
+
   // Gửi dữ liệu profile lên backend
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,7 +100,8 @@ export default function PersonalProfileForm() {
       formBody.append("phoneNumber", formData.phoneNumber);
       formBody.append("defaultShippingAddress", formData.defaultShippingAddress);
       formBody.append("gender", formData.gender.toUpperCase());
-      formBody.append("dob", formData.dob);
+      formBody.append("dob", formatDateToDDMMYYYY(formData.dob));
+     // formBody.append("dob", formData.dob);
       formBody.append("avatar_url", avatarUrl);
       
       await profileApi.uploadProfile(formBody);

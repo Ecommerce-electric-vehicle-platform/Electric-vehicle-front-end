@@ -1,180 +1,272 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import "./UpgradeToSeller.css"
+import { useState } from "react";
+import "./UpgradeToSeller.css";
+import PolicyModal from "./PolicyModal";
+import profileApi from "../../api/profileApi";
 
-export default function UpgradeToSeller({ username }) {
+export default function UpgradeToSeller() {
   const [formData, setFormData] = useState({
     storeName: "",
     taxNumber: "",
     identityNumber: "",
-  })
-
-  const [files, setFiles] = useState({
-    frontIdentity: null,
-    backIdentity: null,
+    frontOfIdentity: null,
+    backOfIdentity: null,
     businessLicense: null,
-    portrait: null,
+    selfie: null,
     storePolicy: null,
-  })
+  });
 
+  const [errors, setErrors] = useState({});
+  const [agreePolicy, setAgreePolicy] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState({
+    frontOfIdentity: null,
+    backOfIdentity: null,
+    businessLicense: null,
+    selfie: null,
+    storePolicy: null,
+  });
+
+  // 🧩 Regex giống backend (Java Pattern)
+  const regex = {
+    storeName: /^[A-Za-z0-9\s\u00C0-\u1EF9]{2,50}$/,
+    taxNumber: /^[0-9]{10,13}$/,
+    identityNumber: /^[0-9]{9,12}$/,
+  };
+
+  // 🧩 Xử lý nhập liệu realtime
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
-  const handleFileChange = (e, fieldName) => {
-    const file = e.target.files[0]
+    // validate realtime
+    if (!value.trim()) {
+      setErrors((prev) => ({ ...prev, [name]: "This field is required." }));
+    } else if (regex[name] && !regex[name].test(value)) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]:
+          name === "storeName"
+            ? "Store name must be 2–50 characters, letters & numbers only."
+            : name === "taxNumber"
+            ? "Tax number must be 10–13 digits."
+            : "Identity number must be 9–12 digits.",
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  // 🧩 Xử lý upload file
+  const handleFileUpload = (e, fieldName) => {
+    const file = e.target.files[0];
     if (file) {
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File size must be less than 5 MB")
-        return
-      }
-      setFiles((prev) => ({
+      setFormData((prev) => ({
         ...prev,
         [fieldName]: file,
-      }))
+      }));
+      setUploadedFiles((prev) => ({
+        ...prev,
+        [fieldName]: file.name,
+      }));
+      setErrors((prev) => ({ ...prev, [fieldName]: "" }));
     }
-  }
+  };
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log("Form Data:", formData)
-    console.log("Files:", files)
-    // Add your submit logic here
-    alert("Seller upgrade request submitted!")
-  }
+  // 🧩 Validate toàn form trước khi gửi
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.storeName.trim()) newErrors.storeName = "Store name is required.";
+    if (!formData.taxNumber.trim()) newErrors.taxNumber = "Tax number is required.";
+    if (!formData.identityNumber.trim())
+      newErrors.identityNumber = "Identity number is required.";
+
+    // check regex
+    if (formData.storeName && !regex.storeName.test(formData.storeName))
+      newErrors.storeName =
+        "Store name must be 2–50 characters, letters & numbers only.";
+    if (formData.taxNumber && !regex.taxNumber.test(formData.taxNumber))
+      newErrors.taxNumber = "Tax number must be 10–13 digits.";
+    if (formData.identityNumber && !regex.identityNumber.test(formData.identityNumber))
+      newErrors.identityNumber = "Identity number must be 9–12 digits.";
+
+    // file required
+    ["frontOfIdentity", "backOfIdentity", "businessLicense", "selfie", "storePolicy"].forEach(
+      (f) => {
+        if (!formData[f]) newErrors[f] = "Please upload this file.";
+      }
+    );
+
+    // policy required
+    if (!agreePolicy) newErrors.policy = "You must agree to the terms.";
+
+    setErrors(newErrors);
+    return newErrors;
+  };
+
+  // 🧩 Submit
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const newErrors = validateForm();
+
+    if (Object.keys(newErrors).length > 0) {
+      const missing = Object.entries(newErrors)
+        .map(([key, msg]) => `• ${key}: ${msg}`)
+        .join("\n");
+      alert("Please correct these errors before submitting:\n\n" + missing);
+      return;
+    }
+
+    try {
+      const formBody = new FormData();
+      formBody.append("storeName", formData.storeName);
+      formBody.append("taxNumber", formData.taxNumber);
+      formBody.append("identityNumber", formData.identityNumber);
+      formBody.append("front of identity", formData.frontOfIdentity);
+      formBody.append("back of identity", formData.backOfIdentity);
+      formBody.append("business license", formData.businessLicense);
+      formBody.append("store policy", formData.storePolicy);
+      formBody.append("selfie", formData.selfie);
+
+      await profileApi.verifyKyc(formBody);
+      alert("KYC verification submitted successfully!");
+      handleReset();
+    } catch (error) {
+      console.error("KYC Error:", error);
+      alert(error.message || "Failed to submit KYC verification.");
+    }
+  };
+
+  const handleReset = () => {
+    setFormData({
+      storeName: "",
+      taxNumber: "",
+      identityNumber: "",
+      frontOfIdentity: null,
+      backOfIdentity: null,
+      businessLicense: null,
+      selfie: null,
+      storePolicy: null,
+    });
+    setUploadedFiles({
+      frontOfIdentity: null,
+      backOfIdentity: null,
+      businessLicense: null,
+      selfie: null,
+      storePolicy: null,
+    });
+    setAgreePolicy(false);
+    setErrors({});
+  };
 
   return (
-    <div className="upgrade-to-seller">
-      <h2>Upgrade to Seller</h2>
-      <p className="welcome-text">Welcome &lt;{username || "User"}&gt;</p>
+    <div className="upgrade-container">
+      <div className="upgrade-wrapper">
+        <h1 className="upgrade-title">Trở thành người bán</h1>
 
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="storeName">Store name* :</label>
-          <input
-            type="text"
-            id="storeName"
-            name="storeName"
-            value={formData.storeName}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="taxNumber">Tax number :</label>
-          <input type="text" id="taxNumber" name="taxNumber" value={formData.taxNumber} onChange={handleInputChange} />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="identityNumber">Identity number* :</label>
-          <input
-            type="text"
-            id="identityNumber"
-            name="identityNumber"
-            value={formData.identityNumber}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        <p className="upload-instruction">Upload 1 supported file: PDF or image. Max 5 MB.</p>
-
-        <div className="file-upload-group">
-          <label>Front of identity image</label>
-          <div className="file-upload-wrapper">
+        <form onSubmit={handleSubmit} className="upgrade-form">
+          {/* Store Name */}
+          <div className="form-group">
+            <label className="form-label">Store name *</label>
             <input
-              type="file"
-              id="frontIdentity"
-              accept=".pdf,image/*"
-              onChange={(e) => handleFileChange(e, "frontIdentity")}
-              style={{ display: "none" }}
+              name="storeName"
+              value={formData.storeName}
+              onChange={handleInputChange}
+              className={`form-input ${errors.storeName ? "input-error" : ""}`}
             />
-            <label htmlFor="frontIdentity" className="add-file-btn">
-              <span className="download-icon">↓</span> Add file
-            </label>
-            {files.frontIdentity && <span className="file-name">{files.frontIdentity.name}</span>}
+            {errors.storeName && <p className="error-text">{errors.storeName}</p>}
           </div>
-        </div>
 
-        <div className="file-upload-group">
-          <label>Back of identity image</label>
-          <div className="file-upload-wrapper">
+          {/* Tax Number */}
+          <div className="form-group">
+            <label className="form-label">Tax number *</label>
             <input
-              type="file"
-              id="backIdentity"
-              accept=".pdf,image/*"
-              onChange={(e) => handleFileChange(e, "backIdentity")}
-              style={{ display: "none" }}
+              name="taxNumber"
+              value={formData.taxNumber}
+              onChange={handleInputChange}
+              className={`form-input ${errors.taxNumber ? "input-error" : ""}`}
             />
-            <label htmlFor="backIdentity" className="add-file-btn">
-              <span className="download-icon">↓</span> Add file
-            </label>
-            {files.backIdentity && <span className="file-name">{files.backIdentity.name}</span>}
+            {errors.taxNumber && <p className="error-text">{errors.taxNumber}</p>}
           </div>
-        </div>
 
-        <div className="file-upload-group">
-          <label>Business license</label>
-          <div className="file-upload-wrapper">
+          {/* Identity Number */}
+          <div className="form-group">
+            <label className="form-label">Identity number *</label>
             <input
-              type="file"
-              id="businessLicense"
-              accept=".pdf,image/*"
-              onChange={(e) => handleFileChange(e, "businessLicense")}
-              style={{ display: "none" }}
+              name="identityNumber"
+              value={formData.identityNumber}
+              onChange={handleInputChange}
+              className={`form-input ${errors.identityNumber ? "input-error" : ""}`}
             />
-            <label htmlFor="businessLicense" className="add-file-btn">
-              <span className="download-icon">↓</span> Add file
-            </label>
-            {files.businessLicense && <span className="file-name">{files.businessLicense.name}</span>}
+            {errors.identityNumber && (
+              <p className="error-text">{errors.identityNumber}</p>
+            )}
           </div>
-        </div>
 
-        <div className="file-upload-group">
-          <label>Portrait picture</label>
-          <div className="file-upload-wrapper">
+          <p className="upload-note">Upload 1 supported file: PDF or image.</p>
+
+          {/* File Inputs */}
+          {[
+            ["frontOfIdentity", "Front of identity image"],
+            ["backOfIdentity", "Back of identity image"],
+            ["businessLicense", "Business license"],
+            ["selfie", "Selfie (portrait picture)"],
+            ["storePolicy", "Store policy"],
+          ].map(([key, label]) => (
+            <div className="file-upload-item" key={key}>
+              <label className="file-label">{label}</label>
+              <div className="file-upload-box">
+                <input
+                  type="file"
+                  id={key}
+                  onChange={(e) => handleFileUpload(e, key)}
+                  className="file-input"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
+                <label htmlFor={key} className="file-button">
+                  ⬇ Add file
+                </label>
+              </div>
+              {uploadedFiles[key] && <p className="file-name">{uploadedFiles[key]}</p>}
+              {errors[key] && <p className="error-text">{errors[key]}</p>}
+            </div>
+          ))}
+
+          {/* Policy Agreement */}
+          <div className="policy-agreement">
             <input
-              type="file"
-              id="portrait"
-              accept=".pdf,image/*"
-              onChange={(e) => handleFileChange(e, "portrait")}
-              style={{ display: "none" }}
+              type="checkbox"
+              id="agreePolicy"
+              checked={agreePolicy}
+              onChange={(e) => setAgreePolicy(e.target.checked)}
+              className="checkbox-input"
             />
-            <label htmlFor="portrait" className="add-file-btn">
-              <span className="download-icon">↓</span> Add file
+            <label htmlFor="agreePolicy" className="agreement-text">
+              I agree to the terms and policies.
+              <button
+                type="button"
+                className="policy-link"
+                onClick={() => setShowPolicyModal(true)}
+              >
+                Chính sách
+              </button>
             </label>
-            {files.portrait && <span className="file-name">{files.portrait.name}</span>}
           </div>
-        </div>
+          {errors.policy && <p className="error-text">{errors.policy}</p>}
 
-        <div className="file-upload-group">
-          <label>Store policy</label>
-          <div className="file-upload-wrapper">
-            <input
-              type="file"
-              id="storePolicy"
-              accept=".pdf,image/*"
-              onChange={(e) => handleFileChange(e, "storePolicy")}
-              style={{ display: "none" }}
-            />
-            <label htmlFor="storePolicy" className="add-file-btn">
-              <span className="download-icon">↓</span> Add file
-            </label>
-            {files.storePolicy && <span className="file-name">{files.storePolicy.name}</span>}
+          {/* Buttons */}
+          <div className="form-buttons">
+            <button type="submit" className="btn btn-submit">
+              Submit
+            </button>
+            <button type="button" className="btn btn-reset" onClick={handleReset}>
+              Hủy
+            </button>
           </div>
-        </div>
-
-        <button type="submit" className="submit-btn">
-          Submit
-        </button>
-      </form>
+        </form>
+      </div>
+      {showPolicyModal && <PolicyModal onClose={() => setShowPolicyModal(false)} />}
     </div>
-  )
+  );
 }

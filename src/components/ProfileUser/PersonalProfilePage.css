@@ -1,11 +1,15 @@
 .profile-page {
-  min-height: 100vh;
   display: flex;
+  min-height: 100vh;
+  background-color: #f9fafb;
 }
 
-.main-content {
+/* 🔹 phần nội dung chính */
+.profile-main {
   flex: 1;
-  padding: 32px;
+  padding: 40px 60px; /* thêm khoảng trống */
+  margin-left: 24px; /* tạo khoảng cách với sidebar */
+  background-color: transparent;
 }
 .form-message {
   margin-bottom: 10px;
