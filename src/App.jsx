@@ -21,6 +21,7 @@ import OrderList from "./pages/OrderList/OrderList";
 import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
 import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
 import AdminRoutes from "./routes/AdminRoute";
+import AdminLogin from "./pages/Admin/Login/AdminLogin";
 import PageTransition from "./components/PageTransition/PageTransition";
 import { Header } from "./components/Header/Header";
 import { ScrollToTop } from "./components/ScrollToTop/ScrollToTop";
@@ -70,6 +71,8 @@ function AppContent() {
             </PageTransition>
           }
         />
+        {/* Tách hẳn trang đăng nhập admin ra top-level để tránh dính layout */}
+        <Route path="/admin/signin" element={<AdminLogin />} />
         <Route path="/admin/*" element={<AdminRoutes />} />
         <Route path="/home" element={<Navigate to="/" />} />
         <Route

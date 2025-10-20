@@ -8,53 +8,78 @@ import {
   CTableHeaderCell,
   CTableBody,
   CTableDataCell,
+  CBadge,
 } from "@coreui/react";
-import { getPendingBuyers } from "../../../api/adminApi";
+import { getAllUserAccounts, toggleUserActive } from "../../../api/adminApi";
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [filterRole, setFilterRole] = useState(""); // "BUYER" | "SELLER"
+  const [refresh, setRefresh] = useState(false);
+
+  // ✅ Load danh sách Buyer & Seller
+  const loadUsers = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await getAllUserAccounts(0, 20, filterRole);
+      const items = data?.content || data?.data || data || [];
+      setUsers(items);
+    } catch (e) {
+      console.error("Lỗi khi tải danh sách người dùng:", e);
+      setError(e?.message || "Không thể tải danh sách người dùng.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // TODO: Fetch users from API
-    // Temporary mock data
-    setUsers([
-      {
-        id: 1,
-        userName: "John Doe",
-        email: "john@example.com",
-        role: "User",
-        status: "Active",
-        joinDate: "2025-10-18",
-      },
-    ]);
-  }, []);
+    loadUsers();
+  }, [filterRole, refresh]);
 
-  const [pendingBuyers, setPendingBuyers] = useState([]);
+  // ✅ Bật / tắt trạng thái người dùng
+  const handleToggleActive = async (user) => {
+    const confirmText = user.active
+      ? "Bạn có chắc muốn vô hiệu hóa tài khoản này?"
+      : "Bạn có chắc muốn kích hoạt lại tài khoản này?";
+    if (!window.confirm(confirmText)) return;
 
-  const loadPendingBuyers = async () => {
-    // optional: show loading in future
     try {
-      const data = await getPendingBuyers(0, 10);
-      const items = data?.content || data?.items || data || [];
-      setPendingBuyers(items);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      // noop
+      await toggleUserActive(user.id, !user.active);
+      setRefresh((prev) => !prev);
+    } catch (error) {
+      alert("Cập nhật trạng thái thất bại!");
+      console.error(error);
     }
   };
 
   return (
     <div>
-
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2 className="fw-semibold m-0">Quản lý người dùng</h2>
+        <h2 className="fw-semibold m-0">Quản lý Buyer & Seller</h2>
+        <select
+          className="form-select w-auto"
+          value={filterRole}
+          onChange={(e) => setFilterRole(e.target.value)}
+        >
+          <option value="">Tất cả</option>
+          <option value="BUYER">Buyer</option>
+          <option value="SELLER">Seller</option>
+        </select>
       </div>
 
       <CCard className="shadow-sm mb-4">
         <CCardBody>
-          <CTable hover>
-            <CTableHead>
+          {error && (
+            <div className="alert alert-danger py-2" role="alert">
+              {error}
+            </div>
+          )}
+
+          <CTable hover responsive>
+            <CTableHead color="light">
               <CTableRow>
                 <CTableHeaderCell>ID</CTableHeaderCell>
                 <CTableHeaderCell>Tên người dùng</CTableHeaderCell>
@@ -66,66 +91,56 @@ export default function ManageUsers() {
               </CTableRow>
             </CTableHead>
             <CTableBody>
-              {users.map((user) => (
-                <CTableRow key={user.id}>
-                  <CTableDataCell>{user.id}</CTableDataCell>
-                  <CTableDataCell>{user.userName}</CTableDataCell>
-                  <CTableDataCell>{user.email}</CTableDataCell>
-                  <CTableDataCell>{user.role}</CTableDataCell>
-                  <CTableDataCell>
-                    <span
-                      className={`badge bg-${
-                        user.status === "Active" ? "success" : "danger"
-                      }`}
-                    >
-                      {user.status}
-                    </span>
-                  </CTableDataCell>
-                  <CTableDataCell>{user.joinDate}</CTableDataCell>
-                  <CTableDataCell>
-                    <div className="d-flex gap-2">
-                      <button className="btn btn-warning btn-sm">
-                        Chỉnh sửa
-                      </button>
-                      <button className="btn btn-danger btn-sm">
-                        Vô hiệu hóa
-                      </button>
-                    </div>
+              {loading ? (
+                <CTableRow>
+                  <CTableDataCell colSpan={7}>Đang tải...</CTableDataCell>
+                </CTableRow>
+              ) : users.length === 0 ? (
+                <CTableRow>
+                  <CTableDataCell colSpan={7}>
+                    Không có người dùng nào.
                   </CTableDataCell>
                 </CTableRow>
-              ))}
+              ) : (
+                users.map((user) => (
+                  <CTableRow key={user.id}>
+                    <CTableDataCell>{user.id}</CTableDataCell>
+                    <CTableDataCell>{user.fullName || user.username}</CTableDataCell>
+                    <CTableDataCell>{user.email}</CTableDataCell>
+                    <CTableDataCell>
+                      <CBadge
+                        color={user.role === "SELLER" ? "success" : "secondary"}
+                      >
+                        {user.role || "BUYER"}
+                      </CBadge>
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      <CBadge color={user.active ? "success" : "danger"}>
+                        {user.active ? "Active" : "Inactive"}
+                      </CBadge>
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      {user.createdAt
+                        ? new Date(user.createdAt).toLocaleDateString("vi-VN")
+                        : "--"}
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      <div className="d-flex gap-2">
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleToggleActive(user)}
+                        >
+                          {user.active ? "Vô hiệu hóa" : "Kích hoạt lại"}
+                        </button>
+                      </div>
+                    </CTableDataCell>
+                  </CTableRow>
+                ))
+              )}
             </CTableBody>
           </CTable>
         </CCardBody>
       </CCard>
-
-      {pendingBuyers.length > 0 && (
-        <CCard className="shadow-sm">
-          <CCardBody>
-            <h5 className="fw-semibold mb-3">Buyer chờ duyệt</h5>
-            <CTable hover>
-              <CTableHead>
-                <CTableRow>
-                  <CTableHeaderCell>ID</CTableHeaderCell>
-                  <CTableHeaderCell>Tên</CTableHeaderCell>
-                  <CTableHeaderCell>Email</CTableHeaderCell>
-                  <CTableHeaderCell>Ngày đăng ký</CTableHeaderCell>
-                </CTableRow>
-              </CTableHead>
-              <CTableBody>
-                {pendingBuyers.map((b) => (
-                  <CTableRow key={b.id}>
-                    <CTableDataCell>{b.id}</CTableDataCell>
-                    <CTableDataCell>{b.fullName || b.name}</CTableDataCell>
-                    <CTableDataCell>{b.email}</CTableDataCell>
-                    <CTableDataCell>{b.createdAt || b.joinDate}</CTableDataCell>
-                  </CTableRow>
-                ))}
-              </CTableBody>
-            </CTable>
-          </CCardBody>
-        </CCard>
-      )}
     </div>
   );
 }

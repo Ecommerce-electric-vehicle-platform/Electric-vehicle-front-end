@@ -2,15 +2,12 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 // Khi chưa đăng nhập
-import { Header } from "../../components/Header/Header";
 import { HeroSection } from "../../components/HeroSection/HeroSection";
 import { FeaturedSlider } from "../../components/FeaturedSlider/FeaturedSlider";
 import { FeaturesSection } from "../../components/FeaturesSection/FeaturesSection";
 import { VehicleShowcase } from "../../components/VehicleShowcase/VehicleShowcase";
-// import { CTASection } from "../../components/CTASection/CTASection";
 import { UpgradeSection } from "../../components/UpgradeSection/UpgradeSection";
 import { ProductsSection } from "../../components/ProductsSection/ProductsSection";
-import { Footer } from "../../components/Footer/Footer";
 import { ScrollToTop } from "../../components/ScrollToTop/ScrollToTop";
 import { DebugPanel } from "../../components/DebugPanel/DebugPanel";
 
@@ -30,9 +27,7 @@ export function Home() {
 
     checkAuthStatus();
 
-    const handleStorageChange = () => {
-      checkAuthStatus();
-    };
+    const handleStorageChange = () => checkAuthStatus();
 
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("authStatusChanged", handleStorageChange);
@@ -43,7 +38,26 @@ export function Home() {
     };
   }, []);
 
-  // Khi có hash trong URL thì scroll xuống đúng section
+  // ✅ Dọn dẹp layout admin còn sót lại khi trở về Home
+  useEffect(() => {
+    const adminLayout = document.getElementById("admin-layout");
+    if (adminLayout) adminLayout.remove();
+
+    const coreLayout = document.getElementById("core-admin-layout");
+    if (coreLayout) coreLayout.remove();
+
+    document.body.style.marginLeft = "0";
+    document.body.style.overflow = "auto";
+    document.documentElement.style.overflow = "auto";
+    document.documentElement.style.background = "#fff";
+
+    return () => {
+      document.body.style.marginLeft = "";
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  // Khi có hash trong URL thì scroll tới đúng section
   useEffect(() => {
     const hash = location.hash;
     if (hash) {
@@ -54,18 +68,13 @@ export function Home() {
     }
   }, [location.hash]);
 
-  // Nếu đã đăng nhập → vào trang user
-  if (isAuthenticated) {
-    return <HomeUser />;
-  }
+  if (isAuthenticated) return <HomeUser />;
 
-  // Nếu chưa → hiển thị giao diện marketing
   return (
     <div className="min-h-screen flex flex-col">
-      {/* <Header /> */}
-
       <main className="flex-grow">
         <HeroSection />
+
         <section className="featured-section">
           <FeaturedSlider />
         </section>
@@ -79,16 +88,8 @@ export function Home() {
         </section>
 
         <FeaturesSection />
-        {/* <CTASection /> */}
-
-        <section id="upgrade-section">
-          <UpgradeSection />
-        </section>
+        <UpgradeSection />
       </main>
-
-      {/* <footer id="footer">
-        <Footer />
-      </footer> */}
 
       <ScrollToTop />
       <DebugPanel />

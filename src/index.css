@@ -138,7 +138,7 @@ html {
 
 /* Offset sections so sticky header doesn't cover anchors when scrolling */
 #vehicleshowcase-section,
-#upgrade-section,
+#upgrade,
 #footer {
     scroll-margin-top: 80px; /* approximate navbar height incl. shadow */
 }

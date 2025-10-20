@@ -25,6 +25,43 @@ import CIcon from "@coreui/icons-react";
 import avatar8 from "../../../assets/imgs/placeholder-logo.svg";
 
 const AppHeaderDropdown = () => {
+  const handleLogout = (e) => {
+    e.preventDefault();
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("buyerId");
+    localStorage.removeItem("authType");
+    localStorage.removeItem("adminProfile");
+    // Thông báo thay đổi auth cho app (nếu nơi khác lắng nghe)
+    window.dispatchEvent(new CustomEvent("authStatusChanged"));
+    window.location.href = "/admin/signin";
+  };
+  // Lấy thông tin admin để hiển thị tối thiểu
+  let displayName = "Admin";
+  let avatarUrl = null;
+  let email = "";
+  let employeeNumber = "";
+  let isSuperAdmin = false;
+  {
+    const raw = localStorage.getItem("adminProfile");
+    if (raw) {
+      try {
+        const profile = JSON.parse(raw);
+        displayName =
+          profile?.fullName || profile?.employeeNumber || displayName;
+        avatarUrl = profile?.avatarUrl || null;
+        email = profile?.email || "";
+        employeeNumber = profile?.employeeNumber || "";
+        isSuperAdmin = !!profile?.isSuperAdmin;
+      } catch {
+        // ignore parse error
+      }
+    }
+  }
+
   return (
     <CDropdown variant="nav-item">
       <CDropdownToggle
@@ -32,12 +69,46 @@ const AppHeaderDropdown = () => {
         className="py-0 pe-0"
         caret={false}
       >
-        <CAvatar src={avatar8} size="md" />
+        <div className="d-flex align-items-center gap-2">
+          <CAvatar src={avatarUrl || avatar8} size="md" />
+          <div className="d-none d-md-flex flex-column text-start">
+            <span
+              className="fw-semibold"
+              style={{
+                maxWidth: 180,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {displayName}
+            </span>
+            {employeeNumber && (
+              <small className="text-body-secondary">
+                #{employeeNumber}
+                {isSuperAdmin ? " • Super" : ""}
+              </small>
+            )}
+          </div>
+        </div>
       </CDropdownToggle>
       <CDropdownMenu className="pt-0" placement="bottom-end">
         <CDropdownHeader className="bg-body-secondary fw-semibold mb-2">
-          Account
+          {displayName}
         </CDropdownHeader>
+        {email && (
+          <CDropdownItem href="#" disabled>
+            <span className="text-body-secondary">{email}</span>
+          </CDropdownItem>
+        )}
+        {employeeNumber && (
+          <CDropdownItem href="#" disabled>
+            <span className="text-body-secondary">
+              Employee #: {employeeNumber}
+            </span>
+          </CDropdownItem>
+        )}
+        <CDropdownDivider />
         <CDropdownItem href="#">
           <CIcon icon={cilBell} className="me-2" />
           Updates
@@ -92,9 +163,9 @@ const AppHeaderDropdown = () => {
           </CBadge>
         </CDropdownItem>
         <CDropdownDivider />
-        <CDropdownItem href="#">
+        <CDropdownItem href="#" onClick={handleLogout}>
           <CIcon icon={cilLockLocked} className="me-2" />
-          Lock Account
+          Logout
         </CDropdownItem>
       </CDropdownMenu>
     </CDropdown>
