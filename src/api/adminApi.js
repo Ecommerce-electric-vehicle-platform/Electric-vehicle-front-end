@@ -1,57 +1,77 @@
-import axiosInstance from "./axiosInstance";
+import adminAxios from "./adminAxios";
 
-// API dashboard admin
-export const getAdminDashboardStats = async (page = 0, size = 10) => {
+/**
+ * ================================
+ * ADMIN - REVIEW POST SELLER
+ * ================================
+ */
+
+// Lấy danh sách bài đăng cần review
+// GET /api/v1/admin/review-post-seller-list?page=&size=
+export const getReviewPostSellerList = async (page = 0, size = 10) => {
   try {
-    const res = await axiosInstance.get(`/api/v1/admin`, {
+    const res = await adminAxios.get(`/api/v1/admin/review-post-seller-list`, {
       params: { page, size },
     });
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi lấy dữ liệu dashboard:", error);
+    console.error("Lỗi khi lấy danh sách bài đăng cần review:", error);
     throw error;
   }
 };
 
-// Lấy danh sách bài đăng seller cần duyệt (chờ xét duyệt)
-export const getPendingSellerPosts = async () => {
+// Xem chi tiết bài đăng cần review
+// GET /api/v1/admin/{postProductId}/post-details
+export const getPostProductDetail = async (postProductId) => {
   try {
-    const res = await axiosInstance.get(`/api/v1/admin/review-post-product-seller`);
+    const res = await adminAxios.get(
+      `/api/v1/admin/${postProductId}/post-details`
+    );
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách bài đăng seller:", error);
+    console.error("Lỗi khi lấy chi tiết bài đăng:", error);
     throw error;
   }
 };
 
-// Phê duyệt hoặc từ chối bài đăng seller
-export const approveSeller = async (sellerId, decision = "OK", reason) => {
+// Phê duyệt / từ chối bài đăng (review post decision)
+// POST /api/v1/admin/review-post-product-decision
+// Body: { employeeNumber, postProductId, passed, rejectedReason }
+export const decidePostProduct = async ({
+  employeeNumber,
+  postProductId,
+  passed,
+  rejectedReason = "",
+}) => {
   try {
-    const body = reason ? { sellerId, decision, reason } : { sellerId, decision };
-    const res = await axiosInstance.post(`/api/v1/admin/approve-seller`, body);
+    const res = await adminAxios.post(
+      `/api/v1/admin/review-post-product-decision`,
+      {
+        employeeNumber,
+        postProductId,
+        passed,
+        rejectedReason,
+      }
+    );
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi duyệt seller:", error);
+    console.error("Lỗi khi phê duyệt / từ chối bài đăng:", error);
     throw error;
   }
 };
 
-// ===== Quản trị viên (is_super admin) =====
-export const listAdmins = async (page = 0, size = 10) => {
-  try {
-    const res = await axiosInstance.get(`/api/v1/admin/super-admins`, {
-      params: { page, size },
-    });
-    return res.data;
-  } catch (error) {
-    console.error("Lỗi khi lấy danh sách admin:", error);
-    throw error;
-  }
-};
+/**
+ * ================================
+ * ADMIN MANAGEMENT (Super Admin)
+ * ================================
+ */
 
+// Tạo admin mới
+// POST /api/v1/admin/creating-admin
+// Body: { employeeNumber, password, fullName, phoneNumber, email, gender }
 export const createAdmin = async (payload) => {
   try {
-    const res = await axiosInstance.post(`/api/v1/admin/super-admins`, payload);
+    const res = await adminAxios.post(`/api/v1/admin/creating-admin`, payload);
     return res.data;
   } catch (error) {
     console.error("Lỗi khi tạo admin:", error);
@@ -59,36 +79,67 @@ export const createAdmin = async (payload) => {
   }
 };
 
-export const toggleAdminActive = async (adminId, active) => {
+/**
+ * ================================
+ * SELLER APPROVAL
+ * ================================
+ */
+
+export const getPendingSellers = async (page = 0, size = 10) => {
+  // Cho phép cấu hình endpoint qua ENV nếu BE khác path
+  const pendingPath =
+    import.meta.env.VITE_ADMIN_PENDING_SELLERS_PATH ||
+    "/api/v1/admin/pending-seller";
+  const res = await adminAxios.get(pendingPath, {
+    params: { page, size },
+  });
+  return res.data;
+};
+
+// Phê duyệt / từ chối upgrade seller
+export const approveSeller = async ({ sellerId, decision, message }) => {
+  const res = await adminAxios.post(`/api/v1/admin/approve-seller`, {
+    sellerId,
+    decision,
+    message,
+  });
+  return res.data;
+};
+
+
+// ===== Users (Buyer & Seller) Management ===== //Gia định vì chưa có API
+export const getAllUserAccounts = async (page = 0, size = 20, role, status) => {
   try {
-    const res = await axiosInstance.patch(
-      `/api/v1/admin/super-admins/${adminId}/active`,
-      { active }
-    );
+    const params = { page, size };
+    if (role) params.role = role;
+    if (status) params.status = status;
+
+    const res = await adminAxios.get(`/api/v1/admin/users`, { params });
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi cập nhật trạng thái admin:", error);
+    console.error("Lỗi khi lấy danh sách người dùng:", error);
     throw error;
   }
 };
 
-// ===== Buyers pending approval =====
-export const getPendingBuyers = async (page = 0, size = 10) => {
+// Kích hoạt / vô hiệu hóa tài khoản Buyer hoặc Seller
+export const toggleUserActive = async (userId, active) => {
   try {
-    const res = await axiosInstance.get(`/api/v1/admin/buyers/pending`, {
-      params: { page, size },
+    const res = await adminAxios.patch(`/api/v1/admin/users/${userId}/active`, {
+      active,
     });
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách buyer chờ duyệt:", error);
+    console.error("Lỗi khi cập nhật trạng thái người dùng:", error);
     throw error;
   }
 };
 
-// ===== Disputes =====
+
+// ===== Disputes Management =====
 export const listDisputes = async (page = 0, size = 10, status) => {
   try {
-    const res = await axiosInstance.get(`/api/v1/admin/disputes`, {
+    const res = await adminAxios.get(`/api/v1/admin/disputes`, {
       params: { page, size, status },
     });
     return res.data;
@@ -100,9 +151,10 @@ export const listDisputes = async (page = 0, size = 10, status) => {
 
 export const resolveDispute = async (disputeId, resolution) => {
   try {
-    const res = await axiosInstance.post(`/api/v1/admin/disputes/${disputeId}/resolve`, {
-      resolution,
-    });
+    const res = await adminAxios.post(
+      `/api/v1/admin/disputes/${disputeId}/resolve`,
+      { resolution }
+    );
     return res.data;
   } catch (error) {
     console.error("Lỗi khi xử lý dispute:", error);

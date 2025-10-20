@@ -1,5 +1,6 @@
 import React from "react";
 import DashboardChart from "../../../components/Admin/Charts/DashboardChart";
+import SafeBoundary from "../../../components/Admin/Widgets/SafeBoundary";
 import StartCard from "../../../components/Admin/Widgets/StartCard";
 import { CRow, CCol, CCard, CCardBody, CCardHeader } from "@coreui/react";
 
@@ -56,7 +57,9 @@ export default function Dashboard() {
       <CCard className="shadow-sm">
         <CCardHeader className="fw-semibold">Traffic</CCardHeader>
         <CCardBody>
-          <DashboardChart />
+          <SafeBoundary>
+            <DashboardChart />
+          </SafeBoundary>
         </CCardBody>
       </CCard>
     </div>

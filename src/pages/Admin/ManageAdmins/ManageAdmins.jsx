@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   CCard,
   CCardBody,
@@ -14,60 +14,48 @@ import {
   CModalBody,
   CModalFooter,
 } from "@coreui/react";
-import {
-  listAdmins,
-  createAdmin,
-  toggleAdminActive,
-} from "../../../api/adminApi";
+import { createAdmin } from "../../../api/adminApi";
 
 export default function ManageAdmins() {
-  const [admins, setAdmins] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [admins, setAdmins] = useState([
+    // Dữ liệu tạm (mock)
+    { id: 1, fullName: "Nguyễn Văn A", email: "admin1@example.com", active: true },
+    { id: 2, fullName: "Trần Thị B", email: "admin2@example.com", active: true },
+  ]);
+
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ fullName: "", email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const fetchAdmins = async () => {
-    setLoading(true);
+  // ✅ Tạo admin mới
+  const onCreate = async () => {
+    if (!form.fullName || !form.email || !form.password) {
+      setError("Vui lòng nhập đầy đủ thông tin.");
+      return;
+    }
+
     try {
-      const data = await listAdmins();
-      const items =
-        data?.content ||
-        data?.items ||
-        data?.data?.content ||
-        data?.data?.items ||
-        data?.data ||
-        data ||
-        [];
-      setAdmins(items);
+      setLoading(true);
+      setError("");
+      await createAdmin({ ...form, isSuper: true });
+      // Thêm vào danh sách hiển thị tạm
+      setAdmins((prev) => [
+        ...prev,
+        {
+          id: prev.length + 1,
+          fullName: form.fullName,
+          email: form.email,
+          active: true,
+        },
+      ]);
+      setForm({ fullName: "", email: "", password: "" });
+      setShowCreate(false);
     } catch (e) {
-      console.error("Lỗi load danh sách admin:", e);
+      console.error("Lỗi khi tạo admin:", e);
+      setError(e?.message || "Không thể tạo admin.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAdmins();
-  }, []);
-
-  const onCreate = async () => {
-    if (!form.fullName || !form.email || !form.password) return;
-    try {
-      await createAdmin({ ...form, isSuper: true });
-      setShowCreate(false);
-      setForm({ fullName: "", email: "", password: "" });
-      fetchAdmins();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const onToggleActive = async (admin) => {
-    try {
-      await toggleAdminActive(admin.id, !admin.active);
-      fetchAdmins();
-    } catch (e) {
-      console.error(e);
     }
   };
 
@@ -83,68 +71,58 @@ export default function ManageAdmins() {
       <CCard className="shadow-sm">
         <CCardBody>
           <CTable hover responsive>
-            <CTableHead>
+            <CTableHead color="light">
               <CTableRow>
                 <CTableHeaderCell>ID</CTableHeaderCell>
                 <CTableHeaderCell>Họ tên</CTableHeaderCell>
                 <CTableHeaderCell>Email</CTableHeaderCell>
                 <CTableHeaderCell>Quyền</CTableHeaderCell>
                 <CTableHeaderCell>Trạng thái</CTableHeaderCell>
-                <CTableHeaderCell>Thao tác</CTableHeaderCell>
               </CTableRow>
             </CTableHead>
             <CTableBody>
-              {loading ? (
-                <CTableRow>
-                  <CTableDataCell colSpan={6}>Đang tải...</CTableDataCell>
+              {admins.map((a) => (
+                <CTableRow key={a.id}>
+                  <CTableDataCell>{a.id}</CTableDataCell>
+                  <CTableDataCell>{a.fullName}</CTableDataCell>
+                  <CTableDataCell>{a.email}</CTableDataCell>
+                  <CTableDataCell>
+                    <span className="badge bg-info">is_super</span>
+                  </CTableDataCell>
+                  <CTableDataCell>
+                    <span
+                      className={`badge bg-${
+                        a.active ? "success" : "secondary"
+                      }`}
+                    >
+                      {a.active ? "Active" : "Inactive"}
+                    </span>
+                  </CTableDataCell>
                 </CTableRow>
-              ) : (
-                admins.map((a) => (
-                  <CTableRow key={a.id}>
-                    <CTableDataCell>{a.id}</CTableDataCell>
-                    <CTableDataCell>{a.fullName || a.name}</CTableDataCell>
-                    <CTableDataCell>{a.email}</CTableDataCell>
-                    <CTableDataCell>
-                      <span className="badge bg-info">is_super</span>
-                    </CTableDataCell>
-                    <CTableDataCell>
-                      <span
-                        className={`badge bg-${
-                          a.active ? "success" : "secondary"
-                        }`}
-                      >
-                        {a.active ? "Active" : "Inactive"}
-                      </span>
-                    </CTableDataCell>
-                    <CTableDataCell>
-                      <div className="d-flex gap-2">
-                        <button
-                          className="btn btn-outline-secondary btn-sm"
-                          onClick={() => onToggleActive(a)}
-                        >
-                          {a.active ? "Vô hiệu hóa" : "Kích hoạt"}
-                        </button>
-                      </div>
-                    </CTableDataCell>
-                  </CTableRow>
-                ))
-              )}
+              ))}
             </CTableBody>
           </CTable>
         </CCardBody>
       </CCard>
 
+      {/* Modal tạo admin mới */}
       <CModal visible={showCreate} onClose={() => setShowCreate(false)}>
         <CModalHeader>
-          <CModalTitle>Tạo admin is_super</CModalTitle>
+          <CModalTitle>Tạo admin mới</CModalTitle>
         </CModalHeader>
         <CModalBody>
+          {error && (
+            <div className="alert alert-danger py-2" role="alert">
+              {error}
+            </div>
+          )}
           <div className="mb-3">
             <label className="form-label">Họ tên</label>
             <input
               className="form-control"
               value={form.fullName}
               onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+              placeholder="Nhập họ tên admin"
             />
           </div>
           <div className="mb-3">
@@ -154,6 +132,7 @@ export default function ManageAdmins() {
               className="form-control"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="Nhập email admin"
             />
           </div>
           <div className="mb-3">
@@ -163,6 +142,7 @@ export default function ManageAdmins() {
               className="form-control"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
+              placeholder="Nhập mật khẩu"
             />
           </div>
         </CModalBody>
@@ -170,11 +150,16 @@ export default function ManageAdmins() {
           <button
             className="btn btn-secondary"
             onClick={() => setShowCreate(false)}
+            disabled={loading}
           >
             Hủy
           </button>
-          <button className="btn btn-primary" onClick={onCreate}>
-            Tạo
+          <button
+            className="btn btn-primary"
+            onClick={onCreate}
+            disabled={loading}
+          >
+            {loading ? "Đang tạo..." : "Tạo"}
           </button>
         </CModalFooter>
       </CModal>
