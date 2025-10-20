@@ -1,28 +1,105 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Battery, Car, MapPin, Search, Filter, SortAsc, ArrowRight } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { MapPin, Search, Filter, SortAsc, ArrowRight, ArrowLeft } from "lucide-react";
 import "../../components/VehicleShowcase/VehicleShowcase.css";
 import "./Products.css";
-
-import { vehicleProducts, batteryProducts, formatCurrency } from "../../test-mock-data/data/productsData";
+import { fetchPostProducts, normalizeProduct } from "../../api/productApi";
+import { searchProducts } from "../../api/searchApi";
+import { ProductCard } from "../../components/ProductCard/ProductCard";
+import { GlobalSearch } from "../../components/GlobalSearch/GlobalSearch";
+import { Breadcrumbs } from "../../components/Breadcrumbs/Breadcrumbs";
 
 export function Products() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
-    // Tabs: all | vehicles | batteries
-    const [activeTab, setActiveTab] = useState("all");
-    const [searchTerm, setSearchTerm] = useState("");
+    // Get search term from URL
+    const urlSearchTerm = searchParams.get('search') || '';
+
+    // State management
+    const [searchTerm, setSearchTerm] = useState(urlSearchTerm);
     const [selectedLocation, setSelectedLocation] = useState("Tất cả khu vực");
     const [sortDate, setSortDate] = useState("newest");
     const [sortPrice, setSortPrice] = useState("none");
     const [page, setPage] = useState(1);
+    const [isPaging, setIsPaging] = useState(false);
     const [pageSize, setPageSize] = useState(12);
+    const [isSearchMode, setIsSearchMode] = useState(!!urlSearchTerm);
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [serverTotalPages, setServerTotalPages] = useState(1);
+    const [items, setItems] = useState([]);
+    const [searchResults, setSearchResults] = useState([]);
+
+    // Clear search and return to default product list
+    const clearSearch = () => {
+        setSearchTerm("");
+        setIsSearchMode(false);
+        // remove query param and navigate back to default Products
+        navigate("/products");
+    };
+
+    // Fetch data based on mode (search or normal)
+    useEffect(() => {
+        let mounted = true;
+        setLoading(true);
+        setError("");
+
+        if (isSearchMode && searchTerm.trim()) {
+            // Search mode
+            searchProducts({ query: searchTerm, page, size: pageSize })
+                .then(({ items, totalPages }) => {
+                    if (!mounted) return;
+                    setSearchResults(items || []);
+                    setServerTotalPages(totalPages || 1);
+                })
+                .catch((err) => {
+                    if (!mounted) return;
+                    setError(err?.message || "Không thể tìm kiếm");
+                })
+                .finally(() => {
+                    if (!mounted) return;
+                    setLoading(false);
+                });
+        } else {
+            // Normal mode
+            const params = {};
+            fetchPostProducts({ page, size: pageSize, params })
+                .then(({ items, totalPages }) => {
+                    if (!mounted) return;
+                    setItems(items || []);
+                    setServerTotalPages(totalPages || 1);
+                })
+                .catch((err) => {
+                    if (!mounted) return;
+                    setError(err?.message || "Không thể tải sản phẩm");
+                })
+                .finally(() => {
+                    if (!mounted) return;
+                    setLoading(false);
+                });
+        }
+
+        return () => {
+            mounted = false;
+        };
+    }, [page, pageSize, searchTerm, isSearchMode]);
+
+    // Update search mode when URL changes
+    useEffect(() => {
+        const newSearchTerm = searchParams.get('search') || '';
+        setSearchTerm(newSearchTerm);
+        setIsSearchMode(!!newSearchTerm);
+        setPage(1); // Reset to first page when search changes
+    }, [searchParams]);
 
     const combined = useMemo(() => {
-        if (activeTab === "vehicles") return vehicleProducts;
-        if (activeTab === "batteries") return batteryProducts;
-        return [...vehicleProducts, ...batteryProducts];
-    }, [activeTab]);
+        if (isSearchMode) {
+            return (searchResults || []).map(normalizeProduct).filter(Boolean);
+        }
+        return (items || []).map(normalizeProduct).filter(Boolean);
+    }, [items, searchResults, isSearchMode]);
 
     const allLocations = useMemo(() => {
         return ["Tất cả khu vực", ...new Set(combined.map((i) => i.locationTrading))];
@@ -49,16 +126,25 @@ export function Products() {
         return list;
     }, [combined, searchTerm, selectedLocation, sortDate, sortPrice]);
 
-    const totalPages = useMemo(() => Math.max(1, Math.ceil(filtered.length / pageSize)), [filtered.length, pageSize]);
+    const totalPages = useMemo(() => serverTotalPages || 1, [serverTotalPages]);
 
     useEffect(() => {
         setPage(1);
-    }, [activeTab, selectedLocation, sortDate, sortPrice, pageSize]);
+    }, [selectedLocation, sortDate, sortPrice, pageSize]);
 
-    const paged = useMemo(() => {
-        const start = (page - 1) * pageSize;
-        return filtered.slice(start, start + pageSize);
-    }, [filtered, page, pageSize]);
+    // Smooth paging helper
+    const goToPage = (targetPage) => {
+        if (targetPage === page) return;
+        setIsPaging(true);
+        // small visual transition then change page and scroll to top
+        setTimeout(() => {
+            setPage(targetPage);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setIsPaging(false);
+        }, 150);
+    };
+
+    const paged = filtered; // Dữ liệu đã phân trang từ server
 
     return (
         <section className="vehicle-showcase-section">
@@ -71,39 +157,40 @@ export function Products() {
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="showcase-tabs">
-                    <button className={`tab-button ${activeTab === 'all' ? 'tab-active' : ''}`} onClick={() => setActiveTab('all')}>
-                        <Car className="tab-icon" />
-                        <Battery className="tab-icon" />
-                        <span>Tất cả</span>
-                    </button>
-                    <button className={`tab-button ${activeTab === 'vehicles' ? 'tab-active' : ''}`} onClick={() => setActiveTab('vehicles')}>
-                        <Car className="tab-icon" />
-                        <span>Xe điện</span>
-                    </button>
-                    <button className={`tab-button ${activeTab === 'batteries' ? 'tab-active' : ''}`} onClick={() => setActiveTab('batteries')}>
-                        <Battery className="tab-icon" />
-                        <span>Pin xe điện</span>
-                    </button>
+                {/* Breadcrumbs */}
+                <Breadcrumbs />
+
+                {/* Global Search */}
+                <div className="products-search-section">
+                    <GlobalSearch
+                        placeholder="Tìm kiếm sản phẩm, thương hiệu, model..."
+                        className="products-search"
+                    />
                 </div>
+
+                {/* Search Results Header */}
+                {isSearchMode && (
+                    <div className="search-results-header">
+                        <h3 className="search-results-title">
+                            Kết quả tìm kiếm cho "{searchTerm}"
+                            {combined.length > 0 && (
+                                <span className="search-results-count">({combined.length} sản phẩm)</span>
+                            )}
+                        </h3>
+                        <button
+                            onClick={clearSearch}
+                            className="btn-back-to-all"
+                            aria-label="Quay về tất cả sản phẩm"
+                        >
+                            <ArrowLeft size={16} className="btn-back-icon" />
+                            <span>Tất cả sản phẩm</span>
+                        </button>
+                    </div>
+                )}
 
                 {/* Filters */}
                 <div className="filter-section">
                     <div className="filter-bar">
-                        <div className="search-bar">
-                            <Search className="search-icon" />
-                            <input
-                                type="text"
-                                placeholder="Tìm kiếm sản phẩm, hãng, khu vực..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="search-input"
-                            />
-                            {searchTerm && (
-                                <button className="search-clear" onClick={() => setSearchTerm("")}>Xoá</button>
-                            )}
-                        </div>
                         <div className="filter-controls">
                             <div className="filter-group">
                                 <MapPin className="filter-icon" />
@@ -142,51 +229,64 @@ export function Products() {
                 </div>
 
                 {/* Grid */}
-                {filtered.length === 0 ? (
+                {loading && (<div className="showcase-grid"><div className="showcase-card" style={{ padding: '2rem', textAlign: 'center' }}>Đang tải sản phẩm...</div></div>)}
+                {error && !loading && (
+                    <div className="showcase-grid"><div className="showcase-card" style={{ padding: '2rem', textAlign: 'center' }}>{error}</div></div>
+                )}
+                {!loading && !error && filtered.length === 0 ? (
                     <div className="showcase-grid"><div className="showcase-card" style={{ padding: '2rem', textAlign: 'center' }}>Không tìm thấy sản phẩm phù hợp.</div></div>
                 ) : (
-                    <div className="showcase-grid">
-                        {paged.map((p) => (
-                            <div key={p.id} className="showcase-card">
-                                <div className="card-image-wrapper">
-                                    <img src={p.image} alt={p.title} className="card-image" />
-                                </div>
-                                <div className="card-content">
-                                    <div className="card-header">
-                                        <h3 className="card-title" title={p.title}>{p.title}</h3>
-                                    </div>
-                                    <div className="card-brand">{p.brand} - {p.model}</div>
-                                    <div className="card-price-section">
-                                        <div className="price-current">{formatCurrency(p.price)}</div>
-                                    </div>
-                                    <div className="card-location">
-                                        <MapPin className="location-icon" />
-                                        <span>{p.locationTrading}</span>
-                                    </div>
-                                    <button className="card-button" onClick={() => navigate(`/product/${p.id}`)}>
-                                        <span>Xem chi tiết</span>
-                                        <ArrowRight className="btn-arrow" />
-                                    </button>
-                                </div>
-                            </div>
+                    <div className={`showcase-grid ${isPaging ? 'is-paging' : ''}`}>
+                        {paged.map((product) => (
+                            <ProductCard
+                                key={product.id}
+                                product={product}
+                                variant="default"
+                                onViewDetails={(product) => navigate(`/product/${product.id}`)}
+                                showActions={true}
+                                showCondition={true}
+                                showLocation={true}
+                                showDate={true}
+                                showVerified={true}
+                            />
                         ))}
                     </div>
                 )}
 
                 {/* Pagination */}
-                {filtered.length > 0 && (
+                {!loading && !error && filtered.length > 0 && (
                     <div className="showcase-footer" style={{ marginTop: '1rem' }}>
                         <div className="pagination">
-                            <button className="btn-outline-large" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>« Trước</button>
-                            {Array.from({ length: totalPages }).slice(0, 7).map((_, i) => {
+                            <button
+                                className="page-btn"
+                                disabled={page <= 1}
+                                onClick={() => goToPage(Math.max(1, page - 1))}
+                                aria-label="Trang trước"
+                            >
+                                « Trước
+                            </button>
+                            {Array.from({ length: totalPages }).map((_, i) => {
                                 const pnum = i + 1;
                                 return (
-                                    <button key={pnum} className={`btn-outline-large ${pnum === page ? 'active' : ''}`} onClick={() => setPage(pnum)}>{pnum}</button>
+                                    <button
+                                        key={pnum}
+                                        className={`page-btn ${pnum === page ? 'active' : ''}`}
+                                        aria-current={pnum === page ? 'page' : undefined}
+                                        onClick={() => goToPage(pnum)}
+                                    >
+                                        {pnum}
+                                    </button>
                                 );
                             })}
-                            {totalPages > 7 && <span className="showcase-description" style={{ margin: '0 8px' }}>...</span>}
-                            <button className="btn-outline-large" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Sau »</button>
-                            <div className="showcase-description" style={{ marginTop: '10px' }}>Trang {page}/{totalPages} • {filtered.length} sản phẩm</div>
+                            <button
+                                className="page-btn"
+                                disabled={page >= totalPages}
+                                onClick={() => goToPage(Math.min(totalPages, page + 1))}
+                                aria-label="Trang sau"
+                            >
+                                Sau »
+                            </button>
+                            <div className="pagination-info">Trang {page}/{totalPages}</div>
                         </div>
                     </div>
                 )}

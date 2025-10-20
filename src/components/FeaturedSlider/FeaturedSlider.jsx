@@ -1,21 +1,38 @@
-import React, { useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import Slider from "react-slick"
 import { ArrowLeft, ArrowRight, Eye, MapPin } from "lucide-react"
 import "./FeaturedSlider.css"
-import { vehicleProducts, batteryProducts, formatCurrency } from "../../test-mock-data/data/productsData"
+import { fetchPostProducts, normalizeProduct } from "../../api/productApi"
+import { formatCurrency } from "../../utils/format"
 
 export function FeaturedSlider() {
     const navigate = useNavigate()
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState("")
+    const [items, setItems] = useState([])
 
-    // Lấy sản phẩm nổi bật từ dữ liệu mới
-    const featuredItems = [
-        vehicleProducts[0], // VinFast Feliz S
-        vehicleProducts[1], // YADEA Xmen Neo
-        vehicleProducts[2], // Giant M133S
-        batteryProducts[0], // Pin Bridgestone
-        batteryProducts[2], // Cell Pin Lipo
-    ]
+    useEffect(() => {
+        let mounted = true
+        setLoading(true)
+        setError("")
+        fetchPostProducts({ page: 1, size: 10 })
+            .then(({ items }) => {
+                if (!mounted) return
+                setItems(items || [])
+            })
+            .catch((err) => {
+                if (!mounted) return
+                setError(err?.message || "Không thể tải dữ liệu")
+            })
+            .finally(() => {
+                if (!mounted) return
+                setLoading(false)
+            })
+        return () => { mounted = false }
+    }, [])
+
+    const featuredItems = useMemo(() => (items || []).map(normalizeProduct).filter(Boolean).slice(0, 5), [items])
 
     // Xử lý click xem chi tiết
     const handleViewDetails = (product) => {
@@ -56,7 +73,7 @@ export function FeaturedSlider() {
             {/* 🌟 Slider */}
             <div className="featured-slider-container">
                 <Slider {...settings}>
-                    {featuredItems.map((product) => (
+                    {!loading && !error && featuredItems.map((product) => (
                         <div
                             key={product.id}
                             className="featured-slide"
