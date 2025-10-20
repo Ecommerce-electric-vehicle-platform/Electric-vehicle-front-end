@@ -1,14 +1,13 @@
-import { useState } from "react"
-import { Battery, Car, MapPin, Search, Eye, Heart, ArrowRight, Filter, SortAsc, Zap } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Battery, Car, MapPin, Search, ArrowRight, Filter, SortAsc, Zap } from "lucide-react"
 import "./VehicleShowcase.css"
 import { useNavigate } from "react-router-dom"
-import { vehicleProducts, batteryProducts, formatCurrency } from "../../test-mock-data/data/productsData"
-
-import placeholder from "../../assets/imgs/placeholder.svg"
+import { fetchPostProducts, normalizeProduct } from "../../api/productApi"
+import { ProductCard } from "../ProductCard/ProductCard"
+import { GlobalSearch } from "../GlobalSearch/GlobalSearch"
 
 export function VehicleShowcase() {
   const [activeTab, setActiveTab] = useState("vehicles")
-  const [searchTerm, setSearchTerm] = useState("")
   const [selectedLocation, setSelectedLocation] = useState("Tất cả khu vực")
   const [sortDate, setSortDate] = useState("newest")
   const [sortPrice, setSortPrice] = useState("none")
@@ -19,17 +18,29 @@ export function VehicleShowcase() {
     navigate(`/product/${product.id}`)
   }
 
-  const items = activeTab === "vehicles" ? vehicleProducts : batteryProducts
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [itemsRaw, setItemsRaw] = useState([])
+
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    setError("")
+    fetchPostProducts({ page: 1, size: 24 })
+      .then(({ items }) => { if (mounted) setItemsRaw(items || []) })
+      .catch((err) => { if (mounted) setError(err?.message || "Không thể tải dữ liệu") })
+      .finally(() => { if (mounted) setLoading(false) })
+    return () => { mounted = false }
+  }, [])
+
+  const items = useMemo(() => (itemsRaw || []).map(normalizeProduct).filter(Boolean), [itemsRaw])
   const allLocations = ["Tất cả khu vực", ...new Set(items.map((i) => i.locationTrading))]
 
   // ✅ Lọc dữ liệu
   const filteredItems = items
     .filter((item) => {
-      const searchMatch =
-        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.locationTrading.toLowerCase().includes(searchTerm.toLowerCase())
       const locationMatch = selectedLocation === "Tất cả khu vực" || item.locationTrading === selectedLocation
-      return searchMatch && locationMatch
+      return locationMatch
     })
     .sort((a, b) => (sortDate === "newest" ? new Date(b.createdAt) - new Date(a.createdAt) : new Date(a.createdAt) - new Date(b.createdAt)))
     .sort((a, b) => {
@@ -72,22 +83,17 @@ export function VehicleShowcase() {
           </button>
         </div>
 
+        {/* Global Search */}
+        <div className="vehicle-search-section">
+          <GlobalSearch
+            placeholder="Tìm kiếm sản phẩm, thương hiệu, model..."
+            className="vehicle-search"
+          />
+        </div>
+
         {/* Thanh lọc */}
         <div className="filter-section">
           <div className="filter-bar">
-            <div className="search-bar">
-              <Search className="search-icon" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm sản phẩm hoặc khu vực..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
-              {searchTerm && (
-                <button className="search-clear" onClick={() => setSearchTerm("")}>Xoá</button>
-              )}
-            </div>
 
             <div className="filter-controls">
               <div className="filter-group">
@@ -127,59 +133,26 @@ export function VehicleShowcase() {
 
         {/* Danh sách sản phẩm */}
         <div className="showcase-grid">
-          {filteredItems.slice(0, 12).map((product, index) => (
-            <div key={product.id} className="showcase-card">
-              <div className="card-image-wrapper">
-                <img src={product.image || placeholder} alt={product.title} className="card-image" />
-
-
-                {/* Card actions */}
-                <div className="card-actions">
-                  <button className="action-btn wishlist-btn">
-                    <Heart className="action-icon" />
-                  </button>
-                  <button
-                    className="action-btn view-btn"
-                    onClick={() => handleViewDetails(product)}
-                  >
-                    <Eye className="action-icon" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="card-content">
-                <div className="card-header">
-                  <h3 className="card-title">{product.title}</h3>
-                  <p className="card-brand">{product.brand} - {product.model}</p>
-                </div>
-
-                <div className="card-price-section">
-                  <div className="price-current">{formatCurrency(product.price)}</div>
-                  {product.originalPrice && (
-                    <div className="price-original">{formatCurrency(product.originalPrice)}</div>
-                  )}
-                </div>
-
-                <div className="card-location">
-                  <MapPin className="location-icon" />
-                  <span>{product.locationTrading}</span>
-                </div>
-
-                <button
-                  className="card-button"
-                  onClick={() => handleViewDetails(product)}
-                >
-                  <span>Xem chi tiết</span>
-                  <ArrowRight className="btn-arrow" />
-                </button>
-              </div>
-            </div>
+          {loading && (<div className="showcase-card" style={{ padding: '2rem', textAlign: 'center' }}>Đang tải...</div>)}
+          {error && !loading && (<div className="showcase-card" style={{ padding: '2rem', textAlign: 'center' }}>{error}</div>)}
+          {!loading && !error && filteredItems.slice(0, 12).map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              variant="default"
+              onViewDetails={handleViewDetails}
+              showActions={true}
+              showCondition={true}
+              showLocation={true}
+              showDate={true}
+              showVerified={true}
+            />
           ))}
         </div>
 
         {/* Nút Xem tất cả */}
         <div className="showcase-footer">
-          <button className="btn-outline-large" onClick={() => navigate("/products")}>
+          <button className="btn-view-all" onClick={() => navigate("/products")}>
             <span>Xem tất cả sản phẩm</span>
             <ArrowRight className="btn-arrow" />
           </button>

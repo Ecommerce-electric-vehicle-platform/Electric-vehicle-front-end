@@ -1,196 +1,68 @@
-import React, { useState } from 'react';
-import { Settings, Wallet, Package, ShoppingCart, CheckCircle, XCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { fetchPostProducts } from '../../api/productApi';
 import './DebugPanel.css';
 
-function DebugPanel({ isOpen, onClose }) {
-    const [walletStatus, setWalletStatus] = useState(localStorage.getItem('walletLinked') || 'true');
-    const [productScenario, setProductScenario] = useState(localStorage.getItem('testProductScenario') || 'available');
-    const [multipleSellers, setMultipleSellers] = useState(localStorage.getItem('testMultipleSellers') || 'false');
+function DebugPanel() {
+    const [debugData, setDebugData] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-    const handleWalletChange = (value) => {
-        setWalletStatus(value);
-        localStorage.setItem('walletLinked', value);
-    };
+    useEffect(() => {
+        const loadDebugData = async () => {
+            setLoading(true);
+            try {
+                const result = await fetchPostProducts({ page: 1, size: 3 });
+                setDebugData(result);
+            } catch (error) {
+                console.error('Debug API Error:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const handleProductScenarioChange = (value) => {
-        setProductScenario(value);
-        localStorage.setItem('testProductScenario', value);
-    };
+        loadDebugData();
+    }, []);
 
-    const handleMultipleSellersChange = (value) => {
-        setMultipleSellers(value);
-        localStorage.setItem('testMultipleSellers', value);
-    };
-
-    const resetToDefault = () => {
-        localStorage.setItem('walletLinked', 'true');
-        localStorage.setItem('testProductScenario', 'available');
-        localStorage.setItem('testMultipleSellers', 'false');
-        setWalletStatus('true');
-        setProductScenario('available');
-        setMultipleSellers('false');
-    };
-
-    if (!isOpen) return null;
+    if (loading) return <div>Đang tải debug data...</div>;
 
     return (
-        <div className="debug-overlay" onClick={onClose}>
-            <div className="debug-panel" onClick={(e) => e.stopPropagation()}>
-                <div className="debug-header">
-                    <div className="debug-title">
-                        <Settings size={20} />
-                        <span>Debug Panel - Test Scenarios</span>
-                    </div>
-                    <button className="debug-close" onClick={onClose}>
-                        <XCircle size={20} />
-                    </button>
-                </div>
+        <div className="debug-panel" style={{
+            position: 'fixed',
+            top: '10px',
+            right: '10px',
+            background: 'white',
+            border: '2px solid #ccc',
+            padding: '10px',
+            maxWidth: '400px',
+            maxHeight: '500px',
+            overflow: 'auto',
+            zIndex: 9999,
+            fontSize: '12px'
+        }}>
+            <div className="debug-header">
+                <h3 className="debug-title">🔍 Debug API Data</h3>
+            </div>
+            <div className="debug-content">
+                {debugData && (
+                    <div>
+                        <div className="debug-section">
+                            <h4 className="debug-section-title">Raw Response:</h4>
+                            <pre style={{ fontSize: '10px', overflow: 'auto', maxHeight: '200px' }}>
+                                {JSON.stringify(debugData.raw, null, 2)}
+                            </pre>
+                        </div>
 
-                <div className="debug-content">
-                    {/* Wallet Status */}
-                    <div className="debug-section">
-                        <div className="debug-section-title">
-                            <Wallet size={16} />
-                            <span>Trạng thái ví điện tử</span>
-                        </div>
-                        <div className="debug-options">
-                            <label className="debug-option">
-                                <input
-                                    type="radio"
-                                    name="wallet"
-                                    value="true"
-                                    checked={walletStatus === 'true'}
-                                    onChange={(e) => handleWalletChange(e.target.value)}
-                                />
-                                <span className="option-label">
-                                    <CheckCircle size={14} color="#28a745" />
-                                    Đã liên kết ví
-                                </span>
-                            </label>
-                            <label className="debug-option">
-                                <input
-                                    type="radio"
-                                    name="wallet"
-                                    value="false"
-                                    checked={walletStatus === 'false'}
-                                    onChange={(e) => handleWalletChange(e.target.value)}
-                                />
-                                <span className="option-label">
-                                    <XCircle size={14} color="#dc3545" />
-                                    Chưa liên kết ví
-                                </span>
-                            </label>
+                        <div className="debug-section">
+                            <h4 className="debug-section-title">First Item:</h4>
+                            <pre style={{ fontSize: '10px', overflow: 'auto', maxHeight: '200px' }}>
+                                {JSON.stringify(debugData.items[0], null, 2)}
+                            </pre>
                         </div>
                     </div>
-
-                    {/* Product Availability */}
-                    <div className="debug-section">
-                        <div className="debug-section-title">
-                            <Package size={16} />
-                            <span>Trạng thái sản phẩm</span>
-                        </div>
-                        <div className="debug-options">
-                            <label className="debug-option">
-                                <input
-                                    type="radio"
-                                    name="product"
-                                    value="available"
-                                    checked={productScenario === 'available'}
-                                    onChange={(e) => handleProductScenarioChange(e.target.value)}
-                                />
-                                <span className="option-label">
-                                    <CheckCircle size={14} color="#28a745" />
-                                    Còn hàng
-                                </span>
-                            </label>
-                            <label className="debug-option">
-                                <input
-                                    type="radio"
-                                    name="product"
-                                    value="sold"
-                                    checked={productScenario === 'sold'}
-                                    onChange={(e) => handleProductScenarioChange(e.target.value)}
-                                />
-                                <span className="option-label">
-                                    <XCircle size={14} color="#dc3545" />
-                                    Đã bán
-                                </span>
-                            </label>
-                            <label className="debug-option">
-                                <input
-                                    type="radio"
-                                    name="product"
-                                    value="unavailable"
-                                    checked={productScenario === 'unavailable'}
-                                    onChange={(e) => handleProductScenarioChange(e.target.value)}
-                                />
-                                <span className="option-label">
-                                    <XCircle size={14} color="#ffc107" />
-                                    Tạm hết hàng
-                                </span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Multiple Sellers */}
-                    <div className="debug-section">
-                        <div className="debug-section-title">
-                            <ShoppingCart size={16} />
-                            <span>Giỏ hàng</span>
-                        </div>
-                        <div className="debug-options">
-                            <label className="debug-option">
-                                <input
-                                    type="radio"
-                                    name="sellers"
-                                    value="false"
-                                    checked={multipleSellers === 'false'}
-                                    onChange={(e) => handleMultipleSellersChange(e.target.value)}
-                                />
-                                <span className="option-label">
-                                    <CheckCircle size={14} color="#28a745" />
-                                    1 người bán
-                                </span>
-                            </label>
-                            <label className="debug-option">
-                                <input
-                                    type="radio"
-                                    name="sellers"
-                                    value="true"
-                                    checked={multipleSellers === 'true'}
-                                    onChange={(e) => handleMultipleSellersChange(e.target.value)}
-                                />
-                                <span className="option-label">
-                                    <XCircle size={14} color="#dc3545" />
-                                    Nhiều người bán
-                                </span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="debug-actions">
-                        <button className="debug-btn debug-btn-reset" onClick={resetToDefault}>
-                            Reset về mặc định
-                        </button>
-                        <button className="debug-btn debug-btn-close" onClick={onClose}>
-                            Đóng
-                        </button>
-                    </div>
-
-                    {/* Instructions */}
-                    <div className="debug-instructions">
-                        <h4>Hướng dẫn test:</h4>
-                        <ol>
-                            <li>Chọn các trường hợp muốn test</li>
-                            <li>Refresh trang để áp dụng</li>
-                            <li>Click "Mua ngay" để xem flow</li>
-                        </ol>
-                    </div>
-                </div>
+                )}
             </div>
         </div>
     );
 }
 
 export default DebugPanel;
+export { DebugPanel };

@@ -1,17 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Slider from "react-slick";
 import "./ProductCarousel.css";
-import { MapPin, Car, Battery, Eye } from "lucide-react";
+import { Car, Battery } from "lucide-react";
 import { usePageTransition } from "../../hooks/usePageTransition";
-import {
-    vehicleProducts,
-    batteryProducts,
-    formatCurrency,
-} from "../../test-mock-data/data/productsData";
+import { fetchPostProducts, normalizeProduct } from "../../api/productApi";
+import { ProductCard } from "../ProductCard/ProductCard";
 
 export function ProductCarousel({ title, showCategoryToggle = false }) {
     const [activeCategory, setActiveCategory] = useState("vehicles");
-    const { navigateToProduct, isTransitioning } = usePageTransition();
+    const { navigateToProduct } = usePageTransition();
 
     // ⚙️ Slider config
     const settings = {
@@ -29,8 +26,45 @@ export function ProductCarousel({ title, showCategoryToggle = false }) {
         ],
     };
 
-    const products =
-        activeCategory === "vehicles" ? vehicleProducts : batteryProducts;
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [page] = useState(1);
+    const [size] = useState(12);
+    const [productsRaw, setProductsRaw] = useState([]);
+
+    useEffect(() => {
+        let mounted = true;
+        setLoading(true);
+        setError("");
+
+        // Có thể truyền tham số category vào params nếu BE hỗ trợ
+        const params = {};
+        fetchPostProducts({ page, size, params })
+            .then(({ items }) => {
+                if (!mounted) return;
+                setProductsRaw(items || []);
+            })
+            .catch((err) => {
+                if (!mounted) return;
+                setError(err?.message || "Không thể tải sản phẩm");
+            })
+            .finally(() => {
+                if (!mounted) return;
+                setLoading(false);
+            });
+
+        return () => {
+            mounted = false;
+        };
+    }, [page, size]);
+
+    const products = useMemo(() => {
+        const mapped = (productsRaw || []).map(normalizeProduct).filter(Boolean);
+        // Nếu có phân loại, ở đây chỉ demo filter client theo brand/model chứa từ khoá
+        if (activeCategory === "vehicles") return mapped;
+        if (activeCategory === "batteries") return mapped;
+        return mapped;
+    }, [productsRaw, activeCategory]);
 
     // Xử lý click xem chi tiết với hiệu ứng transition
     const handleViewDetails = (product) => {
@@ -65,64 +99,26 @@ export function ProductCarousel({ title, showCategoryToggle = false }) {
             )}
 
             {/* 🎠 Slider */}
-            <Slider {...settings} className="product-slider">
-                {products.map((product) => {
-                    return (
-                        <div key={product.id} className="product-card">
-                            <div className="product-img-wrapper">
-                                <img
-                                    src={product.image}
-                                    alt={product.title}
-                                    className="product-img"
-                                />
-
-                                {/* Badge giảm giá */}
-                                {product.discount && (
-                                    <div className="discount-badge">-{product.discount}%</div>
-                                )}
-                            </div>
-
-                            <div className="product-info">
-                                <h3 className="product-name">{product.title}</h3>
-                                <p className="product-brand">
-                                    {product.brand} - {product.model}
-                                </p>
-
-                                {/* 💰 Giá sản phẩm */}
-                                <div className="product-price-wrapper">
-                                    <span className="product-price-current">
-                                        {formatCurrency(product.price)}
-                                    </span>
-                                    {product.originalPrice &&
-                                        product.originalPrice > product.price && (
-                                            <span className="product-price-old">
-                                                {formatCurrency(product.originalPrice)}
-                                            </span>
-                                        )}
-                                </div>
-
-                                {/* 📍 Địa điểm đẹp hơn */}
-                                <div className="product-location-card">
-                                    <div className="location-icon-wrap">
-                                        <MapPin className="location-icon" />
-                                    </div>
-                                    <div className="location-text">{product.locationTrading}</div>
-                                </div>
-
-                                {/* 👁️ Nút xem chi tiết */}
-                                <button
-                                    className="product-btn"
-                                    onClick={() => handleViewDetails(product)}
-                                    disabled={isTransitioning}
-                                >
-                                    <Eye className="btn-icon" />
-                                    {isTransitioning ? 'Đang chuyển...' : 'Xem chi tiết'}
-                                </button>
-                            </div>
+            {loading && (<div className="product-loading">Đang tải sản phẩm...</div>)}
+            {error && !loading && (<div className="product-error">{error}</div>)}
+            {!loading && !error && (
+                <Slider {...settings} className="product-slider">
+                    {products.map((product) => (
+                        <div key={product.id} className="product-slide">
+                            <ProductCard
+                                product={product}
+                                variant="default"
+                                onViewDetails={handleViewDetails}
+                                showActions={true}
+                                showCondition={true}
+                                showLocation={true}
+                                showDate={true}
+                                showVerified={true}
+                            />
                         </div>
-                    );
-                })}
-            </Slider>
+                    ))}
+                </Slider>
+            )}
         </section>
     );
 }
