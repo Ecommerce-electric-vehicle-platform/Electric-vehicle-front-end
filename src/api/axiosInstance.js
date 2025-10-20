@@ -18,6 +18,8 @@ const publicEndpoints = [
   "/api/v1/auth/forgot-password",
   // VNPay return là public do gateway redirect về
   "/api/v1/vnpay/return",
+  // Sản phẩm: hiển thị công khai trang chủ và danh sách
+  "/api/v1/post-product",
 ];
 
 //Interceptor: Gắn token người dùng vào request
@@ -40,20 +42,34 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("User API Error:", error.response?.data || error.message);
+    const status = error?.response?.status;
+    const data = error?.response?.data;
+    const url = error?.config?.url;
 
-    if (error.response && error.response.data) {
-      const message =
-        error.response.data.message ||
-        error.response.data.error ||
-        error.response.data.error_description ||
-        "Đã xảy ra lỗi từ máy chủ.";
-      error.message = message;
-    } else {
-      error.message = "Không thể kết nối đến máy chủ.";
-    }
+    const message =
+      data?.message ||
+      data?.error ||
+      data?.error_description ||
+      (status === 500 ? "Lỗi máy chủ (500). Vui lòng thử lại sau." : undefined) ||
+      (status === 404 ? "Không tìm thấy tài nguyên (404)." : undefined) ||
+      (status === 401 ? "Chưa được xác thực (401)." : undefined) ||
+      (status === 403 ? "Không có quyền truy cập (403)." : undefined) ||
+      error?.message ||
+      "Đã xảy ra lỗi không xác định.";
 
-    return Promise.reject(error);
+    // In ra console: chuỗi dễ đọc + raw details để trace
+    console.error(`API Error [${status || "n/a"}] ${url || ""}: ${message}`, data || "");
+
+    // Chuẩn hoá object reject để các nơi .catch() có thể dùng trực tiếp
+    const normalizedError = {
+      message,
+      status,
+      url,
+      data,
+      original: error,
+    };
+
+    return Promise.reject(normalizedError);
   }
 );
 
