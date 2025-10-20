@@ -5,6 +5,7 @@ import authApi from "../../../api/authApi";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 
+
 export default function SignIn() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({ username: "", password: "" });
@@ -62,11 +63,19 @@ export default function SignIn() {
             if (resData?.accessToken && resData?.refreshToken) {
                 localStorage.setItem("accessToken", resData.accessToken);
                 localStorage.setItem("refreshToken", resData.refreshToken);
-                localStorage.setItem("token", resData.accessToken); // 👈 giữ thêm dòng bạn có ở local
+                localStorage.setItem("token", resData.accessToken);
                 localStorage.setItem("username", resData.username);
-                localStorage.setItem("buyerId", resData.buyerId);
                 localStorage.setItem("userEmail", resData.email);
 
+                //  kiểm tra kỹ buyerId trước khi lưu
+                if (resData?.buyerId) {
+                    localStorage.setItem("buyerId", resData.buyerId);
+                } else {
+                    console.warn(" Không có buyerId trả về từ API login");
+                    localStorage.removeItem("buyerId"); // tránh để giá trị "undefined"
+                }
+            
+                // Notify the app that auth status changed
                 window.dispatchEvent(new CustomEvent('authStatusChanged'));
             }
 
