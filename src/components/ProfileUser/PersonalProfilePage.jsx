@@ -7,6 +7,7 @@ import "./PersonalProfilePage.css"
 import ChangePassword from "./ChangePassword"
 import UpgradeToSeller from "./UpgradeToSeller"
 import PersonalEWallet from "./PersonalEWallet"
+import SellerBuyPackage from "./SellerBuyPackage"
 
 export default function PersonalProfilePage() {
   const [activeSection, setActiveSection] = useState("Personal profile")
@@ -47,6 +48,7 @@ export default function PersonalProfilePage() {
         )}
         {activeSection === "Personal E-wallet" && <PersonalEWallet />}
         {activeSection === "Upgrade to Seller" && <UpgradeToSeller />}
+        {activeSection === "Seller business package" && <SellerBuyPackage />}
       </main>
     </div>
   )
