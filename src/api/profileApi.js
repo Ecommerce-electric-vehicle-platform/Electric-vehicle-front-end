@@ -3,6 +3,11 @@ import axiosInstance from "./axiosInstance";
 
 const profileApi = {
 
+  // Lấy profile 
+  getProfile: () => {
+    return axiosInstance.get(`/api/v1/buyer/profile`); 
+  },
+
   uploadProfile: (formData) => {
     return axiosInstance.post(`/api/v1/buyer/upload-profile`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
