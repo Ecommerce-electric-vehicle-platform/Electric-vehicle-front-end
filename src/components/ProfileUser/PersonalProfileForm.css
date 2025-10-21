@@ -101,3 +101,84 @@
   flex-direction: column;
   flex: 1;
 }
+/* --- BỔ SUNG CHO CHẾ ĐỘ XEM (VIEW MODE) --- */
+
+.profile-view-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.profile-view-avatar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.avatar-image-large {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #eee;
+}
+
+.view-field {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 15px;
+}
+
+.view-field strong {
+  width: 160px;
+  flex-shrink: 0;
+  color: #555;
+}
+
+/* --- BỔ SUNG CHO PHẦN AVATAR TRONG FORM --- */
+
+.avatar-field-center {
+  display: flex;
+  flex-direction: column; /* Sắp xếp label, preview, input theo chiều dọc */
+  align-items: center; /* Căn giữa */
+  gap: 16px;
+}
+
+.avatar-field-center .form-label {
+  width: auto; /* Bỏ width cố định */
+  padding-top: 0;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.avatar-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ddd;
+}
+
+.avatar-field-center .input-wrapper {
+  width: 100%;
+  max-width: 400px; /* Giới hạn chiều rộng của input file */
+  align-items: center;
+}
+
+/* --- BỔ SUNG CHO CÁC INPUT KHÁC --- */
+
+.form-input-readonly {
+  background-color: #f4f4f5; /* Màu nền cho input bị khóa */
+  color: #71717a;
+  cursor: not-allowed;
+}
+
+/* CSS cho nút khi bị disable (đang loading) */
+.submit-button:disabled {
+  background-color: #a3e635; /* Màu nhạt hơn */
+  opacity: 0.7;
+  cursor: wait;
+}
