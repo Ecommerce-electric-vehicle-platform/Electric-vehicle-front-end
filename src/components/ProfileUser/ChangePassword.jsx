@@ -22,7 +22,7 @@ export default function ChangePassword() {
     // Không kiểm tra required ở đây (để làm khi submit)
     if (value && !passwordRegex.test(value)) {
       error =
-        "Password must be at least 8 characters, include letters, numbers, and special characters, and contain no spaces."
+        "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ cái, số và ký tự đặc biệt, không chứa khoảng trắng."
     }
 
     setErrors((prev) => ({ ...prev, [name]: error }))
@@ -40,17 +40,17 @@ export default function ChangePassword() {
     // Check required (NotBlank)
     const newErrors = {}
     Object.entries(formData).forEach(([key, value]) => {
-      if (!value.trim()) newErrors[key] = "This field is required."
+      if (!value.trim()) newErrors[key] = "Trường này là bắt buộc."
     })
 
     // Kiểm tra khớp password
     if (formData.newPassword !== formData.confirmPassword) {
-      newErrors.confirmPassword = "New passwords do not match."
+      newErrors.confirmPassword = "Mật khẩu mới không khớp."
     }
 
     // Kiểm tra password giống cũ
     if (formData.currentPassword === formData.newPassword) {
-      newErrors.newPassword = "New password must be different from current password."
+      newErrors.newPassword = "Mật khẩu mới phải khác mật khẩu hiện tại."
     }
 
     // Nếu còn lỗi thì dừng
@@ -72,7 +72,7 @@ export default function ChangePassword() {
       const res = await profileApi.changePassword(payload)
       console.log(" Password changed:", res.data)
 
-      alert("Password changed successfully!")
+      alert("Đổi mật khẩu thành công!")
 
       setFormData({
         currentPassword: "",
@@ -82,7 +82,7 @@ export default function ChangePassword() {
       setErrors({})
     } catch (err) {
       console.error(" Error changing password:", err)
-      alert(err.response?.data?.message || "Failed to change password. Please try again.")
+      alert(err.response?.data?.message || "Không thể đổi mật khẩu. Vui lòng thử lại.")
     } finally {
       setLoading(false)
     }
@@ -90,19 +90,19 @@ export default function ChangePassword() {
 
   return (
     <div className="change-password">
-      <h2 className="change-password-title">Change password</h2>
+      <h2 className="change-password-title">Đổi mật khẩu</h2>
 
       <form onSubmit={handleSubmit} className="change-password-form">
         {/* CURRENT PASSWORD */}
         <div className="form-group">
-          <label htmlFor="currentPassword">Current password*</label>
+          <label htmlFor="currentPassword">Mật khẩu hiện tại*</label>
           <input
             type="password"
             id="currentPassword"
             name="currentPassword"
             value={formData.currentPassword}
             onChange={handleChange}
-            placeholder="Current password"
+            placeholder="Mật khẩu hiện tại"
             required
             className={errors.currentPassword ? "error-input" : ""}
           />
@@ -113,14 +113,14 @@ export default function ChangePassword() {
 
         {/* NEW PASSWORD */}
         <div className="form-group">
-          <label htmlFor="newPassword">New password*</label>
+          <label htmlFor="newPassword">Mật khẩu mới*</label>
           <input
             type="password"
             id="newPassword"
             name="newPassword"
             value={formData.newPassword}
             onChange={handleChange}
-            placeholder="New password"
+            placeholder="Mật khẩu mới"
             required
             className={errors.newPassword ? "error-input" : ""}
           />
@@ -131,14 +131,14 @@ export default function ChangePassword() {
 
         {/* CONFIRM PASSWORD */}
         <div className="form-group">
-          <label htmlFor="confirmPassword">Re-enter new password*</label>
+          <label htmlFor="confirmPassword">Nhập lại mật khẩu mới*</label>
           <input
             type="password"
             id="confirmPassword"
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
-            placeholder="Re-enter new password"
+            placeholder="Nhập lại mật khẩu mới"
             required
             className={errors.confirmPassword ? "error-input" : ""}
           />
@@ -148,7 +148,7 @@ export default function ChangePassword() {
         </div>
 
         <button type="submit" className="submit-button" disabled={loading}>
-          {loading ? "Saving..." : "Save Change"}
+          {loading ? "Đang lưu..." : "Lưu thay đổi"}
         </button>
       </form>
     </div>

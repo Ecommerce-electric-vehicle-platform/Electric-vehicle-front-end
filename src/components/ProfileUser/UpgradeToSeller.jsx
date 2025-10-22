@@ -50,8 +50,8 @@ export default function UpgradeToSeller() {
           name === "storeName"
             ? "Store name must be 2–50 characters, letters & numbers only."
             : name === "taxNumber"
-            ? "Tax number must be 10–13 digits."
-            : "Identity number must be 9–12 digits.",
+              ? "Tax number must be 10–13 digits."
+              : "Identity number must be 9–12 digits.",
       }));
     } else {
       setErrors((prev) => ({ ...prev, [name]: "" }));

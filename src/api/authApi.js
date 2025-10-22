@@ -1,6 +1,13 @@
 // src/api/authApi.js
 import axiosInstance from "./axiosInstance";
+import axios from "axios";
 import { saveAuthData } from "../utils/authUtils";
+
+// Tạo axios instance riêng cho refresh token để tránh bị interceptor can thiệp
+const refreshAxiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
+  headers: { "Content-Type": "application/json" },
+});
 
 const authApi = {
   signup: (data) => axiosInstance.post("/api/v1/auth/signup", data),
@@ -44,7 +51,11 @@ const authApi = {
 
   // ===== Refresh Token =====
   refreshToken: (refreshToken) =>
-    axiosInstance.post("/api/v1/auth/refresh-token", { refreshToken }),
+    refreshAxiosInstance.post("/api/v1/auth/refresh-token", {}, {
+      headers: {
+        Authorization: `Bearer ${refreshToken}`
+      }
+    }),
 };
 
 export default authApi;

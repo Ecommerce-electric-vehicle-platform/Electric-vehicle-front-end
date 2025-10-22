@@ -3,9 +3,9 @@ import { useState, useEffect } from "react"
 import "./UserSidebar.css"
 
 export default function UserSidebar({
-  activeItem = "Personal profile",
+  activeItem = "Hồ sơ cá nhân",
   onItemClick,
-  username = "Fullname of user",
+  username = "Tên người dùng",
 
 }) {
   const [avatarImage, setAvatarImage] = useState("/default-avatar.png") // ảnh mặc định
@@ -32,11 +32,11 @@ export default function UserSidebar({
   }, [])
 
   const menuItems = [
-    "Personal profile",
-    "Change password",
-    "My order",
-    "Personal E-wallet",
-    "Upgrade to Seller",
+    "Hồ sơ cá nhân",
+    "Đổi mật khẩu",
+    "Đơn hàng của tôi",
+    "Ví điện tử",
+    "Nâng cấp thành người bán",
   ]
 
 

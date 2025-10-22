@@ -75,17 +75,17 @@ export default function PersonalProfileForm() {
     const fetchProfile = async () => {
       try {
         const response = await profileApi.getProfile();
-        
+
         // 🔹 SỬA LẠI CÁCH BÓC TÁCH DATA 🔹
         const responseBody = response.data; // Đây là { success: true, data: {...}, ... }
-        
+
         // Kiểm tra xem API có success không
         if (!responseBody.success) {
           throw new Error(responseBody.message || "Lỗi khi tải profile.");
         }
 
         // Lấy data profile thật (lớp bên trong)
-        const profileData = responseBody.data; 
+        const profileData = responseBody.data;
 
         // 🔹 KIỂM TRA "THÔNG MINH" (dùng profileData) 🔹
         if (!profileData || !profileData.fullName) {
@@ -99,7 +99,7 @@ export default function PersonalProfileForm() {
           phoneNumber: profileData.phoneNumber || "",
           email: profileData.email || storedEmail || "",
           gender: profileData.gender?.toLowerCase() || "male",
-          dob: profileData.dob || "", 
+          dob: profileData.dob || "",
           defaultShippingAddress: profileData.defaultShippingAddress || "",
         });
 
@@ -245,7 +245,7 @@ export default function PersonalProfileForm() {
   if (isViewMode) {
     return (
       <div className="profile-view-container">
-        <h2 className="form-title">Personal profile</h2>
+        <h2 className="form-title">Hồ sơ cá nhân</h2>
         <div className="profile-view-avatar">
           <img
             src={existingAvatarUrl || "/default-avatar.png"}
@@ -300,7 +300,7 @@ export default function PersonalProfileForm() {
             <img
               src={existingAvatarUrl}
               alt="Avatar Preview"
-              className="avatar-preview" 
+              className="avatar-preview"
             />
           )}
           <div className="input-wrapper">
@@ -308,7 +308,7 @@ export default function PersonalProfileForm() {
               id="avatarUrl"
               type="file"
               accept="image/*"
-              onChange={handleAvatarChange} 
+              onChange={handleAvatarChange}
               onBlur={handleBlur} // Thêm onBlur cho avatar
               name="avatarUrl"
               className={`form-input ${errors.avatarUrl ? "input-error" : ""}`}
@@ -323,7 +323,7 @@ export default function PersonalProfileForm() {
         {/* Full name */}
         <div className="form-field">
           <label htmlFor="fullName" className="form-label">
-            Full name*
+            Họ và tên*
           </label>
           <div className="input-wrapper">
             <input
@@ -344,7 +344,7 @@ export default function PersonalProfileForm() {
         {/* Phone number */}
         <div className="form-field">
           <label htmlFor="phoneNumber" className="form-label">
-            Phone number*
+            Số điện thoại*
           </label>
           <div className="input-wrapper">
             <input
@@ -354,9 +354,8 @@ export default function PersonalProfileForm() {
               value={formData.phoneNumber}
               onChange={handleChange}
               onBlur={handleBlur} // 🔹 THÊM VÀO
-              className={`form-input ${
-                errors.phoneNumber ? "input-error" : ""
-              }`}
+              className={`form-input ${errors.phoneNumber ? "input-error" : ""
+                }`}
             />
             {errors.phoneNumber && (
               <span className="error-text">{errors.phoneNumber}</span>
@@ -378,7 +377,7 @@ export default function PersonalProfileForm() {
               onChange={handleChange}
               onBlur={handleBlur} // 🔹 THÊM VÀO
               className={`form-input ${errors.email ? "input-error" : ""}`}
-              // (readOnly đã bị xóa)
+            // (readOnly đã bị xóa)
             />
             {errors.email && (
               <span className="error-text">{errors.email}</span>
@@ -388,37 +387,37 @@ export default function PersonalProfileForm() {
 
         {/* Gender (Radio, không cần onBlur) */}
         <div className="form-field">
-          <label className="form-label">Gender*</label>
-           <div className="radio-group">
-             <label className="radio-label">
-               <input
-                 type="radio"
-                 name="gender"
-                 value="male"
-                 checked={formData.gender === "male"}
-                 onChange={handleChange}
-               />
-               <span>Male</span>
-             </label>
-             <label className="radio-label">
-               <input
-                 type="radio"
-                 name="gender"
-                 value="female"
-                 checked={formData.gender === "female"}
-                 onChange={handleChange}
-               />
-               <span>Female</span>
-             </label>
-           </div>
-           {/* Hiển thị lỗi chung cho gender nếu submit */}
-           {errors.gender && <span className="error-text">{errors.gender}</span>}
+          <label className="form-label">Giới tính*</label>
+          <div className="radio-group">
+            <label className="radio-label">
+              <input
+                type="radio"
+                name="gender"
+                value="male"
+                checked={formData.gender === "male"}
+                onChange={handleChange}
+              />
+              <span>Nam</span>
+            </label>
+            <label className="radio-label">
+              <input
+                type="radio"
+                name="gender"
+                value="female"
+                checked={formData.gender === "female"}
+                onChange={handleChange}
+              />
+              <span>Nữ</span>
+            </label>
+          </div>
+          {/* Hiển thị lỗi chung cho gender nếu submit */}
+          {errors.gender && <span className="error-text">{errors.gender}</span>}
         </div>
 
         {/* Birthday */}
         <div className="form-field">
           <label htmlFor="dob" className="form-label">
-            Birthday*
+            Ngày sinh*
           </label>
           <div className="input-wrapper">
             <input
@@ -437,7 +436,7 @@ export default function PersonalProfileForm() {
         {/* Address */}
         <div className="form-field">
           <label htmlFor="defaultShippingAddress" className="form-label">
-            Address*
+            Địa chỉ*
           </label>
           <div className="input-wrapper">
             <input
@@ -448,9 +447,8 @@ export default function PersonalProfileForm() {
               value={formData.defaultShippingAddress}
               onChange={handleChange}
               onBlur={handleBlur} // 🔹 THÊM VÀO
-              className={`form-input ${
-                errors.defaultShippingAddress ? "input-error" : ""
-              }`}
+              className={`form-input ${errors.defaultShippingAddress ? "input-error" : ""
+                }`}
             />
             {errors.defaultShippingAddress && (
               <span className="error-text">
@@ -467,7 +465,7 @@ export default function PersonalProfileForm() {
             className="submit-button"
             disabled={isLoading}
           >
-            {isLoading ? "Đang lưu..." : "Save Change"}
+            {isLoading ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
         </div>
       </form>
