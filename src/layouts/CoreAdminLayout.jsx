@@ -2,7 +2,7 @@
 // FIXED: bỏ marginLeft: "var(--cui-sidebar-width, 256px)"
 // Giữ logic theme CoreUI và layout Admin như cũ
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { mountCoreUiCss, unmountCoreUiCss } from "../utils/coreuiCss";
 import {
   AppContent,
@@ -23,10 +23,74 @@ import {
   MdEmail,
   MdDarkMode,
   MdLightMode,
+  MdLogout,
+  MdSettings,
+  MdAccountCircle,
 } from "react-icons/md";
 import { FaLeaf } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 const CoreAdminLayout = () => {
+  const navigate = useNavigate();
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Lấy thông tin admin từ localStorage
+  const getAdminInfo = () => {
+    const raw = localStorage.getItem("adminProfile");
+    if (raw) {
+      try {
+        const profile = JSON.parse(raw);
+        return {
+          displayName: profile?.fullName || profile?.employeeNumber || "Admin",
+          email: profile?.email || "",
+          employeeNumber: profile?.employeeNumber || "",
+          isSuperAdmin: !!profile?.isSuperAdmin,
+        };
+      } catch {
+        return {
+          displayName: "Admin",
+          email: "",
+          employeeNumber: "",
+          isSuperAdmin: false,
+        };
+      }
+    }
+    return {
+      displayName: "Admin",
+      email: "",
+      employeeNumber: "",
+      isSuperAdmin: false,
+    };
+  };
+
+  const adminInfo = getAdminInfo();
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("buyerId");
+    localStorage.removeItem("authType");
+    localStorage.removeItem("adminProfile");
+    window.dispatchEvent(new CustomEvent("authStatusChanged"));
+    navigate("/admin/signin");
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowUserDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   useEffect(() => {
     mountCoreUiCss();
     const previousTheme =
@@ -421,22 +485,193 @@ const CoreAdminLayout = () => {
             >
               <MdDarkMode />
             </button>
+
+            {/* User Avatar with Dropdown */}
             <div
+              ref={dropdownRef}
               style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #22c55e, #16a34a)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                fontSize: "12px",
-                fontWeight: "600",
+                position: "relative",
                 marginLeft: "10px",
               }}
             >
-              A
+              <div
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "transform 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                {adminInfo.displayName.charAt(0).toUpperCase()}
+              </div>
+
+              {/* Dropdown Menu */}
+              {showUserDropdown && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    right: 0,
+                    background: "white",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                    minWidth: "220px",
+                    zIndex: 1000,
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* User Info Header */}
+                  <div
+                    style={{
+                      padding: "16px",
+                      borderBottom: "1px solid #e5e7eb",
+                      background: "#f9fafb",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: "600",
+                        fontSize: "14px",
+                        color: "#111827",
+                      }}
+                    >
+                      {adminInfo.displayName}
+                    </div>
+                    {adminInfo.email && (
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#6b7280",
+                          marginTop: "4px",
+                        }}
+                      >
+                        {adminInfo.email}
+                      </div>
+                    )}
+                    {adminInfo.employeeNumber && (
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#6b7280",
+                          marginTop: "2px",
+                        }}
+                      >
+                        #{adminInfo.employeeNumber}
+                        {adminInfo.isSuperAdmin && " • Super Admin"}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Menu Items */}
+                  <div style={{ padding: "8px 0" }}>
+                    <button
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        // Navigate to profile if needed
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "10px 16px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        color: "#374151",
+                        transition: "background 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#f3f4f6";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "none";
+                      }}
+                    >
+                      <MdAccountCircle style={{ fontSize: "18px" }} />
+                      <span>Profile</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        // Navigate to settings if needed
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "10px 16px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        color: "#374151",
+                        transition: "background 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#f3f4f6";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "none";
+                      }}
+                    >
+                      <MdSettings style={{ fontSize: "18px" }} />
+                      <span>Settings</span>
+                    </button>
+
+                    <div
+                      style={{
+                        margin: "8px 0",
+                        borderTop: "1px solid #e5e7eb",
+                      }}
+                    ></div>
+
+                    <button
+                      onClick={handleLogout}
+                      style={{
+                        width: "100%",
+                        padding: "10px 16px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        color: "#dc2626",
+                        transition: "background 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#fef2f2";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "none";
+                      }}
+                    >
+                      <MdLogout style={{ fontSize: "18px" }} />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -29,7 +29,8 @@ import { AutoScrollToTop } from "./components/AutoScrollToTop/AutoScrollToTop";
 import { Footer } from "./components/Footer/Footer";
 import { NotificationModal } from "./components/NotificationModal/NotificationModal";
 import ForgotPassword from "./pages/Auth/login/ForgotPassword"; //thêm route này
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import notificationService from "./services/notificationService";
 
 function AppContent() {
   const location = useLocation();
@@ -44,6 +45,12 @@ function AppContent() {
     location.pathname.startsWith("/order-tracking") ||
     location.pathname.startsWith("/admin");
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Khởi tạo notification service khi app start
+  useEffect(() => {
+    console.log("Initializing notification service...");
+    notificationService.init();
+  }, []);
 
   const handleGoLogin = () => {
     setShowAuthModal(false);
