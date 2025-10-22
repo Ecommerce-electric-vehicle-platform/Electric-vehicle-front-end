@@ -9,7 +9,6 @@ import { VehicleShowcase } from "../../components/VehicleShowcase/VehicleShowcas
 import { UpgradeSection } from "../../components/UpgradeSection/UpgradeSection";
 import { ProductsSection } from "../../components/ProductsSection/ProductsSection";
 import { ScrollToTop } from "../../components/ScrollToTop/ScrollToTop";
-import { DebugPanel } from "../../components/DebugPanel/DebugPanel";
 
 // Khi đã đăng nhập
 import { HomeUser } from "../../components/HomeUser/HomeUser";
@@ -92,7 +91,6 @@ export function Home() {
       </main>
 
       <ScrollToTop />
-      <DebugPanel />
     </div>
   );
 }

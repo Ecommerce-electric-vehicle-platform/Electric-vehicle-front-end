@@ -5,6 +5,12 @@
     text-align: center;
 }
 
+/* Thêm khoảng trống cho nội dung khi Header cố định */
+body {
+    padding-top: 4rem;
+    /* Chiều cao của Header (4rem = 64px) */
+}
+
 .logo {
     height: 6em;
     padding: 1.5em;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     ArrowLeft,
@@ -18,7 +18,6 @@ import {
     Settings
 } from 'lucide-react';
 import { vehicleProducts, batteryProducts, formatCurrency } from '../../test-mock-data/data/productsData';
-import DebugPanel from '../../components/DebugPanel/DebugPanel';
 import TestEnvironmentSetup from '../../test-mock-data/components/TestEnvironmentSetup/TestEnvironmentSetup';
 import './PlaceOrder.css';
 
@@ -30,11 +29,8 @@ function PlaceOrder() {
     const [isGuest, setIsGuest] = useState(true);
 
     // States cho các bước kiểm tra
-    const [validationStep, setValidationStep] = useState('checking'); // checking, wallet_required, product_check, seller_check, payment, success
-    const [hasWallet, setHasWallet] = useState(false);
-    const [productAvailable, setProductAvailable] = useState(true);
+    const [validationStep, setValidationStep] = useState('checking'); // checking, product_check, seller_check, payment, success
     const [showModal, setShowModal] = useState(false);
-    const [showDebugPanel, setShowDebugPanel] = useState(false);
     const [modalConfig, setModalConfig] = useState({
         type: 'info', // info, warning, error, success
         title: '',
@@ -93,10 +89,16 @@ function PlaceOrder() {
 
     // Kiểm tra đăng nhập
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        setIsGuest(!token);
+        const accessToken = localStorage.getItem('accessToken');
+        const refreshToken = localStorage.getItem('refreshToken');
+        const legacyToken = localStorage.getItem('token');
 
-        if (!token) {
+        // Có token nào đó thì không phải guest
+        const hasToken = accessToken || refreshToken || legacyToken;
+        setIsGuest(!hasToken);
+
+        // Nếu không có token nào thì redirect về signin
+        if (!hasToken) {
             navigate('/signin');
             return;
         }
@@ -151,96 +153,8 @@ function PlaceOrder() {
         }
     }, [location.state, product]);
 
-    // Tự động bắt đầu validation khi product đã được load
-    useEffect(() => {
-        if (product && validationStep === 'checking') {
-            console.log('🔍 Product loaded, starting validation...');
-            startValidationProcess();
-        }
-    }, [product]);
-
-    // Quy trình kiểm tra validation
-    const startValidationProcess = async () => {
-        console.log('🚀 Starting validation process...');
-        console.log('🔍 Current product state:', product);
-        console.log('🔍 Product ID from URL:', id);
-        setValidationStep('checking');
-
-        // Giả lập delay để hiển thị loading
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Bước 1: Kiểm tra ví điện tử
-        console.log('🔍 Step 1: Checking wallet...');
-        const walletLinked = checkWalletStatus();
-
-        if (!walletLinked) {
-            console.log('   ❌ Wallet not linked');
-            setValidationStep('wallet_required');
-            showWalletRequiredModal();
-            return;
-        }
-        console.log('   ✅ Wallet is linked');
-
-        // Bước 2: Kiểm tra trạng thái sản phẩm
-        console.log('🔍 Step 2: Checking product availability...');
-        console.log('🔍 Product before availability check:', product);
-
-        // Đảm bảo product có sẵn trước khi kiểm tra
-        if (!product) {
-            console.log('   ❌ No product available for checking');
-            setValidationStep('product_unavailable');
-            showProductUnavailableModal();
-            return;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const productStatus = checkProductAvailability();
-
-        if (!productStatus.available) {
-            console.log('   ❌ Product not available:', productStatus.reason);
-            setValidationStep('product_unavailable');
-            showProductUnavailableModal();
-            return;
-        }
-        console.log('   ✅ Product is available');
-
-        // Bước 3: Kiểm tra người bán (nếu có nhiều sản phẩm trong giỏ)
-        console.log('🔍 Step 3: Checking multiple sellers...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const sellerCheck = checkMultipleSellers();
-
-        if (!sellerCheck.valid) {
-            console.log('   ❌ Multiple sellers detected');
-            setValidationStep('multiple_sellers');
-            showMultipleSellersModal();
-            return;
-        }
-        console.log('   ✅ Single seller confirmed');
-
-        // Tất cả kiểm tra đều pass -> chuyển sang form đặt hàng
-        console.log('✅ All validations passed, proceeding to payment form');
-        setValidationStep('payment');
-    };
-
-    // Kiểm tra trạng thái ví
-    const checkWalletStatus = () => {
-        // Giả lập kiểm tra ví - trong thực tế sẽ gọi API
-        const walletStatus = localStorage.getItem('walletLinked');
-        const isLinked = walletStatus === 'true';
-        setHasWallet(isLinked);
-
-        // Giả lập: Nếu chưa có setting thì mặc định là đã liên kết để test flow
-        if (walletStatus === null) {
-            localStorage.setItem('walletLinked', 'true');
-            setHasWallet(true);
-            return true;
-        }
-
-        return isLinked;
-    };
-
     // Kiểm tra sản phẩm còn hàng
-    const checkProductAvailability = () => {
+    const checkProductAvailability = useCallback(() => {
         console.log('🔍 Debug checkProductAvailability:');
         console.log('   Product:', product);
         console.log('   Product ID:', product?.id);
@@ -254,37 +168,32 @@ function PlaceOrder() {
 
             if (testScenario === 'sold') {
                 console.log('   ❌ Test scenario: SOLD');
-                setProductAvailable(false);
                 return { available: false, reason: 'Sản phẩm đã được bán' };
             }
 
             if (testScenario === 'unavailable') {
                 console.log('   ❌ Test scenario: UNAVAILABLE');
-                setProductAvailable(false);
                 return { available: false, reason: 'Sản phẩm tạm thời không có sẵn' };
             }
 
             // Kiểm tra trạng thái thực tế của sản phẩm
             if (product.status === 'sold') {
                 console.log('   ❌ Product status: SOLD');
-                setProductAvailable(false);
                 return { available: false, reason: 'Sản phẩm đã được bán' };
             }
 
             if (product.status === 'unavailable') {
                 console.log('   ❌ Product status: UNAVAILABLE');
-                setProductAvailable(false);
                 return { available: false, reason: 'Sản phẩm tạm thời không có sẵn' };
             }
 
             // Mặc định: sản phẩm có sẵn
             console.log('   ✅ Product is AVAILABLE');
-            setProductAvailable(true);
             return { available: true, reason: null };
         }
         console.log('   ❌ No product found');
         return { available: false, reason: 'Không tìm thấy sản phẩm' };
-    };
+    }, [product]);
 
     // Kiểm tra nhiều người bán
     const checkMultipleSellers = () => {
@@ -303,36 +212,8 @@ function PlaceOrder() {
         return { valid: true, sellers: ['seller1'] };
     };
 
-    // Hiển thị modal yêu cầu liên kết ví
-    const showWalletRequiredModal = () => {
-        setModalConfig({
-            type: 'warning',
-            title: 'Yêu cầu liên kết ví điện tử',
-            message: 'Bạn cần liên kết ví điện tử để có thể đặt hàng. Vui lòng liên kết ví trong trang cá nhân.',
-            actions: [
-                {
-                    label: 'Liên kết ví ngay',
-                    type: 'primary',
-                    onClick: () => {
-                        setShowModal(false);
-                        navigate('/profile');
-                    }
-                },
-                {
-                    label: 'Quay lại',
-                    type: 'secondary',
-                    onClick: () => {
-                        setShowModal(false);
-                        navigate(-1);
-                    }
-                }
-            ]
-        });
-        setShowModal(true);
-    };
-
     // Hiển thị modal sản phẩm hết hàng
-    const showProductUnavailableModal = () => {
+    const showProductUnavailableModal = useCallback(() => {
         setModalConfig({
             type: 'error',
             title: 'Sản phẩm không còn hàng',
@@ -357,10 +238,10 @@ function PlaceOrder() {
             ]
         });
         setShowModal(true);
-    };
+    }, [navigate]);
 
     // Hiển thị modal nhiều người bán
-    const showMultipleSellersModal = () => {
+    const showMultipleSellersModal = useCallback(() => {
         setModalConfig({
             type: 'warning',
             title: 'Không thể đặt hàng',
@@ -385,7 +266,91 @@ function PlaceOrder() {
             ]
         });
         setShowModal(true);
-    };
+    }, [navigate]);
+
+    // Quy trình kiểm tra validation
+    const startValidationProcess = useCallback(async () => {
+        console.log('🚀 Starting validation process...');
+        console.log('🔍 Current product state:', product);
+        console.log('🔍 Product ID from URL:', id);
+        setValidationStep('checking');
+
+        // Giả lập delay để hiển thị loading
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Bước 1: Kiểm tra trạng thái sản phẩm
+        console.log('🔍 Step 1: Checking product availability...');
+        console.log('🔍 Product before availability check:', product);
+
+        // Đảm bảo product có sẵn trước khi kiểm tra
+        if (!product) {
+            console.log('   ❌ No product available for checking');
+            setValidationStep('product_unavailable');
+            showProductUnavailableModal();
+            return;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const productStatus = checkProductAvailability();
+
+        if (!productStatus.available) {
+            console.log('   ❌ Product not available:', productStatus.reason);
+            setValidationStep('product_unavailable');
+            showProductUnavailableModal();
+            return;
+        }
+        console.log('   ✅ Product is available');
+
+        // Bước 2: Kiểm tra người bán (nếu có nhiều sản phẩm trong giỏ)
+        console.log('🔍 Step 2: Checking multiple sellers...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const sellerCheck = checkMultipleSellers();
+
+        if (!sellerCheck.valid) {
+            console.log('   ❌ Multiple sellers detected');
+            setValidationStep('multiple_sellers');
+            showMultipleSellersModal();
+            return;
+        }
+        console.log('   ✅ Single seller confirmed');
+
+        // Tất cả kiểm tra đều pass -> chuyển sang form đặt hàng
+        console.log('✅ All validations passed, proceeding to payment form');
+        setValidationStep('payment');
+    }, [product, id, checkProductAvailability, showMultipleSellersModal, showProductUnavailableModal]);
+
+    // Tự động bắt đầu validation khi product đã được load
+    useEffect(() => {
+        if (product && validationStep === 'checking') {
+            console.log('🔍 Product loaded, starting validation...');
+            startValidationProcess();
+        }
+    }, [product, validationStep, startValidationProcess]);
+
+    // Hiển thị modal số dư không đủ
+    const showInsufficientBalanceModal = useCallback((neededAmount) => {
+        setModalConfig({
+            type: 'warning',
+            title: 'Số dư ví không đủ',
+            message: `Số dư ví của bạn không đủ để thanh toán số tiền ${formatCurrency(neededAmount)}. Vui lòng nạp tiền để tiếp tục.`,
+            actions: [
+                {
+                    label: 'Nạp tiền ngay',
+                    type: 'primary',
+                    onClick: () => {
+                        setShowModal(false);
+                        navigate('/wallet/deposit');
+                    }
+                },
+                {
+                    label: 'Quay lại',
+                    type: 'secondary',
+                    onClick: () => setShowModal(false)
+                }
+            ]
+        });
+        setShowModal(true);
+    }, [navigate]);
 
     // Xử lý thay đổi input
     const handleInputChange = (field, value) => {
@@ -439,6 +404,18 @@ function PlaceOrder() {
             return;
         }
 
+        // Nếu chọn thanh toán bằng ví, kiểm tra số dư trước khi tạo đơn
+        if (orderData.payment_method === 'wallet') {
+            const walletBalanceRaw = localStorage.getItem('walletBalance');
+            const walletBalance = walletBalanceRaw ? parseInt(walletBalanceRaw, 10) : 0;
+            const amountToPay = orderData.final_price || 0;
+
+            if (Number.isFinite(amountToPay) && walletBalance < amountToPay) {
+                showInsufficientBalanceModal(amountToPay);
+                return;
+            }
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -472,11 +449,21 @@ function PlaceOrder() {
             existingOrders.push(order);
             localStorage.setItem('orders', JSON.stringify(existingOrders));
 
+            // Nếu thanh toán bằng ví và số dư đủ, trừ số dư (mô phỏng phía FE)
+            if (orderData.payment_method === 'wallet') {
+                const walletBalanceRaw = localStorage.getItem('walletBalance');
+                const walletBalance = walletBalanceRaw ? parseInt(walletBalanceRaw, 10) : 0;
+                const amountToPay = orderData.final_price || 0;
+                if (Number.isFinite(amountToPay) && walletBalance >= amountToPay) {
+                    localStorage.setItem('walletBalance', String(walletBalance - amountToPay));
+                }
+            }
+
             // Tạo thông báo cho seller
             createSellerNotification(order);
 
             setCurrentStep(3);
-        } catch (error) {
+        } catch {
             alert('Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
         } finally {
             setIsSubmitting(false);
@@ -529,7 +516,17 @@ function PlaceOrder() {
     };
 
     if (isGuest) {
-        return null;
+        return (
+            <div className="place-order-page">
+                <div className="validation-screen">
+                    <div className="validation-content">
+                        <div className="loading-spinner"></div>
+                        <h3>Đang kiểm tra đăng nhập...</h3>
+                        <p>Vui lòng đợi trong giây lát...</p>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     if (!product) {
@@ -551,10 +548,6 @@ function PlaceOrder() {
                         <h3>Đang kiểm tra thông tin</h3>
                         <p>Vui lòng đợi trong giây lát...</p>
                         <div className="validation-steps">
-                            <div className="validation-step active">
-                                <Wallet className="step-icon" />
-                                <span>Kiểm tra ví điện tử</span>
-                            </div>
                             <div className="validation-step">
                                 <Package className="step-icon" />
                                 <span>Kiểm tra sản phẩm</span>
@@ -622,15 +615,6 @@ function PlaceOrder() {
 
                     <h1 className="page-title">Đặt hàng</h1>
 
-                    {/* Debug Button */}
-                    <button
-                        className="debug-toggle-btn"
-                        onClick={() => setShowDebugPanel(true)}
-                        title="Mở Debug Panel"
-                    >
-                        <Settings size={16} />
-                        Debug
-                    </button>
 
                     {/* Progress Steps */}
                     <div className="progress-steps">
@@ -791,7 +775,7 @@ function PlaceOrder() {
                                                     <Wallet size={20} />
                                                     Ví điện tử
                                                 </div>
-                                                <div className="payment-desc">Thanh toán qua ví điện tử đã liên kết</div>
+                                                <div className="payment-desc">Thanh toán qua ví điện tử</div>
                                             </div>
                                         </label>
                                         <label className="payment-option">
@@ -1131,11 +1115,6 @@ function PlaceOrder() {
                 </div>
             </div>
 
-            {/* Debug Panel */}
-            <DebugPanel
-                isOpen={showDebugPanel}
-                onClose={() => setShowDebugPanel(false)}
-            />
         </div>
     );
 }

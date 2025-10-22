@@ -1,30 +1,43 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Slider from "react-slick";
-import { ArrowLeft, ArrowRight, Eye, MapPin } from "lucide-react";
-import "./FeaturedSlider.css";
-import {
-  vehicleProducts,
-  batteryProducts,
-  formatCurrency,
-} from "../../test-mock-data/data/productsData";
+import React, { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import Slider from "react-slick"
+import { ArrowLeft, ArrowRight, Eye, MapPin } from "lucide-react"
+import "./FeaturedSlider.css"
+import { fetchPostProducts, normalizeProduct } from "../../api/productApi"
+import { formatCurrency } from "../../utils/format"
 
 export function FeaturedSlider() {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [items, setItems] = useState([])
 
-  // Lấy sản phẩm nổi bật từ dữ liệu mới
-  const featuredItems = [
-    vehicleProducts[0], // VinFast Feliz S
-    vehicleProducts[1], // YADEA Xmen Neo
-    vehicleProducts[2], // Giant M133S
-    batteryProducts[0], // Pin Bridgestone
-    batteryProducts[2], // Cell Pin Lipo
-  ];
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    setError("")
+    fetchPostProducts({ page: 1, size: 10 })
+      .then(({ items }) => {
+        if (!mounted) return
+        setItems(items || [])
+      })
+      .catch((err) => {
+        if (!mounted) return
+        setError(err?.message || "Không thể tải dữ liệu")
+      })
+      .finally(() => {
+        if (!mounted) return
+        setLoading(false)
+      })
+    return () => { mounted = false }
+  }, [])
+
+  const featuredItems = useMemo(() => (items || []).map(normalizeProduct).filter(Boolean).slice(0, 5), [items])
 
   // Xử lý click xem chi tiết
   const handleViewDetails = (product) => {
-    navigate(`/product/${product.id}`);
-  };
+    navigate(`/product/${product.id}`)
+  }
 
   // ⚙️ Cấu hình slider
   const settings = {
@@ -39,44 +52,37 @@ export function FeaturedSlider() {
     arrows: true,
     prevArrow: <PrevArrow />,
     nextArrow: <NextArrow />,
-  };
+  }
 
-  // ✅ Cuộn xuống phần xe điện (đúng id wrapper ở Home)
+  // ✅ Cuộn xuống phần xe điện
   const scrollToShowcase = () => {
-    const section = document.querySelector("#vehicleshowcase-section");
+    const section = document.querySelector("#vehicles")
     if (section) {
-      section.scrollIntoView({ behavior: "smooth" });
+      section.scrollIntoView({ behavior: "smooth" })
     }
-  };
+  }
 
   return (
     <section className="featured-slider-wrapper">
       {/* 🌿 Header */}
       <div className="featured-header" onClick={scrollToShowcase}>
         <h2 className="featured-title">Sản phẩm nổi bật</h2>
-        <p className="featured-subtitle">
-          Khám phá những sản phẩm được yêu thích nhất ↓
-        </p>
+        <p className="featured-subtitle">Khám phá những sản phẩm được yêu thích nhất ↓</p>
       </div>
 
       {/* 🌟 Slider */}
       <div className="featured-slider-container">
         <Slider {...settings}>
-          {featuredItems.map((product) => (
-            <div key={product.id} className="featured-slide">
-              <img
-                src={product.image}
-                alt={product.title}
-                className="featured-image"
-              />
+          {!loading && !error && featuredItems.map((product) => (
+            <div
+              key={product.id}
+              className="featured-slide"
+            >
+              <img src={product.image} alt={product.title} className="featured-image" />
               <div className="featured-overlay">
                 <h3 className="featured-name">{product.title}</h3>
-                <p className="featured-brand">
-                  {product.brand} - {product.model}
-                </p>
-                <p className="featured-price">
-                  {formatCurrency(product.price)}
-                </p>
+                <p className="featured-brand">{product.brand} - {product.model}</p>
+                <p className="featured-price">{formatCurrency(product.price)}</p>
 
                 <div className="featured-location">
                   <MapPin className="detail-icon" />
@@ -95,8 +101,9 @@ export function FeaturedSlider() {
           ))}
         </Slider>
       </div>
+
     </section>
-  );
+  )
 }
 
 // 🔹 Nút điều hướng
@@ -105,7 +112,7 @@ function PrevArrow({ onClick }) {
     <div className="arrow arrow-left" onClick={onClick}>
       <ArrowLeft />
     </div>
-  );
+  )
 }
 
 function NextArrow({ onClick }) {
@@ -113,5 +120,5 @@ function NextArrow({ onClick }) {
     <div className="arrow arrow-right" onClick={onClick}>
       <ArrowRight />
     </div>
-  );
+  )
 }
