@@ -33,11 +33,10 @@
   color: #333;
 }
 
-/* Progress Bar */
+/* Progress Bar - Giữ nguyên nếu bạn có */
 .progress-section {
   margin-bottom: 40px;
 }
-
 .progress-bar {
   display: flex;
   align-items: flex-start;
@@ -45,7 +44,6 @@
   position: relative;
   padding: 0 20px;
 }
-
 .progress-step {
   display: flex;
   flex-direction: column;
@@ -54,7 +52,6 @@
   position: relative;
   z-index: 2;
 }
-
 .progress-circle {
   width: 28px;
   height: 28px;
@@ -66,13 +63,11 @@
   flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-
 .progress-step.active .progress-circle {
   background-color: #22c55e;
   border-color: #22c55e;
   box-shadow: 0 2px 6px rgba(34, 197, 94, 0.3);
 }
-
 .progress-label {
   font-size: 12px;
   color: #666;
@@ -80,7 +75,6 @@
   max-width: 100px;
   line-height: 1.4;
 }
-
 .progress-line {
   position: absolute;
   top: 13px;
@@ -90,22 +84,18 @@
   border-top: 2px solid #e0e0e0;
   background: transparent;
 }
-
 .progress-line.active {
   border-top-color: #22c55e;
   border-top-style: solid;
 }
-
 .progress-line.inactive {
   border-top-color: #e0e0e0;
   border-top-style: dashed;
 }
-
 .progress-step:nth-child(1) ~ .progress-line:nth-of-type(1) {
   left: calc(50% - 14px);
   width: calc(100% / 3 - 14px);
 }
-
 .progress-step:nth-child(3) ~ .progress-line:nth-of-type(2) {
   left: calc(50% + 14px + 100% / 3);
   width: calc(100% / 3 - 14px);
@@ -130,7 +120,7 @@
   color: #333;
 }
 
-.required {
+.required { /* Class này có thể bạn chưa dùng, nhưng để đây */
   color: #ef4444;
 }
 
@@ -148,6 +138,21 @@
   border-color: #22c55e;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
+
+.form-input.input-error { /* Thêm style input lỗi */
+    border-color: #ef4444; /* Viền đỏ */
+}
+.form-input.input-error:focus { /* Giữ viền đỏ khi focus lỗi */
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.error-text { /* Style chung cho text báo lỗi */
+  color: #ef4444; /* Màu đỏ */
+  font-size: 12px; /* Cỡ chữ nhỏ hơn */
+  margin-top: 4px; /* Khoảng cách trên */
+}
+
 
 .upload-note {
   font-size: 12px;
@@ -183,9 +188,12 @@
   border-radius: 6px;
   background-color: #fafafa;
 }
+.file-upload-box.input-error { /* Thêm style lỗi cho ô upload */
+    border-color: #ef4444;
+}
 
 .file-input {
-  display: none;
+  display: none; /* Ẩn input gốc */
 }
 
 .file-button {
@@ -204,6 +212,7 @@
   font-size: 12px;
   color: #22c55e;
   margin-top: 4px;
+  word-break: break-all; /* Ngăn tên file dài làm vỡ layout */
 }
 
 /* Policy Agreement */
@@ -215,6 +224,10 @@
   background-color: #f9fafb;
   border-radius: 6px;
 }
+.policy-agreement.input-error { /* Thêm style lỗi cho ô policy */
+    border: 1px solid #ef4444;
+}
+
 
 .checkbox-input {
   width: 20px;
@@ -228,7 +241,7 @@
   font-size: 14px;
   color: #666;
   line-height: 1.5;
-  cursor: pointer;
+  cursor: pointer; /* Cho phép click vào text để check */
 }
 
 .policy-link {
@@ -240,6 +253,8 @@
   text-decoration: underline;
   margin-left: 4px;
   transition: color 0.3s ease;
+  font-size: inherit; /* Kế thừa cỡ chữ */
+  padding: 0; /* Bỏ padding */
 }
 
 .policy-link:hover {
@@ -266,27 +281,104 @@
 }
 
 .btn-submit {
-  background-color: #84cc16;
+  background-color: #84cc16; /* Màu xanh lá cây */
   color: white;
 }
 
-.btn-submit:hover {
-  background-color: #65a30d;
+.btn-submit:hover:not(:disabled) { /* Thêm :not(:disabled) */
+  background-color: #65a30d; /* Xanh lá đậm hơn */
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(132, 204, 22, 0.3);
 }
 
-.btn-submit:active {
+.btn-submit:active:not(:disabled) { /* Thêm :not(:disabled) */
   transform: translateY(0);
 }
 
 .btn-reset {
-  background-color: #e5e7eb;
+  background-color: #e5e7eb; /* Màu xám nhạt */
   color: #333;
 }
 
-.btn-reset:hover {
-  background-color: #d1d5db;
+.btn-reset:hover:not(:disabled) { /* Thêm :not(:disabled) */
+  background-color: #d1d5db; /* Xám đậm hơn */
+}
+
+/* --- BỔ SUNG CSS CHO THÔNG BÁO LOADING VÀ TRẠNG THÁI DISABLED --- */
+
+/* 1. Style cho thông báo "Đang xác thực..." */
+.form-message {
+  margin-bottom: 20px; /* Tăng khoảng cách dưới */
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.form-message.loading {
+  background-color: #eff6ff; /* Nền xanh nhạt */
+  color: #1d4ed8; /* Chữ xanh đậm */
+  border: 1px solid #bfdbfe; /* Viền xanh nhạt */
+}
+
+/* (Tùy chọn) Style cho thông báo success/error nếu bạn thay thế alert */
+.form-message.success {
+  background-color: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.form-message.error {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+
+/* 2. Style cho nút bấm khi bị disabled */
+.btn:disabled {
+  opacity: 0.6; /* Làm mờ nút */
+  cursor: not-allowed; /* Đổi con trỏ chuột */
+  transform: none; /* Bỏ hiệu ứng hover */
+  box-shadow: none; /* Bỏ hiệu ứng hover */
+}
+
+/* Giữ màu nền cho nút submit khi disabled */
+.btn-submit:disabled {
+  background-color: #84cc16;
+}
+
+/* Giữ màu nền cho nút reset khi disabled */
+.btn-reset:disabled {
+  background-color: #e5e7eb;
+}
+
+
+/* 3. (Tùy chọn) Style cho các input khác khi bị disabled */
+
+/* Làm mờ nút chọn file */
+.file-button.disabled {
+    color: #9ca3af !important; /* Màu xám nhạt */
+    cursor: not-allowed !important;
+}
+.file-button:disabled { /* Dùng thêm cái này cho chắc */
+    color: #9ca3af !important;
+    cursor: not-allowed !important;
+}
+
+
+/* Làm mờ checkbox */
+.checkbox-input:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Làm mờ link Chính sách */
+.policy-link:disabled {
+    color: #9ca3af;
+    cursor: not-allowed;
+    text-decoration: none; /* Bỏ gạch chân */
 }
 
 /* Responsive */
@@ -316,7 +408,7 @@
   }
 
   .form-buttons {
-    flex-direction: column;
+    flex-direction: column; /* Chuyển nút thành cột trên mobile */
   }
 
   .btn {

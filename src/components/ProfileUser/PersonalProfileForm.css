@@ -66,6 +66,7 @@
 .form-submit {
   display: flex;
   justify-content: center;
+  gap: 16px; /* 🔹 Thêm khoảng cách giữa 2 nút */
   padding-top: 16px;
 }
 
@@ -181,4 +182,19 @@
   background-color: #a3e635; /* Màu nhạt hơn */
   opacity: 0.7;
   cursor: wait;
+}
+.cancel-button {
+  padding: 10px 48px;
+  background-color: #f3f4f6; /* Màu nền xám nhạt */
+  color: #374151; /* Màu chữ xám đậm */
+  border: 1px solid #d1d5db; /* Viền xám */
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.cancel-button:hover {
+  background-color: #e5e7eb; /* Xám đậm hơn khi hover */
+  border-color: #9ca3af;
 }

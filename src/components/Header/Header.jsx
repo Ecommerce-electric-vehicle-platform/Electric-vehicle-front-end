@@ -63,7 +63,7 @@ export function Header() {
     localStorage.removeItem("username");
     localStorage.removeItem("buyerId");
     localStorage.removeItem("userEmail");
-
+    localStorage.removeItem("buyerAvatar");
     setUserInfo(null);
     setIsAuthenticated(false);
 

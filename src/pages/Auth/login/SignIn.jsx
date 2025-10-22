@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
 import authApi from "../../../api/authApi";
+import profileApi from "../../../api/profileApi";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 
@@ -51,44 +52,81 @@ export default function SignIn() {
     };
 
     // ===== SUBMIT =====
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const allValid = validateAll();
-        if (!allValid) return;
+    // ===== SUBMIT -  SỬA LẠI HOÀN TOÀN HÀM NÀY  =====
+const handleSubmit = async (e) => {
+    e.preventDefault();
+    // (Validation giữ nguyên)
+    const allValid = validateAll();
+    if (!allValid) return;
 
-        try {
-            const response = await authApi.signin(formData);
-            const resData = response?.data?.data;
+    try {
+        // Bước 1: Gọi API Đăng nhập
+        const loginResponse = await authApi.signin(formData);
+        const loginData = loginResponse?.data?.data;
 
-            if (resData?.accessToken && resData?.refreshToken) {
-                localStorage.setItem("accessToken", resData.accessToken);
-                localStorage.setItem("refreshToken", resData.refreshToken);
-                localStorage.setItem("token", resData.accessToken);
-                localStorage.setItem("username", resData.username);
-                localStorage.setItem("userEmail", resData.email);
-
-                //  kiểm tra kỹ buyerId trước khi lưu
-                if (resData?.buyerId) {
-                    localStorage.setItem("buyerId", resData.buyerId);
-                } else {
-                    console.warn(" Không có buyerId trả về từ API login");
-                    localStorage.removeItem("buyerId"); // tránh để giá trị "undefined"
-                }
-            
-                // Notify the app that auth status changed
-                window.dispatchEvent(new CustomEvent('authStatusChanged'));
+        // Kiểm tra xem có token trả về không
+        if (loginData?.accessToken && loginData?.refreshToken) {
+            // Bước 2: Lưu token và thông tin cơ bản VÀO LOCALSTORAGE TRƯỚC
+            localStorage.setItem("accessToken", loginData.accessToken);
+            localStorage.setItem("refreshToken", loginData.refreshToken);
+            localStorage.setItem("token", loginData.accessToken); // Giữ lại nếu cần
+            localStorage.setItem("username", loginData.username);
+            localStorage.setItem("userEmail", loginData.email);
+            if (loginData.buyerId) {
+                localStorage.setItem("buyerId", loginData.buyerId);
+            } else {
+                localStorage.removeItem("buyerId");
             }
 
-            setBackendError("");
-            navigate("/");
-        } catch (error) {
-            console.error("Lỗi đăng nhập:", error.response?.data || error.message);
-            const backendMsg =
-                error.response?.data?.message ||
-                "Đăng nhập thất bại. Vui lòng thử lại.";
-            setBackendError(backendMsg);
+            // ---  BƯỚC 3: GỌI THÊM API getProfile ĐỂ LẤY AVATAR  ---
+            try {
+                // AxiosInstance sẽ tự động dùng token vừa lưu ở Bước 2
+                const profileResponse = await profileApi.getProfile();
+                const profileData = profileResponse?.data?.data; // Bóc 2 lớp data
+
+                // Lưu avatar vào localStorage
+                if (profileData?.avatarUrl) {
+                    localStorage.setItem("buyerAvatar", profileData.avatarUrl);
+                    console.log("Avatar saved to localStorage:", profileData.avatarUrl); // DEBUG
+                } else {
+                    // Nếu getProfile thành công nhưng không có avatarUrl (user mới chưa upload)
+                    localStorage.removeItem("buyerAvatar");
+                    console.log("No avatarUrl found in profile, removing from localStorage."); // DEBUG
+                }
+            } catch (profileError) {
+                // Nếu gọi getProfile bị lỗi (VD: user mới chưa có profile -> 404)
+                console.error("Lỗi khi lấy profile sau khi login (có thể là user mới):", profileError.message);
+                // Quan trọng: Phải xóa avatar cũ (nếu có) khi getProfile lỗi
+                localStorage.removeItem("buyerAvatar");
+            }
+            // --- ------------------------------------------ ---
+
+            // Bước 4: Thông báo các component khác và chuyển hướng
+            window.dispatchEvent(new CustomEvent('authStatusChanged'));
+            setBackendError(""); // Xóa lỗi cũ (nếu có)
+            navigate("/"); // Chuyển về trang chủ
+
+        } else {
+            // Nếu API login không trả về token như mong đợi
+            throw new Error("API login không trả về token.");
         }
-    };
+    } catch (error) {
+        // Xử lý lỗi từ Bước 1 (API Login) hoặc Bước 3 (API getProfile)
+        console.error("Lỗi trong quá trình đăng nhập:", error.response?.data || error.message);
+        const backendMsg = error.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+        setBackendError(backendMsg);
+
+        // Quan trọng: Xóa sạch localStorage nếu có bất kỳ lỗi nào xảy ra
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("token");
+        localStorage.removeItem("username");
+        localStorage.removeItem("userEmail");
+        localStorage.removeItem("buyerId");
+        localStorage.removeItem("buyerAvatar");
+        // Không dispatch event 'authStatusChanged' khi lỗi
+    }
+};
 
     // ===== GOOGLE LOGIN =====
     const handleGoogleSuccess = async (credentialResponse) => {
@@ -104,6 +142,13 @@ export default function SignIn() {
             if (resData?.accessToken) {
                 localStorage.setItem("accessToken", resData.accessToken);
                 localStorage.setItem("username", resData.username);
+                
+                if (resData.avatarUrl) {
+                    localStorage.setItem("buyerAvatar", resData.avatarUrl);
+                } else {
+                    localStorage.removeItem("buyerAvatar");
+                }
+            
             }
 
             navigate("/");
