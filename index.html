@@ -15,6 +15,11 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>electric-vehicle-front-end</title>
+
+    <!-- Fix SockJS "global is not defined" error -->
+    <script>
+      window.global = window;
+    </script>
   </head>
 
   <body>

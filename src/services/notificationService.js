@@ -1,5 +1,9 @@
 // src/services/notificationService.js
 import notificationApi from "../api/notificationApi";
+import websocketService from "./websocketService";
+
+// MODE: WebSocket hoặc Polling
+const USE_WEBSOCKET = true; // true = WebSocket (realtime), false = Polling (10s)
 
 class NotificationService {
   constructor() {
@@ -7,6 +11,7 @@ class NotificationService {
     this.pollingInterval = null;
     this.pollingDelay = 10000; // Poll mỗi 10 giây
     this.lastNotificationId = null;
+    this.websocketConnected = false;
   }
 
   // Đăng ký listener để nhận thông báo mới
@@ -120,7 +125,85 @@ class NotificationService {
 
   // Khởi tạo service (gọi khi app start)
   init() {
-    // Kiểm tra auth status
+    console.log(`[NotificationService] Initializing... Mode: ${USE_WEBSOCKET ? 'WebSocket' : 'Polling'}`);
+    
+    if (USE_WEBSOCKET) {
+      // Mode: WebSocket (Realtime)
+      this.initWebSocket();
+    } else {
+      // Mode: Polling (10s interval)
+      this.initPolling();
+    }
+  }
+
+  // Khởi tạo WebSocket mode
+  initWebSocket() {
+    const checkAndConnectWebSocket = () => {
+      const token = localStorage.getItem("token");
+      const authType = localStorage.getItem("authType");
+      
+      if (token && authType !== "admin") {
+        console.log('🔌 [NotificationService] Starting WebSocket connection...');
+        
+        // Connect WebSocket
+        websocketService.connect(
+          () => {
+            console.log('[NotificationService] WebSocket connected!');
+            this.websocketConnected = true;
+          },
+          (error) => {
+            console.error('[NotificationService] WebSocket error:', error);
+            this.websocketConnected = false;
+            
+            // Fallback to polling if WebSocket fails
+            console.log('[NotificationService] Falling back to polling...');
+            this.startPolling();
+          }
+        );
+
+        // Subscribe to WebSocket notifications
+        const buyerId = localStorage.getItem('buyerId');
+        if (buyerId) {
+          const topic = `/topic/notifications/${buyerId}`;
+          
+          websocketService.subscribe(topic, (notification) => {
+            console.log('[NotificationService] Received WebSocket notification:', notification);
+            
+            // Transform notification từ backend
+            const transformedNotification = {
+              notificationId: notification.notificationId,
+              title: notification.title || "Thông báo",
+              message: notification.content || "",
+              type: this.detectType(notification.title, notification.content),
+              isRead: !!notification.readAt,
+              createdAt: notification.createdAt || notification.sendAt,
+              receiverId: notification.receiverId,
+            };
+            
+            // Notify all listeners
+            this.notify(transformedNotification);
+          });
+        }
+      } else {
+        console.log('[NotificationService] Not starting WebSocket: No token or is admin');
+        websocketService.disconnect();
+      }
+    };
+
+    // Check ngay
+    checkAndConnectWebSocket();
+
+    // Listen cho auth changes
+    window.addEventListener("authStatusChanged", checkAndConnectWebSocket);
+
+    // Cleanup khi tắt tab
+    window.addEventListener("beforeunload", () => {
+      websocketService.disconnect();
+    });
+  }
+
+  // Khởi tạo Polling mode
+  initPolling() {
     const checkAndStartPolling = () => {
       const token = localStorage.getItem("token");
       const authType = localStorage.getItem("authType");
@@ -142,6 +225,40 @@ class NotificationService {
     window.addEventListener("beforeunload", () => {
       this.stopPolling();
     });
+  }
+
+  // Helper: Detect notification type
+  detectType(title = "", content = "") {
+    const text = (title + " " + content).toLowerCase();
+    
+    const successKeywords = [
+      "phê duyệt", "thành công", "hoàn thành", "chấp nhận", 
+      "approved", "success", "completed", "accepted"
+    ];
+    
+    const errorKeywords = [
+      "từ chối", "thất bại", "lỗi", "hủy", "rejected", 
+      "failed", "error", "cancelled", "denied"
+    ];
+    
+    const warningKeywords = [
+      "cảnh báo", "chú ý", "lưu ý", "warning", 
+      "attention", "notice", "pending"
+    ];
+    
+    if (successKeywords.some(keyword => text.includes(keyword))) {
+      return "success";
+    }
+    
+    if (errorKeywords.some(keyword => text.includes(keyword))) {
+      return "error";
+    }
+    
+    if (warningKeywords.some(keyword => text.includes(keyword))) {
+      return "warning";
+    }
+    
+    return "info";
   }
 }
 
