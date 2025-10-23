@@ -6,10 +6,10 @@ export default function UserSidebar({
   activeItem = "Personal profile",
   onItemClick,
   username = "Fullname of user",
-  
+
 }) {
   const [avatarImage, setAvatarImage] = useState("/default-avatar.png") // ảnh mặc định
-  
+
 
   //  Load avatar từ localStorage
   const loadAvatar = () => {
@@ -39,33 +39,33 @@ export default function UserSidebar({
     "Upgrade to Seller",
   ]
 
-  
+
 
 
   return (
     <aside className="user-sidebar">
-  <div className="sidebar-profile">
-    <div className="profile-avatar">
-      <img
-        src={avatarImage}
-        alt="User avatar"
-        className="avatar-image"
-      />
-    </div>
-    <p className="profile-name">{username}</p>
-  </div>
+      <div className="sidebar-profile">
+        <div className="profile-avatar">
+          <img
+            src={avatarImage}
+            alt="User avatar"
+            className="avatar-image"
+          />
+        </div>
+        <p className="profile-name">{username}</p>
+      </div>
 
-  <nav className="sidebar-nav">
-    {menuItems.map((item) => (
-      <button
-        key={item}
-        onClick={() => onItemClick?.(item)}
-        className={`nav-item ${activeItem === item ? "active" : ""}`}
-      >
-        {item}
-      </button>
-    ))}
-  </nav>
-</aside>
+      <nav className="sidebar-nav">
+        {menuItems.map((item) => (
+          <button
+            key={item}
+            onClick={() => onItemClick?.(item)}
+            className={`nav-item ${activeItem === item ? "active" : ""}`}
+          >
+            {item}
+          </button>
+        ))}
+      </nav>
+    </aside>
   )
 }

@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import { searchInProduct, sortProductsByRelevance } from "../utils/textUtils";
 
 /**
  * 🔍 Tìm kiếm sản phẩm toàn diện từ BE
@@ -60,21 +61,18 @@ export async function searchProducts({ query, page = 1, size = 50 } = {}) {
             const { items: allItems } = await fetchPostProducts({ page: 1, size: 100 });
             const allProducts = (allItems || []).map(normalizeProduct).filter(Boolean);
 
-            const searchLower = query.toLowerCase();
+            // Sử dụng tìm kiếm cải tiến hỗ trợ có dấu và không dấu
             const filtered = allProducts.filter((item) => {
-                return (
-                    item.title.toLowerCase().includes(searchLower) ||
-                    item.brand?.toLowerCase().includes(searchLower) ||
-                    item.model?.toLowerCase().includes(searchLower) ||
-                    item.locationTrading.toLowerCase().includes(searchLower) ||
-                    item.description?.toLowerCase().includes(searchLower)
-                );
+                return searchInProduct(item, query, ['title', 'brand', 'model', 'description', 'locationTrading', 'condition', 'manufactureYear']);
             });
 
+            // Sắp xếp theo độ phù hợp
+            const sortedResults = sortProductsByRelevance(filtered, query);
+
             return {
-                items: filtered,
+                items: sortedResults,
                 totalPages: 1,
-                totalElements: filtered.length,
+                totalElements: sortedResults.length,
                 raw: null,
             };
         } catch (fallbackError) {

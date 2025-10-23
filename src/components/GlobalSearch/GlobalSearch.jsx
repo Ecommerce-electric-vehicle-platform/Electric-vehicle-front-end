@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { searchProducts, quickSearch } from '../../api/searchApi';
 import { normalizeProduct } from '../../api/productApi';
 import { ProductCard } from '../ProductCard/ProductCard';
+import { normalizeVietnameseText } from '../../utils/textUtils';
 import './GlobalSearch.css';
 
 export function GlobalSearch({
@@ -20,7 +21,7 @@ export function GlobalSearch({
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const navigate = useNavigate();
 
-    // Debounced search
+    // Debounced search với hỗ trợ tìm kiếm có dấu và không dấu
     useEffect(() => {
         if (!query.trim()) {
             setSuggestions([]);
@@ -31,6 +32,7 @@ export function GlobalSearch({
         const timeoutId = setTimeout(async () => {
             setIsLoading(true);
             try {
+                // Gửi query gốc để API backend xử lý tìm kiếm có dấu/không dấu
                 const results = await quickSearch(query);
                 setSuggestions(results);
                 setShowSuggestionsList(true);
@@ -75,6 +77,7 @@ export function GlobalSearch({
     const handleSearchSubmit = (e) => {
         e.preventDefault();
         if (query.trim()) {
+            // Gửi query gốc để backend xử lý tìm kiếm có dấu/không dấu
             navigate(`/products?search=${encodeURIComponent(query.trim())}`);
             setShowSuggestionsList(false);
         }
@@ -204,7 +207,15 @@ export function GlobalSearch({
             {showSuggestionsList && !isLoading && suggestions.length === 0 && query.trim() && (
                 <div className="global-search__suggestions">
                     <div className="global-search__no-results">
-                        <p>Không tìm thấy sản phẩm phù hợp</p>
+                        <h4 className="global-search__no-results-title">Không tìm thấy sản phẩm</h4>
+                        <p className="global-search__no-results-message">
+                            Không có sản phẩm nào chứa từ khóa "<strong>{query}</strong>"
+                        </p>
+                        <div className="global-search__no-results-suggestions">
+                            <p className="global-search__suggestions-text">
+                                Thử <strong>kiểm tra chính tả</strong> hoặc <strong>từ khóa ngắn gọn hơn</strong>
+                            </p>
+                        </div>
                         <button
                             type="button"
                             onClick={handleSearchSubmit}
