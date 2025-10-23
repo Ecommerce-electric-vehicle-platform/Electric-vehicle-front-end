@@ -87,7 +87,7 @@ export function normalizeProduct(item) {
         model: item.model ?? "",
         manufactureYear: item.manufactureYear ?? item.manufacture_year,
         usedDuration: item.usedDuration ?? item.used_duration,
-        condition: item.conditionLevel ?? item.condition_level,
+        condition: item.conditionLevel ?? item.condition_level ?? item.condition,
         price,
         description: item.description ?? "",
         locationTrading: item.locationTrading ?? item.location_trading ?? "Toàn quốc",
@@ -99,6 +99,16 @@ export function normalizeProduct(item) {
         // 🖼️ Ảnh
         image: imageUrl,
         images,
+
+        // 🔋 Thông tin pin và tầm xa
+        batteryType: item.batteryType ?? item.battery_type,
+        range: item.range ?? item.maxRange ?? item.max_range,
+
+        // 📊 Thông tin bổ sung
+        sellerId: item.sellerId ?? item.seller_id,
+        sellerName: item.sellerName ?? item.seller_name,
+        category: item.category ?? item.categoryId ?? item.category_id,
+        status: item.status ?? "active",
 
         // Debug
         _raw: item,

@@ -3,18 +3,15 @@ import { useState, useEffect } from "react";
 import profileApi from "../../api/profileApi";
 import "./PersonalProfileForm.css";
 
-// 🔹 Hàm này vẫn cần để hiển thị ngày ở "Chế độ Xem"
+// (Hàm formatDateToDDMMYYYY... giữ nguyên)
 const formatDateToDDMMYYYY = (dateString) => {
   if (!dateString || !dateString.includes("-")) return dateString; // Guard
   const [year, month, day] = dateString.split("-");
   return `${day}-${month}-${year}`;
 };
 
-// 🔹 --- HÀM VALIDATION MỚI --- 🔹
-// Chứa logic validation giống hệt file UpdateBuyerProfileRequest.java
+// (Hàm validateField... giữ nguyên)
 const validateField = (name, value) => {
-  // Định nghĩa Regex (lấy từ file Java)
-  // Thêm 'u' cho regex để hỗ trợ Unicode (\p{L})
   const nameRegex = /^[\p{L}\s]+$/u;
   const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/;
   const phoneRegex = /^0\d{9}$/;
@@ -22,30 +19,29 @@ const validateField = (name, value) => {
 
   switch (name) {
     case "fullName":
-      if (!value.trim()) return "Vui lòng nhập họ và tên.";
+      if (!value?.trim()) return "Vui lòng nhập họ và tên."; // Thêm ?. an toàn
       if (!nameRegex.test(value)) return "Họ tên chỉ được chứa chữ cái và khoảng trắng.";
       break;
     case "phoneNumber":
-      if (!value.trim()) return "Vui lòng nhập số điện thoại.";
+      if (!value?.trim()) return "Vui lòng nhập số điện thoại.";
       if (!phoneRegex.test(value)) return "SĐT phải bắt đầu bằng 0 và đủ 10 số.";
       break;
     case "email":
-      if (!value.trim()) return "Email là bắt buộc.";
+      if (!value?.trim()) return "Email là bắt buộc.";
       if (!emailRegex.test(value)) return "Định dạng email không hợp lệ.";
       break;
     case "defaultShippingAddress":
-      if (!value.trim()) return "Vui lòng nhập địa chỉ giao hàng.";
+      if (!value?.trim()) return "Vui lòng nhập địa chỉ giao hàng.";
       if (!addressRegex.test(value)) return "Địa chỉ chứa ký tự không hợp lệ.";
       break;
     case "dob":
-      if (!value.trim()) return "Vui lòng chọn ngày sinh.";
+      if (!value?.trim()) return "Vui lòng chọn ngày sinh.";
       break;
     default:
       break;
   }
   return null; // Không có lỗi
 };
-// 🔹 -------------------------- 🔹
 
 
 export default function PersonalProfileForm() {
@@ -58,124 +54,172 @@ export default function PersonalProfileForm() {
     defaultShippingAddress: "",
   });
 
-  // (Các state khác giữ nguyên)
+  // 🔹 STATE MỚI: Dùng để lưu bản gốc khi bấm "Cancel"
+  const [pristineData, setPristineData] = useState(null);
+
   const [existingAvatarUrl, setExistingAvatarUrl] = useState(null);
   const [newAvatarFile, setNewAvatarFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isViewMode, setIsViewMode] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false); // Khởi tạo là false
   const [isNewUser, setIsNewUser] = useState(true);
 
-  // 🔹 useEffect (Load data) - ĐÃ SỬA LẠI (theo yêu cầu) 🔹
-  // src/components/PersonalProfileForm/PersonalProfileForm.js
+  // 🔹 1. Đọc email từ storage MỘT LẦN khi component render (để dùng làm dependency)
+  const storedEmail = localStorage.getItem("userEmail");
 
+  // 🔹 2. Sửa lại HOÀN TOÀN useEffect (FIX LỖI USER MỚI)
   useEffect(() => {
-    const storedEmail = localStorage.getItem("userEmail");
+    
+    // Đọc email "mới nhất" ngay khi effect chạy
+    const currentEmail = localStorage.getItem("userEmail");
 
     const fetchProfile = async () => {
+      // Bắt đầu thì reset lỗi cũ (nếu có)
+      setErrors({});
       try {
         const response = await profileApi.getProfile();
-        
+
         // 🔹 SỬA LẠI CÁCH BÓC TÁCH DATA 🔹
         const responseBody = response.data; // Đây là { success: true, data: {...}, ... }
-        
+
         // Kiểm tra xem API có success không
         if (!responseBody.success) {
           throw new Error(responseBody.message || "Lỗi khi tải profile.");
         }
 
         // Lấy data profile thật (lớp bên trong)
-        const profileData = responseBody.data; 
+        const profileData = responseBody.data;
 
-        // 🔹 KIỂM TRA "THÔNG MINH" (dùng profileData) 🔹
-        if (!profileData || !profileData.fullName) {
+        // Kiểm tra "thông minh" (coi fullName rỗng là chưa có profile)
+        if (!profileData || !profileData.fullName || profileData.fullName.trim() === "") { 
           throw new Error("Profile is not completed.");
         }
-        // 🔹 KẾT THÚC SỬA 🔹
 
         // User đã có profile (dùng profileData)
-        setFormData({
+        const mappedData = {
           fullName: profileData.fullName || "",
           phoneNumber: profileData.phoneNumber || "",
-          email: profileData.email || storedEmail || "",
+          email: profileData.email || currentEmail || "", // Dùng email mới nhất
           gender: profileData.gender?.toLowerCase() || "male",
-          dob: profileData.dob || "", 
+          dob: profileData.dob || "",
           defaultShippingAddress: profileData.defaultShippingAddress || "",
-        });
+          avatarUrl: profileData.avatarUrl || null // Thêm avatarUrl
+        };
 
-        if (profileData.avatarUrl) { // 🔹 Sửa: dùng profileData.avatarUrl
+        setFormData(mappedData); // Set data cho form
+        setPristineData(mappedData); // Set data backup
+
+        if (profileData.avatarUrl) {
           setExistingAvatarUrl(profileData.avatarUrl);
-          localStorage.setItem("buyerAvatar", profileData.avatarUrl);
+          // Không cần set localStorage ở đây nữa, vì Sidebar tự đọc
+          // localStorage.setItem("buyerAvatar", profileData.avatarUrl); 
+        } else {
+          setExistingAvatarUrl(null); // Đảm bảo avatar default nếu API ko trả về
         }
 
         setIsNewUser(false);
-        setIsViewMode(true); // 🔹 Sẽ chạy đúng
+        setIsViewMode(true); // Chuyển sang View
 
       } catch (error) {
         // Lỗi 404/500 hoặc profile chưa hoàn tất
         console.error("Không thể tải hồ sơ (có thể là user mới):", error.message);
+        
+        // 🔹 RESET LẠI STATE KHI USER MỚI KHÔNG CÓ DATA 🔹
         setIsNewUser(true);
-        setIsViewMode(false); // 🔹 Hiển thị FORM
-        setFormData((prev) => ({
-          ...prev,
-          email: storedEmail || "",
-        }));
+        setIsViewMode(false); // Hiển thị Form
+        setExistingAvatarUrl(null); // 🔹 Reset avatar về default
+        setPristineData(null); // 🔹 Xóa data backup cũ
+        
+        setFormData({ // 🔹 Reset form về rỗng (chỉ giữ lại email)
+            fullName: "",
+            phoneNumber: "",
+            email: currentEmail || "", // Dùng email mới nhất
+            gender: "male",
+            dob: "",
+            defaultShippingAddress: "",
+        });
       }
     };
 
-    fetchProfile();
-  }, []);
+    // Chỉ fetch profile nếu user đã đăng nhập (có email)
+    if (currentEmail) {
+        fetchProfile();
+    } else {
+        // User ĐÃ LOGOUT, reset mọi thứ (phòng trường hợp logout mà component chưa unmount)
+        setIsNewUser(true);
+        setIsViewMode(false);
+        setFormData({ email: "", fullName: "", phoneNumber: "", gender: "male", dob: "", defaultShippingAddress: "" });
+        setPristineData(null);
+        setExistingAvatarUrl(null);
+        setNewAvatarFile(null);
+        setErrors({});
+    }
+    
+  // 🔹 3. THAY ĐỔI DEPENDENCY: Chạy lại effect này khi `storedEmail` thay đổi
+  }, [storedEmail]);
 
-  // Xử lý thay đổi input
+
+  // (handleChange, handleBlur, handleAvatarChange... giữ nguyên)
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // 🔹 Xóa lỗi ngay khi người dùng gõ lại 🔹
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }));
     }
   };
 
-  // 🔹 --- HÀM MỚI: XỬ LÝ VALIDATE KHI BLUR --- 🔹
   const handleBlur = (e) => {
     const { name, value } = e.target;
-    // (Đã xóa dòng if name === 'email' return)
     const error = validateField(name, value);
-    setErrors((prev) => ({
-      ...prev,
-      [name]: error, // Set lỗi (hoặc null nếu hợp lệ)
-    }));
+    setErrors((prev) => ({ ...prev, [name]: error, }));
   };
-  // 🔹 --------------------------------------- 🔹
-
-  // Xử lý chọn file (Giữ nguyên)
+  
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setNewAvatarFile(file);
-      setExistingAvatarUrl(URL.createObjectURL(file));
+      setExistingAvatarUrl(URL.createObjectURL(file)); // Tạo preview
       if (errors.avatarUrl) setErrors((prev) => ({ ...prev, "avatarUrl": "" }));
+    } else {
+      // Nếu user bấm cancel khi chọn file
+      setNewAvatarFile(null);
+      // Khôi phục ảnh preview về ảnh cũ (nếu có) hoặc null
+      setExistingAvatarUrl(pristineData?.avatarUrl || null); 
     }
   };
 
-  // 🔹 handleSubmit - ĐÃ SỬA LẠI (theo yêu cầu) 🔹
+
+  // 🔹 HÀM MỚI: XỬ LÝ NÚT CANCEL 🔹
+  const handleCancel = () => {
+    if (!pristineData) return; // Không có data gốc thì không làm gì
+    setFormData(pristineData); // 1. Khôi phục data gốc
+    setErrors({}); // 2. Xóa hết lỗi
+    setNewAvatarFile(null); // 3. Hủy file ảnh đã chọn
+    setExistingAvatarUrl(pristineData.avatarUrl || null); // 4. Khôi phục ảnh preview gốc
+    setIsViewMode(true); // 5. Quay về chế độ View
+  };
+
+
+  // 🔹 handleSubmit (ĐÃ RÚT GỌN - Giả sử backend dùng dob/avatar_url) 🔹
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isLoading) return;
 
-    // B1: Check validation (dùng lại hàm validateField)
+    // (Validation... giữ nguyên)
     const newErrors = {};
-    // Kiểm tra tất cả các trường trong formData
     Object.keys(formData).forEach((key) => {
-      const error = validateField(key, formData[key]);
-      if (error) {
-        newErrors[key] = error;
+      // Bỏ qua avatarUrl khi validate form data thường
+      if (key !== 'avatarUrl') { 
+        const error = validateField(key, formData[key]);
+        if (error) { newErrors[key] = error; }
       }
     });
-
-    // Kiểm tra avatar (nếu là user mới)
-    if (isNewUser && !newAvatarFile) {
+    // Kiểm tra avatar riêng
+    if (isNewUser && !newAvatarFile && !existingAvatarUrl) {
       newErrors.avatarUrl = "Vui lòng chọn ảnh đại diện.";
+    } else if (!isNewUser && !newAvatarFile && !existingAvatarUrl) {
+       // Nếu đang edit mà xóa ảnh cũ đi (hiếm khi xảy ra)
+       // Tùy logic bạn muốn: bắt buộc hay cho phép null avatarUrl
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -184,7 +228,6 @@ export default function PersonalProfileForm() {
       return;
     }
 
-    // B2: Gửi API
     setIsLoading(true);
     setErrors({});
 
@@ -194,13 +237,13 @@ export default function PersonalProfileForm() {
       formBody.append("phoneNumber", formData.phoneNumber);
       formBody.append("defaultShippingAddress", formData.defaultShippingAddress);
       formBody.append("gender", formData.gender.toUpperCase());
-      formBody.append("dob", formData.dob);
-      formBody.append("email", formData.email); // 🔹 ĐÃ THÊM EMAIL
+      formBody.append("email", formData.email);
+      formBody.append("dob", formData.dob); 
 
       if (newAvatarFile) {
         formBody.append("avatar_url", newAvatarFile);
       }
-
+      
       let response;
       if (isNewUser) {
         response = await profileApi.uploadProfile(formBody);
@@ -208,34 +251,53 @@ export default function PersonalProfileForm() {
         response = await profileApi.updateProfile(formBody);
       }
 
-      const savedData = response.data;
+      const responseBody = response.data;
+      if (!responseBody.success) {
+        throw new Error(responseBody.message || "Lỗi khi lưu profile.");
+      }
+      const savedData = responseBody.data;
+
+      if (!savedData) {
+         throw new Error("Server trả về data rỗng sau khi lưu.");
+      }
+      
       alert("Lưu hồ sơ thành công!");
 
-      if (savedData.avatar_url) {
-        localStorage.setItem("buyerAvatar", savedData.avatar_url);
-        setExistingAvatarUrl(savedData.avatar_url);
+      const mappedData = {
+          fullName: savedData.fullName || "",
+          phoneNumber: savedData.phoneNumber || "",
+          email: savedData.email || "",
+          gender: (savedData.gender || "male").toLowerCase(),
+          dob: savedData.dob || "",
+          defaultShippingAddress: savedData.defaultShippingAddress || "",
+          avatarUrl: savedData.avatarUrl || null
+      };
+
+      setFormData(mappedData);
+      setPristineData(mappedData); // Cập nhật backup
+
+      if (savedData.avatarUrl) {
+        localStorage.setItem("buyerAvatar", savedData.avatarUrl); // Cập nhật cho Sidebar
+        setExistingAvatarUrl(savedData.avatarUrl);
+      } else {
+         // Nếu API update mà không trả về avatarUrl (ví dụ user xóa avatar)
+         localStorage.removeItem("buyerAvatar");
+         setExistingAvatarUrl(null);
       }
-
-      // 🔹 Cập nhật lại state form (đầy đủ các trường) 🔹
-      setFormData({
-        fullName: savedData.fullName || formData.fullName,
-        phoneNumber: savedData.phoneNumber || formData.phoneNumber,
-        email: savedData.email || formData.email,
-        gender: (savedData.gender || formData.gender).toLowerCase(),
-        dob: savedData.dob || formData.dob,
-        defaultShippingAddress: savedData.defaultShippingAddress || formData.defaultShippingAddress,
-      });
-
+      
       setNewAvatarFile(null);
       setIsNewUser(false);
-      setIsViewMode(true);
+      setIsViewMode(true); // Chuyển về View
     } catch (error) {
-      if (error.response?.data?.errors) {
-        // Lỗi validation từ server (nếu có)
-        setErrors(error.response.data.errors || {});
-      } else {
-        alert(error.message || "Không thể lưu hồ sơ.");
-      }
+      const serverMessage = error.response?.data?.message || error.message;
+      alert(serverMessage || "Không thể lưu hồ sơ.");
+       // Hiển thị lỗi validation từ server (nếu có)
+       if (error.response?.data?.error) { // Kiểm tra cấu trúc lỗi mới
+            const serverErrors = error.response.data.error;
+            if (typeof serverErrors === 'object') {
+                 setErrors(serverErrors);
+            }
+       }
     } finally {
       setIsLoading(false);
     }
@@ -245,7 +307,7 @@ export default function PersonalProfileForm() {
   if (isViewMode) {
     return (
       <div className="profile-view-container">
-        <h2 className="form-title">Personal profile</h2>
+        <h2 className="form-title">Hồ sơ cá nhân</h2>
         <div className="profile-view-avatar">
           <img
             src={existingAvatarUrl || "/default-avatar.png"}
@@ -284,7 +346,6 @@ export default function PersonalProfileForm() {
   }
 
   // --- RENDER (Chế độ Sửa - Form) ---
-  // 🔹 ĐÃ THÊM onBlur VÀO CÁC INPUT 🔹
   return (
     <div className="profile-form-container">
       <h2 className="form-title">
@@ -300,7 +361,7 @@ export default function PersonalProfileForm() {
             <img
               src={existingAvatarUrl}
               alt="Avatar Preview"
-              className="avatar-preview" 
+              className="avatar-preview"
             />
           )}
           <div className="input-wrapper">
@@ -308,7 +369,7 @@ export default function PersonalProfileForm() {
               id="avatarUrl"
               type="file"
               accept="image/*"
-              onChange={handleAvatarChange} 
+              onChange={handleAvatarChange}
               onBlur={handleBlur} // Thêm onBlur cho avatar
               name="avatarUrl"
               className={`form-input ${errors.avatarUrl ? "input-error" : ""}`}
@@ -323,7 +384,7 @@ export default function PersonalProfileForm() {
         {/* Full name */}
         <div className="form-field">
           <label htmlFor="fullName" className="form-label">
-            Full name*
+            Họ và tên*
           </label>
           <div className="input-wrapper">
             <input
@@ -344,7 +405,7 @@ export default function PersonalProfileForm() {
         {/* Phone number */}
         <div className="form-field">
           <label htmlFor="phoneNumber" className="form-label">
-            Phone number*
+            Số điện thoại*
           </label>
           <div className="input-wrapper">
             <input
@@ -354,9 +415,8 @@ export default function PersonalProfileForm() {
               value={formData.phoneNumber}
               onChange={handleChange}
               onBlur={handleBlur} // 🔹 THÊM VÀO
-              className={`form-input ${
-                errors.phoneNumber ? "input-error" : ""
-              }`}
+              className={`form-input ${errors.phoneNumber ? "input-error" : ""
+                }`}
             />
             {errors.phoneNumber && (
               <span className="error-text">{errors.phoneNumber}</span>
@@ -378,7 +438,7 @@ export default function PersonalProfileForm() {
               onChange={handleChange}
               onBlur={handleBlur} // 🔹 THÊM VÀO
               className={`form-input ${errors.email ? "input-error" : ""}`}
-              // (readOnly đã bị xóa)
+            // (readOnly đã bị xóa)
             />
             {errors.email && (
               <span className="error-text">{errors.email}</span>
@@ -388,37 +448,37 @@ export default function PersonalProfileForm() {
 
         {/* Gender (Radio, không cần onBlur) */}
         <div className="form-field">
-          <label className="form-label">Gender*</label>
-           <div className="radio-group">
-             <label className="radio-label">
-               <input
-                 type="radio"
-                 name="gender"
-                 value="male"
-                 checked={formData.gender === "male"}
-                 onChange={handleChange}
-               />
-               <span>Male</span>
-             </label>
-             <label className="radio-label">
-               <input
-                 type="radio"
-                 name="gender"
-                 value="female"
-                 checked={formData.gender === "female"}
-                 onChange={handleChange}
-               />
-               <span>Female</span>
-             </label>
-           </div>
-           {/* Hiển thị lỗi chung cho gender nếu submit */}
-           {errors.gender && <span className="error-text">{errors.gender}</span>}
+          <label className="form-label">Giới tính*</label>
+          <div className="radio-group">
+            <label className="radio-label">
+              <input
+                type="radio"
+                name="gender"
+                value="male"
+                checked={formData.gender === "male"}
+                onChange={handleChange}
+              />
+              <span>Nam</span>
+            </label>
+            <label className="radio-label">
+              <input
+                type="radio"
+                name="gender"
+                value="female"
+                checked={formData.gender === "female"}
+                onChange={handleChange}
+              />
+              <span>Nữ</span>
+            </label>
+          </div>
+          {/* Hiển thị lỗi chung cho gender nếu submit */}
+          {errors.gender && <span className="error-text">{errors.gender}</span>}
         </div>
 
-        {/* Birthday */}
+        {/* ... address ... */}
         <div className="form-field">
           <label htmlFor="dob" className="form-label">
-            Birthday*
+            Ngày sinh*
           </label>
           <div className="input-wrapper">
             <input
@@ -437,7 +497,7 @@ export default function PersonalProfileForm() {
         {/* Address */}
         <div className="form-field">
           <label htmlFor="defaultShippingAddress" className="form-label">
-            Address*
+            Địa chỉ*
           </label>
           <div className="input-wrapper">
             <input
@@ -448,9 +508,8 @@ export default function PersonalProfileForm() {
               value={formData.defaultShippingAddress}
               onChange={handleChange}
               onBlur={handleBlur} // 🔹 THÊM VÀO
-              className={`form-input ${
-                errors.defaultShippingAddress ? "input-error" : ""
-              }`}
+              className={`form-input ${errors.defaultShippingAddress ? "input-error" : ""
+                }`}
             />
             {errors.defaultShippingAddress && (
               <span className="error-text">
@@ -460,14 +519,25 @@ export default function PersonalProfileForm() {
           </div>
         </div>
 
-        {/* Submit button (Giữ nguyên) */}
+        {/* 🔹 SỬA LẠI KHỐI SUBMIT + THÊM NÚT CANCEL 🔹 */}
         <div className="form-submit">
+          {/* Nút Cancel chỉ hiện khi KHÔNG PHẢI user mới */}
+          {!isNewUser && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="cancel-button" // (Bạn cần thêm CSS cho class này)
+            >
+              Hủy
+            </button>
+          )}
+          
           <button
             type="submit"
             className="submit-button"
             disabled={isLoading}
           >
-            {isLoading ? "Đang lưu..." : "Save Change"}
+            {isLoading ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
         </div>
       </form>

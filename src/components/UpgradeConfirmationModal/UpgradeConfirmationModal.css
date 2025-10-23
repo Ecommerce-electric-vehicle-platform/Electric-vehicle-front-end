@@ -1,4 +1,3 @@
-/* Overlay phủ toàn trang */
 .upgrade-confirmation-overlay {
     position: fixed;
     inset: 0;
@@ -13,12 +12,10 @@
     animation: overlayFade 0.18s ease;
 }
 
-/* Modal: bỏ slideUp → dùng fadeIn nhẹ, KHÔNG đổi toạ độ */
 .upgrade-confirmation-modal {
     background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     border-radius: 28px;
-    box-shadow:
-        0 24px 60px rgba(2, 6, 23, 0.2),
+    box-shadow: 0 24px 60px rgba(2, 6, 23, 0.2),
         0 8px 20px rgba(2, 6, 23, 0.12);
     max-width: 600px;
     width: 100%;
@@ -40,7 +37,6 @@
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-/* Header */
 .upgrade-confirmation-header {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     padding: 2rem;
@@ -113,7 +109,6 @@
     transform: scale(1.05);
 }
 
-/* Content */
 .upgrade-confirmation-content {
     padding: 2.5rem;
     background: white;
@@ -137,18 +132,6 @@
     font-size: 1.1rem;
     color: #4b5563;
     margin: 0;
-}
-
-.benefits-section {
-    margin-bottom: 2rem;
-}
-
-.benefits-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1f2937;
-    margin: 0 0 1.5rem;
-    text-align: center;
 }
 
 .benefits-grid {
@@ -182,28 +165,6 @@
     width: 20px;
     height: 20px;
     color: white;
-}
-
-.cta-section {
-    text-align: center;
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    border-radius: 16px;
-    border: 1px solid #bbf7d0;
-}
-
-.cta-text {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #166534;
-    margin: 0 0 0.5rem;
-}
-
-.cta-subtext {
-    font-size: 0.95rem;
-    color: #15803d;
-    margin: 0;
 }
 
 .upgrade-confirmation-actions {
@@ -243,7 +204,6 @@
     box-shadow: 0 6px 18px rgba(16, 185, 129, 0.18);
 }
 
-/* Animations: chỉ fade, KHÔNG translate */
 @keyframes overlayFade {
     from {
         opacity: 0;
@@ -278,7 +238,6 @@
     }
 }
 
-/* Responsive */
 @media (max-width: 640px) {
     .upgrade-confirmation-overlay {
         padding: 1rem;

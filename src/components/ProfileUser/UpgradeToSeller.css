@@ -4,40 +4,50 @@
   box-sizing: border-box;
 }
 
-.upgrade-container {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  min-height: 100vh;
-  background-color: #f5f5f5;
-  padding: 60px 20px;
-}
 
 
 .upgrade-wrapper {
-  max-width: 900px; /* ⬅ tăng độ rộng */
+  max-width: 600px;
   width: 100%;
   margin: 0 auto;
-  background-color: white;
-  padding: 50px 60px; /* thêm khoảng padding thoáng */
-  border-radius: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px);
+  padding: 50px;
+  border-radius: 24px;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  position: relative;
+  overflow: hidden;
+  animation: fadeInUp 0.8s ease-out 0.4s both;
+}
+
+.upgrade-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 24px 24px 0 0;
 }
 
 
 .upgrade-title {
   text-align: center;
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 600;
-  margin-bottom: 40px;
+  margin-bottom: 32px;
   color: #333;
 }
 
-/* Progress Bar */
+/* Progress Bar - Giữ nguyên nếu bạn có */
 .progress-section {
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
-
 .progress-bar {
   display: flex;
   align-items: flex-start;
@@ -45,7 +55,6 @@
   position: relative;
   padding: 0 20px;
 }
-
 .progress-step {
   display: flex;
   flex-direction: column;
@@ -54,7 +63,6 @@
   position: relative;
   z-index: 2;
 }
-
 .progress-circle {
   width: 28px;
   height: 28px;
@@ -66,13 +74,11 @@
   flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-
 .progress-step.active .progress-circle {
   background-color: #22c55e;
   border-color: #22c55e;
   box-shadow: 0 2px 6px rgba(34, 197, 94, 0.3);
 }
-
 .progress-label {
   font-size: 12px;
   color: #666;
@@ -80,7 +86,6 @@
   max-width: 100px;
   line-height: 1.4;
 }
-
 .progress-line {
   position: absolute;
   top: 13px;
@@ -90,47 +95,64 @@
   border-top: 2px solid #e0e0e0;
   background: transparent;
 }
-
 .progress-line.active {
   border-top-color: #22c55e;
   border-top-style: solid;
 }
-
 .progress-line.inactive {
   border-top-color: #e0e0e0;
   border-top-style: dashed;
 }
 
-.progress-step:nth-child(1) ~ .progress-line:nth-of-type(1) {
+.progress-step:nth-child(1)~.progress-line:nth-of-type(1) {
   left: calc(50% - 14px);
   width: calc(100% / 3 - 14px);
 }
 
-.progress-step:nth-child(3) ~ .progress-line:nth-of-type(2) {
+.progress-step:nth-child(3)~.progress-line:nth-of-type(2) {
   left: calc(50% + 14px + 100% / 3);
   width: calc(100% / 3 - 14px);
+}
+
+/* Override form styling từ Auth.css để loại bỏ background đen */
+.upgrade-container form {
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: auto !important;
+  animation: none !important;
+  transition: none !important;
 }
 
 /* Form */
 .upgrade-form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+  background-color: transparent !important;
 }
 
 .form-group {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .form-label {
   font-size: 14px;
   font-weight: 500;
   color: #333;
+  min-width: 140px;
+  flex-shrink: 0;
 }
 
-.required {
+.required { /* Class này có thể bạn chưa dùng, nhưng để đây */
   color: #ef4444;
 }
 
@@ -141,6 +163,10 @@
   font-size: 14px;
   font-family: inherit;
   transition: border-color 0.3s ease;
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+  flex: 1;
+  min-width: 0;
 }
 
 .form-input:focus {
@@ -148,6 +174,21 @@
   border-color: #22c55e;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
+
+.form-input.input-error { /* Thêm style input lỗi */
+    border-color: #ef4444; /* Viền đỏ */
+}
+.form-input.input-error:focus { /* Giữ viền đỏ khi focus lỗi */
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.error-text { /* Style chung cho text báo lỗi */
+  color: #ef4444; /* Màu đỏ */
+  font-size: 12px; /* Cỡ chữ nhỏ hơn */
+  margin-top: 4px; /* Khoảng cách trên */
+}
+
 
 .upload-note {
   font-size: 12px;
@@ -181,11 +222,14 @@
   padding: 12px 16px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  background-color: #fafafa;
+  background-color: #ffffff !important;
+}
+.file-upload-box.input-error { /* Thêm style lỗi cho ô upload */
+    border-color: #ef4444;
 }
 
 .file-input {
-  display: none;
+  display: none; /* Ẩn input gốc */
 }
 
 .file-button {
@@ -204,6 +248,25 @@
   font-size: 12px;
   color: #22c55e;
   margin-top: 4px;
+  word-break: break-all; /* Ngăn tên file dài làm vỡ layout */
+}
+
+/* Error states */
+.input-error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+}
+
+.input-error:focus {
+  border-color: #b91c1c !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+  background-color: #fef2f2 !important;
+}
+
+.error-text {
+  color: #dc2626;
+  font-size: 13px;
+  margin-top: 4px;
 }
 
 /* Policy Agreement */
@@ -215,6 +278,10 @@
   background-color: #f9fafb;
   border-radius: 6px;
 }
+.policy-agreement.input-error { /* Thêm style lỗi cho ô policy */
+    border: 1px solid #ef4444;
+}
+
 
 .checkbox-input {
   width: 20px;
@@ -228,7 +295,7 @@
   font-size: 14px;
   color: #666;
   line-height: 1.5;
-  cursor: pointer;
+  cursor: pointer; /* Cho phép click vào text để check */
 }
 
 .policy-link {
@@ -240,6 +307,8 @@
   text-decoration: underline;
   margin-left: 4px;
   transition: color 0.3s ease;
+  font-size: inherit; /* Kế thừa cỡ chữ */
+  padding: 0; /* Bỏ padding */
 }
 
 .policy-link:hover {
@@ -266,38 +335,75 @@
 }
 
 .btn-submit {
-  background-color: #84cc16;
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
   color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 16px -4px rgba(16, 185, 129, 0.4),
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: 700;
 }
 
 .btn-submit:hover {
-  background-color: #65a30d;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(132, 204, 22, 0.3);
+  background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+  transform: translateY(-3px);
+  box-shadow:
+    0 12px 20px -4px rgba(16, 185, 129, 0.5),
+    0 8px 12px -2px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-.btn-submit:active {
+.btn-submit:active:not(:disabled) { /* Thêm :not(:disabled) */
   transform: translateY(0);
 }
 
 .btn-reset {
-  background-color: #e5e7eb;
-  color: #333;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  color: #374151;
+  border: 2px solid #e5e7eb;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  font-weight: 600;
 }
 
 .btn-reset:hover {
-  background-color: #d1d5db;
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 12px -2px rgba(0, 0, 0, 0.15),
+    0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: #9ca3af;
 }
 
 /* Responsive */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .upgrade-wrapper {
-    padding: 24px;
+    max-width: 95%;
+    padding: 25px 20px;
   }
 
   .upgrade-title {
     font-size: 24px;
     margin-bottom: 32px;
+  }
+
+  .form-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .form-label {
+    min-width: auto;
+    margin-bottom: 4px;
+  }
+
+  .form-input {
+    width: 100%;
   }
 
   .progress-bar {
@@ -309,14 +415,40 @@
     width: 24px;
     height: 24px;
   }
+}
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 480px) {
   .progress-label {
     font-size: 11px;
     max-width: 80px;
   }
 
   .form-buttons {
-    flex-direction: column;
+    flex-direction: column; /* Chuyển nút thành cột trên mobile */
   }
 
   .btn {

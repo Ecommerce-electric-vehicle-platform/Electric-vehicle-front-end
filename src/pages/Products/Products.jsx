@@ -8,6 +8,7 @@ import { searchProducts } from "../../api/searchApi";
 import { ProductCard } from "../../components/ProductCard/ProductCard";
 import { GlobalSearch } from "../../components/GlobalSearch/GlobalSearch";
 import { Breadcrumbs } from "../../components/Breadcrumbs/Breadcrumbs";
+import { searchInProduct, calculateSearchScore } from "../../utils/textUtils";
 
 export function Products() {
     const navigate = useNavigate();
@@ -106,19 +107,44 @@ export function Products() {
     }, [combined]);
 
     const filtered = useMemo(() => {
-        const searchLower = searchTerm.trim().toLowerCase();
         const list = combined
             .filter((item) => {
-                const searchMatch =
-                    item.title.toLowerCase().includes(searchLower) ||
-                    item.brand?.toLowerCase().includes(searchLower) ||
-                    item.model?.toLowerCase().includes(searchLower) ||
-                    item.locationTrading.toLowerCase().includes(searchLower);
+                // Sử dụng tìm kiếm cải tiến hỗ trợ có dấu và không dấu
+                const searchMatch = searchTerm.trim()
+                    ? searchInProduct(item, searchTerm, ['title', 'brand', 'model', 'description', 'locationTrading', 'condition', 'manufactureYear'])
+                    : true;
                 const locationMatch = selectedLocation === "Tất cả khu vực" || item.locationTrading === selectedLocation;
+
+                // Debug logging cho từ khóa "Katali"
+                if (searchTerm.trim() === "Katali" && searchMatch) {
+                    console.log("🔍 Found match for 'Katali':", {
+                        title: item.title,
+                        brand: item.brand,
+                        model: item.model,
+                        description: item.description?.substring(0, 100) + "...",
+                        locationTrading: item.locationTrading,
+                        condition: item.condition,
+                        manufactureYear: item.manufactureYear
+                    });
+                }
+
                 return searchMatch && locationMatch;
             })
-            .sort((a, b) => (sortDate === "newest" ? new Date(b.createdAt) - new Date(a.createdAt) : new Date(a.createdAt) - new Date(b.createdAt)))
             .sort((a, b) => {
+                // Sắp xếp theo độ phù hợp với search term trước
+                if (searchTerm.trim()) {
+                    const scoreA = calculateSearchScore(a, searchTerm);
+                    const scoreB = calculateSearchScore(b, searchTerm);
+                    if (scoreA !== scoreB) return scoreB - scoreA;
+                }
+
+                // Sau đó sắp xếp theo ngày
+                if (sortDate === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
+                if (sortDate === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
+                return 0;
+            })
+            .sort((a, b) => {
+                // Cuối cùng sắp xếp theo giá
                 if (sortPrice === "low") return a.price - b.price;
                 if (sortPrice === "high") return b.price - a.price;
                 return 0;
@@ -234,7 +260,38 @@ export function Products() {
                     <div className="showcase-grid"><div className="showcase-card" style={{ padding: '2rem', textAlign: 'center' }}>{error}</div></div>
                 )}
                 {!loading && !error && filtered.length === 0 ? (
-                    <div className="showcase-grid"><div className="showcase-card" style={{ padding: '2rem', textAlign: 'center' }}>Không tìm thấy sản phẩm phù hợp.</div></div>
+                    <div className="showcase-grid no-results-container">
+                        <div className="showcase-card no-results-card" style={{ padding: '3rem', textAlign: 'center' }}>
+                            {isSearchMode ? (
+                                <div className="no-results-content">
+                                    <h3 className="no-results-title">Không tìm thấy sản phẩm</h3>
+                                    <p className="no-results-message">
+                                        Không có sản phẩm nào chứa từ khóa "<strong>{searchTerm}</strong>"
+                                    </p>
+                                    <div className="no-results-suggestions">
+                                        <p className="suggestions-text">
+                                            Thử <strong>kiểm tra chính tả</strong> hoặc <strong>từ khóa ngắn gọn hơn</strong>
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={clearSearch}
+                                        className="btn-back-to-all"
+                                    >
+                                        <ArrowLeft size={16} className="btn-back-icon" />
+                                        <span>Xem tất cả sản phẩm</span>
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="no-results-content">
+                                    <div className="no-results-icon">📦</div>
+                                    <h3 className="no-results-title">Không có sản phẩm nào</h3>
+                                    <p className="no-results-message">
+                                        Hiện tại chưa có sản phẩm nào phù hợp với bộ lọc đã chọn.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 ) : (
                     <div className={`showcase-grid ${isPaging ? 'is-paging' : ''}`}>
                         {paged.map((product) => (
