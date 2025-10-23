@@ -12,14 +12,12 @@ import {
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UpgradeConfirmationModal } from "../UpgradeConfirmationModal/UpgradeConfirmationModal";
-import { NotificationModal } from "../NotificationModal/NotificationModal";
 import "./UpgradeSection.css";
 
 export function UpgradeSection({ requireAuth = false }) {
   const sectionRef = useRef(null);
   const openedViaURLRef = useRef(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -44,20 +42,22 @@ export function UpgradeSection({ requireAuth = false }) {
     };
   }, []);
 
-  // 🌐 Global trigger từ URL hoặc hàm ngoài
+  // 🌐 Global trigger từ URL hoặc hàm ngoài (chỉ scroll khi từ URL)
   useEffect(() => {
     const scrollToSection = () => {
       const el = sectionRef.current;
       if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
     };
 
+    // Global function để mở modal từ bên ngoài (có thể scroll)
     window.openUpgradePlans = () => {
       scrollToSection();
       setTimeout(() => setShowUpgradeModal(true), 450);
     };
 
+    // Chỉ scroll khi có hash hoặc param từ URL
     const params = new URLSearchParams(location.search);
-    const hasHash = location.hash === "#upgrade";
+    const hasHash = location.hash === "#upgrade" || location.hash === "#upgrade-section";
     const wantsOpen = params.get("openUpgrade") === "1";
     if ((hasHash || wantsOpen) && !openedViaURLRef.current) {
       openedViaURLRef.current = true;
@@ -74,7 +74,7 @@ export function UpgradeSection({ requireAuth = false }) {
         /* noop */
       }
     };
-  }, [location]);
+  }, [location, requireAuth]);
 
   const packages = [
     {
@@ -150,41 +150,26 @@ export function UpgradeSection({ requireAuth = false }) {
       currency: "VND",
     }).format(n);
 
-  // 🟢 Khi click: mở modal ngay, sau đó cuộn xuống section
+  // 🟢 Khi click: mở modal ngay, KHÔNG cuộn trang
   const handleUpgrade = () => {
-    // ✅ Hiển thị modal tức thì
-    if (requireAuth) setShowAuthModal(true);
-    else setShowUpgradeModal(true);
-
-    // 📜 Sau đó mới cuộn xuống UpgradeSection (modal vẫn ở giữa viewport)
-    const sectionEl = sectionRef.current;
-    if (sectionEl) {
-      setTimeout(() => {
-        sectionEl.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }, 100);
-    }
+    // ✅ Hiển thị modal tức thì tại vị trí hiện tại
+    setShowUpgradeModal(true);
   };
 
   const handleConfirmUpgrade = () => {
-    navigate("/profile?tab=upgrade");
+    if (requireAuth) {
+      // Nếu là guest, điều hướng đến trang đăng nhập
+      navigate("/signin");
+    } else {
+      // Nếu đã đăng nhập, điều hướng đến trang profile để nâng cấp
+      navigate("/profile?tab=upgrade");
+    }
   };
 
   const handleCloseModal = () => {
     setShowUpgradeModal(false);
   };
 
-  const handleGoLogin = () => {
-    setShowAuthModal(false);
-    navigate("/signin");
-  };
-
-  const handleGoRegister = () => {
-    setShowAuthModal(false);
-    navigate("/signup");
-  };
 
   return (
     <section id="upgrade" className="upgrade-section" ref={sectionRef}>
@@ -306,16 +291,8 @@ export function UpgradeSection({ requireAuth = false }) {
         isOpen={showUpgradeModal}
         onClose={handleCloseModal}
         onConfirm={handleConfirmUpgrade}
+        isGuest={requireAuth}
         anchorRef={sectionRef}
-      />
-
-      {/* Modal đăng nhập khi chưa có tài khoản */}
-      <NotificationModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onLogin={handleGoLogin}
-        onRegister={handleGoRegister}
-        notificationType="login"
       />
     </section>
   );

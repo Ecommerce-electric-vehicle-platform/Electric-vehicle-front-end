@@ -55,7 +55,22 @@ class TokenManager {
             }
 
             const response = await authApi.refreshToken(refreshToken);
-            const { accessToken, refreshToken: newRefreshToken } = response.data;
+            console.log('Refresh token response:', response.data);
+
+            // Parse response data - có thể có structure khác nhau
+            let accessToken, newRefreshToken;
+
+            if (response.data && response.data.data) {
+                // Structure: { success: true, message: "...", data: { accessToken, refreshToken } }
+                accessToken = response.data.data.accessToken;
+                newRefreshToken = response.data.data.refreshToken;
+            } else if (response.data) {
+                // Structure: { accessToken, refreshToken }
+                accessToken = response.data.accessToken;
+                newRefreshToken = response.data.refreshToken;
+            } else {
+                throw new Error('Invalid response structure from refresh token endpoint');
+            }
 
             // Lưu tokens mới
             this.setTokens(accessToken, newRefreshToken);

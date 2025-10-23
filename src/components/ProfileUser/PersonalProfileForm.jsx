@@ -78,13 +78,17 @@ export default function PersonalProfileForm() {
       setErrors({});
       try {
         const response = await profileApi.getProfile();
-        const responseBody = response.data;
-        
+
+        // 🔹 SỬA LẠI CÁCH BÓC TÁCH DATA 🔹
+        const responseBody = response.data; // Đây là { success: true, data: {...}, ... }
+
+        // Kiểm tra xem API có success không
         if (!responseBody.success) {
           throw new Error(responseBody.message || "Lỗi khi tải profile.");
         }
 
-        const profileData = responseBody.data; 
+        // Lấy data profile thật (lớp bên trong)
+        const profileData = responseBody.data;
 
         // Kiểm tra "thông minh" (coi fullName rỗng là chưa có profile)
         if (!profileData || !profileData.fullName || profileData.fullName.trim() === "") { 
@@ -97,7 +101,7 @@ export default function PersonalProfileForm() {
           phoneNumber: profileData.phoneNumber || "",
           email: profileData.email || currentEmail || "", // Dùng email mới nhất
           gender: profileData.gender?.toLowerCase() || "male",
-          dob: profileData.dob || "", 
+          dob: profileData.dob || "",
           defaultShippingAddress: profileData.defaultShippingAddress || "",
           avatarUrl: profileData.avatarUrl || null // Thêm avatarUrl
         };
@@ -301,47 +305,44 @@ export default function PersonalProfileForm() {
 
   // --- RENDER (Chế độ Xem) ---
   if (isViewMode) {
-     return (
-       <div className="profile-view-container">
-         <h2 className="form-title">Personal profile</h2>
-         <div className="profile-view-avatar">
-           <img
-             src={existingAvatarUrl || "/default-avatar.png"} // Hiện default nếu null
-             alt="User avatar"
-             className="avatar-image-large"
-           />
-         </div>
-         <div className="view-field">
-           <strong>Họ và tên:</strong> {formData.fullName || 'Chưa cập nhật'}
-         </div>
-         <div className="view-field">
-           <strong>Email:</strong> {formData.email || 'Chưa cập nhật'}
-         </div>
-         <div className="view-field">
-           <strong>Số điện thoại:</strong> {formData.phoneNumber || 'Chưa cập nhật'}
-         </div>
-         <div className="view-field">
-           <strong>Giới tính:</strong> {formData.gender === 'male' ? 'Nam' : 'Nữ'}
-         </div>
-         <div className="view-field">
-           <strong>Ngày sinh:</strong> {formData.dob ? formatDateToDDMMYYYY(formData.dob) : 'Chưa cập nhật'}
-         </div>
-         <div className="view-field">
-           <strong>Địa chỉ:</strong> {formData.defaultShippingAddress || 'Chưa cập nhật'}
-         </div>
-         <div className="form-submit">
-           <button
-             onClick={() => {
-                 setErrors({}); // Xóa lỗi cũ trước khi vào form edit
-                 setIsViewMode(false);
-             }}
-             className="submit-button"
-           >
-             Chỉnh sửa thông tin
-           </button>
-         </div>
-       </div>
-     );
+    return (
+      <div className="profile-view-container">
+        <h2 className="form-title">Hồ sơ cá nhân</h2>
+        <div className="profile-view-avatar">
+          <img
+            src={existingAvatarUrl || "/default-avatar.png"}
+            alt="User avatar"
+            className="avatar-image-large"
+          />
+        </div>
+        <div className="view-field">
+          <strong>Họ và tên:</strong> {formData.fullName}
+        </div>
+        <div className="view-field">
+          <strong>Email:</strong> {formData.email}
+        </div>
+        <div className="view-field">
+          <strong>Số điện thoại:</strong> {formData.phoneNumber}
+        </div>
+        <div className="view-field">
+          <strong>Giới tính:</strong> {formData.gender === 'male' ? 'Nam' : 'Nữ'}
+        </div>
+        <div className="view-field">
+          <strong>Ngày sinh:</strong> {formatDateToDDMMYYYY(formData.dob)}
+        </div>
+        <div className="view-field">
+          <strong>Địa chỉ:</strong> {formData.defaultShippingAddress}
+        </div>
+        <div className="form-submit">
+          <button
+            onClick={() => setIsViewMode(false)}
+            className="submit-button"
+          >
+            Chỉnh sửa thông tin
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // --- RENDER (Chế độ Sửa - Form) ---
@@ -351,174 +352,172 @@ export default function PersonalProfileForm() {
         {isNewUser ? "Hoàn tất hồ sơ" : "Chỉnh sửa hồ sơ"}
       </h2>
       <form onSubmit={handleSubmit} className="profile-form">
-        
-        {/* (Toàn bộ các input ... giữ nguyên, đã thêm onBlur) */}
-        {/* ... avatar ... */}
-         <div className="form-field avatar-field-center">
-           <label htmlFor="avatarUrlInput" className="form-label"> {/* Đổi id để tránh trùng */}
-             Ảnh đại diện*
-           </label>
-           {existingAvatarUrl && (
-             <img
-               src={existingAvatarUrl}
-               alt="Avatar Preview"
-               className="avatar-preview"
-             />
-           )}
-           <div className="input-wrapper">
-             <input
-               id="avatarUrlInput" // Đổi id
-               type="file"
-               accept="image/*"
-               onChange={handleAvatarChange}
-               // Không cần onBlur cho file input
-               name="avatarUrl" // name này dùng cho validation thôi, không gửi lên server
-               className={`form-input ${errors.avatarUrl ? "input-error" : ""}`}
-             />
-             {errors.avatarUrl && (
-               <span className="error-text">{errors.avatarUrl}</span>
-             )}
-           </div>
-         </div>
-        
-        {/* ... fullName ... */}
-         <div className="form-field">
-           <label htmlFor="fullName" className="form-label">
-             Full name*
-           </label>
-           <div className="input-wrapper">
-             <input
-               id="fullName"
-               name="fullName"
-               type="text"
-               value={formData.fullName}
-               onChange={handleChange}
-               onBlur={handleBlur}
-               className={`form-input ${errors.fullName ? "input-error" : ""}`}
-             />
-             {errors.fullName && (
-               <span className="error-text">{errors.fullName}</span>
-             )}
-           </div>
-         </div>
-        
-        {/* ... phoneNumber ... */}
+        {/* Avatar (Giữ nguyên) */}
+        <div className="form-field avatar-field-center">
+          <label htmlFor="avatarUrl" className="form-label">
+            Ảnh đại diện*
+          </label>
+          {existingAvatarUrl && (
+            <img
+              src={existingAvatarUrl}
+              alt="Avatar Preview"
+              className="avatar-preview"
+            />
+          )}
+          <div className="input-wrapper">
+            <input
+              id="avatarUrl"
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              onBlur={handleBlur} // Thêm onBlur cho avatar
+              name="avatarUrl"
+              className={`form-input ${errors.avatarUrl ? "input-error" : ""}`}
+            />
+            {errors.avatarUrl && (
+              <span className="error-text">{errors.avatarUrl}</span>
+            )}
+          </div>
+        </div>
+
+
+        {/* Full name */}
         <div className="form-field">
-           <label htmlFor="phoneNumber" className="form-label">
-             Phone number*
-           </label>
-           <div className="input-wrapper">
-             <input
-               id="phoneNumber"
-               name="phoneNumber"
-               type="tel"
-               value={formData.phoneNumber}
-               onChange={handleChange}
-               onBlur={handleBlur}
-               className={`form-input ${
-                 errors.phoneNumber ? "input-error" : ""
-               }`}
-             />
-             {errors.phoneNumber && (
-               <span className="error-text">{errors.phoneNumber}</span>
-             )}
-           </div>
-         </div>
+          <label htmlFor="fullName" className="form-label">
+            Họ và tên*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="fullName"
+              name="fullName"
+              type="text"
+              value={formData.fullName}
+              onChange={handleChange}
+              onBlur={handleBlur} // 🔹 THÊM VÀO
+              className={`form-input ${errors.fullName ? "input-error" : ""}`}
+            />
+            {errors.fullName && (
+              <span className="error-text">{errors.fullName}</span>
+            )}
+          </div>
+        </div>
 
-        {/* ... email ... */}
-         <div className="form-field">
-           <label htmlFor="email" className="form-label">
-             Email*
-           </label>
-           <div className="input-wrapper">
-             <input
-               id="email"
-               name="email"
-               type="email"
-               value={formData.email}
-               onChange={handleChange}
-               onBlur={handleBlur}
-               className={`form-input ${errors.email ? "input-error" : ""}`}
-             />
-             {errors.email && (
-               <span className="error-text">{errors.email}</span>
-             )}
-           </div>
-         </div>
+        {/* Phone number */}
+        <div className="form-field">
+          <label htmlFor="phoneNumber" className="form-label">
+            Số điện thoại*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="phoneNumber"
+              name="phoneNumber"
+              type="tel"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              onBlur={handleBlur} // 🔹 THÊM VÀO
+              className={`form-input ${errors.phoneNumber ? "input-error" : ""
+                }`}
+            />
+            {errors.phoneNumber && (
+              <span className="error-text">{errors.phoneNumber}</span>
+            )}
+          </div>
+        </div>
 
-        {/* ... gender ... */}
-         <div className="form-field">
-           <label className="form-label">Gender*</label>
-            <div className="radio-group">
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="male"
-                  checked={formData.gender === "male"}
-                  onChange={handleChange}
-                />
-                <span>Male</span>
-              </label>
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="female"
-                  checked={formData.gender === "female"}
-                  onChange={handleChange}
-                />
-                <span>Female</span>
-              </label>
-            </div>
-            {errors.gender && <span className="error-text">{errors.gender}</span>}
-         </div>
+        {/* 🔹 Email (ĐÃ CHO SỬA) 🔹 */}
+        <div className="form-field">
+          <label htmlFor="email" className="form-label">
+            Email*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              onBlur={handleBlur} // 🔹 THÊM VÀO
+              className={`form-input ${errors.email ? "input-error" : ""}`}
+            // (readOnly đã bị xóa)
+            />
+            {errors.email && (
+              <span className="error-text">{errors.email}</span>
+            )}
+          </div>
+        </div>
 
-        {/* ... dob ... */}
-         <div className="form-field">
-           <label htmlFor="dob" className="form-label">
-             Birthday*
-           </label>
-           <div className="input-wrapper">
-             <input
-               id="dob"
-               name="dob"
-               type="date"
-               value={formData.dob}
-               onChange={handleChange}
-               onBlur={handleBlur}
-               className={`form-input ${errors.dob ? "input-error" : ""}`}
-             />
-             {errors.dob && <span className="error-text">{errors.dob}</span>}
-           </div>
-         </div>
+        {/* Gender (Radio, không cần onBlur) */}
+        <div className="form-field">
+          <label className="form-label">Giới tính*</label>
+          <div className="radio-group">
+            <label className="radio-label">
+              <input
+                type="radio"
+                name="gender"
+                value="male"
+                checked={formData.gender === "male"}
+                onChange={handleChange}
+              />
+              <span>Nam</span>
+            </label>
+            <label className="radio-label">
+              <input
+                type="radio"
+                name="gender"
+                value="female"
+                checked={formData.gender === "female"}
+                onChange={handleChange}
+              />
+              <span>Nữ</span>
+            </label>
+          </div>
+          {/* Hiển thị lỗi chung cho gender nếu submit */}
+          {errors.gender && <span className="error-text">{errors.gender}</span>}
+        </div>
 
         {/* ... address ... */}
         <div className="form-field">
-           <label htmlFor="defaultShippingAddress" className="form-label">
-             Address*
-           </label>
-           <div className="input-wrapper">
-             <input
-               id="defaultShippingAddress"
-               name="defaultShippingAddress"
-               type="text"
-               placeholder="7 Đ. D1, Long Thạnh Mỹ, Thủ Đức, Hồ Chí Minh"
-               value={formData.defaultShippingAddress}
-               onChange={handleChange}
-               onBlur={handleBlur}
-               className={`form-input ${
-                 errors.defaultShippingAddress ? "input-error" : ""
-               }`}
-             />
-             {errors.defaultShippingAddress && (
-               <span className="error-text">
-                 {errors.defaultShippingAddress}
-               </span>
-             )}
-           </div>
-         </div>
+          <label htmlFor="dob" className="form-label">
+            Ngày sinh*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="dob"
+              name="dob"
+              type="date"
+              value={formData.dob}
+              onChange={handleChange}
+              onBlur={handleBlur} // 🔹 THÊM VÀO
+              className={`form-input ${errors.dob ? "input-error" : ""}`}
+            />
+            {errors.dob && <span className="error-text">{errors.dob}</span>}
+          </div>
+        </div>
 
+        {/* Address */}
+        <div className="form-field">
+          <label htmlFor="defaultShippingAddress" className="form-label">
+            Địa chỉ*
+          </label>
+          <div className="input-wrapper">
+            <input
+              id="defaultShippingAddress"
+              name="defaultShippingAddress"
+              type="text"
+              placeholder="7 Đ. D1, Long Thạnh Mỹ, Thủ Đức, Hồ Chí Minh"
+              value={formData.defaultShippingAddress}
+              onChange={handleChange}
+              onBlur={handleBlur} // 🔹 THÊM VÀO
+              className={`form-input ${errors.defaultShippingAddress ? "input-error" : ""
+                }`}
+            />
+            {errors.defaultShippingAddress && (
+              <span className="error-text">
+                {errors.defaultShippingAddress}
+              </span>
+            )}
+          </div>
+        </div>
 
         {/* 🔹 SỬA LẠI KHỐI SUBMIT + THÊM NÚT CANCEL 🔹 */}
         <div className="form-submit">
@@ -538,7 +537,7 @@ export default function PersonalProfileForm() {
             className="submit-button"
             disabled={isLoading}
           >
-            {isLoading ? "Đang lưu..." : "Save Change"}
+            {isLoading ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
         </div>
       </form>

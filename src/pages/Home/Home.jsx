@@ -56,14 +56,30 @@ export function Home() {
     };
   }, []);
 
-  // Khi có hash trong URL thì scroll tới đúng section
+  // Khi có hash trong URL thì scroll tới đúng section (chỉ khi không phải từ modal)
   useEffect(() => {
     const hash = location.hash;
     if (hash) {
-      setTimeout(() => {
-        const element = document.querySelector(hash);
-        if (element) element.scrollIntoView({ behavior: "smooth" });
-      }, 20);
+      // Chỉ scroll khi không phải từ việc đóng modal
+      // Kiểm tra xem có phải từ modal upgrade không
+      const isFromModal = sessionStorage.getItem('fromUpgradeModal');
+      if (!isFromModal) {
+        setTimeout(() => {
+          const element = document.querySelector(hash);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth" });
+          } else if (hash === "#upgrade") {
+            // Fallback: nếu không tìm thấy #upgrade, thử tìm #upgrade-section
+            const fallbackElement = document.querySelector("#upgrade-section");
+            if (fallbackElement) {
+              fallbackElement.scrollIntoView({ behavior: "smooth" });
+            }
+          }
+        }, 20);
+      } else {
+        // Xóa flag sau khi xử lý
+        sessionStorage.removeItem('fromUpgradeModal');
+      }
     }
   }, [location.hash]);
 
@@ -86,8 +102,10 @@ export function Home() {
           <VehicleShowcase />
         </section>
 
+        <section id="upgrade-section">
+          <UpgradeSection requireAuth={true} />
+        </section>
         <FeaturesSection />
-        <UpgradeSection />
       </main>
 
       <ScrollToTop />

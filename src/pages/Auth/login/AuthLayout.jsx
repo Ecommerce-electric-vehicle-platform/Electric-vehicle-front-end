@@ -12,7 +12,7 @@ export default function AuthLayout() {
 
     return (
         <div className="auth-page">
-            <div className={`container ${isSignUpMode ? "sign-up-mode" : ""}`}>
+            <div className={`auth-container ${isSignUpMode ? "sign-up-mode" : ""}`}>
                 <div className="forms-container">
                     <div className="signin-signup">
                         {isSignUpMode ? <SignUp /> : <SignIn />}
