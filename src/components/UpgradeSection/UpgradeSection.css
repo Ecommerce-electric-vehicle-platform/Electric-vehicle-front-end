@@ -6,6 +6,8 @@
     overflow: hidden;
     scroll-margin-top: 100px;
     /* Đảm bảo không bị che bởi header fixed */
+    display: block; /* chống bị core css set flex */
+    contain: content; /* cô lập ảnh hưởng layout xung quanh */
 }
 
 .upgrade-section::before {
@@ -26,11 +28,18 @@
     padding: 0 1rem;
     position: relative;
     z-index: 1;
+    display: flex !important; /* nếu bị ép flex từ ngoài, ta chủ động kiểm soát */
+    flex-direction: column !important; /* xếp header, toggle, grid theo cột */
+    align-items: stretch; /* phần tử con full bề rộng container */
+    gap: 1.5rem;
 }
 
 .upgrade-header {
     text-align: center;
+    display: block;
+    width: 100%;
     margin-bottom: 4rem;
+    order: 1 !important;
 }
 
 .upgrade-title {
@@ -46,17 +55,24 @@
     text-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
     letter-spacing: -0.02em;
     line-height: 1.2;
+    white-space: normal;
+    word-break: keep-all;
 }
 
 .upgrade-subtitle {
     font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
     font-size: 1.3rem;
-    color: #e8f5e8;
     max-width: 600px;
     margin: 0 auto;
     line-height: 1.6;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 0.01em;
+    /* match title gradient color */
+    background-image: linear-gradient(45deg, #4caf50, #66bb6a, #8bc34a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
 }
 
 .packages-grid {
@@ -66,6 +82,7 @@
     align-items: stretch;
     max-width: 1000px;
     margin: 0 auto;
+    order: 3 !important;
 }
 
 /* Billing toggle */
@@ -79,20 +96,28 @@
     border: 1px solid rgba(255, 255, 255, .25);
     margin: 0 auto 1.5rem;
     width: fit-content;
+    order: 2 !important;
 }
 
 .toggle-btn {
-    background: transparent;
-    color: #e8f5e8;
+    background-color: transparent;
     padding: .5rem .9rem;
     border-radius: 999px;
     font-weight: 700;
     border: 1px solid transparent;
+    /* gradient text like the title */
+    background-image: linear-gradient(45deg, #4caf50, #66bb6a, #8bc34a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
 }
 
 .toggle-btn.active {
-    background: #ffffff;
-    color: #065f46;
+    background-color: #ffffff; /* keep white pill */
+    /* keep gradient text */
+    -webkit-text-fill-color: transparent;
+    color: transparent;
     border-color: rgba(0, 0, 0, .05);
     box-shadow: 0 6px 18px rgba(255, 255, 255, .25);
 }

@@ -1,0 +1,41 @@
+.breadcrumbs {
+    width: 100%;
+}
+
+.breadcrumbs-list {
+    list-style: none;
+    margin: 0 0 16px 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.breadcrumbs-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #0f172a;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.breadcrumbs-link.home {
+    color: #0f172a;
+}
+
+.breadcrumbs-item .breadcrumbs-sep {
+    color: #9ca3af;
+}
+
+.breadcrumbs-current {
+    color: #6b7280;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .breadcrumbs-list {
+        gap: 4px;
+    }
+}

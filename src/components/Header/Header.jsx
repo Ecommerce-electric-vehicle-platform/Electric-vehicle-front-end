@@ -10,9 +10,14 @@ import {
   User,
   ChevronDown,
 } from "lucide-react";
-import { CategorySidebar } from '../CategorySidebar/CategorySidebar';
-import { UserDropdown } from '../UserDropdown/UserDropdown';
-import { UpgradeNotificationModal } from '../UpgradeNotificationModal/UpgradeNotificationModal';
+
+import { CategorySidebar } from "../CategorySidebar/CategorySidebar";
+import { UserDropdown } from "../UserDropdown/UserDropdown";
+import { UpgradeNotificationModal } from "../UpgradeNotificationModal/UpgradeNotificationModal";
+import { NotificationList } from "../NotificationList/NotificationList";
+import { NotificationPopup } from "../NotificationPopup/NotificationPopup";
+import notificationApi from "../../api/notificationApi";
+import notificationService from "../../services/notificationService";
 import "./Header.css";
 
 export function Header() {
@@ -55,6 +60,68 @@ export function Header() {
     };
   }, []);
 
+  // Load notification count khi authenticated
+  useEffect(() => {
+    const loadNotificationCount = async () => {
+      if (!isAuthenticated) {
+        setNotificationCount(0);
+        return;
+      }
+
+      try {
+        const response = await notificationApi.getUnreadCount();
+        setNotificationCount(response?.data?.unreadCount || 0);
+      } catch (error) {
+        console.error("Error loading notification count:", error);
+      }
+    };
+
+    loadNotificationCount();
+  }, [isAuthenticated]);
+
+  // Subscribe vào notification service để nhận thông báo mới
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Khởi tạo notification service
+    notificationService.init();
+
+    // Subscribe để nhận thông báo mới
+    const unsubscribe = notificationService.subscribe((notification) => {
+      console.log("Received new notification:", notification);
+
+      // Hiển thị popup toast
+      setNotificationPopups((prev) => [...prev, notification]);
+
+      // Tăng badge count
+      setNotificationCount((prev) => prev + 1);
+
+      // Tự động ẩn popup sau 5 giây
+      setTimeout(() => {
+        setNotificationPopups((prev) =>
+          prev.filter((n) => n.notificationId !== notification.notificationId)
+        );
+      }, 5000);
+    });
+
+    // Listen cho event notification đã đọc
+    const handleNotificationRead = async () => {
+      try {
+        const response = await notificationApi.getUnreadCount();
+        setNotificationCount(response?.data?.unreadCount || 0);
+      } catch (error) {
+        console.error("Error updating notification count:", error);
+      }
+    };
+
+    window.addEventListener("notificationRead", handleNotificationRead);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("notificationRead", handleNotificationRead);
+    };
+  }, [isAuthenticated]);
+
   // Hàm đăng xuất
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -73,7 +140,7 @@ export function Header() {
     navigate("/");
   };
 
-  // ✅ Hàm cuộn mượt tới section
+  // Hàm cuộn mượt tới section
   const scrollToSection = (id) => {
     const section = document.getElementById(id);
     if (section) {
@@ -81,7 +148,7 @@ export function Header() {
     }
   };
 
-  // ✅ Hàm navigation thông minh
+  // Hàm navigation thông minh
   const handleSmartNavigation = (sectionId) => {
     if (isHomePage) {
       // Nếu đang ở trang chủ, chỉ cần cuộn
@@ -92,12 +159,12 @@ export function Header() {
     }
   };
 
-  // ✅ Hàm điều hướng
+  // Hàm điều hướng
   const handleNavigate = (path) => {
     navigate(path);
   };
 
-  // ✅ Điều hướng về trang Home theo role (Home.jsx sẽ chọn HomeUser/HomeGuest)
+  // Điều hướng về trang Home theo role (Home.jsx sẽ chọn HomeUser/HomeGuest)
   const handleLogoClick = () => {
     if (isHomePage) {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -106,7 +173,7 @@ export function Header() {
     }
   };
 
-  // ✅ Hàm toggle hamburger menu
+  // Hàm toggle hamburger menu
   const toggleHamburgerMenu = () => {
     setHamburgerMenuOpen(!hamburgerMenuOpen);
     // Ngăn scroll khi menu mở
@@ -117,13 +184,13 @@ export function Header() {
     }
   };
 
-  // ✅ Hàm đóng hamburger menu
+  // Hàm đóng hamburger menu
   const closeHamburgerMenu = () => {
     setHamburgerMenuOpen(false);
     document.body.classList.remove('hamburger-menu-open');
   };
 
-  // ✅ Hàm xử lý click vào nút người bán khi user là buyer
+  // Hàm xử lý click vào nút người bán khi user là buyer
   const handleSellerAction = (action) => {
     if (userRole === 'buyer') {
       // Hiển thị modal yêu cầu upgrade
@@ -176,6 +243,36 @@ export function Header() {
       default:
         break;
     }
+  };
+
+  // Xử lý khi click vào notification popup
+  const handleNotificationPopupClick = (notification) => {
+    // Xóa popup
+    setNotificationPopups((prev) =>
+      prev.filter((n) => n.notificationId !== notification.notificationId)
+    );
+
+    // Xử lý navigation dựa vào type
+    handleNotificationNavigation(notification);
+  };
+
+  // Xử lý khi đóng notification popup
+  const handleNotificationPopupClose = (notificationId) => {
+    setNotificationPopups((prev) =>
+      prev.filter((n) => n.notificationId !== notificationId)
+    );
+  };
+
+  // Xử lý navigation khi click notification
+  const handleNotificationNavigation = (notification) => {
+    // Nếu là thông báo phê duyệt seller, chuyển đến trang upgrade
+    if (
+      notification.type === "seller_approved" ||
+      notification.type === "success"
+    ) {
+      navigate("/profile"); // Trang có nút "Mua gói Seller"
+    }
+    // Có thể thêm các type khác ở đây
   };
 
   return (
@@ -307,12 +404,21 @@ export function Header() {
         </div>
       </div>
 
-      {/* 🎯 Upgrade Notification Modal */}
+{/* ================= MỚI THÊM PHẦN NÀY (PHẦN NOTIFICATION) ================= */}
+
+      {/* Upgrade Notification Modal */}
       <UpgradeNotificationModal
         isOpen={showUpgradeModal}
         onClose={handleCloseUpgradeModal}
         onUpgrade={handleUpgrade}
         featureName={upgradeFeatureName}
+      />
+
+      {/* Notification Popup Toast */}
+      <NotificationPopup
+        notifications={notificationPopups}
+        onClose={handleNotificationPopupClose}
+        onClick={handleNotificationPopupClick}
       />
     </nav>
   );

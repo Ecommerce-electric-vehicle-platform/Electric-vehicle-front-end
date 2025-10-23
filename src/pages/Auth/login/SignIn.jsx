@@ -6,29 +6,75 @@ import profileApi from "../../../api/profileApi";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 
-
 export default function SignIn() {
-    const navigate = useNavigate();
-    const [formData, setFormData] = useState({ username: "", password: "" });
-    const [errors, setErrors] = useState({});
-    const [backendError, setBackendError] = useState("");
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [errors, setErrors] = useState({});
+  const [backendError, setBackendError] = useState("");
 
-    // ===== VALIDATION =====
-    const validateField = (name, value) => {
-        let message = "";
+  // ===== VALIDATION =====
+  const validateField = (name, value) => {
+    let message = "";
 
-        if (name === "username") {
-            if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
-            else if (!/^[A-Za-z]+$/.test(value)) message = "Chỉ được phép sử dụng chữ cái."; // 👈 giữ logic regex của bạn
-            else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
-        }
+    if (name === "username") {
+      if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
+      else if (!/^[A-Za-z]+$/.test(value))
+        message = "Chỉ được phép sử dụng chữ cái.";
+      else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
+    }
 
-        if (name === "password") {
-            if (!value.trim()) message = "Mật khẩu là bắt buộc.";
-            else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
-            else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
-            else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-                message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
+    if (name === "password") {
+      if (!value.trim()) message = "Mật khẩu là bắt buộc.";
+      else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
+      else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
+      else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
+        message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
+    }
+
+    setErrors((prev) => ({ ...prev, [name]: message }));
+  };
+
+  const validateAll = () => {
+    const newErrors = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      validateField(key, value);
+      if (errors[key]) newErrors[key] = errors[key];
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    validateField(name, value);
+    setBackendError("");
+  };
+
+  // ===== SUBMIT =====
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const allValid = validateAll();
+    if (!allValid) return;
+
+    try {
+      const response = await authApi.signin(formData);
+      const resData = response?.data?.data;
+
+      if (resData?.accessToken && resData?.refreshToken) {
+        localStorage.setItem("accessToken", resData.accessToken);
+        localStorage.setItem("refreshToken", resData.refreshToken);
+        localStorage.setItem("token", resData.accessToken);
+        localStorage.setItem("username", resData.username);
+        localStorage.setItem("userEmail", resData.email);
+        localStorage.setItem("authType", "user");
+
+        //  kiểm tra kỹ buyerId trước khi lưu
+        if (resData?.buyerId) {
+          localStorage.setItem("buyerId", resData.buyerId);
+        } else {
+          console.warn(" Không có buyerId trả về từ API login");
+          localStorage.removeItem("buyerId"); // tránh để giá trị "undefined"
         }
 
         setErrors((prev) => ({ ...prev, [name]: message }));

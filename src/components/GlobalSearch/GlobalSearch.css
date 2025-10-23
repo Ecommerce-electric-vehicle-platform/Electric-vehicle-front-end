@@ -1,0 +1,379 @@
+/* Global Search Base */
+.global-search {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    /* Force light theme */
+    color-scheme: light;
+}
+
+.global-search__form {
+    width: 100%;
+}
+
+.global-search__input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #ffffff !important;
+    border: 2px solid #e5e7eb !important;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.global-search__input-container:focus-within {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    background: #ffffff !important;
+}
+
+.global-search__icon {
+    position: absolute;
+    left: 16px;
+    color: #6b7280 !important;
+    z-index: 1;
+}
+
+.global-search__input {
+    width: 100%;
+    padding: 12px 16px 12px 48px;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    color: #111827 !important;
+    background: transparent !important;
+}
+
+.global-search__input::placeholder {
+    color: #9ca3af !important;
+}
+
+.global-search__loading {
+    position: absolute;
+    right: 48px;
+    color: #10b981 !important;
+    animation: spin 1s linear infinite;
+}
+
+.global-search__clear {
+    position: absolute;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f3f4f6 !important;
+    color: #6b7280 !important;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 1;
+}
+
+.global-search__clear:hover {
+    background: #e5e7eb !important;
+    color: #374151 !important;
+}
+
+/* Suggestions Dropdown */
+.global-search__suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    margin-top: 4px;
+    max-height: 400px;
+    overflow: hidden;
+}
+
+.global-search__suggestions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    background: #f8f9fa !important;
+}
+
+.global-search__suggestions-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151 !important;
+}
+
+.global-search__suggestions-count {
+    font-size: 12px;
+    color: #10b981 !important;
+    background: rgba(16, 185, 129, 0.1) !important;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.global-search__suggestions-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.global-search__suggestion-item {
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #f3f4f6;
+    background: #ffffff !important;
+    border-radius: 8px;
+    margin-bottom: 4px;
+}
+
+.global-search__suggestion-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.global-search__suggestion-item:hover,
+.global-search__suggestion-item--selected {
+    background: #f0f9ff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ProductCard styles are handled by ProductCard.css */
+
+/* Override ProductCard styles for suggestions */
+.global-search__suggestion-item .product-card {
+    margin: 0;
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+}
+
+.global-search__suggestion-item .product-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: none;
+}
+
+.global-search__suggestion-item .product-card.compact {
+    padding: 8px;
+}
+
+.global-search__suggestion-item .product-card.compact .product-img-wrapper {
+    width: 60px;
+    height: 60px;
+    margin-right: 12px;
+}
+
+.global-search__suggestion-item .product-card.compact .product-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.global-search__suggestion-item .product-card.compact .product-name {
+    font-size: 14px;
+    line-height: 1.3;
+    margin-bottom: 4px;
+}
+
+.global-search__suggestion-item .product-card.compact .product-brand {
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.global-search__suggestion-item .product-card.compact .product-price-current {
+    font-size: 13px;
+}
+
+.global-search__suggestions-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #f3f4f6;
+    background: #f8f9fa !important;
+}
+
+.global-search__view-all {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #10b981 !important;
+    color: white !important;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.global-search__view-all:hover {
+    background: #059669 !important;
+    transform: translateY(-1px);
+}
+
+.global-search__no-results {
+    padding: 20px 16px;
+    text-align: center;
+    background: #ffffff !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+.global-search__no-results-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #374151 !important;
+    margin: 0;
+}
+
+.global-search__no-results-message {
+    font-size: 14px;
+    color: #6b7280 !important;
+    margin: 0;
+    line-height: 1.4;
+    max-width: 280px;
+}
+
+.global-search__no-results-message strong {
+    color: #16a34a !important;
+    font-weight: 700;
+}
+
+.global-search__no-results-suggestions {
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: center;
+    width: 100%;
+    max-width: 280px;
+}
+
+.global-search__suggestions-text {
+    font-size: 12px;
+    color: #6b7280 !important;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.global-search__suggestions-text strong {
+    color: #16a34a !important;
+    font-weight: 600;
+}
+
+/* Animations */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .global-search {
+        max-width: 100%;
+    }
+
+    .global-search__input {
+        font-size: 16px;
+        /* Prevent zoom on iOS */
+    }
+
+    .global-search__suggestions {
+        max-height: 300px;
+    }
+
+    .global-search__suggestion-item {
+        padding: 10px 12px;
+    }
+
+    .global-search__suggestion-image {
+        width: 40px;
+        height: 40px;
+        margin-right: 10px;
+    }
+
+    .global-search__suggestion-title {
+        font-size: 13px;
+    }
+
+    .global-search__suggestion-brand {
+        font-size: 11px;
+    }
+
+    .global-search__suggestion-price {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .global-search__suggestions {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        border-radius: 16px 16px 0 0;
+        max-height: 50vh;
+    }
+
+    .global-search__suggestions-list {
+        max-height: 200px;
+    }
+}
+
+/* Force light mode - disable dark mode */
+.global-search__input-container {
+    background: #ffffff !important;
+    border-color: #e5e7eb !important;
+}
+
+.global-search__input {
+    color: #111827 !important;
+    background: transparent !important;
+}
+
+.global-search__input::placeholder {
+    color: #9ca3af !important;
+}
+
+.global-search__suggestions {
+    background: #ffffff !important;
+    border-color: #e5e7eb !important;
+}
+
+.global-search__suggestions-header {
+    background: #f8f9fa !important;
+    border-color: #f3f4f6 !important;
+}
+
+.global-search__suggestion-item {
+    background: #ffffff !important;
+    border-color: #f3f4f6 !important;
+}
+
+.global-search__suggestion-item:hover,
+.global-search__suggestion-item--selected {
+    background: #f0f9ff !important;
+}
+
+.global-search__suggestion-title {
+    color: #111827 !important;
+}
+
+.global-search__suggestion-brand {
+    color: #6b7280 !important;
+}
