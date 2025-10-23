@@ -180,43 +180,146 @@
 /* Action Buttons */
 .notification-modal-actions {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     justify-content: center;
+    margin-top: 8px;
 }
 
 .notification-btn {
-    padding: 12px 24px;
-    border-radius: 8px;
+    padding: 14px 28px;
+    border-radius: 10px;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
-    min-width: 120px;
-    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    min-width: 130px;
+    border: 3px solid transparent;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
 }
 
 .register-btn {
-    background: white;
-    color: #22c55e;
+    background: #ffffff;
+    color: #000000;
+    /* Always black text */
     border-color: #22c55e;
+    box-shadow: 0 10px 24px rgba(34, 197, 94, 0.15);
+    text-shadow: none;
 }
 
 .register-btn:hover {
     background: #f0fdf4;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(34, 197, 94, 0.28);
+    border-color: #16a34a;
+    color: #000000;
+    /* Keep black */
 }
 
-.login-btn {
-    background: #22c55e;
-    color: white;
-    border-color: #22c55e;
+.register-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
 }
 
 .login-btn:hover {
-    background: #16a34a;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    background: linear-gradient(135deg, #bbf7d0 0%, #86efac 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(34, 197, 94, 0.35);
+    border-color: #16a34a;
+    color: #000000;
+    /* Keep black on hover */
+}
+
+.login-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+/* Focus states for accessibility */
+.register-btn:focus {
+    outline: 3px solid rgba(34, 197, 94, 0.5);
+    outline-offset: 2px;
+}
+
+.login-btn:focus {
+    outline: 3px solid rgba(34, 197, 94, 0.5);
+    outline-offset: 2px;
+}
+
+/* Pulse animation for buttons to draw attention */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 4px 15px rgba(108, 117, 125, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 4px 20px rgba(108, 117, 125, 0.3);
+    }
+
+    100% {
+        box-shadow: 0 4px 15px rgba(108, 117, 125, 0.2);
+    }
+}
+
+@keyframes pulseBlue {
+    0% {
+        box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 4px 20px rgba(30, 64, 175, 0.4);
+    }
+
+    100% {
+        box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);
+    }
+}
+
+.register-btn {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #000000;
+    border-color: #22c55e;
+    box-shadow: 0 6px 18px rgba(34, 197, 94, 0.25);
+    text-shadow: none;
+    animation: pulse 2s infinite;
+}
+
+.login-btn {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    /* light green to match */
+    color: #000000;
+    /* Always black text */
+    border-color: #22c55e;
+    box-shadow: 0 6px 18px rgba(34, 197, 94, 0.25);
+    text-shadow: none;
+    animation: pulse 2s infinite;
+}
+
+/* Ensure buttons are always visible and clickable */
+.notification-btn {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+/* identical size */
+.notification-modal-actions .notification-btn {
+    width: 180px;
+}
+
+/* Force black text for all states */
+.register-btn,
+.register-btn:hover,
+.register-btn:active,
+.register-btn:focus,
+.login-btn,
+.login-btn:hover,
+.login-btn:active,
+.login-btn:focus {
+    color: #000000 !important;
 }
 
 /* Responsive */
