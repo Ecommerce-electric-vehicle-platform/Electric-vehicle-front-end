@@ -1,4 +1,4 @@
-"use client"
+
 
 // 🔹 1. Import thêm useEffect (nếu chưa có) và useLocation
 import { useState, useEffect, useCallback } from "react"; // Giữ useCallback nếu bạn đang debug
