@@ -131,6 +131,7 @@
 .form-submit {
   display: flex;
   justify-content: center;
+  gap: 16px; /* 🔹 Thêm khoảng cách giữa 2 nút */
   padding-top: 16px;
 }
 

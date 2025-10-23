@@ -62,6 +62,7 @@ export default function ApproveSeller() {
 
   useEffect(() => {
     loadPendingSellers(page > 0); // nếu page > 0 thì append
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   // ===== Hàm xử lý duyệt / từ chối =====
@@ -74,6 +75,16 @@ export default function ApproveSeller() {
         decision,
         message,
       });
+
+      // Hiển thị thông báo thành công
+      if (decision === "APPROVED") {
+        alert(
+          "✅ Phê duyệt thành công! Buyer sẽ nhận được thông báo realtime."
+        );
+      } else {
+        alert("❌ Đã từ chối yêu cầu nâng cấp seller.");
+      }
+
       // sau khi duyệt hoặc từ chối thì reload danh sách từ đầu
       setPage(0);
       loadPendingSellers(false);

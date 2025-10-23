@@ -1,13 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useLocation } from "react-router-dom"
-import UserSidebar from "./UserSidebar"
-import PersonalProfileForm from "./PersonalProfileForm"
-import "./PersonalProfilePage.css"
-import ChangePassword from "./ChangePassword"
-import UpgradeToSeller from "./UpgradeToSeller"
-import PersonalEWallet from "./PersonalEWallet"
+// 🔹 1. Import thêm useEffect (nếu chưa có) và useLocation
+import { useState, useEffect, useCallback } from "react"; // Giữ useCallback nếu bạn đang debug
+import { useLocation } from "react-router-dom"; // Thêm useLocation
+import UserSidebar from "./UserSidebar";
+import PersonalProfileForm from "./PersonalProfileForm";
+import "./PersonalProfilePage.css";
+import ChangePassword from "./ChangePassword";
+import UpgradeToSeller from "./UpgradeToSeller";
+import PersonalEWallet from "./PersonalEWallet";
+import SellerBuyPackage from "./SellerBuyPackage"; // Đảm bảo import đúng
 
 export default function PersonalProfilePage() {
   const location = useLocation()
@@ -16,18 +18,20 @@ export default function PersonalProfilePage() {
   const [username, setUsername] = useState("")
   //const [userId, setUserId] = useState(null)
 
-  //  Lấy username & userId từ localStorage khi load trang
-  useEffect(() => {
-    const storedUsername = localStorage.getItem("username")
-    //const storedUserId = localStorage.getItem("buyerId")
-    if (storedUsername) setUsername(storedUsername)
-    //if (storedUserId) setUserId(storedUserId)
-  }, [])
+  // Hàm wrapper để log (tùy chọn, giữ lại để debug)
+  const setActiveSection = useCallback((newSection) => {
+    console.log(`>>> setActiveSection called with: "${newSection}"`);
+    _setActiveSection(newSection);
+  }, []); // Dependency rỗng cho useCallback là OK
 
-  //  Đọc query string để mở đúng tab khi điều hướng từ nơi khác
+  console.log("PersonalProfilePage rendering with activeSection:", activeSection);
+
+  // useEffect lấy username (giữ nguyên)
   useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const tab = (params.get("tab") || params.get("section") || "").toLowerCase()
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) setUsername(storedUsername);
+    // Không cần cleanup listener ở đây vì không add listener nào
+  }, []); // Dependency rỗng OK vì chỉ đọc localStorage 1 lần
 
     if (tab === "wallet" || tab === "e-wallet" || tab === "ewallet") {
       setActiveSection("Ví điện tử")
@@ -42,10 +46,10 @@ export default function PersonalProfilePage() {
     }
   }, [location.search])
 
-  //  Nhận file avatar từ Sidebar (chỉ preview, upload xử lý ở form)
-  const handleAvatarChange = (file) => {
-    setAvatarFile(file)
-  }
+  // Hàm xử lý avatar (có thể không cần nữa)
+  // const handleAvatarChange = (file) => {
+  //   setAvatarFile(file);
+  // };
 
   //  Xử lý click sidebar với scroll smooth
   const handleSidebarClick = (section) => {
@@ -88,5 +92,5 @@ export default function PersonalProfilePage() {
         </main>
       </div>
     </div>
-  )
+  );
 }
