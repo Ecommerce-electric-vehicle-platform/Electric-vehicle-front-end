@@ -3,6 +3,21 @@ import axiosInstance from "./axiosInstance";
 
 const profileApi = {
 
+  // get 3 address levels: provinces, districts, wards
+  getAddressProvinces: () => {
+    return axiosInstance.get(`/api/v1/shipping/provinces`);
+  },
+  getAddressDistricts: (provinceId) => {
+    return axiosInstance.get(
+      `/api/v1/shipping/districts?provinceId=${provinceId}`
+    );
+  },
+  getAddressWards: (districtId) => {
+    return axiosInstance.get(
+      `/api/v1/shipping/wards?districtId=${districtId}`
+    );
+  },
+
   // Lấy profile 
   getProfile: () => {
     return axiosInstance.get(`/api/v1/buyer/profile`); 
