@@ -26,7 +26,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 Frontend sẽ:
 1. Connect đến: `http://localhost:8080/ws`
-2. Subscribe đến: `/topic/notifications/{buyerId}`
+2. Subscribe đến: `/queue/notifications/{buyerId}` ⭐ (point-to-point)
 3. Nhận notification realtime ngay lập tức
 
 ## Backend cần làm gì?
@@ -77,10 +77,10 @@ public class SellerService {
         notificationRepository.save(notification);
         
         // 3. GỬI QUA WEBSOCKET NGAY LẬP TỨC
-        String topic = "/topic/notifications/" + seller.getBuyerId();
-        messagingTemplate.convertAndSend(topic, notification);
+        String destination = "/queue/notifications/" + seller.getBuyerId();
+        messagingTemplate.convertAndSend(destination, notification);
         
-        System.out.println("📤 [WebSocket] Sent notification to topic: " + topic);
+        System.out.println("📤 [WebSocket] Sent notification to: " + destination);
     }
 }
 ```
@@ -113,7 +113,7 @@ Frontend sẽ tự động:
 ### 1. Personal Notifications (Recommended)
 ```java
 // Gửi cho một buyer cụ thể
-String topic = "/topic/notifications/" + buyerId;
+String destination = "/queue/notifications/" + buyerId;
 messagingTemplate.convertAndSend(topic, notification);
 ```
 
@@ -214,7 +214,7 @@ public class TestController {
         notification.put("readAt", null);
         notification.put("createdAt", LocalDateTime.now());
         
-        String topic = "/topic/notifications/" + buyerId;
+        String destination = "/queue/notifications/" + buyerId;
         messagingTemplate.convertAndSend(topic, notification);
         
         return ResponseEntity.ok("Sent to topic: " + topic);
@@ -235,7 +235,7 @@ Frontend console sẽ hiển thị:
 ```
 🔌 [WebSocket] Connecting to backend...
 ✅ [WebSocket] Connected!
-📡 [WebSocket] Subscribing to /topic/notifications/123
+📡 [WebSocket] Subscribing to queue: /queue/notifications/123
 ✅ [WebSocket] Subscribed successfully
 📬 [WebSocket] Received message: {...}
 ```
@@ -295,11 +295,11 @@ Sau khi implement:
 
 **Check:**
 1. Console có log "✅ [WebSocket] Connected!" không?
-2. Console có log "📡 [WebSocket] Subscribing to /topic/notifications/{buyerId}" không?
+2. Console có log "📡 [WebSocket] Subscribing to queue: /queue/notifications/{buyerId}" không?
 3. buyerId đúng không?
 
 **Backend:**
-1. Check topic name đúng format: `/topic/notifications/{buyerId}`
+1. Check destination đúng format: `/queue/notifications/{buyerId}`
 2. Check `messagingTemplate.convertAndSend()` được gọi
 3. Check logs có lỗi không
 

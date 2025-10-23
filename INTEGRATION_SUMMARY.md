@@ -1,12 +1,12 @@
-# ✅ Tích hợp Backend API - Summary
+# Tích hợp Backend API - Summary
 
 ## Đã cập nhật
 
-### 1. `src/api/notificationApi.js` ✅
+### 1. `src/api/notificationApi.js`
 
 **Thay đổi chính:**
 
-- ✅ Cập nhật `GET /api/v1/notifications` để match với backend response
+- Cập nhật `GET /api/v1/notifications` để match với backend response
 - ✅ Transform backend format (`content`, `readAt`) sang frontend format (`message`, `isRead`)
 - ✅ Auto-detect notification type từ title/content
 - ✅ Implement `getUnreadCount()` bằng cách tính từ danh sách

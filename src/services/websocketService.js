@@ -19,11 +19,11 @@ class WebSocketService {
 
     // Chỉ connect cho user (buyer), không phải admin
     if (!token || authType === 'admin') {
-      console.log('[WebSocket] Not connecting: No token or is admin');
+      console.log('🔌 [WebSocket] ⏸️  Not connecting: No token or is admin');
       return;
     }
 
-    console.log('[WebSocket] Connecting to backend...');
+    console.log('🔌 [WebSocket] 🔄 Connecting to backend ws://localhost:8080/ws ...');
 
     // Tạo SockJS connection
     const socket = new SockJS('http://localhost:8080/ws');
@@ -44,8 +44,13 @@ class WebSocketService {
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
 
-      onConnect: (frame) => {
-        console.log('[WebSocket] Connected!', frame);
+      onConnect: () => {
+        console.log('[WebSocket] 🎉 Successfully connected to Backend!');
+        console.log('📡 [WebSocket] Connection details:', {
+          backend: 'http://localhost:8080/ws',
+          protocol: 'STOMP over SockJS',
+          time: new Date().toLocaleTimeString()
+        });
         this.connected = true;
         this.reconnectAttempts = 0;
 
@@ -58,7 +63,7 @@ class WebSocketService {
       },
 
       onStompError: (frame) => {
-        console.error('[WebSocket] STOMP Error:', frame);
+        console.error('❌ [WebSocket] STOMP Error:', frame);
         this.connected = false;
 
         if (onErrorCallback) {
@@ -67,18 +72,20 @@ class WebSocketService {
       },
 
       onWebSocketClose: (event) => {
-        console.log('[WebSocket] Connection closed', event);
+        console.log('⚠️  [WebSocket] Connection closed', event);
         this.connected = false;
 
         // Auto reconnect
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
-          console.log(`[WebSocket] Reconnecting... Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+          console.log(`🔄 [WebSocket] Reconnecting... Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+        } else {
+          console.error('❌ [WebSocket] Max reconnect attempts reached. Please refresh the page.');
         }
       },
 
       onWebSocketError: (error) => {
-        console.error('[WebSocket] WebSocket Error:', error);
+        console.error('❌ [WebSocket] WebSocket Error:', error);
       },
     });
 
@@ -89,36 +96,36 @@ class WebSocketService {
   // Subscribe to notification topic
   subscribeToNotifications() {
     if (!this.stompClient || !this.connected) {
-      console.warn('[WebSocket] Cannot subscribe: Not connected');
+      console.warn('⚠️  [WebSocket] Cannot subscribe: Not connected');
       return;
     }
 
     const buyerId = localStorage.getItem('buyerId');
     if (!buyerId) {
-      console.warn('[WebSocket] Cannot subscribe: No buyerId');
+      console.warn('⚠️  [WebSocket] Cannot subscribe: No buyerId in localStorage');
       return;
     }
 
-    // Subscribe to personal topic: /topic/notifications/{buyerId}
-    const topic = `/topic/notifications/${buyerId}`;
+    // Subscribe to personal queue: /queue/notifications/{buyerId}
+    const destination = `/queue/notifications/${buyerId}`;
     
-    console.log(`[WebSocket] Subscribing to ${topic}`);
+    console.log(`📡 [WebSocket] Subscribing to queue: ${destination}`);
 
-    this.stompClient.subscribe(topic, (message) => {
-      console.log('[WebSocket] Received message:', message);
+    this.stompClient.subscribe(destination, (message) => {
+      console.log('🔔 [WebSocket] 📩 New notification received from Backend!');
       
       try {
         const notification = JSON.parse(message.body);
-        console.log('[WebSocket] Parsed notification:', notification);
+        console.log('📋 [WebSocket] Notification data:', notification);
         
         // Notify all listeners
-        this.notifyListeners(topic, notification);
+        this.notifyListeners(destination, notification);
       } catch (error) {
-        console.error(' [WebSocket] Error parsing message:', error);
+        console.error('❌ [WebSocket] Error parsing notification:', error);
       }
     });
 
-    console.log('[WebSocket] Subscribed successfully');
+    console.log('✅ [WebSocket] 🎧 Successfully subscribed to notifications!');
   }
 
   // Subscribe to a topic with callback
