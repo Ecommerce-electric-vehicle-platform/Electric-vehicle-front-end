@@ -14,23 +14,28 @@ import {
   CModalBody,
   CModalFooter,
 } from "@coreui/react";
-import { createAdmin } from "../../../api/adminApi";
+import adminAxios from "../../../api/adminAxios";
 
 export default function ManageAdmins() {
-  const [admins, setAdmins] = useState([
-    // Dữ liệu tạm (mock)
-    { id: 1, fullName: "Nguyễn Văn A", email: "admin1@example.com", active: true },
-    { id: 2, fullName: "Trần Thị B", email: "admin2@example.com", active: true },
-  ]);
-
+  const [admins, setAdmins] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ fullName: "", email: "", password: "" });
+  const [form, setForm] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    phoneNumber: "",
+    gender: "MALE",
+    avatarFile: null,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ Tạo admin mới
+  const random10Digits = () =>
+    Math.floor(1000000000 + Math.random() * 9000000000).toString();
+
+  // Gửi request dạng multipart/form-data
   const onCreate = async () => {
-    if (!form.fullName || !form.email || !form.password) {
+    if (!form.fullName || !form.email || !form.password || !form.phoneNumber) {
       setError("Vui lòng nhập đầy đủ thông tin.");
       return;
     }
@@ -38,8 +43,27 @@ export default function ManageAdmins() {
     try {
       setLoading(true);
       setError("");
-      await createAdmin({ ...form, isSuper: true });
-      // Thêm vào danh sách hiển thị tạm
+
+      // Chuẩn bị formData để gửi lên BE
+      const formData = new FormData();
+      formData.append("employeeNumber", random10Digits());
+      formData.append("password", form.password);
+      formData.append("fullName", form.fullName);
+      formData.append("phoneNumber", form.phoneNumber);
+      formData.append("email", form.email);
+      formData.append("gender", form.gender);
+      if (form.avatarFile) {
+        formData.append("avatar_url", form.avatarFile);
+      } else {
+        // Tạo blob rỗng để tránh lỗi "required"
+        const emptyFile = new File([""], "empty.png", { type: "image/png" });
+        formData.append("avatar_url", emptyFile);
+      }
+
+      await adminAxios.post("/api/v1/admin/creating-admin", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
       setAdmins((prev) => [
         ...prev,
         {
@@ -49,11 +73,19 @@ export default function ManageAdmins() {
           active: true,
         },
       ]);
-      setForm({ fullName: "", email: "", password: "" });
+
+      setForm({
+        fullName: "",
+        email: "",
+        password: "",
+        phoneNumber: "",
+        gender: "MALE",
+        avatarFile: null,
+      });
       setShowCreate(false);
     } catch (e) {
       console.error("Lỗi khi tạo admin:", e);
-      setError(e?.message || "Không thể tạo admin.");
+      setError(e?.response?.data?.message || "Không thể tạo admin.");
     } finally {
       setLoading(false);
     }
@@ -76,7 +108,6 @@ export default function ManageAdmins() {
                 <CTableHeaderCell>ID</CTableHeaderCell>
                 <CTableHeaderCell>Họ tên</CTableHeaderCell>
                 <CTableHeaderCell>Email</CTableHeaderCell>
-                <CTableHeaderCell>Quyền</CTableHeaderCell>
                 <CTableHeaderCell>Trạng thái</CTableHeaderCell>
               </CTableRow>
             </CTableHead>
@@ -87,16 +118,7 @@ export default function ManageAdmins() {
                   <CTableDataCell>{a.fullName}</CTableDataCell>
                   <CTableDataCell>{a.email}</CTableDataCell>
                   <CTableDataCell>
-                    <span className="badge bg-info">is_super</span>
-                  </CTableDataCell>
-                  <CTableDataCell>
-                    <span
-                      className={`badge bg-${
-                        a.active ? "success" : "secondary"
-                      }`}
-                    >
-                      {a.active ? "Active" : "Inactive"}
-                    </span>
+                    <span className="badge bg-success">Active</span>
                   </CTableDataCell>
                 </CTableRow>
               ))}
@@ -105,26 +127,23 @@ export default function ManageAdmins() {
         </CCardBody>
       </CCard>
 
-      {/* Modal tạo admin mới */}
+      {/* Modal tạo admin */}
       <CModal visible={showCreate} onClose={() => setShowCreate(false)}>
         <CModalHeader>
           <CModalTitle>Tạo admin mới</CModalTitle>
         </CModalHeader>
         <CModalBody>
-          {error && (
-            <div className="alert alert-danger py-2" role="alert">
-              {error}
-            </div>
-          )}
+          {error && <div className="alert alert-danger">{error}</div>}
+
           <div className="mb-3">
             <label className="form-label">Họ tên</label>
             <input
               className="form-control"
               value={form.fullName}
               onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              placeholder="Nhập họ tên admin"
             />
           </div>
+
           <div className="mb-3">
             <label className="form-label">Email</label>
             <input
@@ -132,9 +151,9 @@ export default function ManageAdmins() {
               className="form-control"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="Nhập email admin"
             />
           </div>
+
           <div className="mb-3">
             <label className="form-label">Mật khẩu</label>
             <input
@@ -142,7 +161,42 @@ export default function ManageAdmins() {
               className="form-control"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="Nhập mật khẩu"
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Số điện thoại</label>
+            <input
+              type="tel"
+              className="form-control"
+              value={form.phoneNumber}
+              onChange={(e) =>
+                setForm({ ...form, phoneNumber: e.target.value })
+              }
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Giới tính</label>
+            <select
+              className="form-select"
+              value={form.gender}
+              onChange={(e) => setForm({ ...form, gender: e.target.value })}
+            >
+              <option value="MALE">Nam</option>
+              <option value="FEMALE">Nữ</option>
+            </select>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Ảnh đại diện (tuỳ chọn)</label>
+            <input
+              type="file"
+              className="form-control"
+              accept="image/*"
+              onChange={(e) =>
+                setForm({ ...form, avatarFile: e.target.files[0] })
+              }
             />
           </div>
         </CModalBody>

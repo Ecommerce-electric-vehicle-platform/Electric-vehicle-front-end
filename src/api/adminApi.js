@@ -11,14 +11,19 @@ import adminAxios from "./adminAxios";
 export const getReviewPostSellerList = async (page = 0, size = 10) => {
   try {
     const res = await adminAxios.get(`/api/v1/admin/review-post-seller-list`, {
-      params: { page, size },
+      params: { page, size }, // gửi dạng query param
     });
-    return res.data;
+
+    // đọc đúng key postList (L viết hoa)
+    const list = res?.data?.data?.postList || [];
+    const meta = res?.data?.data?.meta || {};
+    return { list, meta };
   } catch (error) {
     console.error("Lỗi khi lấy danh sách bài đăng cần review:", error);
     throw error;
   }
 };
+
 
 // Xem chi tiết bài đăng cần review
 // GET /api/v1/admin/{postProductId}/post-details
