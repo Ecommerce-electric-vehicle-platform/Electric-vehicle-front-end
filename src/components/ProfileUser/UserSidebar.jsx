@@ -37,6 +37,7 @@ export default function UserSidebar({
     "My order",
     "Personal E-wallet",
     "Upgrade to Seller",
+    "Seller business package",
   ]
 
 
