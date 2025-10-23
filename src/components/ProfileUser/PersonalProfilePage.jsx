@@ -18,12 +18,6 @@ export default function PersonalProfilePage() {
   const [username, setUsername] = useState("")
   //const [userId, setUserId] = useState(null)
 
-  // Hàm wrapper để log (tùy chọn, giữ lại để debug)
-  const setActiveSection = useCallback((newSection) => {
-    console.log(`>>> setActiveSection called with: "${newSection}"`);
-    _setActiveSection(newSection);
-  }, []); // Dependency rỗng cho useCallback là OK
-
   console.log("PersonalProfilePage rendering with activeSection:", activeSection);
 
   // useEffect lấy username (giữ nguyên)
@@ -32,6 +26,11 @@ export default function PersonalProfilePage() {
     if (storedUsername) setUsername(storedUsername);
     // Không cần cleanup listener ở đây vì không add listener nào
   }, []); // Dependency rỗng OK vì chỉ đọc localStorage 1 lần
+
+  // useEffect để xử lý URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const tab = urlParams.get('tab');
 
     if (tab === "wallet" || tab === "e-wallet" || tab === "ewallet") {
       setActiveSection("Ví điện tử")
@@ -46,10 +45,10 @@ export default function PersonalProfilePage() {
     }
   }, [location.search])
 
-  // Hàm xử lý avatar (có thể không cần nữa)
-  // const handleAvatarChange = (file) => {
-  //   setAvatarFile(file);
-  // };
+  // Hàm xử lý avatar
+  const handleAvatarChange = (file) => {
+    setAvatarFile(file);
+  };
 
   //  Xử lý click sidebar với scroll smooth
   const handleSidebarClick = (section) => {

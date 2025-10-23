@@ -1253,6 +1253,179 @@
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
+/* Shipping Partners Styles */
+.shipping-partners-container {
+    position: relative;
+    width: 100%;
+}
+
+.shipping-partner-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #fff;
+}
+
+.shipping-partner-selected:hover {
+    border-color: #007bff;
+    background-color: #f8f9ff;
+}
+
+.shipping-partner-info {
+    flex: 1;
+}
+
+.shipping-partner-name {
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 4px;
+    font-size: 16px;
+}
+
+.shipping-partner-desc {
+    font-size: 14px;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.shipping-partner-fee {
+    font-weight: 700;
+    color: #dc3545;
+    font-size: 16px;
+    margin-left: 16px;
+}
+
+.shipping-partners-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.shipping-partner-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.shipping-partner-option:last-child {
+    border-bottom: none;
+}
+
+.shipping-partner-option:hover {
+    background-color: #f8f9ff;
+}
+
+.shipping-partner-option.selected {
+    background-color: #e7f3ff;
+    border-left: 4px solid #007bff;
+}
+
+.shipping-partner-option.selected .shipping-partner-name {
+    color: #007bff;
+}
+
+/* Wallet Balance Styles */
+.wallet-balance {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #6c757d;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.wallet-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #007bff;
+    font-size: 13px;
+}
+
+.wallet-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #dc3545;
+    font-size: 13px;
+}
+
+.wallet-success {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #28a745;
+    font-size: 14px;
+}
+
+.loading-spinner-small {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #e9ecef;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.retry-btn,
+.refresh-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.retry-btn:hover {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.refresh-btn:hover {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.balance-amount {
+    font-weight: 700;
+    color: #28a745;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.payment-option.selected {
+    border-color: #007bff;
+    background-color: #f8f9ff;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .place-order-content {
@@ -1395,5 +1568,31 @@
 
     .business-invoice-form {
         padding: 1rem;
+    }
+
+    /* Mobile Shipping Partners */
+    .shipping-partner-selected {
+        padding: 12px;
+    }
+
+    .shipping-partner-name {
+        font-size: 14px;
+    }
+
+    .shipping-partner-desc {
+        font-size: 12px;
+    }
+
+    .shipping-partner-fee {
+        font-size: 14px;
+        margin-left: 8px;
+    }
+
+    .shipping-partner-option {
+        padding: 12px;
+    }
+
+    .shipping-partners-list {
+        max-height: 200px;
     }
 }

@@ -26,6 +26,7 @@ export function Header() {
   const [userInfo, setUserInfo] = useState(null);
   const [userRole, _setUserRole] = useState('buyer'); // 'buyer' hoặc 'người bán'
   const [notificationCount, _setNotificationCount] = useState(4);
+  const [notificationPopups, setNotificationPopups] = useState([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeFeatureName, setUpgradeFeatureName] = useState('');
   const navigate = useNavigate();
@@ -404,7 +405,7 @@ export function Header() {
         </div>
       </div>
 
-{/* ================= MỚI THÊM PHẦN NÀY (PHẦN NOTIFICATION) ================= */}
+      {/* ================= MỚI THÊM PHẦN NÀY (PHẦN NOTIFICATION) ================= */}
 
       {/* Upgrade Notification Modal */}
       <UpgradeNotificationModal
