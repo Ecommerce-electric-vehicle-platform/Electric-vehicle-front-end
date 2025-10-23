@@ -1,8 +1,7 @@
-"use client"
+"use client";
 
-// 🔹 1. Import thêm useEffect (nếu chưa có) và useLocation
-import { useState, useEffect, useCallback } from "react"; // Giữ useCallback nếu bạn đang debug
-import { useLocation } from "react-router-dom"; // Thêm useLocation
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import UserSidebar from "./UserSidebar";
 import PersonalProfileForm from "./PersonalProfileForm";
 import "./PersonalProfilePage.css";
@@ -12,61 +11,58 @@ import PersonalEWallet from "./PersonalEWallet";
 import SellerBuyPackage from "./SellerBuyPackage"; // Đảm bảo import đúng
 
 export default function PersonalProfilePage() {
-  const location = useLocation()
-  const [activeSection, setActiveSection] = useState("Hồ sơ cá nhân")
-  const [avatarFile, setAvatarFile] = useState(null)
-  const [username, setUsername] = useState("")
-  //const [userId, setUserId] = useState(null)
+  const location = useLocation();
+  const [activeSection, setActiveSection] = useState("Hồ sơ cá nhân");
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [username, setUsername] = useState("");
 
-  // Hàm wrapper để log (tùy chọn, giữ lại để debug)
-  const setActiveSection = useCallback((newSection) => {
-    console.log(`>>> setActiveSection called with: "${newSection}"`);
-    _setActiveSection(newSection);
-  }, []); // Dependency rỗng cho useCallback là OK
-
-  console.log("PersonalProfilePage rendering with activeSection:", activeSection);
-
-  // useEffect lấy username (giữ nguyên)
+  // useEffect lấy username
   useEffect(() => {
     const storedUsername = localStorage.getItem("username");
     if (storedUsername) setUsername(storedUsername);
-    // Không cần cleanup listener ở đây vì không add listener nào
-  }, []); // Dependency rỗng OK vì chỉ đọc localStorage 1 lần
+  }, []);
+
+  // useEffect xử lý URL params để mở đúng tab
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
 
     if (tab === "wallet" || tab === "e-wallet" || tab === "ewallet") {
-      setActiveSection("Ví điện tử")
+      setActiveSection("Ví điện tử");
     } else if (tab === "profile") {
-      setActiveSection("Hồ sơ cá nhân")
+      setActiveSection("Hồ sơ cá nhân");
     } else if (tab === "password") {
-      setActiveSection("Đổi mật khẩu")
+      setActiveSection("Đổi mật khẩu");
     } else if (tab === "orders" || tab === "order") {
-      setActiveSection("Đơn hàng của tôi")
+      setActiveSection("Đơn hàng của tôi");
     } else if (tab === "upgrade") {
-      setActiveSection("Nâng cấp thành người bán")
+      setActiveSection("Nâng cấp thành người bán");
+    } else if (tab === "buy-seller-package") {
+      setActiveSection("Mua gói Seller");
     }
-  }, [location.search])
+  }, [location.search]);
 
-  // Hàm xử lý avatar (có thể không cần nữa)
-  // const handleAvatarChange = (file) => {
-  //   setAvatarFile(file);
-  // };
+  // Hàm xử lý avatar
+  const handleAvatarChange = (file) => {
+    setAvatarFile(file);
+  };
 
   //  Xử lý click sidebar với scroll smooth
   const handleSidebarClick = (section) => {
-    setActiveSection(section)
+    setActiveSection(section);
 
     // Scroll smooth đến vị trí hiển thị khung bên phải
     setTimeout(() => {
-      const profileContainer = document.querySelector('.profile-container')
+      const profileContainer = document.querySelector(".profile-container");
       if (profileContainer) {
         profileContainer.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-          inline: 'nearest'
-        })
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest",
+        });
       }
-    }, 100) // Delay nhỏ để đảm bảo state đã update
-  }
+    }, 100); // Delay nhỏ để đảm bảo state đã update
+  };
 
   return (
     <div className="profile-page">
