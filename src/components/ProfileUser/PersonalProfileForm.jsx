@@ -331,6 +331,7 @@ export default function PersonalProfileForm() {
           // User có upload file mới, nhưng API không trả về URL mới.
           // Chúng ta KHÔNG lưu "existingAvatarUrl" (đang là blob:) vào localStorage.
           // Sidebar sẽ không cập nhật ngay, nhưng sẽ đúng sau khi F5 (vì getProfile sẽ có)
+          //commoent
           console.warn("API không trả về avatarUrl mới sau khi upload.");
       } else {
           // User không đổi ảnh. "existingAvatarUrl" đang là URL cũ.
