@@ -20,7 +20,7 @@ const profileApi = {
 
   // Lấy profile 
   getProfile: () => {
-    return axiosInstance.get(`/api/v1/buyer/profile`); 
+    return axiosInstance.get(`/api/v1/buyer/profile`);
   },
 
   uploadProfile: (formData) => {
@@ -51,6 +51,10 @@ const profileApi = {
     });
   },
 
+  // Lấy thông tin ví của user
+  getWallet: () => {
+    return axiosInstance.get('/api/v1/buyer/wallet');
+  },
 };
 
 

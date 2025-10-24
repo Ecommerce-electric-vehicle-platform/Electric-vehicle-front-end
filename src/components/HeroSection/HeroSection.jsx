@@ -65,15 +65,13 @@ export function HeroSection() {
 
           {/* Action Buttons */}
           <div className="hero-actions">
-            <button className="btn btn-large btn-primary" onClick={handleViewProducts}>
+            <button className="btn btn-compact btn-primary" onClick={handleViewProducts}>
               <Search className="btn-icon" />
               <span>Xem sản phẩm</span>
-              <div className="btn-shine"></div>
             </button>
-            <button className="btn btn-large btn-outline-hero" onClick={handleSellProducts}>
+            <button className="btn btn-compact btn-outline-hero" onClick={handleSellProducts}>
               <span>Bán sản phẩm</span>
               <ArrowRight className="btn-icon" />
-              <div className="btn-glow"></div>
             </button>
           </div>
 

@@ -297,3 +297,8 @@
         font-size: 0.75rem;
     }
 }
+
+/* Product Slide */
+.product-slide {
+    height: 100%;
+}

@@ -1,9 +1,16 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap");
 
+/* Scope all styles to auth page only */
 .auth-page * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+}
+
+/* Prevent horizontal overflow on auth pages */
+.auth-page {
+    width: 100%;
+    overflow-x: hidden;
 }
 
 .auth-page body,
@@ -16,7 +23,7 @@
 }
 
 /* ============== CONTAINER ============== */
-.auth-page .container {
+.auth-page .auth-container {
     position: relative;
     width: 100%;
     min-height: 100vh;
@@ -26,7 +33,8 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-attachment: fixed;
+    /* fixed can cause subtle horizontal scrollbars on some browsers */
+    background-attachment: scroll;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -34,11 +42,11 @@
 }
 
 /* Page transition animations */
-.container.fade-left {
+.auth-page .auth-container.fade-left {
     animation: slideInFromLeft 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.container.fade-right {
+.auth-page .auth-container.fade-right {
     animation: slideInFromRight 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
@@ -77,7 +85,7 @@
 }
 
 /* overlay để tăng độ tương phản cho text */
-.container::before {
+.auth-page .auth-container::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -104,24 +112,35 @@
 }
 
 /* ============== FORMS ============== */
-.forms-container {
+.auth-page .forms-container {
     position: absolute;
     inset: 0;
     z-index: 5;
     pointer-events: none;
+    display: grid;
+    grid-template-columns: 1fr 440px;
+    column-gap: 48px;
+    justify-content: center;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
 }
 
 .auth-page .signin-signup {
-    position: absolute;
-    top: 50%;
-    left: 70%;
-    transform: translate(-50%, -50%);
-    width: 380px;
-    max-width: 90%;
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    width: 100%;
+    max-width: 440px;
     display: grid;
     grid-template-columns: 1fr;
     z-index: 10;
     pointer-events: all;
+    margin: 0;
+    gap: 0;
+    grid-column: 2;
 }
 
 /* form với glassmorphism effect tối - khung đen */
@@ -146,7 +165,10 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     animation: slideInRight 0.6s ease-out;
     min-height: 520px;
+    width: 100%;
+    max-width: 420px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
 }
 
 .auth-page form:hover {
@@ -170,7 +192,7 @@
 }
 
 /* ============== LOGO ============== */
-.gt-logo {
+.auth-page .gt-logo {
     width: 200px;
     height: auto;
     margin-bottom: 10px;
@@ -178,12 +200,12 @@
     transition: transform 0.3s ease;
 }
 
-.gt-logo:hover {
+.auth-page .gt-logo:hover {
     transform: scale(1.05);
 }
 
 /* ============== GREENTRADE TEXT LOGO ============== */
-.logo-container {
+.auth-page .logo-container {
     position: relative;
     margin-bottom: 20px;
     display: flex;
@@ -191,7 +213,7 @@
     align-items: center;
 }
 
-.greentrade-text {
+.auth-page .greentrade-text {
     font-size: 2.2rem;
     font-weight: 800;
     letter-spacing: -0.8px;
@@ -204,17 +226,17 @@
     line-height: 1.1;
 }
 
-.green-text {
+.auth-page .green-text {
     color: #00a86b;
     text-shadow: 0 2px 4px rgba(0, 168, 107, 0.3);
 }
 
-.trade-text {
+.auth-page .trade-text {
     color: #ffd700;
     text-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
 }
 
-.logo-glow {
+.auth-page .logo-glow {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -244,7 +266,7 @@
 }
 
 /* ============== TITLE ============== */
-.title {
+.auth-page .title {
     font-size: 1.9rem;
     color: #6be4a4;
     margin-bottom: 28px;
@@ -273,7 +295,7 @@
 }
 
 /* ============== INPUT FIELD ============== */
-.input-field {
+.auth-page .input-field {
     max-width: 100%;
     width: 100%;
     height: 52px;
@@ -306,7 +328,7 @@
     transition: left 0.5s;
 }
 
-.input-field:hover::before {
+.auth-page .input-field:hover::before {
     left: 100%;
 }
 
@@ -319,7 +341,7 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.input-field:focus-within {
+.auth-page .input-field:focus-within {
     border-color: #6be4a4;
     transform: translateY(-3px);
     box-shadow:
@@ -338,7 +360,7 @@
     transition: all 0.3s ease;
 }
 
-.input-field:hover i {
+.auth-page .input-field:hover i {
     transform: scale(1.1);
     color: #8ef5c4;
 }
@@ -350,7 +372,7 @@
     outline: none;
     font-size: 1rem;
     color: #ffffff;
-    padding-left: 0;
+    padding-left: 26px;
     font-weight: 500;
     font-family: "Space Grotesk", "Inter", sans-serif;
     letter-spacing: -0.1px;
@@ -358,7 +380,7 @@
     transition: all 0.3s ease;
 }
 
-.input-field input::placeholder {
+.auth-page .input-field input::placeholder {
     color: #a0a0a0;
     font-weight: 400;
     font-family: "Space Grotesk", "Inter", sans-serif;
@@ -373,7 +395,7 @@
 }
 
 /* ============== INPUT ERROR ============== */
-.input-field.error {
+.auth-page .input-field.error {
     border-color: #ff4d4f !important;
     background: rgba(255, 227, 227, 0.9);
     box-shadow: 0 8px 25px rgba(255, 77, 79, 0.2);
@@ -416,7 +438,7 @@
 }
 
 /* ============== ERROR MESSAGE BOX ============== */
-.error-message {
+.auth-page .error-message {
     display: block;
     width: 100%;
     max-width: 100%;
@@ -440,7 +462,7 @@
     overflow: hidden;
 }
 
-.error-message::before {
+.auth-page .error-message::before {
     content: '';
     position: absolute;
     top: 0;
@@ -451,7 +473,7 @@
     border-radius: 2px 0 0 2px;
 }
 
-.error-message::after {
+.auth-page .error-message::after {
     content: '⚠️';
     position: absolute;
     top: 50%;
@@ -462,12 +484,12 @@
 }
 
 /* làm liền khối input + lỗi */
-.input-field.error {
+.auth-page .input-field.error {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-.input-field.error+.error-message {
+.auth-page .input-field.error+.auth-page .error-message {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
     margin-top: -1px;
@@ -487,7 +509,7 @@
 }
 
 /* ============== FORGOT PASSWORD ============== */
-.forgot-password {
+.auth-page .forgot-password {
     display: block;
     width: 100%;
     max-width: 380px;
@@ -504,7 +526,7 @@
     position: relative;
 }
 
-.forgot-password::after {
+.auth-page .forgot-password::after {
     content: '';
     position: absolute;
     bottom: -2px;
@@ -515,12 +537,12 @@
     transition: width 0.3s ease;
 }
 
-.forgot-password:hover {
+.auth-page .forgot-password:hover {
     color: #8ef5c4;
     transform: translateX(2px);
 }
 
-.forgot-password:hover::after {
+.auth-page .forgot-password:hover::after {
     width: 100%;
 }
 
@@ -537,7 +559,7 @@
     font-size: 0.9rem;
     font-family: "Space Grotesk", "Inter", sans-serif;
     letter-spacing: 0.8px;
-    margin: 16px 0;
+    margin: 20px 0 24px 0;
     cursor: pointer;
     position: relative;
     overflow: hidden;
@@ -590,7 +612,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 18px 0;
+    margin: 24px 0 20px 0;
     width: 100%;
     max-width: 380px;
     color: #a0a0a0;
@@ -608,7 +630,20 @@
     flex: 1;
     height: 1px;
     background: linear-gradient(90deg, transparent, #666, transparent);
-    margin: 0 12px;
+    margin: 0 16px;
+}
+
+.auth-page .divider span {
+    background: linear-gradient(135deg,
+            rgba(0, 0, 0, 0.85) 0%,
+            rgba(20, 20, 20, 0.9) 100%);
+    padding: 0 12px;
+    position: relative;
+    z-index: 2;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #a0a0a0;
+    letter-spacing: -0.1px;
 }
 
 /* ============== GOOGLE BUTTON ============== */
@@ -639,7 +674,7 @@
     text-transform: uppercase;
     font-size: 0.9rem;
     padding: 0 20px;
-    margin: 16px 0;
+    margin: 20px 0 24px 0;
 }
 
 .auth-page .google-btn::before {
@@ -721,7 +756,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    margin-top: 10px;
+    margin: 16px 0 20px 0;
 }
 
 .auth-page .agree-error {
@@ -758,7 +793,7 @@
     border-radius: 2px 0 0 2px;
 }
 
-.warning-icon {
+.auth-page .warning-icon {
     font-size: 15px;
 }
 
@@ -821,8 +856,10 @@
     position: absolute;
     inset: 0;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr 1fr;
     z-index: 2;
+    /* add horizontal breathing room between panels and form */
+    padding: 0 4rem;
 }
 
 .auth-page .panel {
@@ -833,12 +870,15 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 3rem 2rem;
+    padding: 3rem 2.5rem;
     transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 100vh;
+    box-sizing: border-box;
 }
 
 .auth-page .panel .content {
     max-width: 420px;
+    width: 100%;
     z-index: 5;
     color: #fff;
     animation: slideInLeft 0.8s ease-out;
@@ -846,15 +886,20 @@
             rgba(0, 168, 107, 0.15) 0%,
             rgba(107, 228, 164, 0.1) 50%,
             rgba(0, 0, 0, 0.3) 100%);
-    padding: 2rem;
+    padding: 2rem 2.5rem;
     border-radius: 20px;
     backdrop-filter: blur(15px);
     border: 2px solid rgba(0, 168, 107, 0.3);
     box-shadow: 0 12px 40px rgba(0, 168, 107, 0.2),
         0 8px 32px rgba(0, 0, 0, 0.3);
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
-.panel .content h3 {
+.auth-page .panel .content h3 {
     font-size: 2.4rem;
     font-weight: 800;
     margin-bottom: 1.5rem;
@@ -865,7 +910,7 @@
     color: #ffffff;
 }
 
-.panel .content p {
+.auth-page .panel .content p {
     font-size: 1.2rem;
     line-height: 1.7;
     margin-bottom: 2.5rem;
@@ -913,7 +958,7 @@
     color: #00a86b;
 }
 
-.image {
+.auth-page .image {
     width: 80%;
     position: relative;
     z-index: 1;
@@ -958,48 +1003,61 @@
 }
 
 /* ============== SIGN-UP MODE ============== */
-.auth-page .container.sign-up-mode::before {
+.auth-page .auth-container.sign-up-mode::before {
     transform: translate(100%, -50%);
     right: 52%;
 }
 
-.auth-page .container.sign-up-mode .signin-signup {
-    left: 30%;
+.auth-page .auth-container.sign-up-mode .signin-signup {
+    /* In sign-up mode, place the form on the LEFT */
+    margin: 0;
+    grid-column: 1;
 }
 
-.auth-page .container.sign-up-mode form.sign-up-form {
+.auth-page .auth-container.sign-up-mode form.sign-up-form {
     opacity: 1;
     z-index: 2;
 }
 
-.auth-page .container.sign-up-mode form.sign-in-form {
+.auth-page .auth-container.sign-up-mode form.sign-in-form {
     opacity: 0;
     z-index: 1;
 }
 
-.auth-page .container.sign-up-mode .left-panel {
+.auth-page .auth-container.sign-up-mode .left-panel {
     pointer-events: none;
     opacity: 0;
 }
 
-.auth-page .container.sign-up-mode .left-panel .image,
-.auth-page .container.sign-up-mode .left-panel .content {
+.auth-page .auth-container.sign-up-mode .left-panel .image,
+.auth-page .auth-container.sign-up-mode .left-panel .content {
     transform: translateX(-800px);
 }
 
-.auth-page .container.sign-up-mode .right-panel {
+.auth-page .auth-container.sign-up-mode .right-panel {
     pointer-events: all;
     opacity: 1;
 }
 
-.auth-page .container.sign-up-mode .right-panel .image,
-.auth-page .container.sign-up-mode .right-panel .content {
+.auth-page .auth-container.sign-up-mode .right-panel .image,
+.auth-page .auth-container.sign-up-mode .right-panel .content {
     transform: translateX(0);
 }
 
 /* ============== RESPONSIVE ============== */
 @media (max-width: 870px) {
-    .container {
+    .auth-page .forms-container {
+        grid-template-columns: 1fr;
+        column-gap: 0;
+        padding: 0 16px;
+        max-width: 600px;
+    }
+
+    .auth-page .panels-container {
+        padding: 0 1rem;
+    }
+
+    .auth-page .auth-container {
         background: linear-gradient(135deg, rgba(0, 168, 107, 0.4) 0%, rgba(107, 228, 164, 0.3) 100%),
             url('https://xedientrungnam.vn/wp-content/uploads/2024/10/honda-cuv-e-5.jpg');
         background-size: cover;
@@ -1007,52 +1065,53 @@
         background-attachment: scroll;
     }
 
-    .container::before {
+    .auth-page .auth-container::before {
         background: linear-gradient(135deg,
                 rgba(0, 0, 0, 0.3) 0%,
                 rgba(0, 168, 107, 0.2) 50%,
                 rgba(0, 0, 0, 0.4) 100%);
     }
 
-    .signin-signup {
+    .auth-page .signin-signup {
         width: 90%;
         max-width: 400px;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        margin: 0 auto;
+        grid-column: 1;
     }
 
-    form {
+    .auth-page form {
         padding: 1.5rem 2rem;
         margin: 1rem 0;
         min-height: 450px;
     }
 
-    .input-field {
+    .auth-page .input-field {
         max-width: 100%;
         height: 45px;
         margin: 10px 0;
     }
 
-    .btn,
-    .google-btn {
+    .auth-page .btn,
+    .auth-page .google-btn {
         width: 100%;
         height: 44px;
         font-size: 0.85rem;
         padding: 0 16px;
     }
 
-    .panels-container {
+    .auth-page .panels-container {
         grid-template-columns: 1fr;
         grid-template-rows: 1fr 1fr;
     }
 
-    .panel {
+    .auth-page .panel {
         flex-direction: row;
         justify-content: space-around;
         padding: 1.5rem;
+        min-height: 50vh;
     }
 
-    .panel .content {
+    .auth-page .panel .content {
         background: linear-gradient(135deg,
                 rgba(0, 168, 107, 0.2) 0%,
                 rgba(107, 228, 164, 0.15) 50%,
@@ -1061,16 +1120,17 @@
         border-radius: 16px;
         border: 2px solid rgba(0, 168, 107, 0.4);
         box-shadow: 0 8px 25px rgba(0, 168, 107, 0.3);
+        min-height: 400px;
     }
 
-    .panel .content h3 {
+    .auth-page .panel .content h3 {
         font-size: 1.8rem;
         font-weight: 800;
         text-shadow: 0 3px 6px rgba(0, 0, 0, 0.7);
         margin-bottom: 1rem;
     }
 
-    .panel .content p {
+    .auth-page .panel .content p {
         font-size: 1rem;
         font-weight: 500;
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
@@ -1084,51 +1144,56 @@
         box-shadow: 0 4px 12px rgba(0, 168, 107, 0.2);
     }
 
-    .image {
+    .auth-page .image {
         display: none;
     }
 
-    .greentrade-text {
+    .auth-page .greentrade-text {
         font-size: 1.8rem;
     }
 
-    .title {
+    .auth-page .title {
         font-size: 1.3rem;
     }
 
-    .error-message,
-    .agree-error,
-    .backend-error {
+    .auth-page .auth-page .error-message,
+    .auth-page .auth-page .auth-page .agree-error,
+    .auth-page .auth-page .backend-error {
         font-size: 0.8rem;
         padding: 6px 10px;
     }
 }
 
 @media (max-width: 480px) {
-    .signin-signup {
-        width: 95%;
-        max-width: 350px;
+    .auth-page .panels-container {
+        padding: 0 0.5rem;
     }
 
-    form {
+    .auth-page .signin-signup {
+        width: 95%;
+        max-width: 350px;
+        margin: 0 auto;
+    }
+
+    .auth-page form {
         padding: 1.2rem 1.5rem;
         min-height: 400px;
     }
 
-    .input-field {
+    .auth-page .input-field {
         height: 42px;
         padding: 0 12px;
         margin: 8px 0;
     }
 
-    .btn,
-    .google-btn {
+    .auth-page .btn,
+    .auth-page .google-btn {
         height: 42px;
         font-size: 0.8rem;
         padding: 0 14px;
     }
 
-    .panel .content {
+    .auth-page .panel .content {
         background: linear-gradient(135deg,
                 rgba(0, 168, 107, 0.25) 0%,
                 rgba(107, 228, 164, 0.2) 50%,
@@ -1137,16 +1202,17 @@
         border-radius: 14px;
         border: 2px solid rgba(0, 168, 107, 0.5);
         box-shadow: 0 6px 20px rgba(0, 168, 107, 0.4);
+        min-height: 350px;
     }
 
-    .panel .content h3 {
+    .auth-page .panel .content h3 {
         font-size: 1.6rem;
         font-weight: 800;
         text-shadow: 0 3px 6px rgba(0, 0, 0, 0.8);
         margin-bottom: 0.8rem;
     }
 
-    .panel .content p {
+    .auth-page .panel .content p {
         font-size: 0.9rem;
         font-weight: 500;
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
@@ -1160,39 +1226,39 @@
         box-shadow: 0 3px 10px rgba(0, 168, 107, 0.3);
     }
 
-    .greentrade-text {
+    .auth-page .greentrade-text {
         font-size: 1.6rem;
     }
 
-    .title {
+    .auth-page .title {
         font-size: 1.2rem;
     }
 
-    .error-message,
-    .agree-error,
-    .backend-error {
+    .auth-page .auth-page .error-message,
+    .auth-page .auth-page .auth-page .agree-error,
+    .auth-page .auth-page .backend-error {
         font-size: 0.75rem;
         padding: 5px 8px;
     }
 }
 
 /* ============== SIGN UP FORM SPECIFIC STYLES ============== */
-.auth-form-container {
+.auth-page .auth-form-container {
     width: 100%;
     max-width: 380px;
 }
 
-.form-header {
+.auth-page .form-header {
     text-align: center;
     margin-bottom: 1.5rem;
 }
 
-.form-body {
+.auth-page .form-body {
     width: 100%;
 }
 
 /* Đồng bộ form đăng ký với form đăng nhập */
-.sign-up-form {
+.auth-page .sign-up-form {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1216,7 +1282,7 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sign-up-form:hover {
+.auth-page .sign-up-form:hover {
     transform: translateY(-2px);
     box-shadow:
         0 30px 60px 0 rgba(0, 0, 0, 0.5),
@@ -1224,12 +1290,12 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.input-group {
+.auth-page .input-group {
     margin-bottom: 1rem;
     position: relative;
 }
 
-.input-group .input-field {
+.auth-page .input-group .auth-page .input-field {
     max-width: 100%;
     width: 100%;
     height: 52px;
@@ -1251,7 +1317,7 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.input-group .input-field:hover {
+.auth-page .input-group .auth-page .input-field:hover {
     border-color: rgba(107, 228, 164, 0.4);
     transform: translateY(-3px);
     box-shadow:
@@ -1260,7 +1326,7 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.input-group .input-field:focus-within {
+.auth-page .input-group .auth-page .input-field:focus-within {
     border-color: #6be4a4;
     transform: translateY(-3px);
     box-shadow:
@@ -1272,7 +1338,7 @@
             rgba(255, 255, 255, 0.08) 100%);
 }
 
-.input-icon {
+.auth-page .input-icon {
     position: absolute;
     left: 18px;
     top: 50%;
@@ -1283,12 +1349,12 @@
     transition: all 0.3s ease;
 }
 
-.input-group .input-field:hover .input-icon {
+.auth-page .input-group .auth-page .input-field:hover .auth-page .input-icon {
     transform: translateY(-50%) scale(1.1);
     color: #8ef5c4;
 }
 
-.input-border {
+.auth-page .input-border {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -1298,11 +1364,11 @@
     transition: width 0.3s ease;
 }
 
-.input-field:focus-within .input-border {
+.auth-page .input-field:focus-within .auth-page .input-border {
     width: 100%;
 }
 
-.title-main {
+.auth-page .title-main {
     display: block;
     font-size: 1.9rem;
     color: #6be4a4;
@@ -1319,7 +1385,7 @@
     background-clip: text;
 }
 
-.title-sub {
+.auth-page .title-sub {
     display: block;
     font-size: 0.9rem;
     font-weight: 400;
@@ -1329,7 +1395,7 @@
     line-height: 1.4;
 }
 
-.btn-text {
+.auth-page .btn-text {
     font-family: "Space Grotesk", "Inter", sans-serif;
     font-weight: 700;
     font-size: 0.95rem;
@@ -1338,34 +1404,40 @@
     line-height: 1.2;
 }
 
-.btn-icon {
+.auth-page .btn-icon {
     font-size: 0.9rem;
     margin-left: 8px;
 }
 
 /* Button solid style cho form đăng ký */
-.btn.solid {
+.auth-page .btn.solid {
     background: linear-gradient(135deg, #6be4a4 0%, #00a86b 100%);
     color: #000;
     border: 1px solid rgba(107, 228, 164, 0.3);
 }
 
-.btn.solid:hover {
+.auth-page .btn.solid:hover {
     background: linear-gradient(135deg, #8ef5c4 0%, #6be4a4 100%);
     border-color: rgba(107, 228, 164, 0.5);
 }
 
 
-.divider-text {
+.auth-page .divider-text {
     font-family: "Space Grotesk", "Inter", sans-serif;
     font-weight: 500;
     letter-spacing: -0.1px;
     line-height: 1.4;
     color: #a0a0a0;
     font-size: 0.9rem;
+    background: linear-gradient(135deg,
+            rgba(0, 0, 0, 0.85) 0%,
+            rgba(20, 20, 20, 0.9) 100%);
+    padding: 0 12px;
+    position: relative;
+    z-index: 2;
 }
 
-.switch-text {
+.auth-page .switch-text {
     font-family: "Space Grotesk", "Inter", sans-serif;
     font-size: 0.9rem;
     font-weight: 500;
@@ -1373,10 +1445,10 @@
     letter-spacing: -0.1px;
     line-height: 1.5;
     text-align: center;
-    margin-top: 1.8rem;
+    margin-top: 24px;
 }
 
-.switch-link {
+.auth-page .switch-link {
     color: #6be4a4;
     font-weight: 700;
     text-decoration: none;
@@ -1384,7 +1456,7 @@
     position: relative;
 }
 
-.switch-link::after {
+.auth-page .switch-link::after {
     content: '';
     position: absolute;
     bottom: -2px;
@@ -1395,16 +1467,16 @@
     transition: width 0.3s ease;
 }
 
-.switch-link:hover {
+.auth-page .switch-link:hover {
     color: #8ef5c4;
     transform: translateX(2px);
 }
 
-.switch-link:hover::after {
+.auth-page .switch-link:hover::after {
     width: 100%;
 }
 
-.otp-container {
+.auth-page .otp-container {
     text-align: center;
     margin-bottom: 1.5rem;
     padding: 1.2rem;
@@ -1419,13 +1491,13 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.otp-icon {
+.auth-page .otp-icon {
     font-size: 2.2rem;
     color: #6be4a4;
     margin-bottom: 0.8rem;
 }
 
-.otp-description {
+.auth-page .otp-description {
     font-family: "Space Grotesk", "Inter", sans-serif;
     font-size: 0.9rem;
     color: #ffffff;
@@ -1434,12 +1506,12 @@
     font-weight: 400;
 }
 
-.resend-otp {
+.auth-page .resend-otp {
     text-align: center;
     margin-top: 1rem;
 }
 
-.resend-otp p {
+.auth-page .resend-otp p {
     font-family: "Space Grotesk", "Inter", sans-serif;
     font-size: 0.9rem;
     color: #ffffff;
@@ -1448,7 +1520,7 @@
     font-weight: 400;
 }
 
-.resend-otp a {
+.auth-page .resend-otp a {
     color: #6be4a4;
     font-weight: 700;
     text-decoration: none;
@@ -1456,7 +1528,7 @@
     position: relative;
 }
 
-.resend-otp a::after {
+.auth-page .resend-otp a::after {
     content: '';
     position: absolute;
     bottom: -2px;
@@ -1467,17 +1539,17 @@
     transition: width 0.3s ease;
 }
 
-.resend-otp a:hover {
+.auth-page .resend-otp a:hover {
     color: #8ef5c4;
     transform: translateX(2px);
 }
 
-.resend-otp a:hover::after {
+.auth-page .resend-otp a:hover::after {
     width: 100%;
 }
 
 /* ============== LOADING OVERLAY (chờ OTP) ============== */
-.loading-overlay {
+.auth-page .loading-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.8);
@@ -1489,7 +1561,7 @@
     animation: fadeIn 0.4s ease-in-out;
 }
 
-.loading-content {
+.auth-page .loading-content {
     background: linear-gradient(135deg,
             rgba(0, 0, 0, 0.9) 0%,
             rgba(20, 20, 20, 0.95) 100%);
@@ -1509,7 +1581,7 @@
     animation: slideInUp 0.5s ease-out;
 }
 
-.loading-content h3 {
+.auth-page .loading-content h3 {
     font-size: 1.5rem;
     margin-bottom: 15px;
     color: #6be4a4;
@@ -1519,7 +1591,7 @@
     line-height: 1.3;
 }
 
-.loading-content p {
+.auth-page .loading-content p {
     margin-bottom: 20px;
     font-size: 1rem;
     color: #ffffff;
@@ -1529,14 +1601,14 @@
     line-height: 1.5;
 }
 
-.loading-icon {
+.auth-page .loading-icon {
     font-size: 2rem;
     color: #6be4a4;
     margin-bottom: 15px;
     animation: bounce 1s ease-in-out infinite;
 }
 
-.spinner {
+.auth-page .spinner {
     margin: 0 auto;
     width: 40px;
     height: 40px;

@@ -1,77 +1,130 @@
-// // src/api/axiosInstance.js
-// import axios from "axios";
-
-// const axiosInstance = axios.create({
-//     baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
-//     headers: { "Content-Type": "application/json" },
-// });
-
-// // interceptor tự động thêm token
-// axiosInstance.interceptors.request.use((config) => {
-//     const token = localStorage.getItem("accessToken");
-//     if (token) config.headers.Authorization = `Bearer ${token}`;
-//     return config;
-// });
-
-// export default axiosInstance;
-
-
-
-//  src/api/axiosInstance.js
+// src/api/axiosInstance.js
 import axios from "axios";
+import tokenManager from "../utils/tokenManager";
 
+//Tạo instance cho người dùng (buyer/seller)
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
   headers: { "Content-Type": "application/json" },
 });
 
-//  Danh sách endpoint PUBLIC — KHÔNG đính token
+//Danh sách các endpoint PUBLIC — KHÔNG cần token
 const publicEndpoints = [
   "/api/v1/auth/signup",
   "/api/v1/auth/signin",
-  "/api/v1/auth/verify-otp",
   "/api/v1/auth/signin-google",
+  "/api/v1/auth/verify-otp",
   "/api/v1/auth/verify-username-forgot-password",
   "/api/v1/auth/verify-otp-forgot-password",
   "/api/v1/auth/forgot-password",
+  "/api/v1/auth/refresh-token", // Refresh token endpoint cũng là public
   // VNPay return là public do gateway redirect về
   "/api/v1/vnpay/return",
+  // Sản phẩm: hiển thị công khai trang chủ và danh sách
+  "/api/v1/post-product",
 ];
 
-//  Request interceptor
-axiosInstance.interceptors.request.use((config) => {
+//Interceptor: Gắn token người dùng vào request
+axiosInstance.interceptors.request.use(async (config) => {
   const isPublic = publicEndpoints.some((url) => config.url.includes(url));
 
+  // Log API request
+  console.log(`📤 [API] ${config.method.toUpperCase()} ${config.url} ${isPublic ? '(public)' : '(authenticated)'}`);
+
   if (!isPublic) {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      // Sử dụng tokenManager để lấy token hợp lệ
+      const validToken = await tokenManager.getValidToken();
+      if (validToken) {
+        config.headers.Authorization = `Bearer ${validToken}`;
+      }
+    } catch {
+      // Nếu không thể lấy token hợp lệ, vẫn thử với token cũ
+      const userToken =
+        localStorage.getItem("accessToken") || localStorage.getItem("token");
+      if (userToken) {
+        config.headers.Authorization = `Bearer ${userToken}`;
+      }
     }
   }
 
   return config;
 });
 
-// Response interceptor — xử lý lỗi tập trung
+// Interceptor: Xử lý lỗi tập trung cho người dùng
 axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error(" API Error:", error.response?.data || error.message);
+  (response) => {
+    // Log API success
+    console.log(`✅ [API] ${response.config.method.toUpperCase()} ${response.config.url} → ${response.status}`);
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+    const status = error?.response?.status;
+    const data = error?.response?.data;
+    const url = error?.config?.url;
 
-    if (error.response && error.response.data) {
-      const message =
-        error.response.data.message ||
-        error.response.data.error ||
-        error.response.data.error_description ||
-        "Đã xảy ra lỗi từ server.";
-
-      // Gắn lại message để FE có thể lấy ra dễ dàng
-      error.message = message;
+    // Log API error
+    if (error.response) {
+      console.error(`❌ [API] ${originalRequest?.method?.toUpperCase()} ${url} → ${status} ${data?.message || ''}`);
+    } else if (error.request) {
+      console.error(`❌ [API] No response from Backend for ${url}`);
     } else {
-      error.message = "Không thể kết nối đến máy chủ.";
+      console.error(`❌ [API] Request error: ${error.message}`);
     }
 
-    return Promise.reject(error);
+    // Xử lý lỗi 401 - Unauthorized
+    if (status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // Thử refresh token
+        const newToken = await tokenManager.refreshAccessToken();
+
+        // Cập nhật header với token mới
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+
+        // Thử lại request với token mới
+        return axiosInstance(originalRequest);
+      } catch (refreshError) {
+        // Nếu refresh thất bại, xóa tokens nhưng KHÔNG redirect cưỡng bức
+        tokenManager.clearTokens();
+        // Bắn sự kiện để UI có thể hiển thị modal đăng nhập nếu muốn
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+          window.dispatchEvent(
+            new CustomEvent('auth:refresh-failed', {
+              detail: { reason: refreshError?.message || 'unknown' },
+            })
+          );
+        }
+        return Promise.reject(refreshError);
+      }
+    }
+
+    const message =
+      data?.message ||
+      data?.error ||
+      data?.error_description ||
+      (status === 500 ? "Lỗi máy chủ (500). Vui lòng thử lại sau." : undefined) ||
+      (status === 404 ? "Không tìm thấy tài nguyên (404)." : undefined) ||
+      (status === 401 ? "Chưa được xác thực (401)." : undefined) ||
+      (status === 403 ? "Không có quyền truy cập (403)." : undefined) ||
+      error?.message ||
+      "Đã xảy ra lỗi không xác định.";
+
+    // In ra console: chuỗi dễ đọc + raw details để trace
+    console.error(`API Error [${status || "n/a"}] ${url || ""}: ${message}`, data || "");
+
+    // Chuẩn hoá object reject để các nơi .catch() có thể dùng trực tiếp
+    const normalizedError = {
+      message,
+      status,
+      url,
+      data,
+      original: error,
+    };
+
+    return Promise.reject(normalizedError);
   }
 );
 

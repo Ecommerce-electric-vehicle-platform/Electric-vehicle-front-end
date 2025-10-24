@@ -1,5 +1,6 @@
 import { useState } from "react";
 import vnpayApi from "../../api/vnpayApi";
+import "./WalletDeposit.css";
 
 export default function WalletDeposit() {
     const [amount, setAmount] = useState(100000);
@@ -52,42 +53,31 @@ export default function WalletDeposit() {
     };
 
     return (
-        <div style={{ maxWidth: 480, margin: "40px auto" }}>
-            <h2>Nạp tiền vào ví</h2>
-            <form onSubmit={handleSubmit}>
-                <label style={{ display: "block", marginBottom: 8 }}>
-                    Số tiền (VND)
-                </label>
-                <input
-                    type="number"
-                    min={1000}
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    style={{
-                        width: "100%",
-                        padding: 10,
-                        borderRadius: 8,
-                        border: "1px solid #ddd",
-                    }}
-                />
+        <div className="wallet-deposit-container">
+            <h2 className="wallet-deposit-title">Nạp tiền vào ví</h2>
+            <form className="wallet-deposit-form" onSubmit={handleSubmit}>
+                <div className="form-group">
+                    <label className="form-label">
+                        Số tiền nạp (VND)
+                    </label>
+                    <input
+                        type="number"
+                        min={1000}
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="form-input"
+                        placeholder="Nhập số tiền cần nạp"
+                    />
+                </div>
 
                 {error && (
-                    <div style={{ marginTop: 8, color: "#d33" }}>{error}</div>
+                    <div className="error-message">{error}</div>
                 )}
 
                 <button
                     type="submit"
                     disabled={loading}
-                    style={{
-                        marginTop: 16,
-                        width: "100%",
-                        padding: 12,
-                        borderRadius: 8,
-                        border: "none",
-                        background: "#2a9d8f",
-                        color: "#fff",
-                        cursor: "pointer",
-                    }}
+                    className="submit-button"
                 >
                     {loading ? "Đang chuyển đến VNPay..." : "Thanh toán qua VNPay"}
                 </button>

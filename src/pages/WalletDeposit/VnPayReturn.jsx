@@ -153,7 +153,7 @@ export default function VnPayReturn() {
                 {/* Actions */}
                 <div style={{ marginTop: 20, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
                     <button
-                        onClick={() => navigate("/profile")}
+                        onClick={() => navigate("/profile?tab=wallet")}
                         style={{
                             padding: "10px 16px",
                             borderRadius: 10,

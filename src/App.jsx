@@ -1,4 +1,10 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import AuthLayout from "./pages/Auth/login/AuthLayout";
 import { Home } from "./pages/Home/Home";
 import ProductDetail from "./pages/ProductDetail/ProductDetail";
@@ -14,20 +20,44 @@ import VnPayReturn from "./pages/WalletDeposit/VnPayReturn";
 import OrderList from "./pages/OrderList/OrderList";
 import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
 import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
+import AdminRoutes from "./routes/AdminRoute";
+import AdminLogin from "./pages/Admin/Login/AdminLogin";
 import PageTransition from "./components/PageTransition/PageTransition";
 import { Header } from "./components/Header/Header";
 import { ScrollToTop } from "./components/ScrollToTop/ScrollToTop";
 import { AutoScrollToTop } from "./components/AutoScrollToTop/AutoScrollToTop";
 import { Footer } from "./components/Footer/Footer";
 import { NotificationModal } from "./components/NotificationModal/NotificationModal";
-import ForgotPassword from "./pages/Auth/login/ForgotPassword"; // 👈 thêm route này
-import { useState } from "react";
+import ForgotPassword from "./pages/Auth/login/ForgotPassword"; //thêm route này
+import { useState, useEffect } from "react";
+import notificationService from "./services/notificationService";
 
 function AppContent() {
   const location = useLocation();
-  const hideChrome = location.pathname === "/signin" || location.pathname === "/signup";
-  const hideFooter = hideChrome || location.pathname === "/chat" || location.pathname.startsWith("/place-order") || location.pathname.startsWith("/order-tracking");
+  const hideChrome =
+    location.pathname === "/signin" ||
+    location.pathname === "/signup" ||
+    location.pathname.startsWith("/admin");
+  const hideFooter =
+    hideChrome ||
+    location.pathname === "/chat" ||
+    location.pathname.startsWith("/place-order") ||
+    location.pathname.startsWith("/order-tracking") ||
+    location.pathname.startsWith("/admin");
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Khởi tạo notification service khi app start
+  useEffect(() => {
+    console.log("🚀 =================================");
+    console.log("🚀 [App] Starting Frontend Application");
+    console.log(
+      "🚀 [App] Backend URL:",
+      import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"
+    );
+    console.log("🚀 [App] Initializing notification service...");
+    console.log("🚀 =================================");
+    notificationService.init();
+  }, []);
 
   const handleGoLogin = () => {
     setShowAuthModal(false);
@@ -55,6 +85,9 @@ function AppContent() {
             </PageTransition>
           }
         />
+        {/* Tách hẳn trang đăng nhập admin ra top-level để tránh dính layout */}
+        <Route path="/admin/signin" element={<AdminLogin />} />
+        <Route path="/admin/*" element={<AdminRoutes />} />
         <Route path="/home" element={<Navigate to="/" />} />
         <Route
           path="/signin"
@@ -73,7 +106,7 @@ function AppContent() {
           }
         />
 
-        {/* 👇 Thêm Forgot Password */}
+        {/* Thêm Forgot Password */}
         <Route
           path="/forgot-password"
           element={
@@ -190,7 +223,7 @@ function AppContent() {
         />
       </Routes>
 
-      {/* ✅ Global Auth Modal */}
+      {/*  Global Auth Modal */}
       <NotificationModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
