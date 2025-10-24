@@ -24,11 +24,7 @@ export default function PersonalProfilePage() {
     if (storedUsername) setUsername(storedUsername);
   }, []);
 
-  // useEffect xử lý URL params để mở đúng tab
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const tab = params.get("tab");
-
+ 
   // useEffect để xử lý URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
