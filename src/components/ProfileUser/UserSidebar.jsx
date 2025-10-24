@@ -40,9 +40,6 @@ export default function UserSidebar({
     "Seller business package",
   ]
 
-  
-
-
   return (
     <aside className="user-sidebar">
   <div className="sidebar-profile">
