@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
 import authApi from "../../../api/authApi";
-import profileApi from "../../../api/profileApi";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 
@@ -58,6 +57,36 @@ export default function SignIn() {
         if (!allValid) return;
 
         try {
+            const response = await authApi.signin(formData);
+            const resData = response?.data?.data;
+
+            if (resData?.accessToken && resData?.refreshToken) {
+                localStorage.setItem("accessToken", resData.accessToken);
+                localStorage.setItem("refreshToken", resData.refreshToken);
+                localStorage.setItem("token", resData.accessToken);
+                localStorage.setItem("username", resData.username);
+                localStorage.setItem("userEmail", resData.email);
+
+                //  kiểm tra kỹ buyerId trước khi lưu
+                if (resData?.buyerId) {
+                    localStorage.setItem("buyerId", resData.buyerId);
+                } else {
+                    console.warn(" Không có buyerId trả về từ API login");
+                    localStorage.removeItem("buyerId"); // tránh để giá trị "undefined"
+                }
+            
+                // Notify the app that auth status changed
+                window.dispatchEvent(new CustomEvent('authStatusChanged'));
+            }
+
+            setBackendError("");
+            navigate("/");
+        } catch (error) {
+            console.error("Lỗi đăng nhập:", error.response?.data || error.message);
+            const backendMsg =
+                error.response?.data?.message ||
+                "Đăng nhập thất bại. Vui lòng thử lại.";
+            setBackendError(backendMsg);
             // Bước 1: Gọi API Đăng nhập
             const loginResponse = await authApi.signin(formData);
             const loginData = loginResponse?.data?.data;
@@ -142,13 +171,6 @@ export default function SignIn() {
             if (resData?.accessToken) {
                 localStorage.setItem("accessToken", resData.accessToken);
                 localStorage.setItem("username", resData.username);
-
-                if (resData.avatarUrl) {
-                    localStorage.setItem("buyerAvatar", resData.avatarUrl);
-                } else {
-                    localStorage.removeItem("buyerAvatar");
-                }
-
             }
 
         if (resData.avatarUrl) {
