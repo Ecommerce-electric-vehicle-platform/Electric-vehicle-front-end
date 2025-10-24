@@ -28,6 +28,9 @@ const publicEndpoints = [
 axiosInstance.interceptors.request.use(async (config) => {
   const isPublic = publicEndpoints.some((url) => config.url.includes(url));
 
+  // Log API request
+  console.log(`📤 [API] ${config.method.toUpperCase()} ${config.url} ${isPublic ? '(public)' : '(authenticated)'}`);
+
   if (!isPublic) {
     try {
       // Sử dụng tokenManager để lấy token hợp lệ
@@ -50,12 +53,25 @@ axiosInstance.interceptors.request.use(async (config) => {
 
 // Interceptor: Xử lý lỗi tập trung cho người dùng
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log API success
+    console.log(`✅ [API] ${response.config.method.toUpperCase()} ${response.config.url} → ${response.status}`);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     const status = error?.response?.status;
     const data = error?.response?.data;
     const url = error?.config?.url;
+
+    // Log API error
+    if (error.response) {
+      console.error(`❌ [API] ${originalRequest?.method?.toUpperCase()} ${url} → ${status} ${data?.message || ''}`);
+    } else if (error.request) {
+      console.error(`❌ [API] No response from Backend for ${url}`);
+    } else {
+      console.error(`❌ [API] Request error: ${error.message}`);
+    }
 
     // Xử lý lỗi 401 - Unauthorized
     if (status === 401 && !originalRequest._retry) {

@@ -48,7 +48,14 @@ function AppContent() {
 
   // Khởi tạo notification service khi app start
   useEffect(() => {
-    console.log("Initializing notification service...");
+    console.log("🚀 =================================");
+    console.log("🚀 [App] Starting Frontend Application");
+    console.log(
+      "🚀 [App] Backend URL:",
+      import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"
+    );
+    console.log("🚀 [App] Initializing notification service...");
+    console.log("🚀 =================================");
     notificationService.init();
   }, []);
 

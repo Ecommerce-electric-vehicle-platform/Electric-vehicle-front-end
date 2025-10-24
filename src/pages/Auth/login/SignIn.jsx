@@ -128,16 +128,16 @@ export default function SignIn() {
         }
     };
 
-    // ===== GOOGLE LOGIN =====
-    const handleGoogleSuccess = async (credentialResponse) => {
-        try {
-            const decoded = jwtDecode(credentialResponse.credential);
-            console.log("Google user:", decoded);
+  // ===== GOOGLE LOGIN =====
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      const decoded = jwtDecode(credentialResponse.credential);
+      console.log("Google user:", decoded);
 
-            const response = await authApi.googleSignin(
-                credentialResponse.credential
-            );
-            const resData = response?.data?.data;
+      const response = await authApi.googleSignin(
+        credentialResponse.credential
+      );
+      const resData = response?.data?.data;
 
             if (resData?.accessToken) {
                 localStorage.setItem("accessToken", resData.accessToken);
@@ -151,96 +151,103 @@ export default function SignIn() {
 
             }
 
-            navigate("/");
-        } catch (error) {
-            console.error("Google login error:", error);
-            setBackendError("Đăng nhập Google thất bại.");
+        if (resData.avatarUrl) {
+          localStorage.setItem("buyerAvatar", resData.avatarUrl);
+        } else {
+          localStorage.removeItem("buyerAvatar");
         }
-    };
+      }
 
-    const handleGoogleError = () => {
-        setBackendError("Đăng nhập Google thất bại. Vui lòng thử lại.");
-    };
+      navigate("/");
+    } catch (error) {
+      console.error("Google login error:", error);
+      setBackendError("Đăng nhập Google thất bại.");
+    }
+  };
 
-    // ===== UI =====
-    return (
-        <form className="sign-in-form" onSubmit={handleSubmit} noValidate>
-            <div className="logo-container">
-                <div className="greentrade-text">
-                    <span className="green-text">Green</span>
-                    <span className="trade-text">Trade</span>
-                </div>
-                <div className="logo-glow"></div>
-            </div>
+  const handleGoogleError = () => {
+    setBackendError("Đăng nhập Google thất bại. Vui lòng thử lại.");
+  };
 
-            <h2 className="title">Đăng nhập</h2>
+  // ===== UI =====
+  return (
+    <form className="sign-in-form" onSubmit={handleSubmit} noValidate>
+      <div className="logo-container">
+        <div className="greentrade-text">
+          <span className="green-text">Green</span>
+          <span className="trade-text">Trade</span>
+        </div>
+        <div className="logo-glow"></div>
+      </div>
 
-            <div className={`input-field ${errors.username ? "error" : ""}`}>
-                <i className="fas fa-user"></i>
-                <input
-                    type="text"
-                    name="username"
-                    placeholder="Tên đăng nhập"
-                    value={formData.username}
-                    onChange={handleChange}
-                />
-            </div>
-            {errors.username && <p className="error-message">{errors.username}</p>}
+      <h2 className="title">Đăng nhập</h2>
 
-            <div className={`input-field ${errors.password ? "error" : ""}`}>
-                <i className="fas fa-lock"></i>
-                <input
-                    type="password"
-                    name="password"
-                    placeholder="Mật khẩu"
-                    value={formData.password}
-                    onChange={handleChange}
-                />
-            </div>
-            {errors.password && <p className="error-message">{errors.password}</p>}
+      <div className={`input-field ${errors.username ? "error" : ""}`}>
+        <i className="fas fa-user"></i>
+        <input
+          type="text"
+          name="username"
+          placeholder="Tên đăng nhập"
+          value={formData.username}
+          onChange={handleChange}
+        />
+      </div>
+      {errors.username && <p className="error-message">{errors.username}</p>}
 
-            {backendError && (
-                <p className="error-message" style={{ textAlign: "center" }}>
-                    {backendError}
-                </p>
-            )}
+      <div className={`input-field ${errors.password ? "error" : ""}`}>
+        <i className="fas fa-lock"></i>
+        <input
+          type="password"
+          name="password"
+          placeholder="Mật khẩu"
+          value={formData.password}
+          onChange={handleChange}
+        />
+      </div>
+      {errors.password && <p className="error-message">{errors.password}</p>}
 
-            <a
-                href="#"
-                className="forgot-password"
-                onClick={(e) => {
-                    e.preventDefault();
-                    navigate("/forgot-password");
-                }}
-            >
-                Quên mật khẩu?
-            </a>
+      {backendError && (
+        <p className="error-message" style={{ textAlign: "center" }}>
+          {backendError}
+        </p>
+      )}
 
-            <input type="submit" value="Đăng nhập" className="btn solid" />
+      <a
+        href="#"
+        className="forgot-password"
+        onClick={(e) => {
+          e.preventDefault();
+          navigate("/forgot-password");
+        }}
+      >
+        Quên mật khẩu?
+      </a>
 
-            <p className="divider">
-                <span>hoặc đăng nhập bằng</span>
-            </p>
+      <input type="submit" value="Đăng nhập" className="btn solid" />
 
-            <div className="google-login-wrapper">
-                <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleError}
-                />
-            </div>
+      <p className="divider">
+        <span>hoặc đăng nhập bằng</span>
+      </p>
 
-            <p className="switch-text">
-                Chưa có tài khoản?{" "}
-                <a
-                    href="#"
-                    onClick={(e) => {
-                        e.preventDefault();
-                        navigate("/signup");
-                    }}
-                >
-                    Đăng ký ngay
-                </a>
-            </p>
-        </form>
-    );
+      <div className="google-login-wrapper">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+        />
+      </div>
+
+      <p className="switch-text">
+        Chưa có tài khoản?{" "}
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/signup");
+          }}
+        >
+          Đăng ký ngay
+        </a>
+      </p>
+    </form>
+  );
 }
