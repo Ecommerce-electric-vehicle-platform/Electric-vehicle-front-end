@@ -24,7 +24,7 @@ export default function PersonalProfilePage() {
     if (storedUsername) setUsername(storedUsername);
   }, []);
 
- 
+
   // useEffect để xử lý URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -87,7 +87,10 @@ export default function PersonalProfilePage() {
             <div>Nội dung đơn hàng sẽ sớm có...</div>
           )}
           {activeSection === "Ví điện tử" && <PersonalEWallet />}
-          {activeSection === "Nâng cấp thành người bán" && <UpgradeToSeller />}
+          {activeSection === "Nâng cấp thành người bán" && (
+            <UpgradeToSeller onGoToProfile={() => setActiveSection("Hồ sơ cá nhân")} />
+          )}
+
         </main>
       </div>
     </div>
