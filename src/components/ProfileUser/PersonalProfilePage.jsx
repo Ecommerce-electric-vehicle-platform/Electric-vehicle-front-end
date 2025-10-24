@@ -16,7 +16,9 @@ export default function PersonalProfilePage() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [username, setUsername] = useState("");
 
-  // useEffect lấy username
+  console.log("PersonalProfilePage rendering with activeSection:", activeSection);
+
+  // useEffect lấy username (giữ nguyên)
   useEffect(() => {
     const storedUsername = localStorage.getItem("username");
     if (storedUsername) setUsername(storedUsername);
@@ -26,6 +28,11 @@ export default function PersonalProfilePage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get("tab");
+
+  // useEffect để xử lý URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const tab = urlParams.get('tab');
 
     if (tab === "wallet" || tab === "e-wallet" || tab === "ewallet") {
       setActiveSection("Ví điện tử");

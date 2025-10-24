@@ -24,6 +24,9 @@ export function Header() {
   const [hamburgerMenuOpen, setHamburgerMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
+  const [userRole, _setUserRole] = useState('buyer'); // 'buyer' hoặc 'người bán'
+  const [notificationCount, _setNotificationCount] = useState(4);
+  const [notificationPopups, setNotificationPopups] = useState([]);
   const [userRole, _setUserRole] = useState("buyer"); // 'buyer' hoặc 'người bán'
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationPopups, setNotificationPopups] = useState([]);
