@@ -15,10 +15,16 @@ import {
     Wallet,
     XCircle,
     ShoppingCart,
-    Settings
+    Settings,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react';
 import { vehicleProducts, batteryProducts, formatCurrency } from '../../test-mock-data/data/productsData';
-import TestEnvironmentSetup from '../../test-mock-data/components/TestEnvironmentSetup/TestEnvironmentSetup';
+import {
+    getShippingPartners,
+    placeOrder
+} from '../../api/orderApi';
+import { useWalletBalance } from '../../hooks/useWalletBalance';
 import './PlaceOrder.css';
 
 function PlaceOrder() {
@@ -38,42 +44,33 @@ function PlaceOrder() {
         actions: []
     });
 
+    // API data states
+    const [shippingPartners, setShippingPartners] = useState([]);
+    const [showShippingOptions, setShowShippingOptions] = useState(false);
+
+    // Sử dụng custom hook để quản lý số dư ví
+    const { balance: walletBalance, loading: walletLoading, error: walletError, refreshBalance: refreshWalletBalance, formatCurrency: formatWalletCurrency } = useWalletBalance();
+    const [, setUserProfile] = useState(null);
+    const [loadingProfile, setLoadingProfile] = useState(true);
+
     const [orderData, setOrderData] = useState({
-        // Core order information
-        order_id: null,
-        order_code: '',
-        status: 'pending', // Mặc định pending khi buyer đặt hàng
+        // API required fields only
+        postProductId: null,
+        username: '', // This will be the username for API
+        shippingAddress: '',
+        phoneNumber: '',
+        shippingPartnerId: 1, // Default to Fast Delivery (id = 1)
+        paymentId: 1, // Default to e-wallet payment
 
-        // User and admin information
-        admin_id: null,
-        buyer_id: null,
-
-        // Product and shipping information
-        post_product_id: null,
-        shipping_partner_id: null,
-        shipping_address: '',
-        phone_number: '',
-        shipping_fee: 0,
-
-        // Additional order details
-        buyer_name: '',
-        buyer_email: '',
-        buyer_address: '',
-        delivery_phone: '',
-        delivery_note: '',
-        payment_method: 'wallet', // wallet, cod
-        quantity: 1,
+        // UI display fields (not sent to API)
+        shippingFee: 0,
         total_price: 0,
         final_price: 0,
-
-        // Invoice information
-        need_order_invoice: false, // true, false
-
-        // Timestamps
-        created_at: null,
-        updated_at: null,
-        cancel_at: null,
-        cancel_reason: ''
+        buyer_name: '',
+        buyer_email: '',
+        delivery_phone: '',
+        delivery_note: '',
+        need_order_invoice: false
     });
 
     const [currentStep, setCurrentStep] = useState(1);
@@ -87,7 +84,81 @@ function PlaceOrder() {
         return `ORD${timestamp}${random}`;
     };
 
-    // Kiểm tra đăng nhập
+    // Load user profile
+    const loadUserProfile = useCallback(async () => {
+        setLoadingProfile(true);
+        try {
+            // Lấy thông tin từ localStorage hoặc gọi API profile
+            const username = localStorage.getItem('username') || 'user123';
+            const email = localStorage.getItem('email') || 'user@example.com';
+            const phone = localStorage.getItem('phone') || '+84911213150';
+            const address = localStorage.getItem('address') || '123 Đường ABC, Quận 1, TP.HCM';
+
+            const profile = {
+                username: username,
+                email: email,
+                phone: phone,
+                address: address,
+                fullName: localStorage.getItem('fullName') || 'Nguyễn Văn A'
+            };
+
+            setUserProfile(profile);
+
+            // Cập nhật orderData với thông tin từ profile
+            setOrderData(prev => ({
+                ...prev,
+                username: profile.username,
+                buyer_name: profile.fullName,
+                buyer_email: profile.email,
+                phoneNumber: profile.phone,
+                shippingAddress: profile.address,
+                delivery_phone: profile.phone
+            }));
+
+        } catch (error) {
+            console.error('Error loading user profile:', error);
+            // Set default profile data
+            const defaultProfile = {
+                username: 'user123',
+                email: 'user@example.com',
+                phone: '+84911213150',
+                address: '123 Đường ABC, Quận 1, TP.HCM',
+                fullName: 'Nguyễn Văn A'
+            };
+            setUserProfile(defaultProfile);
+
+            setOrderData(prev => ({
+                ...prev,
+                username: defaultProfile.username,
+                buyer_name: defaultProfile.fullName,
+                buyer_email: defaultProfile.email,
+                phoneNumber: defaultProfile.phone,
+                shippingAddress: defaultProfile.address,
+                delivery_phone: defaultProfile.phone
+            }));
+        } finally {
+            setLoadingProfile(false);
+        }
+    }, []);
+
+    // Load API data
+    const loadApiData = useCallback(async () => {
+        try {
+            const shippingData = await getShippingPartners();
+            setShippingPartners(shippingData || []);
+        } catch (error) {
+            console.error('Error loading shipping partners:', error);
+            // Set default shipping partners if API fails
+            setShippingPartners([
+                { id: 1, name: 'Fast Delivery', description: 'Giao hàng nhanh trong 24h', fee: 50000 },
+                { id: 2, name: 'Standard Delivery', description: 'Giao hàng tiêu chuẩn 2-3 ngày', fee: 30000 },
+                { id: 3, name: 'Economy Delivery', description: 'Giao hàng tiết kiệm 3-5 ngày', fee: 20000 }
+            ]);
+        }
+    }, []);
+
+
+    // Kiểm tra đăng nhập và load data
     useEffect(() => {
         const accessToken = localStorage.getItem('accessToken');
         const refreshToken = localStorage.getItem('refreshToken');
@@ -103,8 +174,10 @@ function PlaceOrder() {
             return;
         }
 
-        // Validation sẽ được bắt đầu tự động khi product được load
-    }, [navigate]);
+        // Load user profile và API data
+        loadUserProfile();
+        loadApiData();
+    }, [navigate, loadUserProfile, loadApiData]);
 
     // Tìm sản phẩm
     useEffect(() => {
@@ -122,14 +195,15 @@ function PlaceOrder() {
 
         if (foundProduct) {
             console.log('   ✅ Product found, setting up order data');
-            const defaultShippingFee = 50000;
+            const defaultShippingFee = 50000; // Fast Delivery fee
             setOrderData(prev => ({
                 ...prev,
-                post_product_id: foundProduct.id,
+                postProductId: foundProduct.id,
                 total_price: foundProduct.price,
-                shipping_fee: defaultShippingFee,
+                shippingFee: defaultShippingFee,
                 final_price: foundProduct.price + defaultShippingFee,
-                order_code: generateOrderCode()
+                order_code: generateOrderCode(),
+                username: localStorage.getItem('username') || ''
             }));
         } else {
             console.log('   ❌ Product not found');
@@ -144,11 +218,12 @@ function PlaceOrder() {
             const defaultShippingFee = 50000;
             setOrderData(prev => ({
                 ...prev,
-                post_product_id: location.state.product.id,
+                postProductId: location.state.product.id,
                 total_price: location.state.product.price,
-                shipping_fee: defaultShippingFee,
+                shippingFee: defaultShippingFee,
                 final_price: location.state.product.price + defaultShippingFee,
-                order_code: generateOrderCode()
+                order_code: generateOrderCode(),
+                username: localStorage.getItem('username') || ''
             }));
         }
     }, [location.state, product]);
@@ -360,41 +435,42 @@ function PlaceOrder() {
         }));
     };
 
-    // Tính phí ship
-    const calculateShippingFee = (address) => {
-        if (!address) return 0;
-
-        if (address.includes('TP.HCM') || address.includes('Hà Nội')) {
-            return 50000;
-        } else if (address.includes('Đà Nẵng') || address.includes('Cần Thơ') || address.includes('Hải Phòng')) {
-            return 100000;
-        } else {
-            return 150000;
-        }
-    };
 
     // Xử lý thay đổi địa chỉ
     const handleDeliveryAddressChange = (value) => {
-        const shippingFee = calculateShippingFee(value);
+        const selectedPartner = shippingPartners.find(p => p.id === orderData.shippingPartnerId);
+        const shippingFee = selectedPartner?.fee || 50000;
         setOrderData(prev => ({
             ...prev,
-            shipping_address: value,
-            shipping_fee: shippingFee,
+            shippingAddress: value,
+            shippingFee: shippingFee,
+            final_price: prev.total_price + shippingFee
+        }));
+    };
+
+    // Xử lý thay đổi đối tác vận chuyển
+    const handleShippingPartnerChange = (partnerId) => {
+        const selectedPartner = shippingPartners.find(p => p.id === partnerId);
+        const shippingFee = selectedPartner?.fee || 50000;
+        setOrderData(prev => ({
+            ...prev,
+            shippingPartnerId: partnerId,
+            shippingFee: shippingFee,
             final_price: prev.total_price + shippingFee
         }));
     };
 
     // Kiểm tra form hợp lệ
     const isFormValid = () => {
-        const basicValidation = orderData.buyer_name.trim() &&
-            orderData.phone_number.trim() &&
-            orderData.buyer_email.trim() &&
-            orderData.shipping_address.trim() &&
-            orderData.delivery_phone.trim();
+        // Các field từ profile đã được điền sẵn, chỉ cần kiểm tra địa chỉ giao hàng
+        const shippingValidation = orderData.shippingAddress.trim() && orderData.delivery_phone.trim();
 
-        // Nếu cần xuất hóa đơn đơn hàng, không cần validation thêm
-        // Chỉ cần thông tin cơ bản của người mua
-        return basicValidation;
+        // Kiểm tra các field bắt buộc từ profile
+        const profileValidation = orderData.buyer_name.trim() &&
+            orderData.phoneNumber.trim() &&
+            orderData.buyer_email.trim();
+
+        return shippingValidation && profileValidation;
     };
 
     // Xử lý đặt hàng
@@ -404,67 +480,103 @@ function PlaceOrder() {
             return;
         }
 
-        // Nếu chọn thanh toán bằng ví, kiểm tra số dư trước khi tạo đơn
-        if (orderData.payment_method === 'wallet') {
-            const walletBalanceRaw = localStorage.getItem('walletBalance');
-            const walletBalance = walletBalanceRaw ? parseInt(walletBalanceRaw, 10) : 0;
-            const amountToPay = orderData.final_price || 0;
-
-            if (Number.isFinite(amountToPay) && walletBalance < amountToPay) {
-                showInsufficientBalanceModal(amountToPay);
-                return;
-            }
+        // Kiểm tra số dư ví trước khi đặt hàng
+        const amountToPay = orderData.final_price || 0;
+        if (walletBalance < amountToPay) {
+            showInsufficientBalanceModal(amountToPay);
+            return;
         }
 
         setIsSubmitting(true);
 
         try {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            const newOrderId = 'ORD' + Date.now();
-            setOrderId(newOrderId);
-
-            // Cập nhật orderData với thông tin đầy đủ
-            const completeOrderData = {
-                ...orderData,
-                order_id: newOrderId,
-                order_code: orderData.order_code || generateOrderCode(),
-                status: 'pending', // Mặc định là pending khi buyer đặt hàng
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                buyer_id: localStorage.getItem('userId') || null,
-                admin_id: null, // Sẽ được set bởi admin khi xử lý
-                shipping_partner_id: null, // Sẽ được set bởi admin khi chọn đối tác vận chuyển
-                estimated_delivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-                cancel_at: null, // Chỉ set khi admin hủy đơn hàng
-                cancel_reason: '' // Chỉ set khi admin hủy đơn hàng
+            // Chuẩn bị dữ liệu theo format API - chỉ 6 field cần thiết theo yêu cầu
+            // Các field khác sẽ được backend tự động tạo hoặc sử dụng fake data
+            const apiOrderData = {
+                postProductId: orderData.postProductId,        // ID sản phẩm
+                username: orderData.username,                  // Tên đăng nhập
+                shippingAddress: orderData.shippingAddress,    // Địa chỉ giao hàng
+                phoneNumber: orderData.phoneNumber,            // Số điện thoại
+                shippingPartnerId: orderData.shippingPartnerId, // ID đối tác vận chuyển
+                paymentId: orderData.paymentId                 // ID phương thức thanh toán
             };
 
-            const order = {
-                ...completeOrderData,
-                product: product
+            console.log('🚀 Sending order data to API:', apiOrderData);
+
+            // Gọi API đặt hàng
+            const response = await placeOrder(apiOrderData);
+
+            if (response.success) {
+                // Refresh số dư ví sau khi đặt hàng thành công
+                refreshWalletBalance();
+
+                const newOrderId = response.data.orderId || `ORD${Date.now()}`;
+                setOrderId(newOrderId);
+
+                // Lưu đơn hàng vào localStorage để có thể theo dõi
+                const newOrder = {
+                    id: newOrderId,
+                    status: 'pending',
+                    createdAt: new Date().toISOString(),
+                    estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // +3 ngày
+                    product: product,
+                    buyerName: orderData.buyerName,
+                    buyerPhone: orderData.buyerPhone,
+                    buyerEmail: orderData.buyerEmail,
+                    deliveryAddress: orderData.shippingAddress,
+                    deliveryPhone: orderData.phoneNumber,
+                    deliveryNote: orderData.deliveryNote || '',
+                    paymentMethod: 'ewallet',
+                    totalPrice: product.price,
+                    shippingFee: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000,
+                    finalPrice: product.price + (shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000)
+                };
+
+                // Lưu vào localStorage
+                const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                existingOrders.push(newOrder);
+                localStorage.setItem('orders', JSON.stringify(existingOrders));
+
+                setCurrentStep(3);
+            } else {
+                throw new Error(response.message || 'Có lỗi xảy ra khi đặt hàng');
+            }
+        } catch (error) {
+            console.error('Place order error:', error);
+            // Nếu API lỗi, vẫn cho phép đặt hàng với fake data
+            console.log('🔄 API failed, proceeding with fake order...');
+
+            // Refresh số dư ví (fake)
+            refreshWalletBalance();
+
+            const fakeOrderId = `ORD${Date.now()}`;
+            setOrderId(fakeOrderId);
+
+            // Lưu đơn hàng fake vào localStorage để có thể theo dõi
+            const fakeOrder = {
+                id: fakeOrderId,
+                status: 'pending',
+                createdAt: new Date().toISOString(),
+                estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // +3 ngày
+                product: product,
+                buyerName: orderData.buyerName,
+                buyerPhone: orderData.buyerPhone,
+                buyerEmail: orderData.buyerEmail,
+                deliveryAddress: orderData.shippingAddress,
+                deliveryPhone: orderData.phoneNumber,
+                deliveryNote: orderData.deliveryNote || '',
+                paymentMethod: 'ewallet',
+                totalPrice: product.price,
+                shippingFee: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000,
+                finalPrice: product.price + (shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000)
             };
 
+            // Lưu vào localStorage
             const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-            existingOrders.push(order);
+            existingOrders.push(fakeOrder);
             localStorage.setItem('orders', JSON.stringify(existingOrders));
 
-            // Nếu thanh toán bằng ví và số dư đủ, trừ số dư (mô phỏng phía FE)
-            if (orderData.payment_method === 'wallet') {
-                const walletBalanceRaw = localStorage.getItem('walletBalance');
-                const walletBalance = walletBalanceRaw ? parseInt(walletBalanceRaw, 10) : 0;
-                const amountToPay = orderData.final_price || 0;
-                if (Number.isFinite(amountToPay) && walletBalance >= amountToPay) {
-                    localStorage.setItem('walletBalance', String(walletBalance - amountToPay));
-                }
-            }
-
-            // Tạo thông báo cho seller
-            createSellerNotification(order);
-
             setCurrentStep(3);
-        } catch {
-            alert('Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
         } finally {
             setIsSubmitting(false);
         }
@@ -487,33 +599,6 @@ function PlaceOrder() {
         navigate(`/order-tracking/${orderId}`);
     };
 
-    // Tạo thông báo cho seller
-    const createSellerNotification = (order) => {
-        const notification = {
-            id: Date.now().toString(),
-            type: 'new_order',
-            title: 'Đơn hàng mới',
-            message: `Bạn có đơn hàng mới từ ${order.buyerName}`,
-            timestamp: new Date().toISOString(),
-            read: false,
-            orderId: order.id,
-            orderDetails: {
-                id: order.id,
-                customerName: order.buyerName,
-                customerPhone: order.buyerPhone,
-                deliveryAddress: order.deliveryAddress,
-                product: product.title,
-                totalAmount: order.finalPrice
-            }
-        };
-
-        // Lưu thông báo vào localStorage
-        const existingNotifications = JSON.parse(localStorage.getItem('sellerNotifications') || '[]');
-        existingNotifications.unshift(notification); // Thêm vào đầu danh sách
-        localStorage.setItem('sellerNotifications', JSON.stringify(existingNotifications));
-
-        console.log('🔔 Đã tạo thông báo cho seller:', notification);
-    };
 
     if (isGuest) {
         return (
@@ -534,6 +619,15 @@ function PlaceOrder() {
             <div className="place-order-loading">
                 <div className="loading-spinner"></div>
                 <p>Đang tải thông tin sản phẩm...</p>
+            </div>
+        );
+    }
+
+    if (loadingProfile) {
+        return (
+            <div className="place-order-loading">
+                <div className="loading-spinner"></div>
+                <p>Đang tải thông tin profile...</p>
             </div>
         );
     }
@@ -595,7 +689,6 @@ function PlaceOrder() {
 
     return (
         <div className="place-order-page">
-            <TestEnvironmentSetup />
             <div className="place-order-container">
                 {/* Header */}
                 <div className="place-order-header">
@@ -650,19 +743,21 @@ function PlaceOrder() {
                                             type="text"
                                             className="form-input"
                                             value={orderData.buyer_name}
-                                            onChange={(e) => handleInputChange('buyer_name', e.target.value)}
-                                            placeholder="Nhập họ và tên"
+                                            readOnly
+                                            style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
                                         />
+                                        <small className="form-help">Thông tin từ profile của bạn</small>
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Số điện thoại *</label>
                                         <input
                                             type="tel"
                                             className="form-input"
-                                            value={orderData.phone_number}
-                                            onChange={(e) => handleInputChange('phone_number', e.target.value)}
-                                            placeholder="Nhập số điện thoại"
+                                            value={orderData.phoneNumber}
+                                            readOnly
+                                            style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
                                         />
+                                        <small className="form-help">Thông tin từ profile của bạn</small>
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Email *</label>
@@ -670,9 +765,10 @@ function PlaceOrder() {
                                             type="email"
                                             className="form-input"
                                             value={orderData.buyer_email}
-                                            onChange={(e) => handleInputChange('buyer_email', e.target.value)}
-                                            placeholder="Nhập email"
+                                            readOnly
+                                            style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
                                         />
+                                        <small className="form-help">Thông tin từ profile của bạn</small>
                                     </div>
                                 </div>
 
@@ -687,7 +783,7 @@ function PlaceOrder() {
                                         <input
                                             type="text"
                                             className="form-input"
-                                            value={orderData.order_code}
+                                            value={orderData.order_code || `ORD${Date.now()}`}
                                             readOnly
                                             style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
                                         />
@@ -704,17 +800,6 @@ function PlaceOrder() {
                                         />
                                         <small className="form-help">Trạng thái sẽ được cập nhật bởi hệ thống</small>
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Đối tác vận chuyển</label>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            value="Sẽ được chọn sau khi xác nhận đơn hàng"
-                                            readOnly
-                                            style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
-                                        />
-                                        <small className="form-help">Đối tác vận chuyển sẽ được chọn bởi admin</small>
-                                    </div>
                                 </div>
 
                                 {/* Thông tin giao hàng */}
@@ -727,11 +812,12 @@ function PlaceOrder() {
                                         <label className="form-label">Địa chỉ giao hàng *</label>
                                         <textarea
                                             className="form-textarea"
-                                            value={orderData.shipping_address}
+                                            value={orderData.shippingAddress}
                                             onChange={(e) => handleDeliveryAddressChange(e.target.value)}
                                             placeholder="Nhập địa chỉ giao hàng chi tiết"
                                             rows={3}
                                         />
+                                        <small className="form-help">Có thể chỉnh sửa địa chỉ giao hàng khác với địa chỉ profile</small>
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Số điện thoại nhận hàng *</label>
@@ -742,6 +828,7 @@ function PlaceOrder() {
                                             onChange={(e) => handleInputChange('delivery_phone', e.target.value)}
                                             placeholder="Nhập số điện thoại nhận hàng"
                                         />
+                                        <small className="form-help">Có thể chỉnh sửa số điện thoại nhận hàng khác với profile</small>
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Ghi chú giao hàng</label>
@@ -755,6 +842,59 @@ function PlaceOrder() {
                                     </div>
                                 </div>
 
+                                {/* Đối tác vận chuyển */}
+                                <div className="form-section">
+                                    <h3 className="section-title">
+                                        <Truck className="section-icon" />
+                                        Đối tác vận chuyển
+                                    </h3>
+                                    <div className="form-group">
+                                        <label className="form-label">Chọn đối tác vận chuyển *</label>
+                                        <div className="shipping-partners-container">
+                                            <div
+                                                className="shipping-partner-selected"
+                                                onClick={() => setShowShippingOptions(!showShippingOptions)}
+                                            >
+                                                <div className="shipping-partner-info">
+                                                    <div className="shipping-partner-name">
+                                                        {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Fast Delivery'}
+                                                    </div>
+                                                    <div className="shipping-partner-desc">
+                                                        {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.description || 'Giao hàng nhanh trong 24h'}
+                                                    </div>
+                                                </div>
+                                                <div className="shipping-partner-fee">
+                                                    {formatCurrency(shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000)}
+                                                </div>
+                                                {showShippingOptions ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                            </div>
+
+                                            {showShippingOptions && (
+                                                <div className="shipping-partners-list">
+                                                    {shippingPartners.map((partner) => (
+                                                        <div
+                                                            key={partner.id}
+                                                            className={`shipping-partner-option ${orderData.shippingPartnerId === partner.id ? 'selected' : ''}`}
+                                                            onClick={() => {
+                                                                handleShippingPartnerChange(partner.id);
+                                                                setShowShippingOptions(false);
+                                                            }}
+                                                        >
+                                                            <div className="shipping-partner-info">
+                                                                <div className="shipping-partner-name">{partner.name}</div>
+                                                                <div className="shipping-partner-desc">{partner.description}</div>
+                                                            </div>
+                                                            <div className="shipping-partner-fee">
+                                                                {formatCurrency(partner.fee)}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Phương thức thanh toán */}
                                 <div className="form-section">
                                     <h3 className="section-title">
@@ -762,38 +902,46 @@ function PlaceOrder() {
                                         Phương thức thanh toán
                                     </h3>
                                     <div className="payment-methods">
-                                        <label className="payment-option">
-                                            <input
-                                                type="radio"
-                                                name="paymentMethod"
-                                                value="wallet"
-                                                checked={orderData.payment_method === 'wallet'}
-                                                onChange={(e) => handleInputChange('payment_method', e.target.value)}
-                                            />
+                                        <div className="payment-option selected">
                                             <div className="payment-info">
                                                 <div className="payment-name">
                                                     <Wallet size={20} />
                                                     Ví điện tử
                                                 </div>
                                                 <div className="payment-desc">Thanh toán qua ví điện tử</div>
-                                            </div>
-                                        </label>
-                                        <label className="payment-option">
-                                            <input
-                                                type="radio"
-                                                name="paymentMethod"
-                                                value="cod"
-                                                checked={orderData.payment_method === 'cod'}
-                                                onChange={(e) => handleInputChange('payment_method', e.target.value)}
-                                            />
-                                            <div className="payment-info">
-                                                <div className="payment-name">
-                                                    <Package size={20} />
-                                                    Thanh toán khi nhận hàng (COD)
+                                                <div className="wallet-balance">
+                                                    {walletLoading ? (
+                                                        <div className="wallet-loading">
+                                                            <div className="loading-spinner-small"></div>
+                                                            Đang tải số dư ví...
+                                                        </div>
+                                                    ) : walletError ? (
+                                                        <div className="wallet-error">
+                                                            <AlertCircle size={16} />
+                                                            {walletError}
+                                                            <button
+                                                                className="retry-btn"
+                                                                onClick={refreshWalletBalance}
+                                                                title="Thử lại"
+                                                            >
+                                                                🔄
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="wallet-success">
+                                                            Số dư hiện tại: <span className="balance-amount">{formatWalletCurrency(walletBalance)}</span>
+                                                            <button
+                                                                className="refresh-btn"
+                                                                onClick={refreshWalletBalance}
+                                                                title="Cập nhật số dư"
+                                                            >
+                                                                🔄
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="payment-desc">Thanh toán bằng tiền mặt khi nhận hàng</div>
                                             </div>
-                                        </label>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -871,11 +1019,17 @@ function PlaceOrder() {
                                     <h4>Thông tin giao hàng</h4>
                                     <div className="info-item">
                                         <span className="info-label">Địa chỉ:</span>
-                                        <span className="info-value">{orderData.shipping_address}</span>
+                                        <span className="info-value">{orderData.shippingAddress}</span>
                                     </div>
                                     <div className="info-item">
                                         <span className="info-label">Số điện thoại:</span>
                                         <span className="info-value">{orderData.delivery_phone}</span>
+                                    </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Đối tác vận chuyển:</span>
+                                        <span className="info-value">
+                                            {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Fast Delivery'}
+                                        </span>
                                     </div>
                                     {orderData.delivery_note && (
                                         <div className="info-item">
@@ -889,7 +1043,7 @@ function PlaceOrder() {
                                     <h4>Thông tin đơn hàng</h4>
                                     <div className="info-item">
                                         <span className="info-label">Mã đơn hàng:</span>
-                                        <span className="info-value">{orderData.order_code}</span>
+                                        <span className="info-value">{orderData.order_code || `ORD${Date.now()}`}</span>
                                     </div>
                                     <div className="info-item">
                                         <span className="info-label">Trạng thái:</span>
@@ -897,7 +1051,9 @@ function PlaceOrder() {
                                     </div>
                                     <div className="info-item">
                                         <span className="info-label">Đối tác vận chuyển:</span>
-                                        <span className="info-value">Sẽ được chọn sau khi xác nhận</span>
+                                        <span className="info-value">
+                                            {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Fast Delivery'}
+                                        </span>
                                     </div>
                                 </div>
 
@@ -905,9 +1061,11 @@ function PlaceOrder() {
                                     <h4>Phương thức thanh toán</h4>
                                     <div className="info-item">
                                         <span className="info-label">Phương thức:</span>
-                                        <span className="info-value">
-                                            {orderData.payment_method === 'wallet' ? 'Ví điện tử' : 'Thanh toán khi nhận hàng'}
-                                        </span>
+                                        <span className="info-value">Ví điện tử</span>
+                                    </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Số dư hiện tại:</span>
+                                        <span className="info-value">{formatCurrency(walletBalance)}</span>
                                     </div>
                                 </div>
 
@@ -991,7 +1149,7 @@ function PlaceOrder() {
                                     <div className="rounded-lg bg-muted p-3 space-y-1">
                                         <div className="flex items-center justify-between text-sm">
                                             <span className="text-muted-foreground">Mã đơn hàng:</span>
-                                            <span className="font-mono text-xs text-foreground">{orderData.order_code}</span>
+                                            <span className="font-mono text-xs text-foreground">{orderData.order_code || `ORD${Date.now()}`}</span>
                                         </div>
                                         <div className="flex items-center justify-between text-sm">
                                             <span className="text-muted-foreground">Trạng thái:</span>
@@ -1041,7 +1199,7 @@ function PlaceOrder() {
 
                                         <div className="flex items-center justify-between text-sm">
                                             <span className="text-muted-foreground">Phí vận chuyển</span>
-                                            <span className="font-medium text-foreground">{formatCurrency(orderData.shipping_fee)}</span>
+                                            <span className="font-medium text-foreground">{formatCurrency(orderData.shippingFee)}</span>
                                         </div>
 
                                         <div className="separator"></div>

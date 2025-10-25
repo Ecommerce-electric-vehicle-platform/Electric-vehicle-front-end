@@ -39,9 +39,6 @@ export default function UserSidebar({
     "Nâng cấp thành người bán",
   ]
 
-
-
-
   return (
     <aside className="user-sidebar">
       <div className="sidebar-profile">

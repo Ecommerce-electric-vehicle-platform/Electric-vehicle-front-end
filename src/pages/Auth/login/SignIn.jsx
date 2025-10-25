@@ -96,6 +96,7 @@ export default function SignIn() {
         } else {
           localStorage.removeItem("buyerId");
         }
+        console.log("[User] Login successful (authType: user)");
 
         // ---  BƯỚC 3: GỌI THÊM API getProfile ĐỂ LẤY AVATAR  ---
         try {

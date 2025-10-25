@@ -1,4 +1,4 @@
-"use client";
+
 
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
@@ -16,16 +16,19 @@ export default function PersonalProfilePage() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [username, setUsername] = useState("");
 
-  // useEffect lấy username
+  console.log("PersonalProfilePage rendering with activeSection:", activeSection);
+
+  // useEffect lấy username (giữ nguyên)
   useEffect(() => {
     const storedUsername = localStorage.getItem("username");
     if (storedUsername) setUsername(storedUsername);
   }, []);
 
-  // useEffect xử lý URL params để mở đúng tab
+
+  // useEffect để xử lý URL parameters
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const tab = params.get("tab");
+    const urlParams = new URLSearchParams(location.search);
+    const tab = urlParams.get('tab');
 
     if (tab === "wallet" || tab === "e-wallet" || tab === "ewallet") {
       setActiveSection("Ví điện tử");
@@ -84,7 +87,10 @@ export default function PersonalProfilePage() {
             <div>Nội dung đơn hàng sẽ sớm có...</div>
           )}
           {activeSection === "Ví điện tử" && <PersonalEWallet />}
-          {activeSection === "Nâng cấp thành người bán" && <UpgradeToSeller />}
+          {activeSection === "Nâng cấp thành người bán" && (
+            <UpgradeToSeller onGoToProfile={() => setActiveSection("Hồ sơ cá nhân")} />
+          )}
+
         </main>
       </div>
     </div>

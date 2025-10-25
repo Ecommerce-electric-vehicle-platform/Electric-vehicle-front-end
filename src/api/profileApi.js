@@ -3,6 +3,21 @@ import axiosInstance from "./axiosInstance";
 
 const profileApi = {
 
+  // get 3 address levels: provinces, districts, wards
+  getAddressProvinces: () => {
+    return axiosInstance.get(`/api/v1/shipping/provinces`);
+  },
+  getAddressDistricts: (provinceId) => {
+    return axiosInstance.get(
+      `/api/v1/shipping/districts?provinceId=${provinceId}`
+    );
+  },
+  getAddressWards: (districtId) => {
+    return axiosInstance.get(
+      `/api/v1/shipping/wards?districtId=${districtId}`
+    );
+  },
+
   // Lấy profile 
   getProfile: () => {
     return axiosInstance.get(`/api/v1/buyer/profile`);
@@ -34,6 +49,10 @@ const profileApi = {
     return axiosInstance.post("/api/v1/kyc/verify-kyc", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+  },
+   // Lấy trạng thái seller
+  getSellerstatus: () => {
+    return axiosInstance.get("/api/v1/seller/profile");
   },
 
   // Lấy thông tin ví của user
