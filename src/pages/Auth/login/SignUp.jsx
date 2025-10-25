@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
 import authApi from "../../../api/authApi";
+import profileApi from "../../../api/profileApi";
 import { GoogleLogin } from "@react-oauth/google";
 
 export default function SignUp() {
@@ -25,7 +26,8 @@ export default function SignUp() {
     let message = "";
     if (name === "username") {
       if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
-      else if (!/^[A-Za-z]+$/.test(value)) message = "Chỉ được phép sử dụng chữ cái.";
+      else if (!/^[A-Za-z]+$/.test(value))
+        message = "Chỉ được phép sử dụng chữ cái.";
       else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
     }
     if (name === "password") {
@@ -71,7 +73,9 @@ export default function SignUp() {
     }
 
     try {
-      setLoadingMessage("Vui lòng kiểm tra email. Đang chuyển đến trang OTP...");
+      setLoadingMessage(
+        "Vui lòng kiểm tra email. Đang chuyển đến trang OTP..."
+      );
       await authApi.signup(formData);
       setTimeout(() => {
         setIsOtpStep(true);
@@ -95,7 +99,7 @@ export default function SignUp() {
         otp: otp,
       });
       navigate("/signin");
-    } catch (error) {
+    } catch {
       setBackendError("Mã OTP không hợp lệ hoặc đã hết hạn.");
     }
   };
@@ -108,9 +112,59 @@ export default function SignUp() {
         setBackendError("Không nhận được token từ Google. Vui lòng thử lại.");
         return;
       }
+
       const response = await authApi.googleSignin(idToken);
       console.log("Google signin/signup response:", response.data);
-      navigate("/signin");
+      const loginData = response?.data?.data;
+
+      // Nếu đăng ký/đăng nhập thành công → Lưu token và redirect
+      if (loginData?.accessToken && loginData?.refreshToken) {
+        // CLEAR ADMIN DATA TRƯỚC (vì chỉ cho 1 loại login tại 1 thời điểm)
+        localStorage.removeItem("adminProfile");
+        console.log("[Google Signup] Cleared admin-specific data");
+
+        // Lưu token và thông tin cơ bản
+        localStorage.setItem("accessToken", loginData.accessToken);
+        localStorage.setItem("refreshToken", loginData.refreshToken);
+        localStorage.setItem("token", loginData.accessToken);
+        localStorage.setItem("username", loginData.username);
+        localStorage.setItem("userEmail", loginData.email);
+        localStorage.setItem("authType", "user");
+
+        if (loginData.buyerId) {
+          localStorage.setItem("buyerId", loginData.buyerId);
+        } else {
+          localStorage.removeItem("buyerId");
+        }
+
+        console.log("[Google Signup] Signup/Login successful (authType: user)");
+
+        // Gọi API getProfile để lấy avatar
+        try {
+          const profileResponse = await profileApi.getProfile();
+          const profileData = profileResponse?.data?.data;
+
+          if (profileData?.avatarUrl) {
+            localStorage.setItem("buyerAvatar", profileData.avatarUrl);
+            console.log("Avatar saved:", profileData.avatarUrl);
+          } else {
+            localStorage.removeItem("buyerAvatar");
+          }
+        } catch (profileError) {
+          console.error(
+            "Lỗi khi lấy profile sau Google signup:",
+            profileError.message
+          );
+          localStorage.removeItem("buyerAvatar");
+        }
+
+        // Thông báo và chuyển hướng
+        window.dispatchEvent(new CustomEvent("authStatusChanged"));
+        navigate("/");
+      } else {
+        // Nếu chỉ signup mà chưa login → redirect về signin
+        navigate("/signin");
+      }
     } catch (error) {
       console.error("Google signup error:", error);
       const status = error.response?.status;
@@ -118,8 +172,10 @@ export default function SignUp() {
         status === 401
           ? "Token Google không hợp lệ hoặc đã hết hạn."
           : error.response?.data?.message ||
-          "Đăng nhập/Đăng ký Google thất bại. Vui lòng thử lại.";
+            "Đăng nhập/Đăng ký Google thất bại. Vui lòng thử lại.";
       setBackendError(message);
+      // Clear authType nếu signup/login thất bại
+      localStorage.removeItem("authType");
     }
   };
 
@@ -161,7 +217,9 @@ export default function SignUp() {
             <>
               {/* Username */}
               <div className="input-group">
-                <div className={`input-field ${errors.username ? "error" : ""}`}>
+                <div
+                  className={`input-field ${errors.username ? "error" : ""}`}
+                >
                   <div className="input-icon">
                     <i className="fas fa-user"></i>
                   </div>
@@ -184,7 +242,9 @@ export default function SignUp() {
 
               {/* Password */}
               <div className="input-group">
-                <div className={`input-field ${errors.password ? "error" : ""}`}>
+                <div
+                  className={`input-field ${errors.password ? "error" : ""}`}
+                >
                   <div className="input-icon">
                     <i className="fas fa-lock"></i>
                   </div>

@@ -20,6 +20,8 @@ import VnPayReturn from "./pages/WalletDeposit/VnPayReturn";
 import OrderList from "./pages/OrderList/OrderList";
 import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
 import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
+import CreatePost from "./pages/Seller/CreatePost/CreatePost";
+import ManagePosts from "./pages/Seller/ManagePosts/ManagePosts";
 import AdminRoutes from "./routes/AdminRoute";
 import AdminLogin from "./pages/Admin/Login/AdminLogin";
 import PageTransition from "./components/PageTransition/PageTransition";
@@ -48,14 +50,14 @@ function AppContent() {
 
   // Khởi tạo notification service khi app start
   useEffect(() => {
-    console.log("🚀 =================================");
-    console.log("🚀 [App] Starting Frontend Application");
+    console.log("=================================");
+    console.log("[App] Starting Frontend Application");
     console.log(
-      "🚀 [App] Backend URL:",
+      "[App] Backend URL:",
       import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"
     );
-    console.log("🚀 [App] Initializing notification service...");
-    console.log("🚀 =================================");
+    console.log("[App] Initializing notification service...");
+    console.log("=================================");
     notificationService.init();
   }, []);
 
@@ -153,6 +155,22 @@ function AppContent() {
           element={
             <PageTransition className="fade-up">
               <SellerDashboard />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/seller/create-post"
+          element={
+            <PageTransition className="fade-up">
+              <CreatePost />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/seller/manage-posts"
+          element={
+            <PageTransition className="fade-up">
+              <ManagePosts />
             </PageTransition>
           }
         />

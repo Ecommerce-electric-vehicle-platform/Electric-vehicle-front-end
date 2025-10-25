@@ -1,0 +1,199 @@
+/* src/components/ServicePackageGuard/ServicePackageGuard.css */
+
+.package-guard-loading,
+.package-guard-error,
+.package-guard-expired {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* Loading State */
+.package-guard-loading .spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #16a34a;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.package-guard-loading p {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+/* Error State */
+.package-guard-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+.error-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.package-guard-error h3 {
+  color: #dc2626;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.package-guard-error p {
+  color: #991b1b;
+  margin-bottom: 1.5rem;
+}
+
+.btn-retry {
+  padding: 0.75rem 1.5rem;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.btn-retry:hover {
+  background: #b91c1c;
+}
+
+/* Expired State */
+.package-guard-expired {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+
+.expired-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.package-guard-expired h3 {
+  color: #d97706;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.package-guard-expired p {
+  color: #92400e;
+  margin-bottom: 1.5rem;
+  max-width: 500px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-buy-package,
+.btn-check-again {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-buy-package {
+  background: #16a34a;
+  color: white;
+}
+
+.btn-buy-package:hover {
+  background: #15803d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(22, 163, 74, 0.3);
+}
+
+.btn-check-again {
+  background: white;
+  color: #16a34a;
+  border: 2px solid #16a34a;
+}
+
+.btn-check-again:hover {
+  background: #f0fdf4;
+}
+
+/* Valid State */
+.package-guard-valid {
+  width: 100%;
+}
+
+.package-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.package-icon {
+  font-size: 1.5rem;
+}
+
+.package-name {
+  font-weight: 600;
+  color: #166534;
+  font-size: 1rem;
+}
+
+.package-expiry {
+  margin-left: auto;
+  color: #166534;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .package-info-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .package-expiry {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-buy-package,
+  .btn-check-again {
+    width: 100%;
+  }
+}
+

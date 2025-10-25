@@ -67,6 +67,13 @@ export default function AdminLogin() {
       const response = await authApi.adminSignin(payload);
       const resData = response?.data?.data;
 
+      // ⚠️ CLEAR USER TOKENS TRƯỚC (vì chỉ cho 1 loại login tại 1 thời điểm)
+      localStorage.removeItem("buyerId");
+      localStorage.removeItem("sellerId");
+      localStorage.removeItem("buyerAvatar");
+      console.log("⚠️  [Admin Login] Cleared user-specific data");
+
+      // Lưu admin tokens
       if (resData?.accessToken) {
         localStorage.setItem("accessToken", resData.accessToken);
         localStorage.setItem("token", resData.accessToken);
@@ -81,7 +88,7 @@ export default function AdminLogin() {
         localStorage.setItem("userEmail", resData.email);
       }
 
-      // Lưu hồ sơ admin nếu BE trả về
+      // Lưu hồ sơ admin
       const adminProfile = {
         avatarUrl:
           resData?.avatarUrl || resData?.avatar_url || resData?.avatarURL,
@@ -100,8 +107,9 @@ export default function AdminLogin() {
       };
       localStorage.setItem("adminProfile", JSON.stringify(adminProfile));
 
-      // Đánh dấu đang đăng nhập bằng tài khoản admin
+      // ✅ Đánh dấu đang đăng nhập bằng tài khoản admin
       localStorage.setItem("authType", "admin");
+      console.log("✅ [Admin] Login successful (authType: admin)");
       window.dispatchEvent(new CustomEvent("authStatusChanged"));
       navigate("/admin/dashboard", { replace: true });
     } catch (err) {

@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import authApi from "../../../api/authApi";
-import logo from "../../../assets/logo/Logo 2.png";
 import "./auth.css";
 
 export default function ForgotPassword() {
@@ -26,8 +25,7 @@ export default function ForgotPassword() {
   // ========== VALIDATION ==========
   const validateUsername = (value) => {
     if (!value.trim()) return "Tên đăng nhập là bắt buộc.";
-    if (!/^[A-Za-z]+$/.test(value))
-      return "Chỉ được phép chứa chữ cái.";
+    if (!/^[A-Za-z]+$/.test(value)) return "Chỉ được phép chứa chữ cái.";
     if (value.length < 8) return "Tối thiểu 8 ký tự.";
     return "";
   };
@@ -53,7 +51,7 @@ export default function ForgotPassword() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
+
     // Validate realtime
     let error = "";
     if (name === "username") {
@@ -64,11 +62,11 @@ export default function ForgotPassword() {
       error = validateConfirmPassword(formData.newPassword, value);
     }
 
-    setStatus(prev => ({
+    setStatus((prev) => ({
       ...prev,
       error: error,
       success: "",
-      loading: false
+      loading: false,
     }));
   };
 
@@ -156,7 +154,10 @@ export default function ForgotPassword() {
         if (pwError) throw new Error(pwError);
 
         // Validate xác nhận mật khẩu
-        const confirmError = validateConfirmPassword(formData.newPassword, formData.confirmPassword);
+        const confirmError = validateConfirmPassword(
+          formData.newPassword,
+          formData.confirmPassword
+        );
         if (confirmError) throw new Error(confirmError);
 
         const res = await authApi.forgotPassword({
@@ -187,119 +188,122 @@ export default function ForgotPassword() {
 
   // ========== UI ==========
   return (
-    <form className="sign-up-form" onSubmit={handleSubmit} noValidate>
-      <img src={logo} alt="GreenTrade Logo" className="gt-logo" />
-      <h2 className="title">
-        {step === 1 && "Xác minh tài khoản"}
-        {step === 2 && "Nhập mã OTP"}
-        {step === 3 && "Đặt lại mật khẩu"}
-      </h2>
-
-      {/* Step 1 - Username */}
-      {step === 1 && (
-        <div className="input-field">
-          <i className="fas fa-user"></i>
-          <input
-            type="text"
-            name="username"
-            placeholder="Nhập tên đăng nhập"
-            value={formData.username}
-            onChange={handleChange}
-          />
-        </div>
-      )}
-
-      {/* Step 2 - OTP */}
-      {step === 2 && (
-        <div className="input-field">
-          <i className="fas fa-key"></i>
-          <input
-            type="text"
-            name="otp"
-            placeholder="Nhập mã OTP"
-            value={formData.otp}
-            onChange={handleChange}
-          />
-        </div>
-      )}
-
-        {/* Step 3 - New Password */}
-      {step === 3 && (
-        <>
-          <div className="input-group">
-            <div className={`input-field ${status.error && formData.newPassword ? "error" : ""}`}>
-              <div className="input-icon">
-                <i className="fas fa-lock"></i>
-              </div>
-              <input
-                type="password"
-                name="newPassword"
-                placeholder="Mật khẩu mới"
-                value={formData.newPassword}
-                onChange={handleChange}
-              />
-              <div className="input-border"></div>
+    <div className="auth-page forgot-password-page">
+      <div className="auth-container">
+        <form className="sign-up-form" onSubmit={handleSubmit} noValidate>
+          {/* Logo */}
+          <div className="logo-container">
+            <div className="greentrade-text">
+              <span className="green-text">Green</span>
+              <span className="trade-text">Trade</span>
             </div>
-            {status.error && formData.newPassword && (
-              <div className="error-message">
-                <i className="fas fa-exclamation-circle"></i>
-                <span>{status.error}</span>
-              </div>
-            )}
+            <div className="logo-glow"></div>
           </div>
 
-          <div className="input-group">
-            <div className={`input-field ${status.error && formData.confirmPassword ? "error" : ""}`}>
-              <div className="input-icon">
-                <i className="fas fa-lock"></i>
-              </div>
+          {/* Title */}
+          <h2 className="title">Quên mật khẩu</h2>
+          <p className="subtitle">
+            {step === 1 && "Nhập tên đăng nhập để nhận mã OTP"}
+            {step === 2 && `Mã OTP đã gửi đến: ${formData.email || "email"}`}
+            {step === 3 && "Nhập mật khẩu mới của bạn"}
+          </p>
+
+          {/* Step 1 - Username */}
+          {step === 1 && (
+            <div className="input-field">
+              <i className="fas fa-user"></i>
               <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Xác nhận mật khẩu"
-                value={formData.confirmPassword}
+                type="text"
+                name="username"
+                placeholder="Nhập tên đăng nhập"
+                value={formData.username}
                 onChange={handleChange}
+                autoFocus
               />
-              <div className="input-border"></div>
             </div>
-            {status.error && formData.confirmPassword && (
-              <div className="error-message">
-                <i className="fas fa-exclamation-circle"></i>
-                <span>{status.error}</span>
+          )}
+
+          {/* Step 2 - OTP */}
+          {step === 2 && (
+            <div className="input-field">
+              <i className="fas fa-key"></i>
+              <input
+                type="text"
+                name="otp"
+                placeholder="Nhập mã OTP (6 số)"
+                value={formData.otp}
+                onChange={handleChange}
+                maxLength="6"
+                autoFocus
+              />
+            </div>
+          )}
+
+          {/* Step 3 - New Password */}
+          {step === 3 && (
+            <>
+              <div className="input-field">
+                <i className="fas fa-lock"></i>
+                <input
+                  type="password"
+                  name="newPassword"
+                  placeholder="Mật khẩu mới"
+                  value={formData.newPassword}
+                  onChange={handleChange}
+                  autoFocus
+                />
               </div>
-            )}
-          </div>
-        </>
-      )}      {status.error && <p className="error-message">{status.error}</p>}
-      {status.success && <p className="success-message">{status.success}</p>}
 
-      <input
-        type="submit"
-        value={
-          status.loading
-            ? "Đang xử lý..."
-            : step === 1
-            ? "Gửi OTP"
-            : step === 2
-            ? "Xác minh OTP"
-            : "Đặt lại mật khẩu"
-        }
-        className="btn solid"
-        disabled={status.loading}
-      />
+              <div className="input-field">
+                <i className="fas fa-lock"></i>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Xác nhận mật khẩu"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                />
+              </div>
+            </>
+          )}
 
-      <p className="switch-text">
-        Quay lại{" "}
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("/signin");
-          }}
-        >
-          Đăng nhập
-        </a>
-      </p>
-    </form>
+          {/* Messages */}
+          {status.error && <p className="error-message">{status.error}</p>}
+          {status.success && (
+            <p className="success-message">{status.success}</p>
+          )}
+
+          {/* Submit Button */}
+          <input
+            type="submit"
+            value={
+              status.loading
+                ? "Đang xử lý..."
+                : step === 1
+                ? "Gửi OTP"
+                : step === 2
+                ? "Xác minh OTP"
+                : "Đặt lại mật khẩu"
+            }
+            className="btn solid"
+            disabled={status.loading}
+          />
+
+          {/* Back to Login */}
+          <p className="switch-text">
+            Quay lại{" "}
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/signin");
+              }}
+            >
+              Đăng nhập
+            </a>
+          </p>
+        </form>
+      </div>
+    </div>
   );
 }

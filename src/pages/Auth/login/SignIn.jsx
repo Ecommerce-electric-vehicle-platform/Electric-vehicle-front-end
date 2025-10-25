@@ -65,13 +65,32 @@ export default function SignIn() {
 
       // Kiểm tra xem có token trả về không
       if (loginData?.accessToken && loginData?.refreshToken) {
+        // CLEAR ADMIN DATA TRƯỚC (vì chỉ cho 1 loại login tại 1 thời điểm)
+        localStorage.removeItem("adminProfile");
+        console.log("[User Login] Cleared admin-specific data");
+
         // Bước 2: Lưu token và thông tin cơ bản VÀO LOCALSTORAGE TRƯỚC
         localStorage.setItem("accessToken", loginData.accessToken);
         localStorage.setItem("refreshToken", loginData.refreshToken);
         localStorage.setItem("token", loginData.accessToken); // Giữ lại nếu cần
         localStorage.setItem("username", loginData.username);
         localStorage.setItem("userEmail", loginData.email);
-        localStorage.setItem("authType", "user"); // ⭐ Đánh dấu đây là buyer/seller
+
+        // ✅ Auto-detect authType: seller nếu có sellerId, user nếu không
+        if (loginData.sellerId) {
+          localStorage.setItem("authType", "seller");
+          localStorage.setItem("sellerId", loginData.sellerId);
+          console.log(
+            "[User] Login successful (authType: seller, sellerId:",
+            loginData.sellerId,
+            ")"
+          );
+        } else {
+          localStorage.setItem("authType", "user");
+          localStorage.removeItem("sellerId");
+          console.log("[User] Login successful (authType: user)");
+        }
+
         if (loginData.buyerId) {
           localStorage.setItem("buyerId", loginData.buyerId);
         } else {
@@ -147,24 +166,69 @@ export default function SignIn() {
       const response = await authApi.googleSignin(
         credentialResponse.credential
       );
-      const resData = response?.data?.data;
+      const loginData = response?.data?.data;
 
-      if (resData?.accessToken) {
-        localStorage.setItem("accessToken", resData.accessToken);
-        localStorage.setItem("username", resData.username);
-        localStorage.setItem("authType", "user"); // ⭐ Đánh dấu đây là buyer/seller
+      if (loginData?.accessToken && loginData?.refreshToken) {
+        //  CLEAR ADMIN DATA TRƯỚC (vì chỉ cho 1 loại login tại 1 thời điểm)
+        localStorage.removeItem("adminProfile");
+        console.log("[Google Login] Cleared admin-specific data");
 
-        if (resData.avatarUrl) {
-          localStorage.setItem("buyerAvatar", resData.avatarUrl);
+        // Lưu token và thông tin cơ bản
+        localStorage.setItem("accessToken", loginData.accessToken);
+        localStorage.setItem("refreshToken", loginData.refreshToken);
+        localStorage.setItem("token", loginData.accessToken);
+        localStorage.setItem("username", loginData.username);
+        localStorage.setItem("userEmail", loginData.email);
+
+        // Auto-detect authType: seller nếu có sellerId, user nếu không
+        if (loginData.sellerId) {
+          localStorage.setItem("authType", "seller");
+          localStorage.setItem("sellerId", loginData.sellerId);
+          console.log(
+            "[Google Login] Login successful (authType: seller, sellerId:",
+            loginData.sellerId,
+            ")"
+          );
         } else {
+          localStorage.setItem("authType", "user");
+          localStorage.removeItem("sellerId");
+          console.log("[Google Login] Login successful (authType: user)");
+        }
+
+        if (loginData.buyerId) {
+          localStorage.setItem("buyerId", loginData.buyerId);
+        } else {
+          localStorage.removeItem("buyerId");
+        }
+
+        // Gọi API getProfile để lấy avatar
+        try {
+          const profileResponse = await profileApi.getProfile();
+          const profileData = profileResponse?.data?.data;
+
+          if (profileData?.avatarUrl) {
+            localStorage.setItem("buyerAvatar", profileData.avatarUrl);
+            console.log("Avatar saved:", profileData.avatarUrl);
+          } else {
+            localStorage.removeItem("buyerAvatar");
+          }
+        } catch (profileError) {
+          console.error(
+            "Lỗi khi lấy profile sau Google login:",
+            profileError.message
+          );
           localStorage.removeItem("buyerAvatar");
         }
-      }
 
-      navigate("/");
+        // Thông báo và chuyển hướng
+        window.dispatchEvent(new CustomEvent("authStatusChanged"));
+        navigate("/");
+      }
     } catch (error) {
       console.error("Google login error:", error);
       setBackendError("Đăng nhập Google thất bại.");
+      // Clear authType nếu login thất bại
+      localStorage.removeItem("authType");
     }
   };
 

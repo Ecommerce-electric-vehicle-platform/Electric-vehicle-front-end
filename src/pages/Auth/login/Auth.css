@@ -546,6 +546,25 @@
     width: 100%;
 }
 
+/* ============== FORGOT PASSWORD - SIMPLE ============== */
+.auth-page .subtitle {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.9rem;
+    text-align: center;
+    margin: -10px 0 25px 0;
+    line-height: 1.5;
+}
+
+/* Forgot Password Button - Slim & Full Width */
+.forgot-password-page .btn.solid {
+    width: 100%;
+    height: 20px;
+    font-size: 0.9rem;
+    padding: 0;
+    letter-spacing: 0.5px;
+    margin: 80px 0 24px 0;
+}
+
 /* ============== BUTTONS ============== */
 .auth-page .btn {
     width: 100%;
@@ -932,30 +951,54 @@
     pointer-events: all;
     position: relative;
     z-index: 10;
-    background: linear-gradient(135deg,
-            rgba(0, 168, 107, 0.9) 0%,
-            rgba(107, 228, 164, 0.8) 100%);
-    border: 2px solid rgba(0, 168, 107, 0.6);
-    backdrop-filter: blur(15px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    color: #ffffff;
-    font-weight: 700;
-    font-family: "Inter", sans-serif;
+    /* Gradient giống với button form */
+    background: linear-gradient(135deg, #6be4a4 0%, #00a86b 100%);
+    color: #000;
+    font-weight: 600;
+    font-size: 1rem;
     letter-spacing: 0.5px;
     text-transform: uppercase;
-    box-shadow: 0 8px 25px rgba(0, 168, 107, 0.4),
-        0 4px 15px rgba(0, 0, 0, 0.2);
+    border: none;
+    padding: 14px 32px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(107, 228, 164, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+/* Shine effect */
+.auth-page .panel .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
 }
 
 .auth-page .panel .btn:hover {
-    background: linear-gradient(135deg,
-            rgba(255, 255, 255, 0.95) 0%,
-            rgba(0, 168, 107, 0.1) 100%);
-    border-color: rgba(0, 168, 107, 0.8);
-    transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(0, 168, 107, 0.5),
-        0 8px 25px rgba(0, 0, 0, 0.3);
-    color: #00a86b;
+    background: linear-gradient(135deg, #8ef5c4 0%, #6be4a4 100%);
+    box-shadow: 0 6px 20px rgba(107, 228, 164, 0.4);
+    transform: translateY(-2px);
+}
+
+.auth-page .panel .btn:hover::before {
+    left: 100%;
+}
+
+.auth-page .panel .btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(107, 228, 164, 0.3);
+}
+
+.auth-page .panel .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(107, 228, 164, 0.2);
 }
 
 .auth-page .image {
@@ -1409,16 +1452,55 @@
     margin-left: 8px;
 }
 
-/* Button solid style cho form đăng ký */
+/* Button solid style cho form đăng ký/đăng nhập */
 .auth-page .btn.solid {
     background: linear-gradient(135deg, #6be4a4 0%, #00a86b 100%);
     color: #000;
-    border: 1px solid rgba(107, 228, 164, 0.3);
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(107, 228, 164, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-page .btn.solid::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
 }
 
 .auth-page .btn.solid:hover {
     background: linear-gradient(135deg, #8ef5c4 0%, #6be4a4 100%);
-    border-color: rgba(107, 228, 164, 0.5);
+    box-shadow: 0 6px 20px rgba(107, 228, 164, 0.4);
+    transform: translateY(-2px);
+}
+
+.auth-page .btn.solid:hover::before {
+    left: 100%;
+}
+
+.auth-page .btn.solid:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(107, 228, 164, 0.3);
+}
+
+.auth-page .btn.solid:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(107, 228, 164, 0.2);
 }
 
 
