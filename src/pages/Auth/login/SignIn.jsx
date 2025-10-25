@@ -75,7 +75,22 @@ export default function SignIn() {
         localStorage.setItem("token", loginData.accessToken); // Giữ lại nếu cần
         localStorage.setItem("username", loginData.username);
         localStorage.setItem("userEmail", loginData.email);
-        localStorage.setItem("authType", "user"); // ⭐ Đánh dấu đây là buyer/seller
+
+        // ✅ Auto-detect authType: seller nếu có sellerId, user nếu không
+        if (loginData.sellerId) {
+          localStorage.setItem("authType", "seller");
+          localStorage.setItem("sellerId", loginData.sellerId);
+          console.log(
+            "[User] Login successful (authType: seller, sellerId:",
+            loginData.sellerId,
+            ")"
+          );
+        } else {
+          localStorage.setItem("authType", "user");
+          localStorage.removeItem("sellerId");
+          console.log("[User] Login successful (authType: user)");
+        }
+
         if (loginData.buyerId) {
           localStorage.setItem("buyerId", loginData.buyerId);
         } else {
@@ -165,15 +180,27 @@ export default function SignIn() {
         localStorage.setItem("token", loginData.accessToken);
         localStorage.setItem("username", loginData.username);
         localStorage.setItem("userEmail", loginData.email);
-        localStorage.setItem("authType", "user");
+
+        // Auto-detect authType: seller nếu có sellerId, user nếu không
+        if (loginData.sellerId) {
+          localStorage.setItem("authType", "seller");
+          localStorage.setItem("sellerId", loginData.sellerId);
+          console.log(
+            "[Google Login] Login successful (authType: seller, sellerId:",
+            loginData.sellerId,
+            ")"
+          );
+        } else {
+          localStorage.setItem("authType", "user");
+          localStorage.removeItem("sellerId");
+          console.log("[Google Login] Login successful (authType: user)");
+        }
 
         if (loginData.buyerId) {
           localStorage.setItem("buyerId", loginData.buyerId);
         } else {
           localStorage.removeItem("buyerId");
         }
-
-        console.log("[Google Login] Login successful (authType: user)");
 
         // Gọi API getProfile để lấy avatar
         try {
