@@ -43,7 +43,7 @@ const validateField = (name, value) => {
       if (!value.trim()) return "Email là bắt buộc.";
       if (!emailRegex.test(value)) return "Định dạng email không hợp lệ.";
       break;
-    case "defaultShippingAddress":
+    case "street":
       if (!value.trim()) return "Vui lòng nhập địa chỉ chi tiết (số nhà, đường).";
       if (!addressRegex.test(value)) return "Địa chỉ chứa ký tự không hợp lệ.";
       break;
@@ -74,7 +74,7 @@ export default function PersonalProfileForm() {
     email: "",
     gender: "male",
     dob: "",
-    defaultShippingAddress: "",
+    street: "",
     provinceName: "",
     districtName: "",
     wardName: "",
@@ -125,7 +125,7 @@ export default function PersonalProfileForm() {
           email: profileData.email || storedEmail || "",
           gender: profileData.gender?.toLowerCase() || "male",
           dob: profileData.dob || "",
-          defaultShippingAddress: profileData.defaultShippingAddress || "",
+          street: profileData.street || "",
           provinceName: profileData.provinceName || "",
           districtName: profileData.districtName || "",
           wardName: profileData.wardName || "",
@@ -287,7 +287,7 @@ export default function PersonalProfileForm() {
       // (Gửi các trường text)
       formBody.append("fullName", formData.fullName);
       formBody.append("phoneNumber", formData.phoneNumber);
-      formBody.append("defaultShippingAddress", formData.defaultShippingAddress);
+      formBody.append("street", formData.street);
       formBody.append("gender", formData.gender.toUpperCase());
       formBody.append("dob", formData.dob);
       formBody.append("email", formData.email);
@@ -350,7 +350,7 @@ export default function PersonalProfileForm() {
         email: savedData.email || formData.email,
         gender: (savedData.gender || formData.gender).toLowerCase(),
         dob: (savedData.dob || formData.dob).split("T")[0],
-        defaultShippingAddress: savedData.defaultShippingAddress || formData.defaultShippingAddress,
+        street: savedData.street || formData.street,
         provinceName: provinceName, 
         districtName: districtName, 
         wardName: wardName,         
@@ -375,7 +375,7 @@ export default function PersonalProfileForm() {
   // -----------------------------
   if (isViewMode) {
     const fullAddress = [
-        formData.defaultShippingAddress, 
+        formData.street, 
         formData.wardName, 
         formData.districtName, 
         formData.provinceName
@@ -603,22 +603,22 @@ export default function PersonalProfileForm() {
 
         {/* Địa chỉ chi tiết (Số nhà, đường) */}
         <div className="form-field">
-          <label htmlFor="defaultShippingAddress" className="form-label">
+          <label htmlFor="street" className="form-label">
             Địa chỉ chi tiết (Số nhà, đường)*
           </label>
           <div className="input-wrapper">
             <input
-              id="defaultShippingAddress"
-              name="defaultShippingAddress"
+              id="street"
+              name="street"
               type="text"
               placeholder="Ví dụ: 7 Đ. D1, Long Thạnh Mỹ, Thủ Đức"
-              value={formData.defaultShippingAddress}
+              value={formData.street}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`form-input ${errors.defaultShippingAddress ? "input-error" : ""}`}
+              className={`form-input ${errors.street ? "input-error" : ""}`}
             />
-            {errors.defaultShippingAddress && (
-              <span className="error-text">{errors.defaultShippingAddress}</span>
+            {errors.street && (
+              <span className="error-text">{errors.street}</span>
             )}
           </div>
         </div>
