@@ -50,6 +50,10 @@ const profileApi = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+   // Lấy trạng thái seller
+  getSellerstatus: () => {
+    return axiosInstance.get("/api/v1/seller/profile");
+  },
 
   // Lấy thông tin ví của user
   getWallet: () => {

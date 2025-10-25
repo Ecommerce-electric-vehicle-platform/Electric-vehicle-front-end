@@ -2,160 +2,146 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
 import authApi from "../../../api/authApi";
+import profileApi from "../../../api/profileApi";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 
 export default function SignIn() {
-    const navigate = useNavigate();
-    const [formData, setFormData] = useState({ username: "", password: "" });
-    const [errors, setErrors] = useState({});
-    const [backendError, setBackendError] = useState("");
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [errors, setErrors] = useState({});
+  const [backendError, setBackendError] = useState("");
 
-    // ===== VALIDATION =====
-    const validateField = (name, value) => {
-        let message = "";
+  // ===== VALIDATION =====
+  const validateField = (name, value) => {
+    let message = "";
 
-        if (name === "username") {
-            if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
-            else if (!/^[A-Za-z]+$/.test(value))
-                message = "Chỉ được phép sử dụng chữ cái.";
-            else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
+    if (name === "username") {
+      if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
+      else if (!/^[A-Za-z]+$/.test(value))
+        message = "Chỉ được phép sử dụng chữ cái.";
+      else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
+    }
+
+    if (name === "password") {
+      if (!value.trim()) message = "Mật khẩu là bắt buộc.";
+      else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
+      else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
+      else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
+        message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
+    }
+
+    setErrors((prev) => ({ ...prev, [name]: message }));
+  };
+
+  const validateAll = () => {
+    const newErrors = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      validateField(key, value);
+      if (errors[key]) newErrors[key] = errors[key];
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    validateField(name, value);
+    setBackendError("");
+  };
+
+  // ===== SUBMIT =====
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    // (Validation giữ nguyên)
+    const allValid = validateAll();
+    if (!allValid) return;
+
+    try {
+      // Bước 1: Gọi API Đăng nhập
+      const loginResponse = await authApi.signin(formData);
+      const loginData = loginResponse?.data?.data;
+
+      // Kiểm tra xem có token trả về không
+      if (loginData?.accessToken && loginData?.refreshToken) {
+        // CLEAR ADMIN DATA TRƯỚC (vì chỉ cho 1 loại login tại 1 thời điểm)
+        localStorage.removeItem("adminProfile");
+        console.log("[User Login] Cleared admin-specific data");
+
+        // Bước 2: Lưu token và thông tin cơ bản VÀO LOCALSTORAGE TRƯỚC
+        localStorage.setItem("accessToken", loginData.accessToken);
+        localStorage.setItem("refreshToken", loginData.refreshToken);
+        localStorage.setItem("token", loginData.accessToken); // Giữ lại nếu cần
+        localStorage.setItem("username", loginData.username);
+        localStorage.setItem("userEmail", loginData.email);
+        localStorage.setItem("authType", "user"); // ⭐ Đánh dấu đây là buyer/seller
+        if (loginData.buyerId) {
+          localStorage.setItem("buyerId", loginData.buyerId);
+        } else {
+          localStorage.removeItem("buyerId");
         }
+        console.log("[User] Login successful (authType: user)");
 
-        if (name === "password") {
-            if (!value.trim()) message = "Mật khẩu là bắt buộc.";
-            else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
-            else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
-            else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-                message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
-        }
-
-        setErrors((prev) => ({ ...prev, [name]: message }));
-    };
-
-    const validateAll = () => {
-        const newErrors = {};
-        Object.entries(formData).forEach(([key, value]) => {
-            validateField(key, value);
-            if (errors[key]) newErrors[key] = errors[key];
-        });
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-        validateField(name, value);
-        setBackendError("");
-    };
-
-    // ===== SUBMIT =====
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const allValid = validateAll();
-        if (!allValid) return;
-
+        // ---  BƯỚC 3: GỌI THÊM API getProfile ĐỂ LẤY AVATAR  ---
         try {
-            const response = await authApi.signin(formData);
-            const resData = response?.data?.data;
+          // AxiosInstance sẽ tự động dùng token vừa lưu ở Bước 2
+          const profileResponse = await profileApi.getProfile();
+          const profileData = profileResponse?.data?.data; // Bóc 2 lớp data
 
-            if (resData?.accessToken && resData?.refreshToken) {
-                localStorage.setItem("accessToken", resData.accessToken);
-                localStorage.setItem("refreshToken", resData.refreshToken);
-                localStorage.setItem("token", resData.accessToken);
-                localStorage.setItem("username", resData.username);
-                localStorage.setItem("userEmail", resData.email);
-
-                //  kiểm tra kỹ buyerId trước khi lưu
-                if (resData?.buyerId) {
-                    localStorage.setItem("buyerId", resData.buyerId);
-                } else {
-                    console.warn(" Không có buyerId trả về từ API login");
-                    localStorage.removeItem("buyerId"); // tránh để giá trị "undefined"
-                }
-            
-                // Notify the app that auth status changed
-                window.dispatchEvent(new CustomEvent('authStatusChanged'));
-            }
-
-            setBackendError("");
-            navigate("/");
-        } catch (error) {
-            console.error("Lỗi đăng nhập:", error.response?.data || error.message);
-            const backendMsg =
-                error.response?.data?.message ||
-                "Đăng nhập thất bại. Vui lòng thử lại.";
-            setBackendError(backendMsg);
-            // Bước 1: Gọi API Đăng nhập
-            const loginResponse = await authApi.signin(formData);
-            const loginData = loginResponse?.data?.data;
-
-            // Kiểm tra xem có token trả về không
-            if (loginData?.accessToken && loginData?.refreshToken) {
-                // Bước 2: Lưu token và thông tin cơ bản VÀO LOCALSTORAGE TRƯỚC
-                localStorage.setItem("accessToken", loginData.accessToken);
-                localStorage.setItem("refreshToken", loginData.refreshToken);
-                localStorage.setItem("token", loginData.accessToken); // Giữ lại nếu cần
-                localStorage.setItem("username", loginData.username);
-                localStorage.setItem("userEmail", loginData.email);
-                localStorage.setItem("authType", "user");
-
-                if (loginData.buyerId) {
-                    localStorage.setItem("buyerId", loginData.buyerId);
-                } else {
-                    localStorage.removeItem("buyerId");
-                }
-
-                // ---  BƯỚC 3: GỌI THÊM API getProfile ĐỂ LẤY AVATAR  ---
-                try {
-                    // AxiosInstance sẽ tự động dùng token vừa lưu ở Bước 2
-                    const profileResponse = await profileApi.getProfile();
-                    const profileData = profileResponse?.data?.data; // Bóc 2 lớp data
-
-                    // Lưu avatar vào localStorage
-                    if (profileData?.avatarUrl) {
-                        localStorage.setItem("buyerAvatar", profileData.avatarUrl);
-                        console.log("Avatar saved to localStorage:", profileData.avatarUrl); // DEBUG
-                    } else {
-                        // Nếu getProfile thành công nhưng không có avatarUrl (user mới chưa upload)
-                        localStorage.removeItem("buyerAvatar");
-                        console.log("No avatarUrl found in profile, removing from localStorage."); // DEBUG
-                    }
-                } catch (profileError) {
-                    // Nếu gọi getProfile bị lỗi (VD: user mới chưa có profile -> 404)
-                    console.error("Lỗi khi lấy profile sau khi login (có thể là user mới):", profileError.message);
-                    // Quan trọng: Phải xóa avatar cũ (nếu có) khi getProfile lỗi
-                    localStorage.removeItem("buyerAvatar");
-                }
-                // --- ------------------------------------------ ---
-
-                // Bước 4: Thông báo các component khác và chuyển hướng
-                window.dispatchEvent(new CustomEvent('authStatusChanged'));
-                setBackendError(""); // Xóa lỗi cũ (nếu có)
-                navigate("/"); // Chuyển về trang chủ
-
-            } else {
-                // Nếu API login không trả về token như mong đợi
-                throw new Error("API login không trả về token.");
-            }
-        } catch (error) {
-            // Xử lý lỗi từ Bước 1 (API Login) hoặc Bước 3 (API getProfile)
-            console.error("Lỗi trong quá trình đăng nhập:", error.response?.data || error.message);
-            const backendMsg = error.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
-            setBackendError(backendMsg);
-
-            // Quan trọng: Xóa sạch localStorage nếu có bất kỳ lỗi nào xảy ra
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
-            localStorage.removeItem("token");
-            localStorage.removeItem("username");
-            localStorage.removeItem("userEmail");
-            localStorage.removeItem("buyerId");
+          // Lưu avatar vào localStorage
+          if (profileData?.avatarUrl) {
+            localStorage.setItem("buyerAvatar", profileData.avatarUrl);
+            console.log("Avatar saved to localStorage:", profileData.avatarUrl); // DEBUG
+          } else {
+            // Nếu getProfile thành công nhưng không có avatarUrl (user mới chưa upload)
             localStorage.removeItem("buyerAvatar");
-            // Không dispatch event 'authStatusChanged' khi lỗi
+            console.log(
+              "No avatarUrl found in profile, removing from localStorage."
+            ); // DEBUG
+          }
+        } catch (profileError) {
+          // Nếu gọi getProfile bị lỗi (VD: user mới chưa có profile -> 404)
+          console.error(
+            "Lỗi khi lấy profile sau khi login (có thể là user mới):",
+            profileError.message
+          );
+          // Quan trọng: Phải xóa avatar cũ (nếu có) khi getProfile lỗi
+          localStorage.removeItem("buyerAvatar");
         }
-    };
+        // --- ------------------------------------------ ---
+
+        // Bước 4: Thông báo các component khác và chuyển hướng
+        window.dispatchEvent(new CustomEvent("authStatusChanged"));
+        setBackendError(""); // Xóa lỗi cũ (nếu có)
+        navigate("/"); // Chuyển về trang chủ
+      } else {
+        // Nếu API login không trả về token như mong đợi
+        throw new Error("API login không trả về token.");
+      }
+    } catch (error) {
+      // Xử lý lỗi từ Bước 1 (API Login) hoặc Bước 3 (API getProfile)
+      console.error(
+        "Lỗi trong quá trình đăng nhập:",
+        error.response?.data || error.message
+      );
+      const backendMsg =
+        error.response?.data?.message ||
+        "Đăng nhập thất bại. Vui lòng thử lại.";
+      setBackendError(backendMsg);
+
+      // Quan trọng: Xóa sạch localStorage nếu có bất kỳ lỗi nào xảy ra
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("token");
+      localStorage.removeItem("username");
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("buyerId");
+      localStorage.removeItem("buyerAvatar");
+      localStorage.removeItem("authType");
+      // Không dispatch event 'authStatusChanged' khi lỗi
+    }
+  };
 
   // ===== GOOGLE LOGIN =====
   const handleGoogleSuccess = async (credentialResponse) => {
@@ -166,24 +152,57 @@ export default function SignIn() {
       const response = await authApi.googleSignin(
         credentialResponse.credential
       );
-      const resData = response?.data?.data;
+      const loginData = response?.data?.data;
 
-            if (resData?.accessToken) {
-                localStorage.setItem("accessToken", resData.accessToken);
-                localStorage.setItem("username", resData.username);
-            }
+      if (loginData?.accessToken && loginData?.refreshToken) {
+        //  CLEAR ADMIN DATA TRƯỚC (vì chỉ cho 1 loại login tại 1 thời điểm)
+        localStorage.removeItem("adminProfile");
+        console.log("[Google Login] Cleared admin-specific data");
 
-        if (resData.avatarUrl) {
-          localStorage.setItem("buyerAvatar", resData.avatarUrl);
+        // Lưu token và thông tin cơ bản
+        localStorage.setItem("accessToken", loginData.accessToken);
+        localStorage.setItem("refreshToken", loginData.refreshToken);
+        localStorage.setItem("token", loginData.accessToken);
+        localStorage.setItem("username", loginData.username);
+        localStorage.setItem("userEmail", loginData.email);
+        localStorage.setItem("authType", "user");
+
+        if (loginData.buyerId) {
+          localStorage.setItem("buyerId", loginData.buyerId);
         } else {
+          localStorage.removeItem("buyerId");
+        }
+
+        console.log("[Google Login] Login successful (authType: user)");
+
+        // Gọi API getProfile để lấy avatar
+        try {
+          const profileResponse = await profileApi.getProfile();
+          const profileData = profileResponse?.data?.data;
+
+          if (profileData?.avatarUrl) {
+            localStorage.setItem("buyerAvatar", profileData.avatarUrl);
+            console.log("Avatar saved:", profileData.avatarUrl);
+          } else {
+            localStorage.removeItem("buyerAvatar");
+          }
+        } catch (profileError) {
+          console.error(
+            "Lỗi khi lấy profile sau Google login:",
+            profileError.message
+          );
           localStorage.removeItem("buyerAvatar");
         }
-      }
 
-      navigate("/");
+        // Thông báo và chuyển hướng
+        window.dispatchEvent(new CustomEvent("authStatusChanged"));
+        navigate("/");
+      }
     } catch (error) {
       console.error("Google login error:", error);
       setBackendError("Đăng nhập Google thất bại.");
+      // Clear authType nếu login thất bại
+      localStorage.removeItem("authType");
     }
   };
 

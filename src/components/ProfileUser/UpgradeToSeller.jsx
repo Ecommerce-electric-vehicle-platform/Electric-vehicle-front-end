@@ -2,7 +2,7 @@
 
 // 🔹 1. Import useEffect và useNavigate
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+//import { useNavigate } from "react-router-dom";
 import "./UpgradeToSeller.css";
 import PolicyModal from "./PolicyModal"; // Đảm bảo component này tồn tại và đúng đường dẫn
 import profileApi from "../../api/profileApi";
@@ -39,7 +39,7 @@ export default function UpgradeToSeller({ onGoToProfile }) {
   const [checkingProfile, setCheckingProfile] = useState(true); // State loading cho việc kiểm tra ban đầu
 
   // 🔹 3. Thêm hook useNavigate
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
 
   // Regex
   const regex = {
