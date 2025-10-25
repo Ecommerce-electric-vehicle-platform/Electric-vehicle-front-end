@@ -34,6 +34,7 @@ export function Header() {
   const [upgradeFeatureName, setUpgradeFeatureName] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
+  
 
   // Kiểm tra xem có đang ở trang ProductDetail không
   const _isProductDetail = location.pathname.startsWith("/product/");
@@ -42,76 +43,78 @@ export function Header() {
   const isHomePage = location.pathname === "/";
 
   // Kiểm tra trạng thái đăng nhập
+  // Kiểm tra trạng thái đăng nhập VÀ VAI TRÒ
   useEffect(() => {
-    const checkAuthStatus = () => {
+    // --- Start Modification ---
+    // Renamed function for clarity
+    const checkAuthAndRole = () => {
       const token = localStorage.getItem("token");
       const username = localStorage.getItem("username");
       const userEmail = localStorage.getItem("userEmail");
+      const storedRole = localStorage.getItem("userRole"); // <<< ADD: Read userRole from localStorage
 
       setIsAuthenticated(!!token);
+
       if (token && username) {
         setUserInfo({ username, email: userEmail });
+        // Update userRole state based on localStorage or default to 'buyer'
+        _setUserRole(storedRole || "buyer"); // <<< MODIFY: Use _setUserRole
+        console.log("DEBUG [Header]: User Role set to:", storedRole || "buyer");
       } else {
         setUserInfo(null);
+        _setUserRole("buyer"); // Reset role if not authenticated
+        // Optional: Clear role from localStorage here too for consistency on logout/session expiry
+        // localStorage.removeItem("userRole");
       }
     };
 
-    checkAuthStatus();
-    window.addEventListener("authStatusChanged", checkAuthStatus);
+    checkAuthAndRole(); // Run on initial load
 
+    // Listen for login/logout events
+    window.addEventListener("authStatusChanged", checkAuthAndRole); // Keep this
+    // Listen for role change events (e.g., from SellerApplicationAccepted)
+    window.addEventListener("roleChanged", checkAuthAndRole); // <<< ADD: Add listener for role changes
+
+    // Cleanup listeners on component unmount
     return () => {
-      window.removeEventListener("authStatusChanged", checkAuthStatus);
+      window.removeEventListener("authStatusChanged", checkAuthAndRole); // Keep this
+      window.removeEventListener("roleChanged", checkAuthAndRole); // <<< ADD: Remove listener
     };
+    // --- End Modification ---
   }, []);
 
   // Load notification count khi authenticated
-  useEffect(() => {
+useEffect(() => {
     const loadNotificationCount = async () => {
       if (!isAuthenticated) {
         setNotificationCount(0);
         return;
       }
-
       try {
         const response = await notificationApi.getUnreadCount();
         setNotificationCount(response?.data?.unreadCount || 0);
       } catch {
-        console.warn(
-          "⚠️ Cannot load notification count (Backend may be offline). Setting to 0."
-        );
-        setNotificationCount(0); // Set về 0 nếu lỗi
+        console.warn("⚠️ Cannot load notification count...");
+        setNotificationCount(0);
       }
     };
-
     loadNotificationCount();
   }, [isAuthenticated]);
 
   // Subscribe vào notification service để nhận thông báo mới
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    // Khởi tạo notification service
     notificationService.init();
-
-    // Subscribe để nhận thông báo mới
     const unsubscribe = notificationService.subscribe((notification) => {
       console.log("Received new notification:", notification);
-
-      // Hiển thị popup toast
       setNotificationPopups((prev) => [...prev, notification]);
-
-      // Tăng badge count
       setNotificationCount((prev) => prev + 1);
-
-      // Tự động ẩn popup sau 5 giây
       setTimeout(() => {
         setNotificationPopups((prev) =>
           prev.filter((n) => n.notificationId !== notification.notificationId)
         );
       }, 5000);
     });
-
-    // Listen cho event notification đã đọc
     const handleNotificationRead = async () => {
       try {
         const response = await notificationApi.getUnreadCount();
@@ -120,9 +123,7 @@ export function Header() {
         console.error("Error updating notification count:", error);
       }
     };
-
     window.addEventListener("notificationRead", handleNotificationRead);
-
     return () => {
       unsubscribe();
       window.removeEventListener("notificationRead", handleNotificationRead);
@@ -130,6 +131,7 @@ export function Header() {
   }, [isAuthenticated]);
 
   // Hàm đăng xuất
+// Hàm đăng xuất
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("accessToken");
@@ -139,15 +141,14 @@ export function Header() {
     localStorage.removeItem("userEmail");
     localStorage.removeItem("buyerAvatar");
     localStorage.removeItem("authType");
+    localStorage.removeItem("userRole"); // <<< ADD: Clear userRole on logout
     setUserInfo(null);
     setIsAuthenticated(false);
+    _setUserRole("buyer"); // <<< ADD: Reset userRole state
 
-    // Dispatch event để thông báo đăng xuất
     window.dispatchEvent(new CustomEvent("authStatusChanged"));
-
     navigate("/");
   };
-
   // Hàm cuộn mượt tới section
   const scrollToSection = (id) => {
     const section = document.getElementById(id);
@@ -216,23 +217,25 @@ export function Header() {
     }
   };
 
-  // ✅ Hàm xử lý nâng cấp tài khoản
+  //  Hàm xử lý nâng cấp tài khoản
   const handleUpgrade = () => {
-    navigate("/profile");
+    navigate("/profile?tab=upgrade"); 
+    setShowUpgradeModal(false); // Close modal after navigating
+    setUpgradeFeatureName("");
   };
 
-  // ✅ Hàm đóng modal
+  //  Hàm đóng modal
   const handleCloseUpgradeModal = () => {
     setShowUpgradeModal(false);
     setUpgradeFeatureName("");
   };
 
-  // ✅ Hàm xử lý click vào các icon
+  // Hàm xử lý click vào các icon
   const handleIconClick = (iconType) => {
-    console.log(`🖱️ handleIconClick called with: "${iconType}"`);
+    console.log(` handleIconClick called with: "${iconType}"`);
 
     if (!isAuthenticated) {
-      console.log("⚠️ Not authenticated, redirecting to /signin");
+      console.log(" Not authenticated, redirecting to /signin");
       navigate("/signin");
       return;
     }
