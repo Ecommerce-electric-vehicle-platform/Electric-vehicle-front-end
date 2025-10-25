@@ -1,0 +1,125 @@
+/* General container styles (can be shared or defined in a global CSS) */
+.seller-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    font-family: Arial, Helvetica, sans-serif;
+    animation: fadeInUp 0.6s ease-out both; /* Optional animation */
+}
+
+/* Header styles */
+.seller-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.seller-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937; /* Dark grey */
+    margin: 0;
+    font-family: inherit;
+}
+
+/* Card styles */
+.seller-card {
+    background: white;
+    border-radius: 8px; /* Slightly less rounded than image, adjust if needed */
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Soft shadow */
+    font-family: inherit;
+}
+
+/* Status section specific styles */
+.status-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.status-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.status-icon { /* Base icon style */
+    width: 24px; height: 24px; /* Adjust size to match image */
+    display: flex;
+    align-items: center; justify-content: center;
+    border-radius: 50%;
+    font-size: 16px; /* Adjust icon size */
+    font-weight: bold;
+    color: white;
+    flex-shrink: 0;
+}
+.status-icon.pending { background-color: #3b82f6; } /* Blue for pending */
+
+.status-text {
+    font-size: 16px; /* Adjust as needed */
+    font-weight: 600; /* Medium bold */
+    color: #1f2937;
+    font-family: inherit;
+}
+
+.status-label { font-weight: 700; } /* Bold status text */
+.status-label.pending { color: #3b82f6; } /* Blue for pending */
+
+.status-message { /* The text below the status header */
+    font-size: 14px;
+    color: #4b5563; /* Medium grey */
+    margin: 5px 0 0 0;
+    line-height: 1.6;
+    font-family: inherit;
+}
+
+/* Info card specific styles */
+.info-card {
+    background-color: #f3f4f6; /* Very light grey background like image */
+    border: none; /* Remove border if not needed */
+    box-shadow: none; /* Remove shadow if needed */
+    border-radius: 4px; /* Match image */
+}
+
+.info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Adjust spacing between lines like image */
+}
+
+
+
+/* Style for the text inside the info card */
+.info-value {
+    font-size: 16px; /* Match image font size */
+    color: #1f2937; /* Dark grey */
+    font-weight: 400; /* Regular weight */
+    margin: 0;
+    font-family: inherit;
+    line-height: 1.5; /* Adjust line spacing */
+}
+
+/* Optional: Loading and Error message styles */
+.loading {
+    text-align: center; padding: 40px; color: #6b7280; font-size: 16px; font-family: inherit;
+}
+.form-message.error {
+    background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;
+    text-align: center; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-family: inherit; font-weight: 500;
+}
+
+/* Optional: Animation */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .seller-container { margin: 20px auto; padding: 15px; }
+    .seller-title { font-size: 22px; }
+    .seller-card { padding: 20px; }
+    .status-text { font-size: 15px; }
+    .info-value { font-size: 15px; }
+}
