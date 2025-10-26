@@ -1,3 +1,5 @@
+/* --- UserSidebar.css --- */
+/* (CSS bạn cung cấp) */
 .user-sidebar {
   width: 320px;
   background: rgba(255, 255, 255, 0.95);
@@ -12,11 +14,12 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   height: fit-content;
   position: sticky;
-  top: 0;
+  top: 20px; /* Adjust top position slightly */
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   align-self: flex-start;
   animation: slideInLeft 0.6s ease-out;
 }
+
 
 @keyframes slideInLeft {
   from {
@@ -24,11 +27,13 @@
     transform: translateX(-30px);
   }
 
+
   to {
     opacity: 1;
     transform: translateX(0);
   }
 }
+
 
 .user-sidebar:hover {
   box-shadow:
@@ -39,15 +44,17 @@
   background: rgba(255, 255, 255, 0.98);
 }
 
+
 .sidebar-profile {
   display: flex;
   flex-direction: column;
   align-items: center;
   margin-bottom: 40px;
-  padding: 32px 0;
+  padding-bottom: 32px; /* Adjusted padding */
   border-bottom: 1px solid rgba(16, 185, 129, 0.1);
   position: relative;
 }
+
 
 .sidebar-profile::after {
   content: '';
@@ -61,7 +68,8 @@
   border-radius: 1px;
 }
 
-.profile-avatar {
+
+.profile-avatar { /* This class is now primarily for the container */
   width: 100px;
   height: 100px;
   border-radius: 50%;
@@ -84,6 +92,7 @@
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+
 .profile-avatar::before {
   content: '';
   position: absolute;
@@ -95,6 +104,7 @@
   border-radius: 50%;
 }
 
+
 .profile-avatar:hover {
   transform: scale(1.05);
   box-shadow:
@@ -102,56 +112,43 @@
     0 6px 8px -2px rgba(0, 0, 0, 0.08);
 }
 
-/* Added styles for avatar upload functionality */
-.avatar-label {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-}
 
-.avatar-image {
+/* Styles for the actual image inside the avatar container */
+.avatar-image { /* Use this class on the <img> tag */
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 50%;
+  border-radius: 50%; /* Ensure image is also rounded */
 }
 
-.avatar-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: opacity 0.2s;
+
+
+
+.profile-info { /* Added container for name and role */
+    text-align: center; /* Center text below avatar */
 }
 
-.plus-icon {
-  color: white;
-  font-size: 48px;
-  font-weight: 300;
-  line-height: 1;
-}
 
 .profile-name {
   font-size: 16px;
   font-weight: 600;
-  margin: 0;
+  margin: 0 0 4px 0; /* Add bottom margin */
   color: #1f2937;
   text-align: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* Removed gradient text for better readability, can be added back if preferred */
+  /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background-clip: text; */
 }
+
+
+.profile-role { /* Added style for role */
+    font-size: 14px;
+    color: #64748b;
+    text-transform: capitalize;
+}
+
 
 .sidebar-nav {
   display: flex;
@@ -159,7 +156,8 @@
   gap: 6px;
 }
 
-.nav-item {
+
+.nav-item { /* Changed from .sidebar-item */
   width: 100%;
   text-align: left;
   padding: 14px 20px;
@@ -177,6 +175,7 @@
   gap: 12px;
 }
 
+
 .nav-item::before {
   content: '';
   position: absolute;
@@ -190,15 +189,18 @@
   transition: height 0.3s ease;
 }
 
+
 .nav-item:hover {
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
   color: #475569;
   transform: translateX(4px);
 }
 
+
 .nav-item:hover::before {
   height: 20px;
 }
+
 
 .nav-item.active {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -210,28 +212,22 @@
   transform: translateX(4px);
 }
 
+
 .nav-item.active::before {
   height: 24px;
-  background: #ffffff;
+  background: #ffffff; /* White indicator for active item */
 }
 
-.input-error {
-  border-color: #ef4444;
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
-}
 
-.error-text {
-  color: #ef4444;
-  font-size: 13px;
-  margin-top: 4px;
-}
 
-/* Responsive Design */
+
+/* Responsive Design (Copied from your CSS) */
 @media (max-width: 1024px) {
   .user-sidebar {
     width: 280px;
     padding: 32px 24px;
   }
+
 
   .profile-avatar {
     width: 80px;
@@ -240,13 +236,16 @@
   }
 }
 
+
 @media (max-width: 768px) {
   .user-sidebar {
     width: 100%;
     margin-bottom: 20px;
     position: static;
     border-radius: 12px;
+    top: 0; /* Reset sticky position */
   }
+
 
   .sidebar-profile {
     flex-direction: row;
@@ -256,6 +255,7 @@
     margin-bottom: 24px;
   }
 
+
   .profile-avatar {
     width: 60px;
     height: 60px;
@@ -263,9 +263,16 @@
     margin-bottom: 0;
   }
 
+
+  .profile-info {
+      text-align: left; /* Align text left on mobile */
+  }
+
+
   .profile-name {
     font-size: 14px;
   }
+
 
   .sidebar-nav {
     flex-direction: row;
@@ -273,25 +280,48 @@
     gap: 8px;
   }
 
+
   .nav-item {
-    flex: 1;
+    flex: 1 1 auto; /* Allow items to wrap nicely */
     min-width: 120px;
-    text-align: center;
+    justify-content: center; /* Center text in buttons */
     padding: 12px 16px;
     font-size: 13px;
+    gap: 8px; /* Reduce gap */
   }
+  .nav-item::before {
+      display: none; /* Hide side indicator on mobile */
+  }
+   .nav-item:hover, .nav-item.active {
+       transform: none; /* Disable translateX on mobile */
+   }
+   .nav-item.active {
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); /* Softer shadow */
+   }
 }
+
 
 @media (max-width: 480px) {
   .user-sidebar {
     padding: 20px 16px;
+    border-radius: 16px;
+  }
+  .sidebar-profile {
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+  }
+  .sidebar-nav {
+    flex-direction: column; /* Stack vertically again on very small screens */
+    gap: 4px;
   }
 
-  .sidebar-nav {
-    flex-direction: column;
-  }
 
   .nav-item {
     min-width: auto;
+    justify-content: flex-start; /* Align text left */
+    padding: 10px 16px;
   }
 }
+
+
+

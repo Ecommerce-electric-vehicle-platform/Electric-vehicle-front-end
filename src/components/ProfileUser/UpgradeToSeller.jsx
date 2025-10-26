@@ -9,7 +9,7 @@ import profileApi from "../../api/profileApi"; // File API của bạn
 import SellerApplicationPending from "./SellerApplicationPending";
 import SellerApplicationAccepted from "./SellerApplicationAccepted";
 
-export default function UpgradeToSeller({ onGoToProfile }) { // Prop để quay lại trang profile
+export default function UpgradeToSeller({ onGoToProfile , onKycAccepted}) { // Prop để quay lại trang profile
     // === Form State ===
     const [formData, setFormData] = useState({
         storeName: "",
@@ -61,113 +61,106 @@ export default function UpgradeToSeller({ onGoToProfile }) { // Prop để quay 
     };
 
     // === useEffect: Kiểm tra trạng thái ban đầu ===
-   // === useEffect: Kiểm tra trạng thái ban đầu (VỚI LOG DEBUG) ===
-    useEffect(() => {
-        const checkStatus = async () => {
-            console.log("--- UpgradeToSeller: Bắt đầu kiểm tra trạng thái ---");
-            setCheckingStatus(true);
-            setIsProfileComplete(null); // Reset trạng thái kiểm tra
-            setKycStatus(null); // Reset trạng thái KYC
-            let buyerProfileData = null;
+   useEffect(() => {
+  let isMounted = true; //  chặn setState sau khi component unmount
 
-            try {
-                // --- B1: Kiểm tra Profile Buyer ---
-                console.log("DEBUG: Đang gọi API getProfile...");
-                const buyerResponse = await profileApi.getProfile();
-                console.log("DEBUG: Response từ getProfile:", buyerResponse);
+  const checkStatus = async () => {
+    console.log("🔍 UpgradeToSeller: Bắt đầu kiểm tra trạng thái...");
+    setCheckingStatus(true);
 
-                if (!buyerResponse.data?.success) {
-                    console.error("Lỗi API getProfile:", buyerResponse.data?.message || "Không rõ lỗi");
-                    throw new Error(buyerResponse.data?.message || "Lỗi tải profile buyer.");
-                }
+    try {
+      // === 1Kiểm tra Buyer Profile ===
+      const buyerResponse = await profileApi.getProfile();
+      if (!isMounted) return;
 
-                buyerProfileData = buyerResponse.data.data;
-                console.log("DEBUG: Dữ liệu buyerProfileData:", buyerProfileData);
-                setSellerData(buyerProfileData); // Lưu data buyer (quan trọng)
+      if (!buyerResponse.data?.success) {
+        console.warn(" Lỗi khi lấy buyer profile:", buyerResponse.data?.message);
+        throw new Error(buyerResponse.data?.message || "Không thể tải hồ sơ người mua.");
+      }
 
-                // --- KIỂM TRA isComplete ---
-                let isComplete = false;
-                if (buyerProfileData) {
-                    const fn = buyerProfileData.fullName;
-                    const ph = buyerProfileData.phoneNumber;
-                    const em = buyerProfileData.email;
-                    const db = buyerProfileData.dob;
-                    const ad = buyerProfileData.street;
-                    const av = buyerProfileData.avatarUrl;
+      const buyerProfileData = buyerResponse.data.data;
+      setSellerData(buyerProfileData);
 
-                    console.log("DEBUG: Các trường profile TRƯỚC KHI kiểm tra:", { fullName: fn, phoneNumber: ph, email: em, dob: db, street: ad, avatarUrl: av });
+      // Kiểm tra đầy đủ thông tin
+      const {
+        fullName,
+        phoneNumber,
+        email,
+        dob,
+        street,
+        avatarUrl,
+      } = buyerProfileData || {};
 
-                    // Kiểm tra từng trường xem có giá trị hợp lệ không (không null/undefined/rỗng)
-                    const fnValid = fn && fn.trim() !== "";
-                    const phValid = ph && ph.trim() !== "";
-                    const emValid = em && em.trim() !== "";
-                    const dbValid = db && db.trim() !== ""; // Chỉ cần không rỗng
-                    const adValid = ad && ad.trim() !== "";
-                    const avValid = av && av.trim() !== "";
+      const isComplete =
+        fullName?.trim() &&
+        phoneNumber?.trim() &&
+        email?.trim() &&
+        dob &&
+        street?.trim() &&
+        avatarUrl?.trim();
 
-                    console.log("DEBUG: Kết quả kiểm tra từng trường:", { fnValid, phValid, emValid, dbValid, adValid, avValid });
+      if (!isComplete) {
+        console.log(" Hồ sơ buyer chưa hoàn chỉnh → yêu cầu cập nhật.");
+        if (isMounted) {
+          setIsProfileComplete(false);
+          setKycStatus(null);
+        }
+        return;
+      }
 
-                    // isComplete là true CHỈ KHI TẤT CẢ đều true
-                    isComplete = fnValid && phValid && emValid && dbValid && adValid && avValid;
+      if (isMounted) {
+        setIsProfileComplete(true);
+      }
 
-                } else {
-                    console.log("DEBUG: buyerProfileData rỗng hoặc null.");
-                }
+      // === 2️ Kiểm tra Seller Profile / KYC ===
+      try {
+        const sellerResponse = await profileApi.getSellerstatus();
+        if (!isMounted) return;
 
-                console.log("DEBUG: >>> Kết quả cuối cùng của isComplete:", isComplete, "<<<");
+        const sellerData = sellerResponse.data?.data;
+        const sellerStatus = sellerData?.status || "NOT_SUBMITTED";
 
-                if (!isComplete) {
-                    console.log("DEBUG: Buyer Profile check THẤT BẠI. -> Hiển thị thông báo.");
-                    setIsProfileComplete(false); // <<< LỖI CÓ THỂ Ở ĐÂY
-                    setCheckingStatus(false);
-                    return; // Dừng lại
-                }
+        if (sellerResponse.data?.success && sellerData) {
+          console.log(" Seller profile tìm thấy:", sellerStatus);
+          setSellerData(prev => ({ ...prev, ...sellerData }));
+          setKycStatus(sellerStatus);
+        } else {
+          console.log(" Seller chưa có profile → NOT_SUBMITTED.");
+          setKycStatus("NOT_SUBMITTED");
+        }
+      } catch (sellerError) {
+        const statusCode = sellerError.response?.status;
+        const errMsg = sellerError.response?.data?.error;
+        console.warn("Lỗi khi gọi getSellerstatus:", statusCode, errMsg);
 
-                // --- Profile Buyer OK -> Kiểm tra Status Seller ---
-                console.log("DEBUG: Buyer Profile check THÀNH CÔNG. -> Kiểm tra Seller Status.");
-                setIsProfileComplete(true);
+        if (statusCode === 404 || (statusCode === 500 && errMsg === "User not existsed.")) {
+          if (isMounted) setKycStatus("NOT_SUBMITTED");
+        } else {
+          console.error(" Lỗi bất thường khi kiểm tra seller:", sellerError);
+          if (isMounted) setKycStatus("NOT_SUBMITTED");
+        }
+      }
+    } catch (error) {
+      console.error(" Lỗi khi kiểm tra trạng thái hồ sơ:", error);
+      if (isMounted) {
+        setIsProfileComplete(false);
+        setKycStatus(null);
+      }
+    } finally {
+      if (isMounted) {
+        setCheckingStatus(false);
+        console.log(" Hoàn tất kiểm tra trạng thái UpgradeToSeller.");
+      }
+    }
+  };
 
-                try {
-                    console.log("DEBUG: Đang gọi API getSellerstatus...");
-                    const sellerResponse = await profileApi.getSellerstatus();
-                    console.log("DEBUG: Response từ getSellerstatus:", sellerResponse);
-                    const sellerResponseBody = sellerResponse.data;
+  checkStatus();
 
-                    if (sellerResponseBody.success && sellerResponseBody.data) {
-                        console.log("DEBUG: Tìm thấy seller profile:", sellerResponseBody.data);
-                        setSellerData(prev => ({ ...prev, ...sellerResponseBody.data }));
-                        const statusFromApi = sellerResponseBody.data.status || "NOT_SUBMITTED";
-                         console.log("DEBUG: Trạng thái KYC từ API:", statusFromApi);
-                        setKycStatus(statusFromApi);
-                    } else {
-                         console.log("DEBUG: API getSellerstatus không trả về data hoặc báo lỗi nhẹ. -> Coi như NOT_SUBMITTED.");
-                        setKycStatus("NOT_SUBMITTED");
-                    }
-                } catch (sellerError) {
-                    const statusCode = sellerError.response?.status;
-                    const errMsg = sellerError.response?.data?.error;
-                    console.warn("DEBUG: Lỗi khi gọi getSellerstatus:", statusCode, errMsg, sellerError.message);
-
-                    if (statusCode === 404 || (statusCode === 500 && errMsg === "User not existsed.")) {
-                         console.log("DEBUG: Lỗi 404 hoặc User not existsed -> Bị từ chối/Chưa nộp -> NOT_SUBMITTED.");
-                        setKycStatus("NOT_SUBMITTED");
-                    } else {
-                        // Lỗi lạ, có thể hiển thị thông báo lỗi chung thay vì form
-                        console.error("Lỗi không xác định khi kiểm tra trạng thái seller:", sellerError);
-                        // throw sellerError; // Hoặc ném lỗi ra để hiển thị trang lỗi chung
-                         setKycStatus("NOT_SUBMITTED"); // Tạm thời vẫn hiện form
-                    }
-                }
-            } catch (error) {
-                console.error("Lỗi nghiêm trọng trong useEffect:", error);
-                setIsProfileComplete(false); // Nếu có bất kỳ lỗi nào, coi như profile chưa xong
-            } finally {
-                setCheckingStatus(false); // Luôn tắt loading cuối cùng
-                console.log("--- UpgradeToSeller: Kết thúc kiểm tra trạng thái ---");
-            }
-        };
-        checkStatus();
-    }, []); // Chỉ chạy 1 lần
+  //  Cleanup để tránh memory leak
+  return () => {
+    isMounted = false;
+  };
+}, []); // chỉ chạy 1 lần khi component mount
 
 
     // --- Form Handlers ---
@@ -382,7 +375,9 @@ export default function UpgradeToSeller({ onGoToProfile }) { // Prop để quay 
     }
 
     // 3. Hiển thị theo Status KYC
-    if (kycStatus === "ACCEPTED") return <SellerApplicationAccepted data={sellerData} />;
+    if (kycStatus === "ACCEPTED") return <SellerApplicationAccepted data={sellerData} 
+    onComplete={onKycAccepted}
+    />;
     if (kycStatus === "PENDING") return <SellerApplicationPending data={sellerData} />;
 
     // 4. Hiện Form Đăng Ký KYC (NOT_SUBMITTED / REJECTED)

@@ -2,12 +2,12 @@
 
 import "./SellerApplicationAccepted.css"; // Giữ lại CSS
 
-export default function SellerApplicationAccepted({ data }) { // Nhận 'data' từ prop
+export default function SellerApplicationAccepted({ data, onComplete }) { // Nhận 'data' từ prop
     const sellerData = data;
 
     // Hàm format ngày (giữ lại)
     const formatDate = (dateString) => {
-       if (!dateString) return "Không rõ";
+        if (!dateString) return "Không rõ";
         try {
             const date = new Date(dateString);
             if (isNaN(date.getTime())) return "Ngày không hợp lệ";
@@ -15,8 +15,8 @@ export default function SellerApplicationAccepted({ data }) { // Nhận 'data' t
                 year: "numeric", month: "long", day: "numeric",
             });
         } catch (e) {
-             console.error("Error formatting date:", e);
-             return "Lỗi định dạng ngày";
+            console.error("Error formatting date:", e);
+            return "Lỗi định dạng ngày";
         }
     };
 
@@ -30,19 +30,20 @@ export default function SellerApplicationAccepted({ data }) { // Nhận 'data' t
     const handleComplete = () => {
         console.log("Hoàn tất tác vụ - Đã nâng cấp thành Seller!");
 
-        // --- THÊM DÒNG NÀY ---
+
         // Lưu trạng thái seller vào localStorage
         localStorage.setItem('userRole', 'seller');
         // --- KẾT THÚC THÊM ---
 
         // (Tùy chọn) Thông báo hoặc chuyển hướng
-        alert("Chúc mừng! Tài khoản của bạn đã được nâng cấp thành Người bán.");
+        //alert("Chúc mừng! Tài khoản của bạn đã được nâng cấp thành Người bán.");
 
         // Có thể bắn thêm event để Header cập nhật ngay lập tức nếu cần
         window.dispatchEvent(new CustomEvent("roleChanged", { detail: { role: 'seller' } }));
 
-        // Ví dụ: Chuyển hướng
-        // window.location.href = '/seller/dashboard'; // Hoặc dùng navigate nếu có
+        if (onComplete) {
+            onComplete(); // Đây chính là hàm handleKycAccepted ở File 6
+        }
     };
 
     return (
@@ -56,7 +57,7 @@ export default function SellerApplicationAccepted({ data }) { // Nhận 'data' t
             {/* Status Text (Giống ảnh) */}
             {/* Cần CSS để căn chỉnh và tạo màu xanh */}
             <div className="status-text-accepted" style={{ marginBottom: '20px', textAlign: 'center' }}> {/* Thêm style tạm */}
-                 Trạng thái duyệt tài khoản: <span className="status-label accepted">Chấp nhận</span>
+                Trạng thái duyệt tài khoản: <span className="status-label accepted">Chấp nhận</span>
             </div>
 
 
