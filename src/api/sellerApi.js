@@ -1,4 +1,3 @@
-// src/api/sellerApi.js
 import axiosInstance from "./axiosInstance";
 
 const sellerApi = {
@@ -11,9 +10,10 @@ const sellerApi = {
       const response = await axiosInstance.post(
         `/api/v1/seller/${username}/check-service-package-validity`
       );
+      console.log("[SellerAPI] Package validity:", response.data);
       return response;
     } catch (error) {
-      console.error("Error checking service package validity:", error);
+      console.error("[SellerAPI] Error checking service package:", error);
       throw error;
     }
   },
@@ -21,13 +21,25 @@ const sellerApi = {
   /**
    * Lấy thông tin seller profile
    * GET /api/v1/seller/profile
+   * Dùng trong SignIn để xác định role
    */
   getSellerProfile: async () => {
     try {
       const response = await axiosInstance.get("/api/v1/seller/profile");
-      return response;
+
+      // Chuẩn hóa dữ liệu trả về để luôn có sellerId
+      const data = response?.data?.data || {};
+      const sellerId = data.sellerId || data.id || data.seller?.id;
+
+      if (sellerId) {
+        console.log("[SellerAPI] Seller profile found:", sellerId);
+        return { ...response, data: { data: { ...data, sellerId } } };
+      } else {
+        console.log("[SellerAPI] Not a seller account");
+        return { data: { data: null } };
+      }
     } catch (error) {
-      console.error("Error fetching seller profile:", error);
+      console.error("[SellerAPI] Error fetching seller profile:", error);
       throw error;
     }
   },
@@ -35,22 +47,6 @@ const sellerApi = {
   /**
    * Đăng tin bán sản phẩm
    * POST /api/v1/seller/post-products
-   * @param {Object} productData - Thông tin sản phẩm
-   * @param {string} productData.sellerId
-   * @param {string} productData.title
-   * @param {string} productData.brand
-   * @param {string} productData.model
-   * @param {number} productData.manufacturerYear
-   * @param {string} productData.usedDuration
-   * @param {string} productData.color
-   * @param {number} productData.price
-   * @param {string} productData.length
-   * @param {string} productData.width
-   * @param {string} productData.height
-   * @param {string} productData.weight
-   * @param {string} productData.description
-   * @param {string} productData.locationTrading
-   * @param {Array<string>} productData.pictures - Array of image URLs
    */
   createPostProduct: async (productData) => {
     try {
@@ -58,9 +54,10 @@ const sellerApi = {
         "/api/v1/seller/post-products",
         productData
       );
+      console.log("[SellerAPI] Created post:", response.data);
       return response;
     } catch (error) {
-      console.error("Error creating post product:", error);
+      console.error("[SellerAPI] Error creating post product:", error);
       throw error;
     }
   },
@@ -68,7 +65,6 @@ const sellerApi = {
   /**
    * Gửi yêu cầu xác minh bài đăng
    * POST /api/v1/seller/verified-post-product-request
-   * @param {number} postId - ID của bài đăng
    */
   requestPostVerification: async (postId) => {
     try {
@@ -76,16 +72,17 @@ const sellerApi = {
         "/api/v1/seller/verified-post-product-request",
         { postId }
       );
+      console.log("[SellerAPI] Verification requested for post:", postId);
       return response;
     } catch (error) {
-      console.error("Error requesting post verification:", error);
+      console.error("[SellerAPI] Error requesting verification:", error);
       throw error;
     }
   },
 
   /**
    * Lấy danh sách bài đăng của seller
-   * (Giả định có API này, nếu không thì cần BE bổ sung)
+   * GET /api/v1/seller/my-posts?page={page}&size={size}
    */
   getMyPosts: async (page = 0, size = 10) => {
     try {
@@ -94,14 +91,14 @@ const sellerApi = {
       });
       return response;
     } catch (error) {
-      console.error("Error fetching my posts:", error);
+      console.error("[SellerAPI] Error fetching my posts:", error);
       throw error;
     }
   },
 
   /**
    * Cập nhật bài đăng
-   * (Giả định có API này)
+   * PUT /api/v1/seller/posts/{postId}
    */
   updatePost: async (postId, productData) => {
     try {
@@ -109,29 +106,30 @@ const sellerApi = {
         `/api/v1/seller/posts/${postId}`,
         productData
       );
+      console.log("[SellerAPI] Updated post:", postId);
       return response;
     } catch (error) {
-      console.error("Error updating post:", error);
+      console.error("[SellerAPI] Error updating post:", error);
       throw error;
     }
   },
 
   /**
    * Xóa bài đăng
-   * (Giả định có API này)
+   * DELETE /api/v1/seller/posts/{postId}
    */
   deletePost: async (postId) => {
     try {
       const response = await axiosInstance.delete(
         `/api/v1/seller/posts/${postId}`
       );
+      console.log("[SellerAPI] Deleted post:", postId);
       return response;
     } catch (error) {
-      console.error("Error deleting post:", error);
+      console.error("[SellerAPI] Error deleting post:", error);
       throw error;
     }
   },
 };
 
 export default sellerApi;
-

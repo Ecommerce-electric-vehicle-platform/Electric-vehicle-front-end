@@ -7,8 +7,6 @@ import {
   MessageCircle,
   Bell,
   Package,
-  User,
-  ChevronDown,
 } from "lucide-react";
 
 import { CategorySidebar } from "../CategorySidebar/CategorySidebar";
@@ -24,97 +22,83 @@ export function Header() {
   const [hamburgerMenuOpen, setHamburgerMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
- 
-  const [userRole, _setUserRole] = useState("buyer"); // 'buyer' hoặc 'người bán'
+  const [authType, setAuthType] = useState(localStorage.getItem("authType") || "guest"); // buyer | seller | admin | guest
+
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationPopups, setNotificationPopups] = useState([]);
-  const [showNotificationDropdown, setShowNotificationDropdown] =
-    useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeFeatureName, setUpgradeFeatureName] = useState("");
+
   const navigate = useNavigate();
   const location = useLocation();
-  
 
-  // Kiểm tra xem có đang ở trang ProductDetail không
-  const _isProductDetail = location.pathname.startsWith("/product/");
-
-  // Kiểm tra xem có đang ở trang home không
-  const isHomePage = location.pathname === "/";
-
-  // Kiểm tra trạng thái đăng nhập
-  // Kiểm tra trạng thái đăng nhập VÀ VAI TRÒ
+  // ========== AUTH STATE SYNC ==========
   useEffect(() => {
-    // --- Start Modification ---
-    // Renamed function for clarity
     const checkAuthAndRole = () => {
       const token = localStorage.getItem("token");
       const username = localStorage.getItem("username");
       const userEmail = localStorage.getItem("userEmail");
-      const storedRole = localStorage.getItem("userRole"); // <<< ADD: Read userRole from localStorage
+      const role = localStorage.getItem("authType") || "guest";
 
       setIsAuthenticated(!!token);
+      setAuthType(role);
+      setUserInfo(token ? { username, email: userEmail } : null);
 
-      if (token && username) {
-        setUserInfo({ username, email: userEmail });
-        // Update userRole state based on localStorage or default to 'buyer'
-        _setUserRole(storedRole || "buyer"); // <<< MODIFY: Use _setUserRole
-        console.log("DEBUG [Header]: User Role set to:", storedRole || "buyer");
-      } else {
-        setUserInfo(null);
-        _setUserRole("buyer"); // Reset role if not authenticated
-        // Optional: Clear role from localStorage here too for consistency on logout/session expiry
-        // localStorage.removeItem("userRole");
-      }
+      console.log(
+        `[Header] Auth check → Authenticated: ${!!token}, Role: ${role}, Username: ${username}`
+      );
     };
 
-    checkAuthAndRole(); // Run on initial load
+    // Run once on mount
+    checkAuthAndRole();
 
-    // Listen for login/logout events
-    window.addEventListener("authStatusChanged", checkAuthAndRole); // Keep this
-    // Listen for role change events (e.g., from SellerApplicationAccepted)
-    window.addEventListener("roleChanged", checkAuthAndRole); // <<< ADD: Add listener for role changes
+    // Listen to auth events
+    window.addEventListener("authStatusChanged", checkAuthAndRole);
+    window.addEventListener("roleChanged", checkAuthAndRole); // nếu sau này nâng cấp seller realtime
 
-    // Cleanup listeners on component unmount
     return () => {
-      window.removeEventListener("authStatusChanged", checkAuthAndRole); // Keep this
-      window.removeEventListener("roleChanged", checkAuthAndRole); // <<< ADD: Remove listener
+      window.removeEventListener("authStatusChanged", checkAuthAndRole);
+      window.removeEventListener("roleChanged", checkAuthAndRole);
     };
-    // --- End Modification ---
   }, []);
 
-  // Load notification count khi authenticated
-useEffect(() => {
+  // ========== LOAD NOTIFICATIONS ==========
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setNotificationCount(0);
+      return;
+    }
+
     const loadNotificationCount = async () => {
-      if (!isAuthenticated) {
-        setNotificationCount(0);
-        return;
-      }
       try {
         const response = await notificationApi.getUnreadCount();
         setNotificationCount(response?.data?.unreadCount || 0);
       } catch {
-        console.warn("⚠️ Cannot load notification count...");
+        console.warn("Cannot load notification count");
         setNotificationCount(0);
       }
     };
     loadNotificationCount();
   }, [isAuthenticated]);
 
-  // Subscribe vào notification service để nhận thông báo mới
+  // ========== SUBSCRIBE REALTIME NOTIFICATION ==========
   useEffect(() => {
     if (!isAuthenticated) return;
+
     notificationService.init();
     const unsubscribe = notificationService.subscribe((notification) => {
-      console.log("Received new notification:", notification);
+      console.log("New notification:", notification);
       setNotificationPopups((prev) => [...prev, notification]);
       setNotificationCount((prev) => prev + 1);
+
       setTimeout(() => {
         setNotificationPopups((prev) =>
           prev.filter((n) => n.notificationId !== notification.notificationId)
         );
       }, 5000);
     });
+
     const handleNotificationRead = async () => {
       try {
         const response = await notificationApi.getUnreadCount();
@@ -123,6 +107,7 @@ useEffect(() => {
         console.error("Error updating notification count:", error);
       }
     };
+
     window.addEventListener("notificationRead", handleNotificationRead);
     return () => {
       unsubscribe();
@@ -130,117 +115,91 @@ useEffect(() => {
     };
   }, [isAuthenticated]);
 
-  // Hàm đăng xuất
-// Hàm đăng xuất
+  // ========== LOGOUT ==========
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("username");
-    localStorage.removeItem("buyerId");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("buyerAvatar");
-    localStorage.removeItem("authType");
-    localStorage.removeItem("userRole"); // <<< ADD: Clear userRole on logout
+    [
+      "token",
+      "accessToken",
+      "refreshToken",
+      "username",
+      "userEmail",
+      "buyerId",
+      "sellerId",
+      "buyerAvatar",
+      "authType",
+    ].forEach((key) => localStorage.removeItem(key));
+
     setUserInfo(null);
     setIsAuthenticated(false);
-    _setUserRole("buyer"); // <<< ADD: Reset userRole state
+    setAuthType("guest");
 
     window.dispatchEvent(new CustomEvent("authStatusChanged"));
     navigate("/");
   };
-  // Hàm cuộn mượt tới section
-  const scrollToSection = (id) => {
-    const section = document.getElementById(id);
-    if (section) {
-      section.scrollIntoView({ behavior: "smooth" });
-    }
-  };
 
-  // Hàm navigation thông minh
-  const handleSmartNavigation = (sectionId) => {
-    if (isHomePage) {
-      // Nếu đang ở trang chủ, chỉ cần cuộn
-      scrollToSection(sectionId);
-    } else {
-      // Nếu đang ở trang khác (profile, product detail, etc.), chuyển về trang chủ với hash
-      navigate(`/#${sectionId}`);
-    }
-  };
-
-  // Hàm điều hướng
-  const handleNavigate = (path) => {
-    navigate(path);
-  };
-
-  // Điều hướng về trang Home theo role (Home.jsx sẽ chọn HomeUser/HomeGuest)
-  const handleLogoClick = () => {
-    if (isHomePage) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      navigate("/");
-    }
-  };
-
-  // Hàm toggle hamburger menu
+  // ========== MENU TOGGLES ==========
   const toggleHamburgerMenu = () => {
-    setHamburgerMenuOpen(!hamburgerMenuOpen);
-    // Ngăn scroll khi menu mở
-    if (!hamburgerMenuOpen) {
-      document.body.classList.add("hamburger-menu-open");
-    } else {
-      document.body.classList.remove("hamburger-menu-open");
-    }
+    setHamburgerMenuOpen((prev) => !prev);
+    document.body.classList.toggle("hamburger-menu-open", !hamburgerMenuOpen);
   };
 
-  // Hàm đóng hamburger menu
   const closeHamburgerMenu = () => {
     setHamburgerMenuOpen(false);
     document.body.classList.remove("hamburger-menu-open");
   };
 
-  // Hàm xử lý click vào nút người bán khi user là buyer
-  const handleSellerAction = (action) => {
-    if (userRole === "buyer") {
-      // Hiển thị modal yêu cầu upgrade
-      setUpgradeFeatureName(action);
-      setShowUpgradeModal(true);
-    } else {
-      // Xử lý action cho người bán
-      if (action === "Quản lý tin") {
-        // TODO: Navigate to manage posts page
-        console.log("Navigate to manage posts");
-      } else if (action === "Đăng tin") {
-        // TODO: Navigate to create post page
-        console.log("Navigate to create post");
-      }
-    }
+  // ========== SMART NAVIGATION ==========
+  const scrollToSection = (id) => {
+    const section = document.getElementById(id);
+    if (section) section.scrollIntoView({ behavior: "smooth" });
   };
 
-  //  Hàm xử lý nâng cấp tài khoản
+  const handleSmartNavigation = (sectionId) => {
+    if (location.pathname === "/") scrollToSection(sectionId);
+    else navigate(`/#${sectionId}`);
+  };
+
+  // ========== SELLER ACTIONS ==========
+  const handleSellerAction = (action) => {
+    const currentRole = localStorage.getItem("authType") || "guest";
+
+    // Buyer or guest → show upgrade modal
+    if (currentRole === "buyer" || currentRole === "guest") {
+      setUpgradeFeatureName(action);
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    // Seller → navigate directly
+    if (currentRole === "seller") {
+      if (action === "Đăng tin") navigate("/seller/create-post");
+      else if (action === "Quản lý tin") navigate("/seller/manage-posts");
+      return;
+    }
+
+    // Admin → chuyển sang trang admin tương ứng
+    if (currentRole === "admin") navigate("/admin/dashboard");
+  };
+
   const handleUpgrade = () => {
-    navigate("/profile?tab=upgrade"); 
-    setShowUpgradeModal(false); // Close modal after navigating
+    navigate("/profile?tab=upgrade");
+    setShowUpgradeModal(false);
     setUpgradeFeatureName("");
   };
 
-  //  Hàm đóng modal
   const handleCloseUpgradeModal = () => {
     setShowUpgradeModal(false);
     setUpgradeFeatureName("");
   };
 
-  // Hàm xử lý click vào các icon
-  const handleIconClick = (iconType) => {
-    console.log(` handleIconClick called with: "${iconType}"`);
-
+  // ========== ICON HANDLERS ==========
+  const handleIconClick = (type) => {
     if (!isAuthenticated) {
-      console.log(" Not authenticated, redirecting to /signin");
       navigate("/signin");
       return;
     }
 
-    switch (iconType) {
+    switch (type) {
       case "heart":
         navigate("/favorites");
         break;
@@ -251,49 +210,33 @@ useEffect(() => {
         navigate("/orders");
         break;
       case "bell":
-        console.log(
-          `🔔 Toggling notification dropdown. Current state: ${showNotificationDropdown}`
-        );
-        setShowNotificationDropdown((prev) => {
-          console.log(`🔔 New state will be: ${!prev}`);
-          return !prev;
-        });
+        setShowNotificationDropdown((prev) => !prev);
         break;
       default:
         break;
     }
   };
 
-  // Xử lý khi click vào notification popup
   const handleNotificationPopupClick = (notification) => {
-    // Xóa popup
     setNotificationPopups((prev) =>
       prev.filter((n) => n.notificationId !== notification.notificationId)
     );
 
-    // Xử lý navigation dựa vào type
-    handleNotificationNavigation(notification);
+    if (
+      notification.type === "seller_approved" ||
+      notification.type === "success"
+    ) {
+      navigate("/profile");
+    }
   };
 
-  // Xử lý khi đóng notification popup
   const handleNotificationPopupClose = (notificationId) => {
     setNotificationPopups((prev) =>
       prev.filter((n) => n.notificationId !== notificationId)
     );
   };
 
-  // Xử lý navigation khi click notification
-  const handleNotificationNavigation = (notification) => {
-    // Nếu là thông báo phê duyệt seller, chuyển đến trang upgrade
-    if (
-      notification.type === "seller_approved" ||
-      notification.type === "success"
-    ) {
-      navigate("/profile"); // Trang có nút "Mua gói Seller"
-    }
-    // Có thể thêm các type khác ở đây
-  };
-
+  // ========== JSX ==========
   return (
     <nav className="navbar">
       <div className="navbar-container">
@@ -304,16 +247,20 @@ useEffect(() => {
             onClick={toggleHamburgerMenu}
             aria-label="Mở menu danh mục"
           >
-            <Menu className="navbar-hamburger-icon" />
+            {hamburgerMenuOpen ? <X /> : <Menu />}
           </button>
 
           {/* Logo */}
-          <div className="navbar-logo" onClick={handleLogoClick}>
+          <div
+            className="navbar-logo"
+            onClick={() => navigate("/")}
+            style={{ cursor: "pointer" }}
+          >
             <span className="navbar-logo-green">GREEN</span>
             <span className="navbar-logo-orange">TRADE</span>
           </div>
 
-          {/* Navigation Menu */}
+          {/* Nav Links */}
           <nav className="navbar-nav">
             <button
               className="nav-link"
@@ -335,14 +282,11 @@ useEffect(() => {
             </button>
           </nav>
 
-          {/* Spacer */}
-          <div className="navbar-spacer" />
-
           {/* User Actions */}
           <div className="navbar-actions">
             {isAuthenticated ? (
               <>
-                {/* Icon Buttons */}
+                {/* Icons */}
                 <button
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("heart")}
@@ -350,6 +294,7 @@ useEffect(() => {
                 >
                   <Heart className="navbar-icon" />
                 </button>
+
                 <button
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("chat")}
@@ -357,6 +302,7 @@ useEffect(() => {
                 >
                   <MessageCircle className="navbar-icon" />
                 </button>
+
                 <button
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("orders")}
@@ -364,14 +310,12 @@ useEffect(() => {
                 >
                   <Package className="navbar-icon" />
                 </button>
-                <div style={{ position: "relative", zIndex: 100 }}>
+
+                {/* Bell & Notifications */}
+                <div style={{ position: "relative" }}>
                   <button
                     className="navbar-notification-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log("Bell icon clicked!");
-                      handleIconClick("bell");
-                    }}
+                    onClick={() => handleIconClick("bell")}
                     aria-label="Thông báo"
                   >
                     <Bell className="navbar-icon" />
@@ -382,7 +326,6 @@ useEffect(() => {
                     )}
                   </button>
 
-                  {/* Notification Dropdown List */}
                   {showNotificationDropdown && (
                     <>
                       {console.log("Rendering NotificationList dropdown")}
@@ -395,7 +338,7 @@ useEffect(() => {
                   )}
                 </div>
 
-                {/* Action Buttons */}
+                {/* Seller buttons */}
                 <button
                   className="navbar-action-button"
                   onClick={() => handleSellerAction("Quản lý tin")}
@@ -409,20 +352,19 @@ useEffect(() => {
                   ĐĂNG TIN
                 </button>
 
-                {/* User Avatar Dropdown */}
                 <UserDropdown userInfo={userInfo} onLogout={handleLogout} />
               </>
             ) : (
               <>
                 <button
                   className="btn btn-ghost"
-                  onClick={() => handleNavigate("/signin")}
+                  onClick={() => navigate("/signin")}
                 >
                   Đăng nhập
                 </button>
                 <button
                   className="btn btn-primary"
-                  onClick={() => handleNavigate("/signup")}
+                  onClick={() => navigate("/signup")}
                 >
                   Đăng ký
                 </button>
@@ -432,11 +374,10 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* 🍔 Hamburger Menu Sidebar */}
+      {/* Sidebar */}
       {hamburgerMenuOpen && (
         <div className="hamburger-overlay" onClick={closeHamburgerMenu}></div>
       )}
-
       <div className={`hamburger-sidebar ${hamburgerMenuOpen ? "open" : ""}`}>
         <div className="hamburger-header">
           <h3>Danh mục sản phẩm</h3>
@@ -449,9 +390,7 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* ================= MỚI THÊM PHẦN NÀY (PHẦN NOTIFICATION) ================= */}
-
-      {/* Upgrade Notification Modal */}
+      {/* Upgrade Modal */}
       <UpgradeNotificationModal
         isOpen={showUpgradeModal}
         onClose={handleCloseUpgradeModal}
@@ -459,7 +398,7 @@ useEffect(() => {
         featureName={upgradeFeatureName}
       />
 
-      {/* Notification Popup Toast */}
+      {/* Popup Toast */}
       <NotificationPopup
         notifications={notificationPopups}
         onClose={handleNotificationPopupClose}

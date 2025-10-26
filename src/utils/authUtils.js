@@ -1,125 +1,111 @@
 // src/utils/authUtils.js
-import tokenManager from './tokenManager';
-
-// Utility functions để quản lý authentication
+import tokenManager from "./tokenManager";
 
 /**
- * Lưu thông tin đăng nhập sau khi signin thành công
- * @param {Object} authData - Dữ liệu từ API response
- * @param {string} authData.accessToken - Access token
- * @param {string} authData.refreshToken - Refresh token
- * @param {Object} authData.user - Thông tin user
+ *  Lưu thông tin đăng nhập sau khi signin thành công
+ * @param {Object} data - Dữ liệu từ API /auth/signin
  */
-export const saveAuthData = (authData) => {
-    const { accessToken, refreshToken, user } = authData;
+export function saveAuthData(data) {
+  if (!data) return;
 
-    // Lưu tokens
-    tokenManager.setTokens(accessToken, refreshToken);
+  const {
+    accessToken,
+    refreshToken,
+    username,
+    email,
+    sellerId,
+    buyerId,
+  } = data;
 
-    // Lưu thông tin user
-    if (user) {
-        localStorage.setItem('user', JSON.stringify(user));
-    }
+  // --- B1: Lưu token ---
+  if (accessToken) {
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("token", accessToken); // Cho websocket & api cũ
+  }
+  if (refreshToken) {
+    localStorage.setItem("refreshToken", refreshToken);
+  }
 
-    console.log('Auth data saved successfully');
-};
+  // --- B2: Lưu thông tin cơ bản ---
+  if (username) localStorage.setItem("username", username);
+  if (email) localStorage.setItem("userEmail", email);
+  if (buyerId) localStorage.setItem("buyerId", buyerId);
+
+  // --- B3: Xác định vai trò ---
+  if (sellerId) {
+    localStorage.setItem("authType", "seller");
+    localStorage.setItem("sellerId", sellerId);
+    console.log("[AuthUtils] Detected SELLER role");
+  } else {
+    localStorage.setItem("authType", "user");
+    localStorage.removeItem("sellerId");
+    console.log("[AuthUtils] Detected BUYER role");
+  }
+
+  // --- B4: Bắn event cho FE cập nhật Header / Navbar ---
+  window.dispatchEvent(new CustomEvent("authStatusChanged"));
+  console.log("[AuthUtils] Auth data saved successfully");
+}
 
 /**
- * Xóa tất cả dữ liệu authentication
+ *  Xóa toàn bộ thông tin khi logout hoặc refresh fail
  */
-export const clearAuthData = () => {
-    tokenManager.clearTokens();
-    localStorage.removeItem('user');
-    console.log('Auth data cleared');
-};
+export function clearAuthData() {
+  const keysToClear = [
+    "accessToken",
+    "refreshToken",
+    "token",
+    "username",
+    "userEmail",
+    "buyerId",
+    "buyerAvatar",
+    "authType",
+    "sellerId",
+    "adminAuthType",
+    "adminToken",
+    "adminRefreshToken",
+    "adminProfile",
+  ];
+  keysToClear.forEach((key) => localStorage.removeItem(key));
+  console.log("[AuthUtils] Cleared all auth data");
+
+  window.dispatchEvent(new CustomEvent("authStatusChanged"));
+}
 
 /**
- * Kiểm tra xem user có đăng nhập không
- * @returns {boolean}
+ *  Kiểm tra có đang đăng nhập không
  */
-export const isAuthenticated = () => {
-    const accessToken = tokenManager.getAccessToken();
-    return !!accessToken && !tokenManager.isTokenExpired(accessToken);
-};
+export function isAuthenticated() {
+  const token = localStorage.getItem("accessToken");
+  return !!token && !isTokenExpired(token);
+}
 
 /**
- * Lấy thông tin user hiện tại
- * @returns {Object|null}
+ *  Kiểm tra token có hết hạn chưa
  */
-export const getCurrentUser = () => {
-    try {
-        const userStr = localStorage.getItem('user');
-        return userStr ? JSON.parse(userStr) : null;
-    } catch (error) {
-        console.error('Error parsing user data:', error);
-        return null;
-    }
-};
+export function isTokenExpired(token) {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return Date.now() > payload.exp * 1000;
+  } catch {
+    return true;
+  }
+}
 
 /**
- * Kiểm tra xem có refresh token không
- * @returns {boolean}
+ *  Lấy token hợp lệ (tự refresh nếu cần)
  */
-export const hasRefreshToken = () => {
-    return tokenManager.hasRefreshToken();
-};
+export async function getValidToken() {
+  return await tokenManager.getValidToken();
+}
 
 /**
- * Lấy token hợp lệ (tự động refresh nếu cần)
- * @returns {Promise<string>}
+ *  Logout user & điều hướng về trang chủ
  */
-export const getValidToken = async () => {
-    return await tokenManager.getValidToken();
-};
-
-/**
- * Logout user
- */
-export const logout = () => {
-    clearAuthData();
-
-    // Redirect về trang chủ hoặc login
-    if (typeof window !== 'undefined') {
-        window.location.href = '/';
-    }
-};
-
-/**
- * Kiểm tra token có hết hạn không
- * @param {string} token - Token cần kiểm tra
- * @returns {boolean}
- */
-export const isTokenExpired = (token) => {
-    return tokenManager.isTokenExpired(token);
-};
-
-/**
- * Lấy thời gian hết hạn của token (timestamp)
- * @param {string} token - JWT token
- * @returns {number|null}
- */
-export const getTokenExpiration = (token) => {
-    if (!token) return null;
-
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.exp * 1000; // Convert to milliseconds
-    } catch (error) {
-        return null;
-    }
-};
-
-/**
- * Kiểm tra token sắp hết hạn (trong vòng 5 phút)
- * @param {string} token - JWT token
- * @returns {boolean}
- */
-export const isTokenExpiringSoon = (token) => {
-    if (!token) return true;
-
-    const expiration = getTokenExpiration(token);
-    if (!expiration) return true;
-
-    const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
-    return (expiration - Date.now()) < fiveMinutes;
-};
+export function logout() {
+  clearAuthData();
+  if (typeof window !== "undefined") {
+    window.location.href = "/";
+  }
+}
