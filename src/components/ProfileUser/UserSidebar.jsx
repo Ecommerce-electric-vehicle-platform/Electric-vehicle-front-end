@@ -1,22 +1,43 @@
 import { useEffect, useState } from "react";
-import "./UserSidebar.css";
+import "./UserSidebar.css"; // Import CSS mới
 
-// Lightweight sidebar component to avoid recursive imports and render loops.
+
 export default function UserSidebar({ activeItem, onItemClick, username, userRole }) {
     const [localName, setLocalName] = useState(username || "");
+    const [avatarUrl, setAvatarUrl] = useState(null);
+
 
     useEffect(() => {
         setLocalName(username || "");
     }, [username]);
 
-    // Listen for avatar changes (custom event)
-        useEffect(() => {
-            const handleAvatar = () => {
-                // placeholder: when avatar changes we could update local cache or trigger light UI updates
-            };
-            window.addEventListener("buyerAvatarChanged", handleAvatar);
-            return () => window.removeEventListener("buyerAvatarChanged", handleAvatar);
-        }, []);
+
+    useEffect(() => {
+        const loadAvatar = () => {
+            const storedAvatar = localStorage.getItem("buyerAvatar");
+            // Use placeholder if storedAvatar is null or empty string
+            setAvatarUrl(storedAvatar || "/default-avatar.png");
+            console.log("Sidebar: Loaded avatar:", storedAvatar || "/default-avatar.png");
+        };
+
+
+        const handleAvatarChange = (event) => {
+            const newAvatarUrl = event.detail?.avatarUrl;
+            // Use placeholder if newAvatarUrl is null or empty string
+            setAvatarUrl(newAvatarUrl || "/default-avatar.png");
+            console.log("Sidebar: Avatar changed:", newAvatarUrl || "/default-avatar.png");
+        };
+
+
+        loadAvatar();
+        window.addEventListener("buyerAvatarChanged", handleAvatarChange);
+
+
+        return () => {
+            window.removeEventListener("buyerAvatarChanged", handleAvatarChange);
+        };
+    }, []);
+
 
     const baseItems = [
         "Hồ sơ cá nhân",
@@ -24,32 +45,53 @@ export default function UserSidebar({ activeItem, onItemClick, username, userRol
         "Đơn hàng của tôi",
         "Ví điện tử",
     ];
-    
     const items = [...baseItems];
-    
     if (userRole === "seller") {
         items.push("Mua gói dịch vụ");
     } else {
         items.push("Nâng cấp thành người bán");
     };
 
+
+    // --- RENDER ĐÃ CẬP NHẬT CLASS CSS ---
     return (
         <aside className="user-sidebar">
             <div className="sidebar-profile">
-                <div className="profile-name">{localName || "Người dùng"}</div>
-                <div className="profile-role">{userRole === "seller" ? "Seller" : "Buyer"}</div>
+                {/* Container cho avatar */}
+                <div className="profile-avatar">
+                    <img
+                        src={avatarUrl} // State now includes fallback
+                        alt="User Avatar"
+                        className="avatar-image" // Use new class for the image itself
+                        onError={(e) => {
+                            // Prevent infinite loop if default also fails
+                            if (e.target.src !== "/default-avatar.png") {
+                                e.target.onerror = null;
+                                e.target.src = "/default-avatar.png";
+                            }
+                        }}
+                    />
+                </div>
+                <div className="profile-info">
+                    <div className="profile-name">{localName || "Người dùng"}</div>
+                    <div className="profile-role">{userRole === "seller" ? "Seller" : "Buyer"}</div>
+                </div>
             </div>
             <nav className="sidebar-nav">
-                {items.map((it) => (
+                {items.map((item) => (
                     <button
-                        key={it}
-                        className={`sidebar-item ${it === activeItem ? "active" : ""}`}
-                        onClick={() => onItemClick && onItemClick(it)}
+                        key={item}
+                        // Đổi class thành "nav-item"
+                        className={`nav-item ${item === activeItem ? "active" : ""}`}
+                        onClick={() => onItemClick && onItemClick(item)}
                     >
-                        {it}
+                        {item}
                     </button>
                 ))}
             </nav>
         </aside>
     );
 }
+
+
+
