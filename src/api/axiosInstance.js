@@ -28,7 +28,7 @@ axiosInstance.interceptors.request.use(async (config) => {
   const isPublic = publicEndpoints.some((url) => config.url.includes(url));
 
   console.log(
-    `📤 [API] ${config.method.toUpperCase()} ${config.url} ${
+    `[API] ${config.method.toUpperCase()} ${config.url} ${
       isPublic ? "(public)" : "(authenticated)"
     }`
   );
@@ -48,7 +48,7 @@ axiosInstance.interceptors.request.use(async (config) => {
 
       if (token) config.headers.Authorization = `Bearer ${token}`;
     } catch (err) {
-      console.warn("⚠️ Không lấy được token hợp lệ:", err);
+      console.warn("Không lấy được token hợp lệ:", err);
     }
   }
 
@@ -59,7 +59,7 @@ axiosInstance.interceptors.request.use(async (config) => {
 axiosInstance.interceptors.response.use(
   (response) => {
     console.log(
-      `✅ [API] ${response.config.method.toUpperCase()} ${response.config.url} → ${response.status}`
+      `[API] ${response.config.method.toUpperCase()} ${response.config.url} → ${response.status}`
     );
     return response;
   },
@@ -71,14 +71,14 @@ axiosInstance.interceptors.response.use(
 
     if (error.response) {
       console.error(
-        `❌ [API] ${originalRequest.method.toUpperCase()} ${url} → ${status} ${
+        `[API] ${originalRequest.method.toUpperCase()} ${url} → ${status} ${
           data?.message || ""
         }`
       );
     } else if (error.request) {
-      console.error(`❌ [API] No response from Backend for ${url}`);
+      console.error(`[API] No response from Backend for ${url}`);
     } else {
-      console.error(`❌ [API] Request error: ${error.message}`);
+      console.error(`[API] Request error: ${error.message}`);
     }
 
     // === 401 UNAUTHORIZED: Thử refresh token ===
@@ -111,7 +111,7 @@ axiosInstance.interceptors.response.use(
           return axiosInstance(originalRequest);
         }
       } catch (refreshError) {
-        console.error("🔴 Refresh token thất bại:", refreshError.message);
+        console.error("Refresh token thất bại:", refreshError.message);
         tokenManager.clearTokens();
 
         if (typeof window !== "undefined") {
