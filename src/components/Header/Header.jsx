@@ -327,11 +327,14 @@ export function Header() {
                   </button>
 
                   {showNotificationDropdown && (
-                    <NotificationList
-                      isOpen={showNotificationDropdown}
-                      onClose={() => setShowNotificationDropdown(false)}
-                      onNotificationClick={handleNotificationPopupClick}
-                    />
+                    <>
+                      {console.log("Rendering NotificationList dropdown")}
+                      <NotificationList
+                        isOpen={showNotificationDropdown}
+                        onClose={() => setShowNotificationDropdown(false)}
+                        onNotificationClick={handleNotificationNavigation}
+                      />
+                    </>
                   )}
                 </div>
 
