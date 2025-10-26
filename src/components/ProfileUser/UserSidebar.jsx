@@ -1,68 +1,55 @@
-"use client"
-import { useState, useEffect } from "react"
-import "./UserSidebar.css"
+import { useEffect, useState } from "react";
+import "./UserSidebar.css";
 
-export default function UserSidebar({
-  activeItem = "Hồ sơ cá nhân",
-  onItemClick,
-  username = "Tên người dùng",
+// Lightweight sidebar component to avoid recursive imports and render loops.
+export default function UserSidebar({ activeItem, onItemClick, username, userRole }) {
+    const [localName, setLocalName] = useState(username || "");
 
-}) {
-  const [avatarImage, setAvatarImage] = useState("/default-avatar.png") // ảnh mặc định
+    useEffect(() => {
+        setLocalName(username || "");
+    }, [username]);
 
+    // Listen for avatar changes (custom event)
+        useEffect(() => {
+            const handleAvatar = () => {
+                // placeholder: when avatar changes we could update local cache or trigger light UI updates
+            };
+            window.addEventListener("buyerAvatarChanged", handleAvatar);
+            return () => window.removeEventListener("buyerAvatarChanged", handleAvatar);
+        }, []);
 
-  //  Load avatar từ localStorage
-  const loadAvatar = () => {
-    const storedAvatar = localStorage.getItem("buyerAvatar")
-    if (storedAvatar) {
-      setAvatarImage(storedAvatar)
+    const baseItems = [
+        "Hồ sơ cá nhân",
+        "Đổi mật khẩu",
+        "Đơn hàng của tôi",
+        "Ví điện tử",
+    ];
+    
+    const items = [...baseItems];
+    
+    if (userRole === "seller") {
+        items.push("Mua gói dịch vụ");
     } else {
-      setAvatarImage("/default-avatar.png")
-    }
-  }
+        items.push("Nâng cấp thành người bán");
+    };
 
-  useEffect(() => {
-    loadAvatar()
-
-    //  Lắng nghe event storage để cập nhật realtime khi form cập nhật
-    const handleStorageChange = () => loadAvatar()
-    window.addEventListener("storage", handleStorageChange)
-
-    return () => window.removeEventListener("storage", handleStorageChange)
-  }, [])
-
-  const menuItems = [
-    "Hồ sơ cá nhân",
-    "Đổi mật khẩu",
-    "Đơn hàng của tôi",
-    "Ví điện tử",
-    "Nâng cấp thành người bán",
-  ]
-
-  return (
-    <aside className="user-sidebar">
-      <div className="sidebar-profile">
-        <div className="profile-avatar">
-          <img
-            src={avatarImage}
-            alt="User avatar"
-            className="avatar-image"
-          />
-        </div>
-        <p className="profile-name">{username}</p>
-      </div>
-
-      <nav className="sidebar-nav">
-        {menuItems.map((item) => (
-          <button
-            key={item}
-            onClick={() => onItemClick?.(item)}
-            className={`nav-item ${activeItem === item ? "active" : ""}`}
-          >
-            {item}
-          </button>
-        ))}
-      </nav>
-    </aside>
-  )
+    return (
+        <aside className="user-sidebar">
+            <div className="sidebar-profile">
+                <div className="profile-name">{localName || "Người dùng"}</div>
+                <div className="profile-role">{userRole === "seller" ? "Seller" : "Buyer"}</div>
+            </div>
+            <nav className="sidebar-nav">
+                {items.map((it) => (
+                    <button
+                        key={it}
+                        className={`sidebar-item ${it === activeItem ? "active" : ""}`}
+                        onClick={() => onItemClick && onItemClick(it)}
+                    >
+                        {it}
+                    </button>
+                ))}
+            </nav>
+        </aside>
+    );
 }

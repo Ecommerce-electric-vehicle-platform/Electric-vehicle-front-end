@@ -56,13 +56,13 @@ const profileApi = {
     // Key name MUST match backend @RequestPart("front_of_identity")
     formData.append("front_of_identity", imageFile);
     return axiosInstance.post( // Changed to POST based on your description, GET with multipart is unusual
-        "/api/v1/kyc/identity-information",
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
+      "/api/v1/kyc/identity-information",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
     );
   },
 
-   // Lấy trạng thái seller
+  // Lấy trạng thái seller
   getSellerstatus: () => {
     return axiosInstance.get("/api/v1/seller/profile");
   },
@@ -71,6 +71,23 @@ const profileApi = {
   getWallet: () => {
     return axiosInstance.get('/api/v1/buyer/wallet');
   },
+
+  getActiveSellerPackages: () => { // Đổi tên hàm
+    return axiosInstance.get('/api/v1/packages/active'); // <<< Đổi endpoint
+  },
+
+  
+
+
+  signPackage: (purchaseData) => {
+    // purchaseData = { packageId, priceId, price, durationByDay }
+    console.log("API Call: Signing package with data:", purchaseData);
+    // Thay bằng endpoint thực tế của bạn
+    return axiosInstance.post('/api/v1/packages/sign-package', purchaseData); // <<< Endpoint mới
+    // For testing:
+    // return new Promise((resolve) => setTimeout(() => resolve({ data: { success: true, message: "Signed package (mock)" } }), 1000));
+  },
+
 };
 
 

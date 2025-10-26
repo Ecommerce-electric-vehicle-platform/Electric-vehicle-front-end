@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import profileApi from "../../api/profileApi"; // API của bạn
+import profileApi from "../../api/profileApi";
+import { useAddressLoading } from "./hooks/useAddressLoading";
 import "./PersonalProfileForm.css";
 
 // --- TIỆN ÍCH ---
@@ -65,6 +66,8 @@ const validateField = (name, value) => {
   return null;
 };
 
+// (debounced helper removed - not used after moving address logic to hooks)
+
 
 export default function PersonalProfileForm() {
   // === STATE ===
@@ -86,13 +89,10 @@ export default function PersonalProfileForm() {
   const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedWard, setSelectedWard] = useState("");
-
   const [provinces, setProvinces] = useState([]);
-  const [districts, setDistricts] = useState([]);
-  const [wards, setWards] = useState([]);
-  
-  const [isLoadingDistricts, setIsLoadingDistricts] = useState(false);
-  const [isLoadingWards, setIsLoadingWards] = useState(false);
+
+  const { districts, wards, isLoadingDistricts, isLoadingWards } 
+    = useAddressLoading(selectedProvince, selectedDistrict);
 
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -138,7 +138,8 @@ export default function PersonalProfileForm() {
         if (profileData.avatarUrl) {
           setExistingAvatarUrl(profileData.avatarUrl);
           localStorage.setItem("buyerAvatar", profileData.avatarUrl);
-          window.dispatchEvent(new Event("storage"));
+          // Notify interested components without using the global "storage" event
+          window.dispatchEvent(new CustomEvent("buyerAvatarChanged", { detail: { avatarUrl: profileData.avatarUrl } }));
         }
 
 
@@ -146,17 +147,15 @@ export default function PersonalProfileForm() {
         setIsViewMode(true); // <<< Chuyển sang "Chế độ Xem"
 
       } catch (error) {
-        // USER MỚI
+        // USER MỚI hoặc lỗi khi lấy profile
         console.error("Loading profile failed (maybe new user):", error.message);
-        if (provinces.length === 0) {
-            try {
-                const provincesResponse = await profileApi.getAddressProvinces();
-                setProvinces(transformOptions(provincesResponse.data.data));
-            } catch (provError) {
-                console.error("Failed to load provinces:", provError);
-            }
+        try {
+          const provincesResponse = await profileApi.getAddressProvinces();
+          setProvinces(transformOptions(provincesResponse.data.data));
+        } catch (provError) {
+          console.error("Failed to load provinces:", provError);
         }
-        
+
         setIsNewUser(true);
         setIsViewMode(false); // <<< Ở lại "Chế độ Form"
         setFormData((prev) => ({ ...prev, email: storedEmail || "" }));
@@ -165,46 +164,9 @@ export default function PersonalProfileForm() {
 
     fetchProfile();
   }, []); // Chỉ chạy 1 lần
-
-  // === useEffect (Tải Huyện) ===
-  useEffect(() => {
-    if (!selectedProvince) {
-      setDistricts([]);
-      return;
-    }
-    const loadDistricts = async () => {
-      setIsLoadingDistricts(true);
-      try {
-        const response = await profileApi.getAddressDistricts(selectedProvince);
-        setDistricts(transformOptions(response.data.data));
-      } catch (error) {
-        console.error("Failed to load districts:", error);
-      } finally {
-        setIsLoadingDistricts(false);
-      }
-    };
-    loadDistricts();
-  }, [selectedProvince]);
-
-  // === useEffect (Tải Xã) ===
-  useEffect(() => {
-    if (!selectedDistrict) {
-      setWards([]);
-      return;
-    }
-    const loadWards = async () => {
-      setIsLoadingWards(true);
-      try {
-        const response = await profileApi.getAddressWards(selectedDistrict);
-        setWards(transformOptions(response.data.data));
-      } catch (error) {
-        console.error("Failed to load wards:", error);
-      } finally {
-        setIsLoadingWards(false);
-      }
-    };
-    loadWards();
-  }, [selectedDistrict]);
+  // Address loading logic moved to `useAddressLoading` hook above.
+  // The districts/wards are provided by the hook: `districts`, `wards`,
+  // and loading flags `isLoadingDistricts`, `isLoadingWards`.
 
 
   // === HANDLERS (Input, Blur, Avatar) ===
@@ -244,11 +206,33 @@ export default function PersonalProfileForm() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Revoke previous preview if it was a blob URL we created
+      try {
+        if (newAvatarFile && existingAvatarUrl && existingAvatarUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(existingAvatarUrl);
+        }
+      } catch {
+        // ignore
+      }
       setNewAvatarFile(file);
-      setExistingAvatarUrl(URL.createObjectURL(file));
+      const preview = URL.createObjectURL(file);
+      setExistingAvatarUrl(preview);
       if (errors.avatarUrl) setErrors((prev) => ({ ...prev, "avatarUrl": "" }));
     }
   };
+
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        if (existingAvatarUrl && existingAvatarUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(existingAvatarUrl);
+        }
+      } catch {
+        // ignore
+      }
+    };
+  }, [existingAvatarUrl]);
 
   // === handleSubmit ===
  // === handleSubmit (ĐÃ SỬA LỖI AVATAR) ===
@@ -338,8 +322,8 @@ export default function PersonalProfileForm() {
           // Cứ lưu lại cho chắc.
           localStorage.setItem("buyerAvatar", existingAvatarUrl);
       }
-      // Bắn event cho sidebar
-      window.dispatchEvent(new Event("storage")); 
+  // Bắn event cho sidebar (custom)
+  window.dispatchEvent(new CustomEvent("buyerAvatarChanged", { detail: { avatarUrl: newServerUrl || existingAvatarUrl } })); 
       // 🔹 === KẾT THÚC SỬA LỖI === 🔹
 
 

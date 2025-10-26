@@ -385,7 +385,7 @@ useEffect(() => {
                   {/* Notification Dropdown List */}
                   {showNotificationDropdown && (
                     <>
-                      {console.log("✅ Rendering NotificationList dropdown")}
+                      {console.log("Rendering NotificationList dropdown")}
                       <NotificationList
                         isOpen={showNotificationDropdown}
                         onClose={() => setShowNotificationDropdown(false)}
