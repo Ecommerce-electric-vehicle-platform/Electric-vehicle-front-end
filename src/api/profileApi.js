@@ -50,6 +50,18 @@ const profileApi = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+
+  getIdentityInfoFromOCR: (imageFile) => {
+    const formData = new FormData();
+    // Key name MUST match backend @RequestPart("front_of_identity")
+    formData.append("front_of_identity", imageFile);
+    return axiosInstance.post( // Changed to POST based on your description, GET with multipart is unusual
+        "/api/v1/kyc/identity-information",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+    );
+  },
+
    // Lấy trạng thái seller
   getSellerstatus: () => {
     return axiosInstance.get("/api/v1/seller/profile");

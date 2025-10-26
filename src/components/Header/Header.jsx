@@ -35,7 +35,7 @@ export function Header() {
 
   // ========== AUTH STATE SYNC ==========
   useEffect(() => {
-    const checkAuthStatus = () => {
+    const checkAuthAndRole = () => {
       const token = localStorage.getItem("token");
       const username = localStorage.getItem("username");
       const userEmail = localStorage.getItem("userEmail");
@@ -44,13 +44,23 @@ export function Header() {
       setIsAuthenticated(!!token);
       setAuthType(role);
       setUserInfo(token ? { username, email: userEmail } : null);
+
+      console.log(
+        `[Header] Auth check → Authenticated: ${!!token}, Role: ${role}, Username: ${username}`
+      );
     };
 
     // Run once on mount
-    checkAuthStatus();
-    // Sync on auth changes
-    window.addEventListener("authStatusChanged", checkAuthStatus);
-    return () => window.removeEventListener("authStatusChanged", checkAuthStatus);
+    checkAuthAndRole();
+
+    // Listen to auth events
+    window.addEventListener("authStatusChanged", checkAuthAndRole);
+    window.addEventListener("roleChanged", checkAuthAndRole); // nếu sau này nâng cấp seller realtime
+
+    return () => {
+      window.removeEventListener("authStatusChanged", checkAuthAndRole);
+      window.removeEventListener("roleChanged", checkAuthAndRole);
+    };
   }, []);
 
   // ========== LOAD NOTIFICATIONS ==========
@@ -65,6 +75,7 @@ export function Header() {
         const response = await notificationApi.getUnreadCount();
         setNotificationCount(response?.data?.unreadCount || 0);
       } catch {
+        console.warn("Cannot load notification count");
         setNotificationCount(0);
       }
     };
@@ -77,8 +88,10 @@ export function Header() {
 
     notificationService.init();
     const unsubscribe = notificationService.subscribe((notification) => {
+      console.log("New notification:", notification);
       setNotificationPopups((prev) => [...prev, notification]);
       setNotificationCount((prev) => prev + 1);
+
       setTimeout(() => {
         setNotificationPopups((prev) =>
           prev.filter((n) => n.notificationId !== notification.notificationId)
@@ -94,8 +107,8 @@ export function Header() {
         console.error("Error updating notification count:", error);
       }
     };
-    window.addEventListener("notificationRead", handleNotificationRead);
 
+    window.addEventListener("notificationRead", handleNotificationRead);
     return () => {
       unsubscribe();
       window.removeEventListener("notificationRead", handleNotificationRead);
@@ -169,7 +182,9 @@ export function Header() {
   };
 
   const handleUpgrade = () => {
-    navigate("/profile");
+    navigate("/profile?tab=upgrade");
+    setShowUpgradeModal(false);
+    setUpgradeFeatureName("");
   };
 
   const handleCloseUpgradeModal = () => {
@@ -183,6 +198,7 @@ export function Header() {
       navigate("/signin");
       return;
     }
+
     switch (type) {
       case "heart":
         navigate("/favorites");

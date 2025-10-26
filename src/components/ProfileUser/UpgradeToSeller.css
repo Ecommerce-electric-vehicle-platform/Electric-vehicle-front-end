@@ -454,4 +454,46 @@
   .btn {
     padding: 14px 20px;
   }
+
+/* Add these styles to UpgradeToSeller.css */
+
+/* Style for image preview */
+.image-preview-container {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-align: center; /* Center preview if needed */
+}
+
+.image-preview {
+    max-width: 150px; /* Limit preview size */
+    max-height: 100px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    object-fit: contain; /* Ensure image fits */
+}
+
+/* Style for OCR status messages */
+.ocr-status {
+    font-size: 12px;
+    color: #3b82f6; /* Blue for loading */
+    margin-left: 10px;
+}
+.ocr-error {
+     margin-left: 10px;
+     font-weight: 500;
+}
+
+/* Style for read-only fields */
+.read-only-input {
+    background-color: #f3f4f6; /* Light grey background */
+    color: #6b7280; /* Grey text */
+    cursor: not-allowed; /* Indicate it's not editable */
+    border-color: #e5e7eb; /* Lighter border */
+}
+
+.read-only-input:focus {
+    box-shadow: none; /* Remove focus glow */
+    border-color: #e5e7eb; /* Keep border light on focus attempt */
+}
+
 }

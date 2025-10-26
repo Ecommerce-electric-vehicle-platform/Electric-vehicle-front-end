@@ -1,0 +1,129 @@
+/* General container styles (can be shared or defined in a global CSS) */
+.seller-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    font-family: Arial, Helvetica, sans-serif;
+    animation: fadeInUp 0.6s ease-out both; /* Optional animation */
+    text-align: center; /* Center align most content */
+}
+
+/* Header styles */
+.seller-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.seller-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    font-family: inherit;
+}
+
+/* Status Text styles (Replaces the status card) */
+.status-text-accepted {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 30px; /* Space before info card */
+    font-family: inherit;
+}
+
+.status-label { font-weight: 700; }
+.status-label.accepted { color: #16a34a; } /* Dark Green for accepted status text */
+
+/* Card styles (Only for info card now) */
+.seller-card {
+    background: white;
+    border-radius: 8px;
+    padding: 25px;
+    margin-bottom: 30px; /* Space before button */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    font-family: inherit;
+}
+
+/* Info card specific styles */
+.info-card.accepted-info-card { /* Use specific class if needed */
+    background-color: #f3f4f6; /* Very light grey background */
+    border: none;
+    box-shadow: none;
+    border-radius: 4px;
+    text-align: left; /* Align text left inside the card */
+    display: inline-block; /* Make card only as wide as content */
+    padding: 20px 30px; /* Adjust padding */
+    margin: 0 auto 30px auto; /* Center the card itself */
+}
+
+.info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Adjust spacing */
+}
+
+
+
+.info-value {
+    font-size: 16px;
+    color: #1f2937;
+    font-weight: 400;
+    margin: 0;
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+/* Button Container */
+.button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px; /* Adjust space above button */
+}
+
+/* Button styles (copy from combined CSS or define here) */
+.btn { /* Basic button reset/base */
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+.btn-primary.accepted-screen-button {
+    padding: 12px 32px;
+    border-radius: 24px; /* Pill shape like image */
+    font-size: 16px;
+    font-weight: 600;
+    background-color: #a3e635; /* Brighter lime green like image */
+    color: #1f2937; /* Dark text */
+}
+.btn-primary.accepted-screen-button:hover {
+    background-color: #84cc16; /* Slightly darker lime */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(163, 230, 53, 0.3); /* Lime glow */
+}
+
+
+/* Optional: Loading and Error message styles */
+.loading {
+    text-align: center; padding: 40px; color: #6b7280; font-size: 16px; font-family: inherit;
+}
+.form-message.error {
+    background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;
+    text-align: center; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-family: inherit; font-weight: 500;
+}
+
+/* Optional: Animation */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .seller-container { margin: 20px auto; padding: 15px; }
+    .seller-title { font-size: 22px; }
+    .seller-card { padding: 20px; }
+    .status-text-accepted { font-size: 15px; }
+    .info-value { font-size: 15px; }
+    .info-card.accepted-info-card { padding: 15px 20px; }
+}
