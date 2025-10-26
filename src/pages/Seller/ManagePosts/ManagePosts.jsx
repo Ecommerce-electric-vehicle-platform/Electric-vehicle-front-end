@@ -110,7 +110,7 @@ export default function ManagePosts() {
       <ServicePackageGuard>
         <div className="manage-posts-page">
           <div className="error-state">
-            <div className="error-icon">⚠️</div>
+            <div className="error-icon"></div>
             <h3>Lỗi tải tin đăng</h3>
             <p>{error}</p>
             <button onClick={loadPosts} className="btn-retry">
@@ -171,7 +171,7 @@ export default function ManagePosts() {
           {/* Posts List */}
           {filteredPosts.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-icon">📝</div>
+              <div className="empty-icon"></div>
               <h3>Chưa có tin đăng nào</h3>
               <p>Bắt đầu đăng tin để bán xe của bạn!</p>
               <button
@@ -190,7 +190,7 @@ export default function ManagePosts() {
                     {post.pictures && post.pictures.length > 0 ? (
                       <img src={post.pictures[0]} alt={post.title} />
                     ) : (
-                      <div className="no-image">📷 Chưa có ảnh</div>
+                      <div className="no-image">Chưa có ảnh</div>
                     )}
                     {getStatusBadge(post.verifiedDecisionStatus)}
                   </div>
@@ -204,7 +204,7 @@ export default function ManagePosts() {
                     <p className="post-price">
                       {parseInt(post.price).toLocaleString()} VNĐ
                     </p>
-                    <p className="post-location">📍 {post.locationTrading}</p>
+                    <p className="post-location">{post.locationTrading}</p>
 
                     {post.verified && (
                       <div className="verified-badge">✓ Đã xác minh</div>
