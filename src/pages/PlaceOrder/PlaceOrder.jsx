@@ -26,6 +26,7 @@ import {
 } from '../../api/orderApi';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
 import profileApi from '../../api/profileApi';
+import { useAddressLoading } from '../../components/ProfileUser/hooks/useAddressLoading';
 import ProfileIncompleteModal from '../../components/ProfileIncompleteModal/ProfileIncompleteModal';
 import './PlaceOrder.css';
 
@@ -45,8 +46,8 @@ function PlaceOrder() {
         message: '',
         actions: []
     });
-    const [profileData, setProfileData] = useState(null);
-    const [missingProfileFields, setMissingProfileFields] = useState([]);
+    const [, setProfileData] = useState(null);
+    const [, setMissingProfileFields] = useState([]);
 
     // API data states
     const [shippingPartners, setShippingPartners] = useState([]);
@@ -54,7 +55,6 @@ function PlaceOrder() {
 
     // Sử dụng custom hook để quản lý số dư ví
     const { balance: walletBalance, loading: walletLoading, error: walletError, refreshBalance: refreshWalletBalance, formatCurrency: formatWalletCurrency } = useWalletBalance();
-    const [, setUserProfile] = useState(null);
     const [loadingProfile, setLoadingProfile] = useState(true);
 
     const [orderData, setOrderData] = useState({
@@ -64,7 +64,7 @@ function PlaceOrder() {
         shippingAddress: '',
         phoneNumber: '',
         shippingPartnerId: 1, // Default to Fast Delivery (id = 1)
-        paymentId: 1, // Default to e-wallet payment
+        paymentId: 2, // Default to e-wallet payment
 
         // UI display fields (not sent to API)
         shippingFee: 0,
@@ -95,6 +95,13 @@ function PlaceOrder() {
         shipping_base_fee: 0,
         shipping_per_km_fee: 0
     });
+
+    // Địa chỉ dạng từng cấp giống Profile
+    const [provinces, setProvinces] = useState([]);
+    const [selectedProvince, setSelectedProvince] = useState('');
+    const [selectedDistrict, setSelectedDistrict] = useState('');
+    const [selectedWard, setSelectedWard] = useState('');
+    const { districts, wards, isLoadingDistricts, isLoadingWards } = useAddressLoading(selectedProvince, selectedDistrict);
 
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -216,11 +223,21 @@ function PlaceOrder() {
                         ...prev,
                         username: localStorage.getItem('username') || 'user123',
                         buyer_name: profileData.fullName,
+                        fullName: profileData.fullName,
                         buyer_email: profileData.email || '',
                         phoneNumber: profileData.phoneNumber || '',
                         shippingAddress: fullAddress || '',
+                        street: profileData.street || '',
+                        provinceId: profileData.provinceId || '',
+                        districtId: profileData.districtId || '',
+                        wardId: profileData.wardId || '',
                         delivery_phone: profileData.phoneNumber || ''
                     }));
+
+                    // Sync dropdowns
+                    setSelectedProvince(profileData.provinceId || '');
+                    setSelectedDistrict(profileData.districtId || '');
+                    setSelectedWard(profileData.wardId || '');
                 }
             }
         } catch (error) {
@@ -234,6 +251,16 @@ function PlaceOrder() {
     // Load API data
     const loadApiData = useCallback(async () => {
         try {
+            // Load provinces for address selects
+            try {
+                const provincesResponse = await profileApi.getAddressProvinces();
+                const data = provincesResponse.data?.data || {};
+                const transformed = Object.keys(data).map(key => ({ value: key, label: data[key] }));
+                setProvinces(transformed);
+            } catch (e) {
+                console.error('Failed to load provinces:', e);
+            }
+
             const shippingData = await getShippingPartners();
             console.log('🚚 Shipping partners from API:', shippingData);
 
@@ -618,15 +645,42 @@ function PlaceOrder() {
     };
 
 
-    // Xử lý thay đổi địa chỉ
-    const handleDeliveryAddressChange = (value) => {
-        const selectedPartner = shippingPartners.find(p => p.id === orderData.shippingPartnerId);
-        const shippingFee = selectedPartner?.fee || 50000;
+    // (Bỏ input địa chỉ tự do; địa chỉ được ghép tự động từ 4 field)
+
+    // Cập nhật địa chỉ chi tiết theo từng cấp và assemble lại `shippingAddress`
+    const recomputeShippingAddress = useCallback((overrides = {}) => {
+        const next = { ...orderData, ...overrides };
+        const provinceName = provinces.find(p => p.value === next.provinceId)?.label || '';
+        const districtName = districts.find(d => d.value === next.districtId)?.label || '';
+        const wardName = wards.find(w => w.value === next.wardId)?.label || '';
+        const full = [next.street, wardName, districtName, provinceName].filter(Boolean).join(', ');
+        setOrderData(prev => ({ ...prev, ...overrides, shippingAddress: full }));
+    }, [orderData, provinces, districts, wards]);
+
+    const handleProvinceChange = (provId) => {
+        setSelectedProvince(provId);
+        setSelectedDistrict('');
+        setSelectedWard('');
+        recomputeShippingAddress({ provinceId: provId, districtId: '', wardId: '' });
+    };
+
+    const handleDistrictChange = (distId) => {
+        setSelectedDistrict(distId);
+        setSelectedWard('');
+        recomputeShippingAddress({ districtId: distId, wardId: '' });
+    };
+
+    const handleWardChange = (wardId) => {
+        setSelectedWard(wardId);
+        recomputeShippingAddress({ wardId });
+    };
+
+    // Xử lý thay đổi phương thức thanh toán (1: COD, 2: Ví điện tử)
+    const handlePaymentMethodChange = (paymentId) => {
         setOrderData(prev => ({
             ...prev,
-            shippingAddress: value,
-            shippingFee: shippingFee,
-            final_price: prev.total_price + shippingFee
+            paymentId,
+            payment_method: paymentId === 2 ? 'WALLET' : 'COD'
         }));
     };
 
@@ -648,8 +702,14 @@ function PlaceOrder() {
 
     // Kiểm tra form hợp lệ
     const isFormValid = () => {
-        // Các field từ profile đã được điền sẵn, chỉ cần kiểm tra địa chỉ giao hàng
-        const shippingValidation = orderData.shippingAddress.trim() && orderData.delivery_phone.trim();
+        // Kiểm tra địa chỉ giao hàng chi tiết
+        const shippingValidation = (
+            (orderData.street || '').trim() &&
+            (orderData.provinceId || selectedProvince) &&
+            (orderData.districtId || selectedDistrict) &&
+            (orderData.wardId || selectedWard) &&
+            orderData.delivery_phone.trim()
+        );
 
         // Kiểm tra các field bắt buộc từ profile
         const profileValidation = orderData.buyer_name.trim() &&
@@ -666,11 +726,13 @@ function PlaceOrder() {
             return;
         }
 
-        // Kiểm tra số dư ví trước khi đặt hàng
-        const amountToPay = orderData.final_price || 0;
-        if (walletBalance < amountToPay) {
-            showInsufficientBalanceModal(amountToPay);
-            return;
+        // Kiểm tra số dư ví trước khi đặt hàng (chỉ với ví điện tử)
+        if (orderData.paymentId === 2) {
+            const amountToPay = orderData.final_price || 0;
+            if (walletBalance < amountToPay) {
+                showInsufficientBalanceModal(amountToPay);
+                return;
+            }
         }
 
         setIsSubmitting(true);
@@ -680,8 +742,12 @@ function PlaceOrder() {
             // Các field khác sẽ được backend tự động tạo hoặc sử dụng fake data
             const apiOrderData = {
                 postProductId: orderData.postProductId,        // ID sản phẩm
-                username: orderData.username,                  // Tên đăng nhập
-                shippingAddress: orderData.shippingAddress,    // Địa chỉ giao hàng
+                username: orderData.username,
+                fullName: orderData.fullName || orderData.buyer_name, // Tên người nhận
+                street: orderData.street,
+                provinceName: provinces.find(p => p.value === (orderData.provinceId || selectedProvince))?.label || '',
+                districtName: districts.find(d => d.value === (orderData.districtId || selectedDistrict))?.label || '',
+                wardName: wards.find(w => w.value === (orderData.wardId || selectedWard))?.label || '',
                 phoneNumber: orderData.phoneNumber,            // Số điện thoại
                 shippingPartnerId: orderData.shippingPartnerId, // ID đối tác vận chuyển
                 paymentId: orderData.paymentId                 // ID phương thức thanh toán
@@ -692,12 +758,23 @@ function PlaceOrder() {
             // Gọi API đặt hàng
             const response = await placeOrder(apiOrderData);
 
-            if (response.success) {
+            console.log('📦 API Response:', response);
+
+            // Backend response có thể là:
+            // - response.data.orderId (nếu cấu trúc: { data: { orderId: ... } })
+            // - response.orderId (nếu cấu trúc: { orderId: ... })
+            // - response.success (nếu cấu trúc: { success: true, data: {...} })
+
+            const orderId = response.data?.orderId || response.orderId || null;
+
+            if (orderId || response.success !== false) {
+                console.log('✅ Order placed successfully:', orderId);
+
                 // Refresh số dư ví sau khi đặt hàng thành công
                 refreshWalletBalance();
 
-                const newOrderId = response.data.orderId || `ORD${Date.now()}`;
-                const orderCode = generateOrderCode();
+                const newOrderId = orderId || `ORD${Date.now()}`;
+                const orderCode = response.data?.orderCode || generateOrderCode();
                 const currentTime = new Date().toISOString();
 
                 setOrderId(newOrderId);
@@ -706,10 +783,10 @@ function PlaceOrder() {
                 setOrderData(prev => ({
                     ...prev,
                     order_code: orderCode,
-                    order_status: 'PAID', // Đã thanh toán thành công
+                    order_status: orderData.paymentId === 2 ? 'PAID' : 'PENDING_PAYMENT',
                     created_at: currentTime,
-                    paid_at: currentTime,
-                    transaction_id: response.data.transactionId || `TXN${Date.now()}`,
+                    paid_at: orderData.paymentId === 2 ? currentTime : '',
+                    transaction_id: response.data?.transactionId || `TXN${Date.now()}`,
                     shipping_partner: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Giao hàng nhanh'
                 }));
 
@@ -717,10 +794,10 @@ function PlaceOrder() {
                 const newOrder = {
                     id: newOrderId,
                     order_code: orderCode,
-                    status: 'PAID',
-                    order_status: 'PAID',
+                    status: orderData.paymentId === 2 ? 'confirmed' : 'pending',
+                    order_status: orderData.paymentId === 2 ? 'PAID' : 'PENDING_PAYMENT',
                     createdAt: currentTime,
-                    paidAt: currentTime,
+                    paidAt: orderData.paymentId === 2 ? currentTime : '',
                     estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // +3 ngày
                     product: product,
                     buyerName: orderData.buyer_name,
@@ -729,7 +806,7 @@ function PlaceOrder() {
                     deliveryAddress: orderData.shippingAddress,
                     deliveryPhone: orderData.phoneNumber,
                     deliveryNote: orderData.deliveryNote || '',
-                    paymentMethod: 'ewallet',
+                    paymentMethod: orderData.paymentId === 2 ? 'ewallet' : 'cod',
                     totalPrice: product.price,
                     shippingFee: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000,
                     finalPrice: product.price + (shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000)
@@ -742,44 +819,48 @@ function PlaceOrder() {
 
                 setCurrentStep(3);
             } else {
-                throw new Error(response.message || 'Có lỗi xảy ra khi đặt hàng');
+                throw new Error(response.message || response.data?.message || 'Có lỗi xảy ra khi đặt hàng');
             }
         } catch (error) {
-            console.error('Place order error:', error);
-            // Nếu API lỗi, vẫn cho phép đặt hàng với fake data
-            console.log('🔄 API failed, proceeding with fake order...');
+            console.error('❌ Place order error:', error);
 
-            // Refresh số dư ví (fake)
-            refreshWalletBalance();
+            // Hiển thị lỗi chi tiết cho người dùng
+            const errorMessage = error.response?.data?.message ||
+                error.message ||
+                'Không thể đặt hàng. Vui lòng thử lại sau.';
 
-            const fakeOrderId = `ORD${Date.now()}`;
-            setOrderId(fakeOrderId);
+            console.error('🔍 Error details:', {
+                message: errorMessage,
+                status: error.response?.status,
+                data: error.response?.data,
+                url: error.config?.url
+            });
 
-            // Lưu đơn hàng fake vào localStorage để có thể theo dõi
-            const fakeOrder = {
-                id: fakeOrderId,
-                status: 'pending',
-                createdAt: new Date().toISOString(),
-                estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // +3 ngày
-                product: product,
-                buyerName: orderData.buyerName,
-                buyerPhone: orderData.buyerPhone,
-                buyerEmail: orderData.buyerEmail,
-                deliveryAddress: orderData.shippingAddress,
-                deliveryPhone: orderData.phoneNumber,
-                deliveryNote: orderData.deliveryNote || '',
-                paymentMethod: 'ewallet',
-                totalPrice: product.price,
-                shippingFee: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000,
-                finalPrice: product.price + (shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000)
-            };
-
-            // Lưu vào localStorage
-            const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-            existingOrders.push(fakeOrder);
-            localStorage.setItem('orders', JSON.stringify(existingOrders));
-
-            setCurrentStep(3);
+            // Hiển thị thông báo lỗi cho người dùng
+            setModalConfig({
+                type: 'error',
+                title: 'Đặt hàng thất bại',
+                message: errorMessage,
+                actions: [
+                    {
+                        label: 'Thử lại',
+                        type: 'primary',
+                        onClick: () => {
+                            setShowModal(false);
+                            // Không làm gì, để người dùng thử lại
+                        }
+                    },
+                    {
+                        label: 'Quay lại',
+                        type: 'secondary',
+                        onClick: () => {
+                            setShowModal(false);
+                            navigate(-1);
+                        }
+                    }
+                ]
+            });
+            setShowModal(true);
         } finally {
             setIsSubmitting(false);
         }
@@ -861,7 +942,7 @@ function PlaceOrder() {
     }
 
     // Hiển thị modal nếu có lỗi
-    if (showModal && validationStep !== 'payment') {
+    if (showModal) {
         return (
             <div className="place-order-page">
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
@@ -993,17 +1074,62 @@ function PlaceOrder() {
                                         <MapPin className="section-icon" />
                                         Thông tin giao hàng
                                     </h3>
+                                    {/* Địa chỉ theo từng cấp giống Profile */}
                                     <div className="form-group">
-                                        <label className="form-label">Địa chỉ giao hàng *</label>
-                                        <textarea
-                                            className="form-textarea"
-                                            value={orderData.shippingAddress}
-                                            onChange={(e) => handleDeliveryAddressChange(e.target.value)}
-                                            placeholder="Nhập địa chỉ giao hàng chi tiết"
-                                            rows={3}
-                                        />
-                                        <small className="form-help">Tự động điền từ profile, có thể chỉnh sửa</small>
+                                        <label className="form-label">Tỉnh/Thành phố*</label>
+                                        <select
+                                            className="form-input"
+                                            value={selectedProvince}
+                                            onChange={(e) => handleProvinceChange(e.target.value)}
+                                        >
+                                            <option value="">-- Chọn Tỉnh/Thành --</option>
+                                            {provinces.map(p => (
+                                                <option key={p.value} value={p.value}>{p.label}</option>
+                                            ))}
+                                        </select>
                                     </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Quận/Huyện*</label>
+                                        <select
+                                            className="form-input"
+                                            value={selectedDistrict}
+                                            onChange={(e) => handleDistrictChange(e.target.value)}
+                                            disabled={!selectedProvince || isLoadingDistricts}
+                                        >
+                                            <option value="">{isLoadingDistricts ? 'Đang tải huyện...' : '-- Chọn Quận/Huyện --'}</option>
+                                            {districts.map(d => (
+                                                <option key={d.value} value={d.value}>{d.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Phường/Xã*</label>
+                                        <select
+                                            className="form-input"
+                                            value={selectedWard}
+                                            onChange={(e) => handleWardChange(e.target.value)}
+                                            disabled={!selectedDistrict || isLoadingWards}
+                                        >
+                                            <option value="">{isLoadingWards ? 'Đang tải xã...' : '-- Chọn Phường/Xã --'}</option>
+                                            {wards.map(w => (
+                                                <option key={w.value} value={w.value}>{w.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Địa chỉ chi tiết (Số nhà, đường)*</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={orderData.street || ''}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                recomputeShippingAddress({ street: value });
+                                            }}
+                                            placeholder="Ví dụ: 7 Đ. D1, Long Thạnh Mỹ, Thủ Đức"
+                                        />
+                                    </div>
+                                    {/* Bỏ phần nhập địa chỉ tự do vì đã có 4 trường trên */}
                                     <div className="form-group">
                                         <label className="form-label">Số điện thoại nhận hàng *</label>
                                         <input
@@ -1099,44 +1225,68 @@ function PlaceOrder() {
                                         Phương thức thanh toán
                                     </h3>
                                     <div className="payment-methods">
-                                        <div className="payment-option selected">
+                                        {/* COD */}
+                                        <div
+                                            className={`payment-option ${orderData.paymentId === 1 ? 'selected' : ''}`}
+                                            onClick={() => handlePaymentMethodChange(1)}
+                                            role="button"
+                                            tabIndex={0}
+                                        >
+                                            <div className="payment-info">
+                                                <div className="payment-name">
+                                                    <Package size={20} />
+                                                    Thanh toán khi nhận hàng (COD)
+                                                </div>
+                                                <div className="payment-desc">Thanh toán cho shipper khi nhận hàng</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Ví điện tử */}
+                                        <div
+                                            className={`payment-option ${orderData.paymentId === 2 ? 'selected' : ''}`}
+                                            onClick={() => handlePaymentMethodChange(2)}
+                                            role="button"
+                                            tabIndex={0}
+                                        >
                                             <div className="payment-info">
                                                 <div className="payment-name">
                                                     <Wallet size={20} />
                                                     Ví điện tử
                                                 </div>
-                                                <div className="payment-desc">Thanh toán qua ví điện tử</div>
-                                                <div className="wallet-balance">
-                                                    {walletLoading ? (
-                                                        <div className="wallet-loading">
-                                                            <div className="loading-spinner-small"></div>
-                                                            Đang tải số dư ví...
-                                                        </div>
-                                                    ) : walletError ? (
-                                                        <div className="wallet-error">
-                                                            <AlertCircle size={16} />
-                                                            {walletError}
-                                                            <button
-                                                                className="retry-btn"
-                                                                onClick={refreshWalletBalance}
-                                                                title="Thử lại"
-                                                            >
-                                                                🔄
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="wallet-success">
-                                                            Số dư hiện tại: <span className="balance-amount">{formatWalletCurrency(walletBalance)}</span>
-                                                            <button
-                                                                className="refresh-btn"
-                                                                onClick={refreshWalletBalance}
-                                                                title="Cập nhật số dư"
-                                                            >
-                                                                🔄
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <div className="payment-desc">Thanh toán trực tuyến qua ví điện tử</div>
+                                                {orderData.paymentId === 2 && (
+                                                    <div className="wallet-balance">
+                                                        {walletLoading ? (
+                                                            <div className="wallet-loading">
+                                                                <div className="loading-spinner-small"></div>
+                                                                Đang tải số dư ví...
+                                                            </div>
+                                                        ) : walletError ? (
+                                                            <div className="wallet-error">
+                                                                <AlertCircle size={16} />
+                                                                {walletError}
+                                                                <button
+                                                                    className="retry-btn"
+                                                                    onClick={refreshWalletBalance}
+                                                                    title="Thử lại"
+                                                                >
+                                                                    🔄
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="wallet-success">
+                                                                Số dư hiện tại: <span className="balance-amount">{formatWalletCurrency(walletBalance)}</span>
+                                                                <button
+                                                                    className="refresh-btn"
+                                                                    onClick={refreshWalletBalance}
+                                                                    title="Cập nhật số dư"
+                                                                >
+                                                                    🔄
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

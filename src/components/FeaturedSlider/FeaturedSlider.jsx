@@ -32,7 +32,15 @@ export function FeaturedSlider() {
     return () => { mounted = false }
   }, [])
 
-  const featuredItems = useMemo(() => (items || []).map(normalizeProduct).filter(Boolean).slice(0, 5), [items])
+  const featuredItems = useMemo(
+    () =>
+      (items || [])
+        .map(normalizeProduct)
+        .filter(Boolean)
+        .filter((p) => !(p?.isSold || String(p?.status).toLowerCase() === "sold"))
+        .slice(0, 5),
+    [items]
+  )
 
   // Xử lý click xem chi tiết
   const handleViewDetails = (product) => {
