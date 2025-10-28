@@ -1,0 +1,91 @@
+🐛 BÁO LỖI BACKEND - 2 APIS SELLER BỊ LỖI 500
+
+═══════════════════════════════════════════════════════
+
+📌 VẤN ĐỀ:
+2 APIs của Seller đang trả về 500 Internal Server Error, chặn tính năng đăng tin.
+
+═══════════════════════════════════════════════════════
+
+🔴 API 1: GET /api/v1/seller/profile
+
+Hiện tại: 
+- Gọi API với token hợp lệ → Trả về 500 ❌
+
+Mong muốn:
+- Nếu user chưa đăng ký seller → Trả về 404 Not Found ✅
+- Nếu user đã là seller → Trả về 200 OK ✅
+
+Console log:
+❌ API Error [500] /api/v1/seller/profile: Object
+❌ [SellerAPI] Error fetching seller profile
+
+═══════════════════════════════════════════════════════
+
+🔴 API 2: POST /api/v1/seller/{username}/check-service-package-validity
+
+Hiện tại:
+- Gọi API với seller đã mua gói (gói còn hạn) → Trả về 500 ❌
+
+Mong muốn:
+- Seller có gói còn hạn → Trả về 200 OK + { valid: true, ... } ✅
+- Seller hết gói → Trả về 200 OK + { valid: false, ... } ✅
+- Seller không tồn tại → Trả về 404 Not Found ✅
+
+Console log:
+[ServicePackageGuard] Checking package for username: doanvien
+❌ API Error [500] /api/v1/seller/doanvien/check-service-package-validity
+❌ Error response data.error: Internal Server Error
+
+═══════════════════════════════════════════════════════
+
+💡 NGUYÊN NHÂN:
+Backend đang throw exception nhưng không có try-catch để handle, 
+dẫn đến crash và trả về 500 thay vì HTTP status code phù hợp.
+
+═══════════════════════════════════════════════════════
+
+✅ GIẢI PHÁP:
+File: SellerController.java
+
+1. Method getProfile():
+   - Thêm try-catch để bắt NotFoundException
+   - Return 404 khi seller chưa đăng ký (thay vì 500)
+
+2. Method checkServicePackageValidity():
+   - Thêm try-catch toàn bộ method
+   - Return 200 với valid: true/false (thay vì crash)
+   - Return 404 nếu seller không tồn tại
+
+═══════════════════════════════════════════════════════
+
+🧪 TEST CASE:
+
+Test 1: Seller có gói còn hạn
+POST /api/v1/seller/doanvien/check-service-package-validity
+Expected: 200 OK + { "success": true, "data": { "valid": true, ... } }
+
+Test 2: User chưa đăng ký seller
+GET /api/v1/seller/profile (với buyer token)
+Expected: 404 Not Found + { "error": "SELLER_NOT_FOUND" }
+
+Test 3: Seller hết gói
+POST /api/v1/seller/testuser/check-service-package-validity
+Expected: 200 OK + { "data": { "valid": false, ... } }
+
+═══════════════════════════════════════════════════════
+
+🚨 IMPACT:
+❌ Seller KHÔNG THỂ vào trang "Đăng tin"
+❌ Seller KHÔNG THỂ vào trang "Quản lý tin đăng"
+❌ Block hoàn toàn tính năng core của Seller
+
+Mức độ: 🔴 HIGH PRIORITY - BLOCKER
+Cần fix trong: 24h
+
+═══════════════════════════════════════════════════════
+
+📄 Chi tiết code fix: Xem file BUG_REPORT_BACKEND.md
+
+Cảm ơn team BE! 🙏
+
