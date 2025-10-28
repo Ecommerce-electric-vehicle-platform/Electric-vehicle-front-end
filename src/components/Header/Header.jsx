@@ -1,13 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  Menu,
-  X,
-  Heart,
-  MessageCircle,
-  Bell,
-  Package,
-} from "lucide-react";
+import { Menu, X, Heart, MessageCircle, Bell, Package } from "lucide-react";
 
 import { CategorySidebar } from "../CategorySidebar/CategorySidebar";
 import { UserDropdown } from "../UserDropdown/UserDropdown";
@@ -22,13 +15,17 @@ export function Header() {
   const [hamburgerMenuOpen, setHamburgerMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
-  const [authType, setAuthType] = useState(localStorage.getItem("authType") || "guest"); // buyer | seller | admin | guest
+  const [authType, setAuthType] = useState(
+    localStorage.getItem("authType") || "guest"
+  );
 
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationPopups, setNotificationPopups] = useState([]);
-  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] =
+    useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeFeatureName, setUpgradeFeatureName] = useState("");
+  const [selectedNotification, setSelectedNotification] = useState(null); // ✅ popup chi tiết thông báo
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,18 +41,11 @@ export function Header() {
       setIsAuthenticated(!!token);
       setAuthType(role);
       setUserInfo(token ? { username, email: userEmail } : null);
-
-      console.log(
-        `[Header] Auth check Authenticated: ${!!token}, Role: ${role}, Username: ${username}`
-      );
     };
 
-    // Run once on mount
     checkAuthAndRole();
-
-    // Listen to auth events
     window.addEventListener("authStatusChanged", checkAuthAndRole);
-    window.addEventListener("roleChanged", checkAuthAndRole); // nếu sau này nâng cấp seller realtime
+    window.addEventListener("roleChanged", checkAuthAndRole);
 
     return () => {
       window.removeEventListener("authStatusChanged", checkAuthAndRole);
@@ -63,7 +53,7 @@ export function Header() {
     };
   }, []);
 
-  // ========== LOAD NOTIFICATIONS ==========
+  // ========== LOAD NOTIFICATION COUNT ==========
   useEffect(() => {
     if (!isAuthenticated) {
       setNotificationCount(0);
@@ -75,7 +65,6 @@ export function Header() {
         const response = await notificationApi.getUnreadCount();
         setNotificationCount(response?.data?.unreadCount || 0);
       } catch {
-        console.warn("Cannot load notification count");
         setNotificationCount(0);
       }
     };
@@ -88,7 +77,6 @@ export function Header() {
 
     notificationService.init();
     const unsubscribe = notificationService.subscribe((notification) => {
-      console.log("New notification:", notification);
       setNotificationPopups((prev) => [...prev, notification]);
       setNotificationCount((prev) => prev + 1);
 
@@ -163,21 +151,18 @@ export function Header() {
   const handleSellerAction = (action) => {
     const currentRole = localStorage.getItem("authType") || "guest";
 
-    // Buyer or guest → show upgrade modal
     if (currentRole === "buyer" || currentRole === "guest") {
       setUpgradeFeatureName(action);
       setShowUpgradeModal(true);
       return;
     }
 
-    // Seller → navigate directly
     if (currentRole === "seller") {
       if (action === "Đăng tin") navigate("/seller/create-post");
       else if (action === "Quản lý tin") navigate("/seller/manage-posts");
       return;
     }
 
-    // Admin → chuyển sang trang admin tương ứng
     if (currentRole === "admin") navigate("/admin/dashboard");
   };
 
@@ -235,6 +220,37 @@ export function Header() {
       prev.filter((n) => n.notificationId !== notificationId)
     );
   };
+
+  // ========== NOTIFICATION NAVIGATION ==========
+  const handleNotificationNavigation = (notification) => {
+    if (!notification) {
+      navigate("/notifications");
+      return;
+    }
+
+    // Nếu có type cụ thể, điều hướng theo loại
+    switch (notification.type) {
+      case "seller_approved":
+        navigate("/profile");
+        break;
+      case "new_order":
+        navigate("/orders");
+        break;
+      case "promotion":
+        navigate("/promotions");
+        break;
+      default:
+        navigate("/notifications");
+        break;
+    }
+
+    // Mở popup chi tiết
+    setSelectedNotification(notification);
+    setShowNotificationDropdown(false);
+  };
+
+  // Đóng popup chi tiết
+  const closeNotificationDetail = () => setSelectedNotification(null);
 
   // ========== JSX ==========
   return (
@@ -294,7 +310,6 @@ export function Header() {
                 >
                   <Heart className="navbar-icon" />
                 </button>
-
                 <button
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("chat")}
@@ -302,7 +317,6 @@ export function Header() {
                 >
                   <MessageCircle className="navbar-icon" />
                 </button>
-
                 <button
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("orders")}
@@ -327,14 +341,11 @@ export function Header() {
                   </button>
 
                   {showNotificationDropdown && (
-                    <>
-                      {console.log("Rendering NotificationList dropdown")}
-                      <NotificationList
-                        isOpen={showNotificationDropdown}
-                        onClose={() => setShowNotificationDropdown(false)}
-                        onNotificationClick={handleNotificationNavigation}
-                      />
-                    </>
+                    <NotificationList
+                      isOpen={showNotificationDropdown}
+                      onClose={() => setShowNotificationDropdown(false)}
+                      onNotificationClick={handleNotificationNavigation}
+                    />
                   )}
                 </div>
 
@@ -404,6 +415,28 @@ export function Header() {
         onClose={handleNotificationPopupClose}
         onClick={handleNotificationPopupClick}
       />
+
+      {/* Popup chi tiết thông báo */}
+      {selectedNotification && (
+        <div
+          className="notification-detail-overlay"
+          onClick={closeNotificationDetail}
+        >
+          <div
+            className="notification-detail-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>{selectedNotification.title}</h3>
+            <p>{selectedNotification.content}</p>
+            <button
+              className="btn btn-primary"
+              onClick={closeNotificationDetail}
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
