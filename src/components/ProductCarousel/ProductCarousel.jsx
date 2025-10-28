@@ -78,25 +78,6 @@ export function ProductCarousel({ title, showCategoryToggle = false }) {
                 <div className="carousel-line"></div>
             </div>
 
-            {/* 🌿 Category Toggle */}
-            {showCategoryToggle && (
-                <div className="category-tabs">
-                    <button
-                        className={`category-tab ${activeCategory === "vehicles" ? "active" : ""
-                            }`}
-                        onClick={() => setActiveCategory("vehicles")}
-                    >
-                        <Car className="tab-icon" /> Xe điện
-                    </button>
-                    <button
-                        className={`category-tab ${activeCategory === "batteries" ? "active" : ""
-                            }`}
-                        onClick={() => setActiveCategory("batteries")}
-                    >
-                        <Battery className="tab-icon" /> Pin xe điện
-                    </button>
-                </div>
-            )}
 
             {/* 🎠 Slider */}
             {loading && (<div className="product-loading">Đang tải sản phẩm...</div>)}

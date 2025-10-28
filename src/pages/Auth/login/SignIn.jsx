@@ -128,7 +128,7 @@ export default function SignIn() {
         "buyerId",
         "buyerAvatar",
         "authType",
-        "sellerId", // Thêm dòng này
+        "sellerId",
       ].forEach((k) => localStorage.removeItem(k));
     }
   };

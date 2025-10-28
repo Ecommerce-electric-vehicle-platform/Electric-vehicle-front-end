@@ -22,8 +22,7 @@ export function Header() {
   const [hamburgerMenuOpen, setHamburgerMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
-  const [authType, setAuthType] = useState(localStorage.getItem("authType") || "guest"); // buyer | seller | admin | guest
-
+  const [_authType, setAuthType] = useState(localStorage.getItem("authType") || "guest"); // buyer | seller | admin | guest
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationPopups, setNotificationPopups] = useState([]);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
@@ -234,6 +233,34 @@ export function Header() {
     setNotificationPopups((prev) =>
       prev.filter((n) => n.notificationId !== notificationId)
     );
+  };
+
+  const handleNotificationNavigation = (notification) => {
+    // Close the dropdown
+    setShowNotificationDropdown(false);
+
+    // Navigate based on notification type or data
+    if (notification?.data?.url) {
+      navigate(notification.data.url);
+    } else if (notification?.type) {
+      // Default navigation based on notification type
+      switch (notification.type) {
+        case 'order':
+          navigate('/order-list');
+          break;
+        case 'product':
+          navigate('/products');
+          break;
+        case 'seller':
+          navigate('/seller-dashboard');
+          break;
+        default:
+          navigate('/');
+      }
+    } else {
+      // Fallback to home page
+      navigate('/');
+    }
   };
 
   // ========== JSX ==========
