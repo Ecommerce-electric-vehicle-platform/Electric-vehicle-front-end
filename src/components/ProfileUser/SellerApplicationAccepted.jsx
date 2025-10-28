@@ -1,9 +1,12 @@
 "use client";
 
+
 import "./SellerApplicationAccepted.css"; // Giữ lại CSS
 
-export default function SellerApplicationAccepted({ data, onComplete }) { // Nhận 'data' từ prop
+
+export default function SellerApplicationAccepted({ data, onComplete }) { // Nhận 'data' và callback 'onComplete'
     const sellerData = data;
+
 
     // Hàm format ngày (giữ lại)
     const formatDate = (dateString) => {
@@ -20,67 +23,64 @@ export default function SellerApplicationAccepted({ data, onComplete }) { // Nh�
         }
     };
 
+
     // Kiểm tra nếu data không có (phòng trường hợp lỗi)
     if (!sellerData) {
         return <div className="loading seller-container">Đang tải thông tin...</div>;
-        // return <div className="seller-container form-message error">Không có dữ liệu người bán.</div>;
     }
 
-    // Xử lý nút "Hoàn tất" (tạm thời chỉ log)
+
+    // Xử lý nút "Hoàn tất"
     const handleComplete = () => {
-        console.log("Hoàn tất tác vụ - Đã nâng cấp thành Seller!");
+        console.log("Hoàn tất tác vụ - KYC Accepted. Navigating...");
 
 
-        // Lưu trạng thái seller vào localStorage
-        localStorage.setItem('userRole', 'seller');
-        // --- KẾT THÚC THÊM ---
-
-        // (Tùy chọn) Thông báo hoặc chuyển hướng
-        //alert("Chúc mừng! Tài khoản của bạn đã được nâng cấp thành Người bán.");
-
-        // Có thể bắn thêm event để Header cập nhật ngay lập tức nếu cần
+        
+        // Bắn event để các component khác (như Header) có thể cập nhật UI nếu cần
+        // (Mặc dù role đã đúng trong localStorage, event này giúp cập nhật state React ngay lập tức)
         window.dispatchEvent(new CustomEvent("roleChanged", { detail: { role: 'seller' } }));
 
+
+        // Gọi callback để component cha (PersonalProfilePage) chuyển hướng
         if (onComplete) {
-            onComplete(); // Đây chính là hàm handleKycAccepted ở File 6
+            onComplete(); // Gọi hàm handleKycAccepted ở PersonalProfilePage
         }
     };
 
+
+    // === UI ===
     return (
-        // Sử dụng class seller-container để áp dụng CSS chung
         <div className="seller-container">
             {/* Header */}
             <div className="seller-header">
                 <h1 className="seller-title">Trở thành người bán</h1>
             </div>
 
-            {/* Status Text (Giống ảnh) */}
-            {/* Cần CSS để căn chỉnh và tạo màu xanh */}
-            <div className="status-text-accepted" style={{ marginBottom: '20px', textAlign: 'center' }}> {/* Thêm style tạm */}
+
+            {/* Status Text */}
+            <div className="status-text-accepted" style={{ marginBottom: '20px', textAlign: 'center' }}>
                 Trạng thái duyệt tài khoản: <span className="status-label accepted">Chấp nhận</span>
             </div>
 
 
-            {/* Customer Information (Giống ảnh) */}
-            <div className="seller-card info-card accepted-info-card"> {/* Thêm class để style riêng nếu cần */}
+            {/* Customer Information */}
+            <div className="seller-card info-card accepted-info-card">
                 <div className="info-section" style={{ gap: '15px' }}>
                     <div className="info-item">
-                        {/* Đã bỏ label, gộp vào text */}
                         <p className="info-value">Khách hàng: {sellerData.fullName || "..."}</p>
                     </div>
                     <div className="info-item">
                         <p className="info-value">Tên kinh doanh: {sellerData.storeName || "..."}</p>
                     </div>
                     <div className="info-item">
-                        {/* Hiển thị ngày duyệt (updatedAt) nếu có, nếu không thì ngày tạo (createAt) */}
                         <p className="info-value">Ngày duyệt đơn: {formatDate(sellerData.updatedAt || sellerData.createAt)}</p>
                     </div>
                 </div>
             </div>
 
+
             {/* Action Button */}
             <div className="button-container">
-                {/* Sử dụng class CSS bạn đã định nghĩa */}
                 <button className="btn btn-primary accepted-screen-button" onClick={handleComplete}>
                     Hoàn tất thao tác
                 </button>
@@ -88,3 +88,8 @@ export default function SellerApplicationAccepted({ data, onComplete }) { // Nh�
         </div>
     );
 }
+
+
+
+
+
