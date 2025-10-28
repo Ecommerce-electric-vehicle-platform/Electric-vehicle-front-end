@@ -17,9 +17,9 @@ const formatDateToDDMMYYYY = (dateString) => {
   if (!dateString || !dateString.includes("-")) return dateString;
   const parts = dateString.split("-");
   if (parts[0].length === 4) {
-     const [year, month, day] = parts;
-     const cleanDay = day.split("T")[0];
-     return `${cleanDay}-${month}-${year}`;
+    const [year, month, day] = parts;
+    const cleanDay = day.split("T")[0];
+    return `${cleanDay}-${month}-${year}`;
   }
   return dateString;
 };
@@ -85,13 +85,13 @@ export default function PersonalProfileForm() {
 
   const [existingAvatarUrl, setExistingAvatarUrl] = useState(null);
   const [newAvatarFile, setNewAvatarFile] = useState(null);
-  
+
   const [selectedProvince, setSelectedProvince] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedWard, setSelectedWard] = useState("");
   const [provinces, setProvinces] = useState([]);
 
-  const { districts, wards, isLoadingDistricts, isLoadingWards } 
+  const { districts, wards, isLoadingDistricts, isLoadingWards }
     = useAddressLoading(selectedProvince, selectedDistrict);
 
   const [errors, setErrors] = useState({});
@@ -109,12 +109,12 @@ export default function PersonalProfileForm() {
           profileApi.getProfile(),
           profileApi.getAddressProvinces()
         ]);
-        
+
         setProvinces(transformOptions(provincesResponse.data.data));
 
         const responseBody = profileResponse.data;
         if (!responseBody.success) throw new Error(responseBody.message);
-        
+
         const profileData = responseBody.data;
         if (!profileData || !profileData.fullName) throw new Error("Profile not completed.");
 
@@ -181,28 +181,28 @@ export default function PersonalProfileForm() {
     const error = validateField(name, value);
     setErrors((prev) => ({ ...prev, [name]: error }));
   };
-  
+
   const handleProvinceChange = (e) => {
     const newProvinceId = e.target.value;
     setSelectedProvince(newProvinceId);
     setSelectedDistrict("");
     setSelectedWard("");
-    handleBlur({ target: { name: "provinceId", value: newProvinceId }});
+    handleBlur({ target: { name: "provinceId", value: newProvinceId } });
   };
 
   const handleDistrictChange = (e) => {
     const newDistrictId = e.target.value;
     setSelectedDistrict(newDistrictId);
     setSelectedWard("");
-    handleBlur({ target: { name: "districtId", value: newDistrictId }});
+    handleBlur({ target: { name: "districtId", value: newDistrictId } });
   };
 
   const handleWardChange = (e) => {
     const newWardId = e.target.value;
     setSelectedWard(newWardId);
-    handleBlur({ target: { name: "wardId", value: newWardId }});
+    handleBlur({ target: { name: "wardId", value: newWardId } });
   };
-  
+
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -235,7 +235,7 @@ export default function PersonalProfileForm() {
   }, [existingAvatarUrl]);
 
   // === handleSubmit ===
- // === handleSubmit (ĐÃ SỬA LỖI AVATAR) ===
+  // === handleSubmit (ĐÃ SỬA LỖI AVATAR) ===
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isLoading) return;
@@ -243,7 +243,7 @@ export default function PersonalProfileForm() {
     // B1: Validation (Giữ nguyên)
     const newErrors = {};
     Object.keys(formData).forEach((key) => {
-      if (key.endsWith("Name")) return; 
+      if (key.endsWith("Name")) return;
       const error = validateField(key, formData[key]);
       if (error) newErrors[key] = error;
     });
@@ -300,7 +300,7 @@ export default function PersonalProfileForm() {
 
       const responseBody = response.data;
       if (!responseBody.success) throw new Error(responseBody.message);
-      
+
       const savedData = responseBody.data || {};
       alert("Lưu hồ sơ thành công!");
 
@@ -308,22 +308,22 @@ export default function PersonalProfileForm() {
       const newServerUrl = savedData.avatarUrl; // Lấy URL MỚI từ API
 
       if (newServerUrl) {
-          // Tốt! API đã trả về URL mới. Dùng nó.
-          localStorage.setItem("buyerAvatar", newServerUrl);
-          setExistingAvatarUrl(newServerUrl); // Cập nhật preview bằng URL thật
+        // Tốt! API đã trả về URL mới. Dùng nó.
+        localStorage.setItem("buyerAvatar", newServerUrl);
+        setExistingAvatarUrl(newServerUrl); // Cập nhật preview bằng URL thật
       } else if (newAvatarFile) {
-          // User có upload file mới, nhưng API không trả về URL mới.
-          // Chúng ta KHÔNG lưu "existingAvatarUrl" (đang là blob:) vào localStorage.
-          // Sidebar sẽ không cập nhật ngay, nhưng sẽ đúng sau khi F5 (vì getProfile sẽ có)
-          //commoent
-          console.warn("API không trả về avatarUrl mới sau khi upload.");
+        // User có upload file mới, nhưng API không trả về URL mới.
+        // Chúng ta KHÔNG lưu "existingAvatarUrl" (đang là blob:) vào localStorage.
+        // Sidebar sẽ không cập nhật ngay, nhưng sẽ đúng sau khi F5 (vì getProfile sẽ có)
+        //commoent
+        console.warn("API không trả về avatarUrl mới sau khi upload.");
       } else {
-          // User không đổi ảnh. "existingAvatarUrl" đang là URL cũ.
-          // Cứ lưu lại cho chắc.
-          localStorage.setItem("buyerAvatar", existingAvatarUrl);
+        // User không đổi ảnh. "existingAvatarUrl" đang là URL cũ.
+        // Cứ lưu lại cho chắc.
+        localStorage.setItem("buyerAvatar", existingAvatarUrl);
       }
-  // Bắn event cho sidebar (custom)
-  window.dispatchEvent(new CustomEvent("buyerAvatarChanged", { detail: { avatarUrl: newServerUrl || existingAvatarUrl } })); 
+      // Bắn event cho sidebar (custom)
+      window.dispatchEvent(new CustomEvent("buyerAvatarChanged", { detail: { avatarUrl: newServerUrl || existingAvatarUrl } }));
       // 🔹 === KẾT THÚC SỬA LỖI === 🔹
 
 
@@ -335,9 +335,9 @@ export default function PersonalProfileForm() {
         gender: (savedData.gender || formData.gender).toLowerCase(),
         dob: (savedData.dob || formData.dob).split("T")[0],
         street: savedData.street || formData.street,
-        provinceName: provinceName, 
-        districtName: districtName, 
-        wardName: wardName,         
+        provinceName: provinceName,
+        districtName: districtName,
+        wardName: wardName,
       });
 
       setNewAvatarFile(null); // Xóa file đã chọn
@@ -359,10 +359,10 @@ export default function PersonalProfileForm() {
   // -----------------------------
   if (isViewMode) {
     const fullAddress = [
-        formData.street, 
-        formData.wardName, 
-        formData.districtName, 
-        formData.provinceName
+      formData.street,
+      formData.wardName,
+      formData.districtName,
+      formData.provinceName
     ].filter(Boolean).join(", ");
 
     return (
@@ -424,7 +424,7 @@ export default function PersonalProfileForm() {
           <div className="input-wrapper">
             <input
               id="avatarUrl" type="file" accept="image/*"
-              onChange={handleAvatarChange} 
+              onChange={handleAvatarChange}
               onBlur={handleBlur}
               name="avatarUrl"
               className={`form-input ${errors.avatarUrl ? "input-error" : ""}`}
@@ -481,21 +481,21 @@ export default function PersonalProfileForm() {
         {/* Gender */}
         <div className="form-field">
           <label className="form-label">Gender*</label>
-            <div className="radio-group">
-              <label className="radio-label">
-                <input type="radio" name="gender" value="male"
-                  checked={formData.gender === "male"}
-                  onChange={handleChange}
-                /> <span>Male</span>
-              </label>
-              <label className="radio-label">
-                <input type="radio" name="gender" value="female"
-                  checked={formData.gender === "female"}
-                  onChange={handleChange}
-                /> <span>Female</span>
-              </label>
-            </div>
-            {errors.gender && <span className="error-text">{errors.gender}</span>}
+          <div className="radio-group">
+            <label className="radio-label">
+              <input type="radio" name="gender" value="male"
+                checked={formData.gender === "male"}
+                onChange={handleChange}
+              /> <span>Male</span>
+            </label>
+            <label className="radio-label">
+              <input type="radio" name="gender" value="female"
+                checked={formData.gender === "female"}
+                onChange={handleChange}
+              /> <span>Female</span>
+            </label>
+          </div>
+          {errors.gender && <span className="error-text">{errors.gender}</span>}
         </div>
 
         {/* Birthday */}

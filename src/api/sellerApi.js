@@ -27,6 +27,17 @@ const sellerApi = {
     }
   },
 
+  // ✅ Lấy thông tin seller theo sellerId (public)
+  getSellerById: async (sellerId) => {
+    try {
+      const response = await axiosInstance.get(`/api/v1/seller/${sellerId}`);
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching seller by ID:", error);
+      throw error;
+    }
+  },
+
   // ✅ Đăng tin bán sản phẩm (multipart/form-data)
   createPostProduct: async (formData, onUploadProgress) => {
     try {
@@ -106,6 +117,55 @@ const sellerApi = {
       return response;
     } catch (error) {
       console.error("[SellerAPI] Error deleting post:", error);
+      throw error;
+    }
+  },
+
+  // ✅ Lấy danh sách đơn hàng của seller
+  getSellerOrders: async (page = 0, size = 10, status = '') => {
+    try {
+      const params = { page, size };
+      if (status) params.status = status;
+      const response = await axiosInstance.get('/api/v1/seller/orders', { params });
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching seller orders:", error);
+      throw error;
+    }
+  },
+
+  // ✅ Lấy thông tin đơn hàng chi tiết
+  getOrderDetails: async (orderId) => {
+    try {
+      const response = await axiosInstance.get(`/api/v1/seller/orders/${orderId}`);
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching order details:", error);
+      throw error;
+    }
+  },
+
+  // ✅ Cập nhật trạng thái đơn hàng
+  updateOrderStatus: async (orderId, newStatus) => {
+    try {
+      const response = await axiosInstance.patch(
+        `/api/v1/seller/orders/${orderId}/status`,
+        { status: newStatus }
+      );
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error updating order status:", error);
+      throw error;
+    }
+  },
+
+  // ✅ Lấy thống kê seller
+  getSellerStatistics: async () => {
+    try {
+      const response = await axiosInstance.get('/api/v1/seller/statistics');
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching seller statistics:", error);
       throw error;
     }
   },

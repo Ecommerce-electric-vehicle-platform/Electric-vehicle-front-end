@@ -4,7 +4,7 @@ import axiosInstance from './axiosInstance';
 // Get shipping partners
 export const getShippingPartners = async () => {
     try {
-        const response = await axiosInstance.get('/api/v1/shipping-partners');
+        const response = await axiosInstance.get('/api/v1/shipping-partner/partners');
         return response.data;
     } catch (error) {
         console.error('Error fetching shipping partners:', error);

@@ -79,11 +79,11 @@ export default function PersonalProfilePage() {
   };
 
   const handleKycAccepted = () => {
- console.log("KYC Accepted! Navigating to Buy Package...");
- // Đổi activeSection sang "Mua gói dịch vụ"
- setActiveSection("Mua gói dịch vụ"); 
- window.scrollTo({ top: 0, behavior: "smooth" });
-};
+    console.log("KYC Accepted! Navigating to Buy Package...");
+    // Đổi activeSection sang "Mua gói dịch vụ"
+    setActiveSection("Mua gói dịch vụ");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   // === JSX ===
   return (
     <div className="profile-page">
@@ -101,8 +101,8 @@ export default function PersonalProfilePage() {
           {activeSection === "Đơn hàng của tôi" && <div>📦 Nội dung đơn hàng đang được cập nhật...</div>}
           {activeSection === "Ví điện tử" && <PersonalEWallet />}
           {activeSection === "Nâng cấp thành người bán" && (
-            <UpgradeToSeller onGoToProfile={() => setActiveSection("Hồ sơ cá nhân")} 
-            onKycAccepted={handleKycAccepted}
+            <UpgradeToSeller onGoToProfile={() => setActiveSection("Hồ sơ cá nhân")}
+              onKycAccepted={handleKycAccepted}
             />
           )}
 

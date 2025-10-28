@@ -20,7 +20,10 @@ const publicEndpoints = [
   "/api/v1/auth/admin/signin",
   "/api/v1/auth/admin/refresh-token",
   "/api/v1/vnpay/return",
-  // Không nên thêm /api/v1/post-product ở đây, vì seller cần token
+  // Post product public endpoints
+  "/api/v1/post-product",
+  // Seller public endpoints (view only)
+  "/api/v1/seller/",
 ];
 
 // ===== INTERCEPTOR REQUEST =====
@@ -28,8 +31,7 @@ axiosInstance.interceptors.request.use(async (config) => {
   const isPublic = publicEndpoints.some((url) => config.url.includes(url));
 
   console.log(
-    `[API] ${config.method.toUpperCase()} ${config.url} ${
-      isPublic ? "(public)" : "(authenticated)"
+    `[API] ${config.method.toUpperCase()} ${config.url} ${isPublic ? "(public)" : "(authenticated)"
     }`
   );
 
@@ -71,8 +73,7 @@ axiosInstance.interceptors.response.use(
 
     if (error.response) {
       console.error(
-        `[API] ${originalRequest.method.toUpperCase()} ${url} → ${status} ${
-          data?.message || ""
+        `[API] ${originalRequest.method.toUpperCase()} ${url} → ${status} ${data?.message || ""
         }`
       );
     } else if (error.request) {
@@ -93,8 +94,7 @@ axiosInstance.interceptors.response.use(
           const adminRefreshToken =
             localStorage.getItem("adminRefreshToken") || "";
           const res = await axios.post(
-            `${
-              import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"
+            `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"
             }/api/v1/auth/admin/refresh-token`,
             {},
             { headers: { Authorization: `Bearer ${adminRefreshToken}` } }
@@ -125,25 +125,26 @@ axiosInstance.interceptors.response.use(
       }
     }
 
-    const message =
-      data?.message ||
-      data?.error ||
-      (status === 500 && "Lỗi máy chủ (500). Vui lòng thử lại sau.") ||
-      (status === 404 && "Không tìm thấy tài nguyên (404).") ||
-      (status === 401 && "Chưa được xác thực (401).") ||
-      (status === 403 && "Không có quyền truy cập (403).") ||
-      error?.message ||
-      "Đã xảy ra lỗi không xác định.";
+    // Giữ nguyên lỗi gốc từ backend để component có thể xử lý cụ thể
+    // Chỉ thêm thông tin bổ sung mà không thay đổi cấu trúc gốc
+    const enhancedError = {
+      ...error,
+      response: {
+        ...error.response,
+        data: data, // Giữ nguyên data gốc từ backend
+      },
+      // Thêm thông tin bổ sung
+      _enhanced: {
+        status,
+        url,
+        timestamp: new Date().toISOString(),
+      }
+    };
 
-    console.error(`API Error [${status || "n/a"}] ${url || ""}: ${message}`);
+    // In ra console: chuỗi dễ đọc + raw details để trace
+    console.error(`API Error [${status || "n/a"}] ${url || ""}:`, data || "");
 
-    return Promise.reject({
-      message,
-      status,
-      url,
-      data,
-      original: error,
-    });
+    return Promise.reject(enhancedError);
   }
 );
 

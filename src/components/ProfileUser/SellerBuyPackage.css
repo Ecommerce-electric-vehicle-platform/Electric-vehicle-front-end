@@ -2,45 +2,67 @@
 
 .seller-package-container {
     padding: 30px;
-    max-width: 1000px; /* Tăng max-width */
+    max-width: 1000px;
+    /* Tăng max-width */
     margin: 20px auto;
-    background-color: #f9fafb; /* Nền sáng hơn */
+    background-color: #f9fafb;
+    /* Nền sáng hơn */
     border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); /* Shadow nhẹ hơn */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    /* Shadow nhẹ hơn */
     font-family: Arial, Helvetica, sans-serif;
     animation: fadeIn 0.5s ease-out;
 }
 
 .package-title {
     text-align: center;
-    font-size: 28px; /* To hơn */
+    font-size: 28px;
+    /* To hơn */
     font-weight: 700;
     color: #1f2937;
-    margin-bottom: 40px; /* Tăng khoảng cách */
+    margin-bottom: 40px;
+    /* Tăng khoảng cách */
 }
 
 .packages-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Mặc định 3 cột */
-    gap: 30px; /* Khoảng cách lớn hơn */
+    grid-template-columns: repeat(3, 1fr);
+    /* Mặc định 3 cột */
+    gap: 30px;
+    /* Khoảng cách lớn hơn */
     margin-bottom: 40px;
 }
+
 /* Responsive grid */
-@media (max-width: 1024px) { .packages-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 768px) { .packages-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1024px) {
+    .packages-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .packages-grid {
+        grid-template-columns: 1fr;
+    }
+}
 
 
 .package-card {
     border-radius: 12px;
     padding: 30px;
     display: flex;
-    flex-direction: column; /* Quan trọng để đẩy pricing xuống */
+    flex-direction: column;
+    /* Quan trọng để đẩy pricing xuống */
     gap: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Shadow nhẹ */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    /* Shadow nhẹ */
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    border: 2px solid transparent; /* Border ẩn ban đầu */
-    background-color: #ffffff; /* Nền trắng cho card */
-    min-height: 400px; /* Chiều cao tối thiểu để các card đều nhau */
+    border: 2px solid transparent;
+    /* Border ẩn ban đầu */
+    background-color: #ffffff;
+    /* Nền trắng cho card */
+    min-height: 400px;
+    /* Chiều cao tối thiểu để các card đều nhau */
 }
 
 /* Hover effect */
@@ -51,34 +73,75 @@
 
 /* Style cho card được chọn */
 .package-card.card-selected-outline {
-    border-color: #10b981; /* Viền xanh lá cây */
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); /* Glow nhẹ */
-    transform: translateY(-5px); /* Giữ hiệu ứng nâng lên */
+    border-color: #10b981;
+    /* Viền xanh lá cây */
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    /* Glow nhẹ */
+    transform: translateY(-5px);
+    /* Giữ hiệu ứng nâng lên */
 }
 
 /* Background colors (tùy chỉnh lại cho phù hợp hơn) */
-.package-card.standard { background-color: #f0fdf4; border-left: 5px solid #22c55e; }
-.package-card.pro { background-color: #fefce8; border: 2px solid #facc15; transform: scale(1.03); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1); }
-.package-card.pro:hover { transform: scale(1.03) translateY(-5px); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15); }
-.package-card.vip { background-color: #eff6ff; border-left: 5px solid #3b82f6; }
+.package-card.standard {
+    background-color: #f0fdf4;
+    border-left: 5px solid #22c55e;
+}
 
-.package-header { text-align: center; }
-.package-name { font-size: 22px; font-weight: 600; color: #111827; margin: 0 0 5px 0; }
-.package-subtitle { font-size: 14px; color: #6b7280; margin: 0; }
+.package-card.pro {
+    background-color: #fefce8;
+    border: 2px solid #facc15;
+    transform: scale(1.03);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.package-card.pro:hover {
+    transform: scale(1.03) translateY(-5px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+.package-card.vip {
+    background-color: #eff6ff;
+    border-left: 5px solid #3b82f6;
+}
+
+.package-header {
+    text-align: center;
+}
+
+.package-name {
+    font-size: 22px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 5px 0;
+}
+
+.package-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+}
 
 /* Style cho Description */
 .package-description {
     font-size: 14px;
     color: #4b5563;
     line-height: 1.6;
-    white-space: pre-line; /* Hiển thị các dấu xuống dòng \n */
-    text-align: left; /* Căn lề trái */
+    white-space: pre-line;
+    /* Hiển thị các dấu xuống dòng \n */
+    text-align: left;
+    /* Căn lề trái */
     margin-top: 15px;
     margin-bottom: 20px;
-    flex-grow: 1; /* Quan trọng để đẩy nút giá xuống */
+    flex-grow: 1;
+    /* Quan trọng để đẩy nút giá xuống */
 }
 
-.package-pricing { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+.package-pricing {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+}
 
 /* Style cho nút chọn thời hạn */
 .price-button {
@@ -94,89 +157,226 @@
     text-align: center;
     position: relative;
     overflow: hidden;
-    width: 100%; /* Nút chiếm hết chiều ngang card */
+    width: 100%;
+    /* Nút chiếm hết chiều ngang card */
 }
+
 .price-button:hover:not(:disabled) {
     border-color: #9ca3af;
     background-color: #f9fafb;
 }
-.price-button.selected { /* Style khi được CHỌN */
+
+.price-button.selected {
+    /* Style khi được CHỌN */
     border-color: #10b981;
     background-color: #d1fae5;
     color: #065f46;
     font-weight: 600;
     box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
 }
+
 .price-button:disabled {
-    cursor: not-allowed; opacity: 0.7;
+    cursor: not-allowed;
+    opacity: 0.7;
 }
+
 /* Style cho % giảm giá */
 .discount-badge {
     position: absolute;
-    top: -1px; right: -1px;
-    background-color: #ef4444; color: white;
-    font-size: 10px; font-weight: bold;
+    top: -1px;
+    right: -1px;
+    background-color: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
     padding: 2px 6px;
     border-radius: 0 8px 0 4px;
 }
 
 /* --- Styles for Active Package View --- */
 .active-package-box {
-    background-color: #e6f9f0; border: 1px solid #a7f3d0;
-    border-radius: 12px; padding: 30px; margin: 0 auto 40px auto;
-    max-width: 500px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    background-color: #e6f9f0;
+    border: 1px solid #a7f3d0;
+    border-radius: 12px;
+    padding: 30px;
+    margin: 0 auto 40px auto;
+    max-width: 500px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     text-align: center;
 }
-.active-package-name { font-size: 20px; font-weight: 600; color: #065f46; margin-bottom: 10px; }
-.days-remaining { font-size: 18px; font-weight: 500; color: #047857; margin-bottom: 25px; }
-.active-package-info { display: flex; flex-direction: column; gap: 12px; text-align: left; border-top: 1px solid #a7f3d0; padding-top: 20px; }
-.info-row { display: flex; justify-content: space-between; align-items: center; }
-.info-label { font-size: 14px; font-weight: 500; color: #065f46; }
-.info-value { font-size: 14px; color: #1f2937; font-weight: 500; }
-.active-package-message { font-size: 16px; font-weight: 500; color: #1f2937; margin-bottom: 10px; }
-.active-package-message.warning { color: #dc2626; font-weight: bold; }
-.btn-renew { margin-top: 25px; /* Thêm style nếu cần */ }
+
+.active-package-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #065f46;
+    margin-bottom: 10px;
+}
+
+.days-remaining {
+    font-size: 18px;
+    font-weight: 500;
+    color: #047857;
+    margin-bottom: 25px;
+}
+
+.active-package-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+    border-top: 1px solid #a7f3d0;
+    padding-top: 20px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #065f46;
+}
+
+.info-value {
+    font-size: 14px;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.active-package-message {
+    font-size: 16px;
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 10px;
+}
+
+.active-package-message.warning {
+    color: #dc2626;
+    font-weight: bold;
+}
+
+.btn-renew {
+    margin-top: 25px;
+    /* Thêm style nếu cần */
+}
 
 
 /* --- Styles for Main Purchase Button --- */
-.purchase-button-container { text-align: center; margin-top: 30px; }
-.btn { /* Base button style */
-    padding: 12px 20px; border: none; border-radius: 8px; font-size: 15px;
-    font-weight: 600; cursor: pointer; transition: all 0.2s ease;
-    font-family: inherit; text-align: center;
+.purchase-button-container {
+    text-align: center;
+    margin-top: 30px;
 }
+
+.btn {
+    /* Base button style */
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    text-align: center;
+}
+
 .btn-purchase {
-    background-color: #10b981; color: white; padding: 14px 45px;
-    font-size: 16px; border-radius: 25px; /* Pill shape */
+    background-color: #10b981;
+    color: white;
+    padding: 14px 45px;
+    font-size: 16px;
+    border-radius: 25px;
+    /* Pill shape */
     box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
 }
+
 .btn-purchase:hover:not(:disabled) {
-    background-color: #059669; transform: translateY(-2px);
+    background-color: #059669;
+    transform: translateY(-2px);
     box-shadow: 0 6px 15px rgba(16, 185, 129, 0.3);
 }
-.btn-purchase:active:not(:disabled) { transform: translateY(0); }
+
+.btn-purchase:active:not(:disabled) {
+    transform: translateY(0);
+}
+
 .btn-purchase:disabled {
-    background-color: #d1d5db; color: #9ca3af; cursor: not-allowed; box-shadow: none;
+    background-color: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
 /* Loading and Error States */
-.loading { text-align: center; padding: 40px; color: #6b7280; font-size: 16px; }
-.error-message {
-    text-align: center; padding: 15px; border-radius: 8px; margin: 20px auto;
-    background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;
-    font-weight: 500; max-width: 90%;
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+    font-size: 16px;
 }
-.purchase-error { margin-bottom: 25px; }
+
+.error-message {
+    text-align: center;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px auto;
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+    font-weight: 500;
+    max-width: 90%;
+}
+
+.purchase-error {
+    margin-bottom: 25px;
+}
 
 /* Animation */
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
 
 /* Responsive */
 @media (max-width: 640px) {
-    .seller-package-container { padding: 20px; margin: 15px; }
-    .package-title { font-size: 20px; margin-bottom: 25px; }
-    .package-card { padding: 20px 15px; min-height: auto; } /* Bỏ min-height trên mobile */
-    .package-price { font-size: 22px; }
-    .btn-purchase { padding: 12px 35px; font-size: 15px; }
-    .active-package-box { padding: 20px; }
+    .seller-package-container {
+        padding: 20px;
+        margin: 15px;
+    }
+
+    .package-title {
+        font-size: 20px;
+        margin-bottom: 25px;
+    }
+
+    .package-card {
+        padding: 20px 15px;
+        min-height: auto;
+    }
+
+    /* Bỏ min-height trên mobile */
+    .package-price {
+        font-size: 22px;
+    }
+
+    .btn-purchase {
+        padding: 12px 35px;
+        font-size: 15px;
+    }
+
+    .active-package-box {
+        padding: 20px;
+    }
+}
+
+.price-button:hover {
+    background-color: #4bc896;
 }
