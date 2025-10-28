@@ -2,7 +2,7 @@
 .place-order-page {
     min-height: 100vh;
     background-color: #f8f9fa;
-    padding: 20px 0;
+    padding: calc(20px + var(--app-header-height, 72px)) 0 20px 0;
 }
 
 .place-order-container {
@@ -402,10 +402,12 @@
     margin-bottom: 15px;
 }
 
+/* Left-aligned, two-column info layout for a more professional look */
 .info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    column-gap: 16px;
+    align-items: start;
     margin-bottom: 8px;
     padding: 8px 0;
 }
@@ -414,14 +416,22 @@
     font-weight: 500;
     color: #6c757d;
     font-size: 14px;
+    text-align: left;
 }
 
 .info-value {
     color: #212529;
     font-size: 14px;
-    text-align: right;
-    max-width: 60%;
+    text-align: left;
+    max-width: 100%;
     word-wrap: break-word;
+}
+
+/* Ensure section titles are left-aligned consistently */
+.order-confirmation .confirmation-section h4,
+.order-confirmation .section-title,
+.confirmation-section h4 {
+    text-align: left;
 }
 
 /* Order Success */
@@ -467,7 +477,7 @@
 /* Order Summary Column */
 .order-summary-column {
     position: sticky;
-    top: 20px;
+    top: calc(20px + var(--app-header-height, 72px));
     height: fit-content;
 }
 
@@ -890,7 +900,7 @@
 
 .card.sticky {
     position: sticky;
-    top: 1rem;
+    top: calc(1rem + var(--app-header-height, 72px));
 }
 
 .card-header {

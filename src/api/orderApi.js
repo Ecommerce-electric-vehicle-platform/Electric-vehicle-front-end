@@ -66,3 +66,36 @@ export const getUserOrders = async (page = 1, limit = 10) => {
         throw error;
     }
 };
+
+// Order history for current user
+// GET /api/v1/order/history
+export const getOrderHistory = async ({ page = 1, size = 10 } = {}) => {
+    const pageIndex = Math.max(0, Number(page) - 1);
+    const safeSize = Math.max(1, Number(size) || 10);
+    try {
+        const res = await axiosInstance.get('/api/v1/order/history', {
+            params: { page: pageIndex, size: safeSize }
+        });
+        const raw = res?.data ?? {};
+        const data = raw?.data ?? raw;
+        const list =
+            data?.orders ||
+            data?.content ||
+            data?.items ||
+            (Array.isArray(data) ? data : []);
+        return { items: Array.isArray(list) ? list : [] };
+    } catch {
+        // Retry with minimal valid params
+        const res = await axiosInstance.get('/api/v1/order/history', {
+            params: { page: 0, size: safeSize }
+        });
+        const raw = res?.data ?? {};
+        const data = raw?.data ?? raw;
+        const list =
+            data?.orders ||
+            data?.content ||
+            data?.items ||
+            (Array.isArray(data) ? data : []);
+        return { items: Array.isArray(list) ? list : [] };
+    }
+};

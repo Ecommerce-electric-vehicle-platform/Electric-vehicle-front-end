@@ -33,7 +33,14 @@ export function VehicleShowcase() {
     return () => { mounted = false }
   }, [])
 
-  const items = useMemo(() => (itemsRaw || []).map(normalizeProduct).filter(Boolean), [itemsRaw])
+  const items = useMemo(
+    () =>
+      (itemsRaw || [])
+        .map(normalizeProduct)
+        .filter(Boolean)
+        .filter((p) => !(p?.isSold || String(p?.status).toLowerCase() === "sold")),
+    [itemsRaw]
+  )
   const allLocations = ["Tất cả khu vực", ...new Set(items.map((i) => i.locationTrading))]
 
   // ✅ Lọc dữ liệu
