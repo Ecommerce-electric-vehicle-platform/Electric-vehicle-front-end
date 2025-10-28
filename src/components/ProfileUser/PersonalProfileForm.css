@@ -96,6 +96,7 @@
   background: #ffffff;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-align: left;
 }
 
 .form-input:focus {
@@ -131,27 +132,39 @@
 .form-submit {
   display: flex;
   justify-content: center;
-  gap: 16px; /* 🔹 Thêm khoảng cách giữa 2 nút */
+  gap: 16px;
+  /* 🔹 Thêm khoảng cách giữa 2 nút */
   padding-top: 16px;
 }
 
+/* CSS riêng cho nút trong view mode */
+.profile-view-container .form-submit {
+  justify-content: center;
+}
+
+.profile-view-container .submit-button {
+  width: auto;
+  min-width: 200px;
+  max-width: 300px;
+}
+
 .submit-button {
-  padding: 18px 48px;
+  padding: 12px 32px;
   background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
   color: white;
   border: none;
-  border-radius: 16px;
-  font-size: 18px;
-  font-weight: 700;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
-    0 8px 16px -4px rgba(16, 185, 129, 0.4),
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 4px 8px -2px rgba(16, 185, 129, 0.3),
+    0 2px 4px -1px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   text-transform: uppercase;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -168,10 +181,10 @@
 }
 
 .submit-button:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow:
-    0 12px 20px -4px rgba(16, 185, 129, 0.5),
-    0 8px 12px -2px rgba(0, 0, 0, 0.15),
+    0 6px 12px -2px rgba(16, 185, 129, 0.4),
+    0 4px 8px -2px rgba(0, 0, 0, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
   background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
 }
@@ -205,6 +218,34 @@
 }
 
 .submit-button:active {
+  transform: translateY(0);
+}
+
+/* CSS cho nút Cancel */
+.cancel-button {
+  padding: 12px 32px;
+  background: #f8fafc;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.cancel-button:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cancel-button:active {
   transform: translateY(0);
 }
 
@@ -323,6 +364,7 @@
   /* Màu nền cho input bị khóa */
   color: #71717a;
   cursor: not-allowed;
+  text-align: left;
 }
 
 /* CSS cho nút khi bị disable (đang loading) */
@@ -375,6 +417,7 @@
 
   .submit-button {
     width: 100%;
-    padding: 14px 24px;
+    padding: 10px 20px;
+    font-size: 13px;
   }
 }

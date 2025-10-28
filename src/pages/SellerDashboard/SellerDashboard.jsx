@@ -1,200 +1,127 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Package,
-    Truck,
     DollarSign,
-    TrendingUp,
-    Bell,
-    Settings,
     Plus,
     Eye,
-    Edit,
-    Trash2,
     CheckCircle,
     Clock,
-    AlertCircle,
-    Star,
     Users,
     ShoppingCart,
     BarChart3,
-    Calendar,
     MapPin,
     Phone,
     Mail
 } from 'lucide-react';
-import SellerNotification from '../../components/SellerNotification/SellerNotification';
+import sellerApi from '../../api/sellerApi';
 import './SellerDashboard.css';
 
 function SellerDashboard() {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
     const [orders, setOrders] = useState([]);
-    const [products, setProducts] = useState([]);
-    const [showNotifications, setShowNotifications] = useState(false);
-    const [notifications, setNotifications] = useState([]);
-    const [sellerInfo, setSellerInfo] = useState({
-        id: "seller_001",
-        name: "Nguyễn Văn Minh",
-        email: "minh.nguyen@email.com",
-        phone: "0901234567",
-        address: "123 Đường ABC, Quận 1, TP.HCM",
-        rating: 4.9,
-        totalSales: 156,
-        joinDate: "2023-06-15",
-        totalRevenue: 2450000000,
-        activeProducts: 12,
-        pendingOrders: 8
+    const [loading, setLoading] = useState(true);
+    const [statistics, setStatistics] = useState({
+        totalRevenue: 0,
+        totalOrders: 0,
+        activeProducts: 0,
+        pendingOrders: 0
     });
+    const [sellerInfo, setSellerInfo] = useState(null);
 
-    // Load notifications và orders từ localStorage
+    // Load seller data and orders
     useEffect(() => {
-        // Load notifications
-        const savedNotifications = JSON.parse(localStorage.getItem('sellerNotifications') || '[]');
-        setNotifications(savedNotifications);
-
-        // Load orders từ localStorage (từ PlaceOrder)
-        const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-
-        // Mock data cho orders (fallback)
-        const mockOrders = [
-            {
-                id: 'ORD001',
-                customerName: 'Lê Văn An',
-                customerPhone: '0901234567',
-                product: 'VinFast Feliz S',
-                quantity: 1,
-                totalAmount: 20850000,
-                status: 'pending',
-                orderDate: '2024-02-20',
-                deliveryAddress: '456 Đường DEF, Quận 2, TP.HCM',
-                notes: 'Giao hàng vào buổi chiều'
-            },
-            {
-                id: 'ORD002',
-                customerName: 'Phạm Thị Bình',
-                customerPhone: '0907654321',
-                product: 'Giant M133S',
-                quantity: 1,
-                totalAmount: 16550000,
-                status: 'preparing',
-                orderDate: '2024-02-19',
-                deliveryAddress: '789 Đường GHI, Quận 3, TP.HCM',
-                notes: 'Kiểm tra kỹ trước khi giao'
-            },
-            {
-                id: 'ORD003',
-                customerName: 'Hoàng Văn Cường',
-                customerPhone: '0909876543',
-                product: 'Pin Bridgestone 36V 10Ah',
-                quantity: 2,
-                totalAmount: 2100000,
-                status: 'shipped',
-                orderDate: '2024-02-18',
-                deliveryAddress: '321 Đường JKL, Quận 4, TP.HCM',
-                trackingNumber: 'VN123456789'
-            }
-        ];
-
-        // Kết hợp orders từ localStorage và mock data
-        const allOrders = [...savedOrders, ...mockOrders];
-
-        // Đảm bảo tất cả orders có cấu trúc đúng
-        const validatedOrders = allOrders.map(order => ({
-            id: order.id || 'UNKNOWN',
-            customerName: order.customerName || order.buyerName || 'Khách hàng không xác định',
-            customerPhone: order.customerPhone || order.buyerPhone || 'N/A',
-            product: typeof order.product === 'string' ? order.product : order.product?.title || 'Sản phẩm không xác định',
-            quantity: order.quantity || 1,
-            totalAmount: order.totalAmount || order.finalPrice || 0,
-            status: order.status || 'pending',
-            orderDate: order.orderDate || order.createdAt || new Date().toISOString(),
-            deliveryAddress: order.deliveryAddress || 'Địa chỉ không xác định',
-            notes: order.notes || order.deliveryNote || '',
-            trackingNumber: order.trackingNumber || ''
-        }));
-
-        setOrders(validatedOrders);
-
-        const mockProducts = [
-            {
-                id: 1,
-                title: 'VinFast Feliz S',
-                price: 20800000,
-                status: 'available',
-                views: 245,
-                orders: 12,
-                revenue: 249600000
-            },
-            {
-                id: 3,
-                title: 'Giant M133S',
-                price: 16500000,
-                status: 'available',
-                views: 189,
-                orders: 8,
-                revenue: 132000000
-            }
-        ];
-        setProducts(mockProducts);
+        loadSellerData();
+        loadSellerOrders();
+        loadSellerStatistics();
     }, []);
 
+    const loadSellerData = async () => {
+        try {
+            const response = await sellerApi.getSellerProfile();
+            setSellerInfo(response?.data?.data);
+        } catch (error) {
+            console.error('Error loading seller profile:', error);
+        }
+    };
+
+    const loadSellerOrders = async () => {
+        try {
+            setLoading(true);
+            const response = await sellerApi.getSellerOrders(0, 50);
+            const ordersData = response?.data?.data || [];
+            setOrders(ordersData);
+        } catch (error) {
+            console.error('Error loading seller orders:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadSellerStatistics = async () => {
+        try {
+            const response = await sellerApi.getSellerStatistics();
+            const stats = response?.data?.data || {};
+            setStatistics({
+                totalRevenue: stats.totalRevenue || 0,
+                totalOrders: stats.totalOrders || 0,
+                activeProducts: stats.activeProducts || 0,
+                pendingOrders: stats.pendingOrders || 0
+            });
+        } catch (error) {
+            console.error('Error loading seller statistics:', error);
+        }
+    };
+
     const getStatusColor = (status) => {
-        switch (status) {
-            case 'pending': return '#F59E0B';
-            case 'preparing': return '#3B82F6';
-            case 'shipped': return '#10B981';
-            case 'delivered': return '#059669';
-            case 'cancelled': return '#EF4444';
+        switch (status?.toUpperCase()) {
+            case 'PENDING': return '#F59E0B';
+            case 'CONFIRMED': return '#3B82F6';
+            case 'PREPARING': return '#6366F1';
+            case 'SHIPPING': return '#10B981';
+            case 'DELIVERED': return '#059669';
+            case 'CANCELLED': return '#EF4444';
             default: return '#6B7280';
         }
     };
 
     const getStatusText = (status) => {
-        switch (status) {
-            case 'pending': return 'Chờ xử lý';
-            case 'preparing': return 'Đang chuẩn bị';
-            case 'shipped': return 'Đã gửi hàng';
-            case 'delivered': return 'Đã giao hàng';
-            case 'cancelled': return 'Đã hủy';
+        switch (status?.toUpperCase()) {
+            case 'PENDING': return 'Chờ xử lý';
+            case 'CONFIRMED': return 'Đã xác nhận';
+            case 'PREPARING': return 'Đang chuẩn bị';
+            case 'SHIPPING': return 'Đang giao hàng';
+            case 'DELIVERED': return 'Đã giao hàng';
+            case 'CANCELLED': return 'Đã hủy';
             default: return 'Không xác định';
         }
     };
 
-    const handleOrderAction = (orderId, action) => {
-        setOrders(prev => prev.map(order => {
-            if (order.id === orderId) {
-                switch (action) {
-                    case 'accept':
-                        return { ...order, status: 'preparing' };
-                    case 'prepare':
-                        return { ...order, status: 'shipped' };
-                    case 'ship':
-                        return { ...order, status: 'shipped', trackingNumber: 'VN' + Math.random().toString(36).substr(2, 9).toUpperCase() };
-                    default:
-                        return order;
-                }
+    const handleOrderAction = async (orderId, action) => {
+        try {
+            let newStatus;
+            switch (action) {
+                case 'accept':
+                    newStatus = 'CONFIRMED';
+                    break;
+                case 'prepare':
+                    newStatus = 'PREPARING';
+                    break;
+                case 'ship':
+                    newStatus = 'SHIPPING';
+                    break;
+                default:
+                    return;
             }
-            return order;
-        }));
-    };
 
-    // Xử lý thông báo
-    const handleMarkAsRead = (notificationIndex) => {
-        setNotifications(prev => {
-            const updated = [...prev];
-            updated[notificationIndex] = { ...updated[notificationIndex], read: true };
-            localStorage.setItem('sellerNotifications', JSON.stringify(updated));
-            return updated;
-        });
-    };
-
-    const handleViewOrder = (orderId) => {
-        setShowNotifications(false);
-        setActiveTab('orders');
-        // Có thể thêm logic scroll đến đơn hàng cụ thể
-    };
-
-    const handleNotificationClick = () => {
-        setShowNotifications(true);
+            await sellerApi.updateOrderStatus(orderId, newStatus);
+            // Reload orders after update
+            loadSellerOrders();
+        } catch (error) {
+            console.error('Error updating order:', error);
+            alert('Cập nhật đơn hàng thất bại. Vui lòng thử lại!');
+        }
     };
 
     const formatCurrency = (value) => {
@@ -212,9 +139,8 @@ function SellerDashboard() {
                         <DollarSign size={24} />
                     </div>
                     <div className="stat-content">
-                        <h3 className="stat-value">{formatCurrency(sellerInfo.totalRevenue)}</h3>
+                        <h3 className="stat-value">{formatCurrency(statistics.totalRevenue)}</h3>
                         <p className="stat-label">Tổng doanh thu</p>
-                        <span className="stat-change positive">+12.5%</span>
                     </div>
                 </div>
 
@@ -223,9 +149,8 @@ function SellerDashboard() {
                         <ShoppingCart size={24} />
                     </div>
                     <div className="stat-content">
-                        <h3 className="stat-value">{sellerInfo.totalSales}</h3>
+                        <h3 className="stat-value">{statistics.totalOrders}</h3>
                         <p className="stat-label">Tổng đơn hàng</p>
-                        <span className="stat-change positive">+8.2%</span>
                     </div>
                 </div>
 
@@ -234,9 +159,8 @@ function SellerDashboard() {
                         <Package size={24} />
                     </div>
                     <div className="stat-content">
-                        <h3 className="stat-value">{sellerInfo.activeProducts}</h3>
+                        <h3 className="stat-value">{statistics.activeProducts}</h3>
                         <p className="stat-label">Sản phẩm đang bán</p>
-                        <span className="stat-change neutral">0%</span>
                     </div>
                 </div>
 
@@ -245,24 +169,82 @@ function SellerDashboard() {
                         <Clock size={24} />
                     </div>
                     <div className="stat-content">
-                        <h3 className="stat-value">{sellerInfo.pendingOrders}</h3>
+                        <h3 className="stat-value">{statistics.pendingOrders}</h3>
                         <p className="stat-label">Đơn hàng chờ</p>
-                        <span className="stat-change negative">-3.1%</span>
                     </div>
                 </div>
             </div>
 
             <div className="recent-orders">
                 <h3>Đơn hàng gần đây</h3>
-                <div className="orders-list">
-                    {orders.slice(0, 5).map(order => (
-                        <div key={order.id} className="order-item">
-                            <div className="order-info">
-                                <div className="order-id">#{order.id}</div>
-                                <div className="order-customer">{order.customerName}</div>
-                                <div className="order-product">{typeof order.product === 'string' ? order.product : order.product?.title || 'Sản phẩm không xác định'}</div>
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '2rem' }}>
+                        <div className="loading-spinner"></div>
+                        <p>Đang tải...</p>
+                    </div>
+                ) : orders.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                        <ShoppingCart size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                        <p>Chưa có đơn hàng nào</p>
+                    </div>
+                ) : (
+                    <div className="orders-list">
+                        {orders.slice(0, 5).map(order => (
+                            <div key={order.orderId || order.id} className="order-item">
+                                <div className="order-info">
+                                    <div className="order-id">#{order.orderId || order.id}</div>
+                                    <div className="order-customer">{order.buyerName || 'Khách hàng'}</div>
+                                    <div className="order-product">{order.product?.name || order.productName || 'Sản phẩm'}</div>
+                                </div>
+                                <div className="order-status">
+                                    <span
+                                        className="status-badge"
+                                        style={{ backgroundColor: getStatusColor(order.status) }}
+                                    >
+                                        {getStatusText(order.status)}
+                                    </span>
+                                </div>
+                                <div className="order-amount">{formatCurrency(order.totalPrice || order.totalAmount || 0)}</div>
                             </div>
-                            <div className="order-status">
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    const renderOrders = () => {
+        if (loading) {
+            return (
+                <div style={{ textAlign: 'center', padding: '3rem' }}>
+                    <div className="loading-spinner"></div>
+                    <p>Đang tải đơn hàng...</p>
+                </div>
+            );
+        }
+
+        if (orders.length === 0) {
+            return (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+                    <ShoppingCart size={64} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                    <h3>Chưa có đơn hàng nào</h3>
+                    <p>Bạn chưa có đơn hàng nào từ người mua.</p>
+                </div>
+            );
+        }
+
+        return (
+            <div className="orders-section">
+                <div className="section-header">
+                    <h2>Quản lý đơn hàng</h2>
+                </div>
+
+                <div className="orders-table">
+                    {orders.map(order => (
+                        <div key={order.orderId || order.id} className="order-card">
+                            <div className="order-header">
+                                <div className="order-id">#{order.orderId || order.id}</div>
+                                <div className="order-date">{new Date(order.createdAt || order.orderDate).toLocaleDateString('vi-VN')}</div>
                                 <span
                                     className="status-badge"
                                     style={{ backgroundColor: getStatusColor(order.status) }}
@@ -270,225 +252,146 @@ function SellerDashboard() {
                                     {getStatusText(order.status)}
                                 </span>
                             </div>
-                            <div className="order-amount">{formatCurrency(order.totalAmount || order.finalPrice || 0)}</div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
 
-    const renderOrders = () => (
-        <div className="orders-section">
-            <div className="section-header">
-                <h2>Quản lý đơn hàng</h2>
-                <div className="filter-tabs">
-                    <button className={`filter-tab ${activeTab === 'all' ? 'active' : ''}`}>Tất cả</button>
-                    <button className={`filter-tab ${activeTab === 'pending' ? 'active' : ''}`}>Chờ xử lý</button>
-                    <button className={`filter-tab ${activeTab === 'preparing' ? 'active' : ''}`}>Đang chuẩn bị</button>
-                    <button className={`filter-tab ${activeTab === 'shipped' ? 'active' : ''}`}>Đã gửi hàng</button>
-                </div>
-            </div>
+                            <div className="order-details">
+                                <div className="customer-info">
+                                    <h4>{order.buyer?.fullName || order.buyerName || 'Khách hàng'}</h4>
+                                    <p><Phone size={16} /> {order.buyer?.phone || order.buyerPhone || 'N/A'}</p>
+                                    <p><MapPin size={16} /> {order.shippingAddress || 'Địa chỉ không xác định'}</p>
+                                </div>
 
-            <div className="orders-table">
-                {orders.map(order => (
-                    <div key={order.id} className="order-card">
-                        <div className="order-header">
-                            <div className="order-id">#{order.id}</div>
-                            <div className="order-date">{order.orderDate}</div>
-                            <span
-                                className="status-badge"
-                                style={{ backgroundColor: getStatusColor(order.status) }}
-                            >
-                                {getStatusText(order.status)}
-                            </span>
-                        </div>
-
-                        <div className="order-details">
-                            <div className="customer-info">
-                                <h4>{order.customerName || 'Khách hàng không xác định'}</h4>
-                                <p><Phone size={16} /> {order.customerPhone || 'N/A'}</p>
-                                <p><MapPin size={16} /> {order.deliveryAddress || 'Địa chỉ không xác định'}</p>
-                                {order.notes && <p><AlertCircle size={16} /> {order.notes}</p>}
+                                <div className="product-info">
+                                    <h4>{order.product?.name || order.productName || 'Sản phẩm'}</h4>
+                                    <p>Số lượng: {order.quantity || 1}</p>
+                                    <p className="total-amount">{formatCurrency(order.totalPrice || order.totalAmount || 0)}</p>
+                                </div>
                             </div>
 
-                            <div className="product-info">
-                                <h4>{typeof order.product === 'string' ? order.product : order.product?.title || 'Sản phẩm không xác định'}</h4>
-                                <p>Số lượng: {order.quantity || 1}</p>
-                                <p className="total-amount">{formatCurrency(order.totalAmount || order.finalPrice || 0)}</p>
-                            </div>
-                        </div>
-
-                        <div className="order-actions">
-                            {order.status === 'pending' && (
-                                <>
+                            <div className="order-actions">
+                                {order.status === 'PENDING' && (
                                     <button
                                         className="btn btn-success"
-                                        onClick={() => handleOrderAction(order.id, 'accept')}
+                                        onClick={() => handleOrderAction(order.orderId || order.id, 'accept')}
                                     >
                                         <CheckCircle size={16} />
                                         Xác nhận đơn hàng
                                     </button>
-                                    <button className="btn btn-danger">
-                                        <AlertCircle size={16} />
-                                        Từ chối
+                                )}
+
+                                {order.status === 'CONFIRMED' && (
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => handleOrderAction(order.orderId || order.id, 'prepare')}
+                                    >
+                                        <CheckCircle size={16} />
+                                        Đang chuẩn bị
                                     </button>
-                                </>
-                            )}
+                                )}
 
-                            {order.status === 'preparing' && (
                                 <button
-                                    className="btn btn-primary"
-                                    onClick={() => handleOrderAction(order.id, 'ship')}
+                                    className="btn btn-secondary"
+                                    onClick={() => navigate(`/order-tracking/${order.orderId || order.id}`)}
                                 >
-                                    <Truck size={16} />
-                                    Gửi hàng đến 3PL
+                                    <Eye size={16} />
+                                    Chi tiết
                                 </button>
-                            )}
-
-                            {order.status === 'shipped' && (
-                                <div className="shipped-info">
-                                    <p><strong>Mã vận đơn:</strong> {order.trackingNumber}</p>
-                                    <p><strong>Trạng thái:</strong> Đã gửi đến 3PL</p>
-                                </div>
-                            )}
-
-                            <button className="btn btn-secondary">
-                                <Eye size={16} />
-                                Chi tiết
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-
-    const renderProducts = () => (
-        <div className="products-section">
-            <div className="section-header">
-                <h2>Sản phẩm của tôi</h2>
-                <button className="btn btn-primary">
-                    <Plus size={16} />
-                    Thêm sản phẩm
-                </button>
-            </div>
-
-            <div className="products-grid">
-                {products.map(product => (
-                    <div key={product.id} className="product-card">
-                        <div className="product-image">
-                            <img src="/src/assets/imgs_old/1.jpg" alt={product.title || 'Sản phẩm'} />
-                        </div>
-                        <div className="product-info">
-                            <h4>{product.title || 'Sản phẩm không xác định'}</h4>
-                            <p className="product-price">{formatCurrency(product.price || 0)}</p>
-                            <div className="product-stats">
-                                <span><Eye size={14} /> {product.views || 0} lượt xem</span>
-                                <span><ShoppingCart size={14} /> {product.orders || 0} đơn hàng</span>
-                                <span><DollarSign size={14} /> {formatCurrency(product.revenue || 0)}</span>
                             </div>
                         </div>
-                        <div className="product-actions">
-                            <button className="btn btn-secondary">
-                                <Edit size={16} />
-                                Sửa
-                            </button>
-                            <button className="btn btn-danger">
-                                <Trash2 size={16} />
-                                Xóa
-                            </button>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const renderProfile = () => {
+        if (!sellerInfo) {
+            return (
+                <div style={{ textAlign: 'center', padding: '3rem' }}>
+                    <div className="loading-spinner"></div>
+                    <p>Đang tải thông tin...</p>
+                </div>
+            );
+        }
+
+        return (
+            <div className="profile-section">
+                <div className="profile-header">
+                    <div className="profile-avatar">
+                        <div className="avatar-circle">
+                            <span>{sellerInfo.fullName?.charAt(0) || sellerInfo.username?.charAt(0) || 'S'}</span>
                         </div>
                     </div>
-                ))}
-            </div>
-        </div>
-    );
-
-    const renderProfile = () => (
-        <div className="profile-section">
-            <div className="profile-header">
-                <div className="profile-avatar">
-                    <div className="avatar-circle">
-                        <span>{sellerInfo.name.charAt(0)}</span>
-                    </div>
-                </div>
-                <div className="profile-info">
-                    <h2>{sellerInfo.name}</h2>
-                    <div className="seller-rating">
-                        <Star size={20} fill="#FCD34D" color="#FCD34D" />
-                        <span>{sellerInfo.rating}</span>
-                        <span className="rating-text">({sellerInfo.totalSales} đánh giá)</span>
-                    </div>
-                    <p>Tham gia từ {new Date(sellerInfo.joinDate).toLocaleDateString('vi-VN')}</p>
-                </div>
-            </div>
-
-            <div className="profile-details">
-                <div className="detail-group">
-                    <h3>Thông tin liên hệ</h3>
-                    <div className="detail-item">
-                        <Mail size={20} />
-                        <span>{sellerInfo.email}</span>
-                    </div>
-                    <div className="detail-item">
-                        <Phone size={20} />
-                        <span>{sellerInfo.phone}</span>
-                    </div>
-                    <div className="detail-item">
-                        <MapPin size={20} />
-                        <span>{sellerInfo.address}</span>
+                    <div className="profile-info">
+                        <h2>{sellerInfo.fullName || sellerInfo.username || 'Seller'}</h2>
+                        <p>{sellerInfo.email || 'N/A'}</p>
+                        <p>{sellerInfo.phone || 'N/A'}</p>
                     </div>
                 </div>
 
-                <div className="detail-group">
-                    <h3>Thống kê bán hàng</h3>
-                    <div className="stats-row">
-                        <div className="stat-item">
-                            <span className="stat-label">Tổng doanh thu:</span>
-                            <span className="stat-value">{formatCurrency(sellerInfo.totalRevenue)}</span>
+                <div className="profile-details">
+                    <div className="detail-group">
+                        <h3>Thông tin liên hệ</h3>
+                        <div className="detail-item">
+                            <Mail size={20} />
+                            <span>{sellerInfo.email || 'N/A'}</span>
                         </div>
-                        <div className="stat-item">
-                            <span className="stat-label">Tổng đơn hàng:</span>
-                            <span className="stat-value">{sellerInfo.totalSales}</span>
+                        <div className="detail-item">
+                            <Phone size={20} />
+                            <span>{sellerInfo.phone || 'N/A'}</span>
                         </div>
-                        <div className="stat-item">
-                            <span className="stat-label">Sản phẩm đang bán:</span>
-                            <span className="stat-value">{sellerInfo.activeProducts}</span>
+                        <div className="detail-item">
+                            <MapPin size={20} />
+                            <span>{sellerInfo.address || 'Chưa cập nhật'}</span>
+                        </div>
+                    </div>
+
+                    <div className="detail-group">
+                        <h3>Thống kê bán hàng</h3>
+                        <div className="stats-row">
+                            <div className="stat-item">
+                                <span className="stat-label">Tổng doanh thu:</span>
+                                <span className="stat-value">{formatCurrency(statistics.totalRevenue)}</span>
+                            </div>
+                            <div className="stat-item">
+                                <span className="stat-label">Tổng đơn hàng:</span>
+                                <span className="stat-value">{statistics.totalOrders}</span>
+                            </div>
+                            <div className="stat-item">
+                                <span className="stat-label">Sản phẩm đang bán:</span>
+                                <span className="stat-value">{statistics.activeProducts}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="profile-actions">
-                <button className="btn btn-primary">
-                    <Edit size={16} />
-                    Chỉnh sửa thông tin
-                </button>
-                <button className="btn btn-secondary">
-                    <Settings size={16} />
-                    Cài đặt tài khoản
-                </button>
+                <div className="profile-actions">
+                    <button className="btn btn-primary" onClick={() => navigate('/profile')}>
+                        Chỉnh sửa thông tin
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => navigate('/seller/manage-posts')}>
+                        <Package size={16} />
+                        Quản lý tin đăng
+                    </button>
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="seller-dashboard">
             <div className="dashboard-header">
                 <div className="header-left">
                     <h1>Seller Dashboard</h1>
-                    <p>Chào mừng trở lại, {sellerInfo.name}!</p>
+                    <p>Chào mừng trở lại, {sellerInfo?.fullName || sellerInfo?.username || 'Seller'}!</p>
                 </div>
                 <div className="header-right">
-                    <button className="notification-btn" onClick={handleNotificationClick}>
-                        <Bell size={20} />
-                        {notifications.filter(n => !n.read).length > 0 && (
-                            <span className="notification-badge">{notifications.filter(n => !n.read).length}</span>
-                        )}
+                    <button className="btn btn-primary" onClick={() => navigate('/seller/manage-posts')}>
+                        <Package size={16} />
+                        Quản lý tin đăng
                     </button>
-                    <button className="settings-btn">
-                        <Settings size={20} />
+                    <button className="btn btn-success" onClick={() => navigate('/seller/create-post')}>
+                        <Plus size={16} />
+                        Đăng tin mới
                     </button>
                 </div>
             </div>
@@ -511,13 +414,6 @@ function SellerDashboard() {
                             Đơn hàng
                         </button>
                         <button
-                            className={`nav-item ${activeTab === 'products' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('products')}
-                        >
-                            <Package size={20} />
-                            Sản phẩm
-                        </button>
-                        <button
                             className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`}
                             onClick={() => setActiveTab('profile')}
                         >
@@ -530,19 +426,9 @@ function SellerDashboard() {
                 <div className="main-content">
                     {activeTab === 'overview' && renderOverview()}
                     {activeTab === 'orders' && renderOrders()}
-                    {activeTab === 'products' && renderProducts()}
                     {activeTab === 'profile' && renderProfile()}
                 </div>
             </div>
-
-            {/* Seller Notification Modal */}
-            <SellerNotification
-                isOpen={showNotifications}
-                onClose={() => setShowNotifications(false)}
-                notifications={notifications}
-                onMarkAsRead={handleMarkAsRead}
-                onViewOrder={handleViewOrder}
-            />
         </div>
     );
 }

@@ -104,9 +104,13 @@ export function normalizeProduct(item) {
         batteryType: item.batteryType ?? item.battery_type,
         range: item.range ?? item.maxRange ?? item.max_range,
 
-        // 📊 Thông tin bổ sung
-        sellerId: item.sellerId ?? item.seller_id,
-        sellerName: item.sellerName ?? item.seller_name,
+        // 📊 Thông tin bổ sung - Seller Info
+        sellerId: item.sellerId ?? item.seller_id ?? item.seller?.id ?? item.seller?.sellerId,
+        sellerName: item.sellerName ?? item.seller_name ?? item.seller?.fullName ?? item.seller?.name ?? item.seller?.username,
+        sellerAvatar: item.seller?.avatar ?? item.sellerAvatar ?? item.seller_avatar,
+        sellerEmail: item.seller?.email ?? item.sellerEmail,
+        sellerPhone: item.seller?.phone ?? item.sellerPhone,
+
         category: item.category ?? item.categoryId ?? item.category_id,
         status: item.status ?? "active",
 

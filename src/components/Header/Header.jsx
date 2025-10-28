@@ -56,7 +56,7 @@ export function Header() {
 
 
       console.log(
-        `[Header] Auth check → Authenticated: ${!!token}, Role: ${role}, Username: ${username}`
+        `[Header] Auth check Authenticated: ${!!token}, Role: ${role}, Username: ${username}`
       );
     };
 
