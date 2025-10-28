@@ -12,8 +12,14 @@ import "./UserDropdown.css"
 
 export function UserDropdown({ userInfo, onLogout }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [userRole, setUserRole] = useState("guest")
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const role = localStorage.getItem("authType") || "guest"
+    setUserRole(role)
+  }, [])
 
   // Đóng dropdown khi click bên ngoài
   useEffect(() => {
@@ -52,7 +58,7 @@ export function UserDropdown({ userInfo, onLogout }) {
     {
       id: 'post-management',
       label: 'Quản lý tin đăng',
-      icon: <Plus className="menu-icon" />
+      icon: <Package className="menu-icon" />
     },
     {
       id: 'create-new-post',
@@ -74,11 +80,10 @@ export function UserDropdown({ userInfo, onLogout }) {
         navigate('/orders')
         break
       case 'post-management':
-        navigate('/seller-dashboard')
+        navigate('/seller/manage-posts')
         break
       case 'create-new-post':
-        // TODO: Navigate to create post page
-        console.log('Navigate to create post')
+        navigate('/seller/create-post')
         break
       default:
         console.log(`Clicked: ${item.label}`)
@@ -129,19 +134,21 @@ export function UserDropdown({ userInfo, onLogout }) {
             ))}
           </div>
 
-          {/* Post Management Items */}
-          <div className="dropdown-section">
-            {postItems.map((item) => (
-              <button
-                key={item.id}
-                className="dropdown-item"
-                onClick={() => handleMenuClick(item)}
-              >
-                <div className="item-icon">{item.icon}</div>
-                <span className="item-label">{item.label}</span>
-              </button>
-            ))}
-          </div>
+          {/* Post Management Items - Only show for sellers */}
+          {userRole === "seller" && (
+            <div className="dropdown-section">
+              {postItems.map((item) => (
+                <button
+                  key={item.id}
+                  className="dropdown-item"
+                  onClick={() => handleMenuClick(item)}
+                >
+                  <div className="item-icon">{item.icon}</div>
+                  <span className="item-label">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Logout */}
           <div className="dropdown-section">

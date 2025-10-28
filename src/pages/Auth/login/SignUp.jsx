@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./auth.css";
 import authApi from "../../../api/authApi";
@@ -20,46 +20,270 @@ export default function SignUp() {
   const [isAgreed, setIsAgreed] = useState(false);
   const [showAgreeError, setShowAgreeError] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [validationTimeout, setValidationTimeout] = useState(null);
+  const [focusedFields, setFocusedFields] = useState({});
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (validationTimeout) {
+        clearTimeout(validationTimeout);
+      }
+    };
+  }, [validationTimeout]);
 
   // ===== VALIDATION =====
-  const validateField = (name, value) => {
+  const validateField = (name, value, isFocused = false) => {
     let message = "";
+
+    // Chỉ validate nếu field đã được focus hoặc có giá trị
     if (name === "username") {
-      if (!value.trim()) message = "Tên đăng nhập là bắt buộc.";
-      else if (!/^[A-Za-z]+$/.test(value))
-        message = "Chỉ được phép sử dụng chữ cái.";
-      else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
+      if (!value.trim()) {
+        if (isFocused) {
+          message = "Tên đăng nhập là bắt buộc.";
+        }
+      } else if (!/^[a-zA-Z]{8,}$/.test(value)) {
+        if (value.length < 8) {
+          message = "Tên đăng nhập phải có ít nhất 8 ký tự.";
+        } else if (!/^[a-zA-Z]+$/.test(value)) {
+          message = "Tên đăng nhập chỉ được chứa chữ cái (a-z, A-Z).";
+        } else {
+          message = "Tên đăng nhập không hợp lệ.";
+        }
+      }
     }
+
     if (name === "password") {
-      if (!value.trim()) message = "Mật khẩu là bắt buộc.";
-      else if (/\s/.test(value)) message = "Không được có khoảng trắng.";
-      else if (value.length < 8) message = "Tối thiểu 8 ký tự.";
-      else if (!/(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])/.test(value))
-        message = "Phải bao gồm chữ cái, số và ký tự đặc biệt.";
+      if (!value.trim()) {
+        if (isFocused) {
+          message = "Mật khẩu là bắt buộc.";
+        }
+      } else if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d\s])[^\s]{8,}$/.test(value)) {
+        if (value.length < 8) {
+          message = "Mật khẩu phải có ít nhất 8 ký tự.";
+        } else if (/\s/.test(value)) {
+          message = "Mật khẩu không được chứa khoảng trắng.";
+        } else if (!/(?=.*[A-Za-z])/.test(value)) {
+          message = "Mật khẩu phải chứa ít nhất một chữ cái.";
+        } else if (!/(?=.*\d)/.test(value)) {
+          message = "Mật khẩu phải chứa ít nhất một số.";
+        } else if (!/(?=.*[^A-Za-z\d\s])/.test(value)) {
+          message = "Mật khẩu phải chứa ít nhất một ký tự đặc biệt.";
+        }
+      }
     }
+
     if (name === "email") {
-      if (!value.trim()) message = "Email là bắt buộc.";
-      else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value))
-        message = "Email không hợp lệ.";
+      if (!value.trim()) {
+        if (isFocused) {
+          message = "Email là bắt buộc.";
+        }
+      } else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/.test(value)) {
+        if (!value.includes("@")) {
+          message = "Email phải chứa ký tự @.";
+        } else if (!value.includes(".")) {
+          message = "Email phải chứa dấu chấm.";
+        } else if (value.split("@").length !== 2) {
+          message = "Email chỉ được có một ký tự @.";
+        } else if (value.includes("..")) {
+          message = "Email không được chứa hai dấu chấm liên tiếp.";
+        } else if (value.startsWith(".") || value.endsWith(".")) {
+          message = "Email không được bắt đầu hoặc kết thúc bằng dấu chấm.";
+        } else {
+          message = "Định dạng email không hợp lệ.";
+        }
+      }
     }
+
     setErrors((prev) => ({ ...prev, [name]: message }));
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    validateField(name, value);
+
+    // Clear backend error when user starts typing
     setBackendError("");
+
+    // Clear existing error for this field when user starts typing
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+
+    // Immediate validation for certain cases
+    if (name === "username" && value.length > 0) {
+      // Validate username immediately if it has invalid characters
+      if (!/^[a-zA-Z]*$/.test(value)) {
+        if (/\d/.test(value)) {
+          setErrors((prev) => ({ ...prev, [name]: "Tên đăng nhập chỉ được chứa chữ cái (a-z, A-Z)." }));
+        } else if (/[^a-zA-Z]/.test(value)) {
+          setErrors((prev) => ({ ...prev, [name]: "Tên đăng nhập chỉ được chứa chữ cái (a-z, A-Z)." }));
+        }
+        return;
+      }
+    }
+
+    if (name === "password" && value.length > 0) {
+      // Validate password immediately if it has spaces
+      if (/\s/.test(value)) {
+        setErrors((prev) => ({ ...prev, [name]: "Mật khẩu không được chứa khoảng trắng." }));
+        return;
+      }
+    }
+
+    // Real-time validation with faster debounce for other cases
+    clearTimeout(validationTimeout);
+    const timeout = setTimeout(() => {
+      validateField(name, value, focusedFields[name]);
+    }, 100); // Giảm thời gian debounce để hiển thị nhanh hơn
+    setValidationTimeout(timeout);
+  };
+
+  const handleFocus = (e) => {
+    const { name } = e.target;
+    setFocusedFields((prev) => ({ ...prev, [name]: true }));
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setFocusedFields((prev) => ({ ...prev, [name]: true }));
+
+    // Validate on blur
+    validateField(name, value, true);
   };
 
   const validateAll = () => {
     const newErrors = {};
+    let hasErrors = false;
+
+    // Validate each field and collect errors
     Object.entries(formData).forEach(([key, value]) => {
-      validateField(key, value);
-      if (errors[key]) newErrors[key] = errors[key];
+      let message = "";
+
+      if (key === "username") {
+        if (!value.trim()) {
+          message = "Tên đăng nhập là bắt buộc.";
+        } else if (!/^[a-zA-Z]{8,}$/.test(value)) {
+          message = "Tên đăng nhập phải có ít nhất 8 chữ cái, không có số, ký tự đặc biệt hoặc khoảng trắng.";
+        }
+      }
+
+      if (key === "password") {
+        if (!value.trim()) {
+          message = "Mật khẩu là bắt buộc.";
+        } else if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d\s])[^\s]{8,}$/.test(value)) {
+          message = "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ cái, số và ký tự đặc biệt, không có khoảng trắng.";
+        }
+      }
+
+      if (key === "email") {
+        if (!value.trim()) {
+          message = "Email là bắt buộc.";
+        } else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/.test(value)) {
+          message = "Email không đúng định dạng. Ví dụ: user@example.com";
+        }
+      }
+
+      if (message) {
+        newErrors[key] = message;
+        hasErrors = true;
+      }
     });
+
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return !hasErrors;
+  };
+
+  // ===== ERROR HANDLING =====
+  const parseBackendError = (error) => {
+    console.log("=== PARSING BACKEND ERROR ===");
+    console.log("Full error object:", error);
+    console.log("Error type:", typeof error);
+    console.log("Error keys:", error ? Object.keys(error) : "No error object");
+
+    if (!error) {
+      console.log("No error object provided");
+      return "Đăng ký thất bại. Vui lòng thử lại.";
+    }
+
+    // Helper function to check if a string contains email/username errors
+    const checkForSpecificErrors = (message) => {
+      if (!message) return null;
+
+      const lowerMessage = message.toLowerCase();
+
+      if (lowerMessage.includes("email already exits") || lowerMessage.includes("email already exists")) {
+        return "Email này đã được sử dụng. Vui lòng sử dụng email khác.";
+      }
+      if (lowerMessage.includes("username already exits") || lowerMessage.includes("username already exists")) {
+        return "Tên đăng nhập này đã được sử dụng. Vui lòng chọn tên khác.";
+      }
+      if (lowerMessage.includes("invalid email format")) {
+        return "Email không đúng định dạng. Ví dụ: user@example.com";
+      }
+      if (lowerMessage.includes("password")) {
+        return "Mật khẩu không đáp ứng yêu cầu bảo mật.";
+      }
+      if (lowerMessage.includes("username")) {
+        return "Tên đăng nhập không đáp ứng yêu cầu.";
+      }
+      if (lowerMessage.includes("database") || lowerMessage.includes("connection")) {
+        return "Lỗi kết nối cơ sở dữ liệu. Vui lòng thử lại sau.";
+      }
+      if (lowerMessage.includes("email service") || lowerMessage.includes("mail")) {
+        return "Lỗi dịch vụ email. Không thể gửi mã xác thực. Vui lòng thử lại sau.";
+      }
+      if (lowerMessage.includes("illegalargumentexception")) {
+        return "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.";
+      }
+      if (lowerMessage.includes("nullpointerexception")) {
+        return "Lỗi xử lý dữ liệu. Vui lòng thử lại sau.";
+      }
+      if (lowerMessage.includes("sqlexception") || lowerMessage.includes("sql")) {
+        return "Lỗi cơ sở dữ liệu. Vui lòng thử lại sau.";
+      }
+      if (lowerMessage.includes("timeout")) {
+        return "Kết nối quá thời gian. Vui lòng thử lại sau.";
+      }
+      if (lowerMessage.includes("validation") || lowerMessage.includes("constraint")) {
+        return "Dữ liệu không đáp ứng yêu cầu hệ thống. Vui lòng kiểm tra lại thông tin.";
+      }
+
+      return null;
+    };
+
+    // Try multiple possible error structures
+    const possibleErrorMessages = [
+      error.error?.message,
+      error.message,
+      error.data?.error?.message,
+      error.data?.message,
+      error.response?.data?.error?.message,
+      error.response?.data?.message
+    ];
+
+    console.log("Possible error messages:", possibleErrorMessages);
+
+    // Check each possible error message
+    for (let i = 0; i < possibleErrorMessages.length; i++) {
+      const errorMessage = possibleErrorMessages[i];
+      if (errorMessage) {
+        console.log(`Checking error message ${i + 1}:`, errorMessage);
+        const specificError = checkForSpecificErrors(errorMessage);
+        if (specificError) {
+          console.log(`Found specific error in message ${i + 1}:`, specificError);
+          return specificError;
+        }
+      }
+    }
+
+    // If no specific error found, return the first available message or default
+    const firstMessage = possibleErrorMessages.find(msg => msg && msg !== "Internal Server Error");
+    if (firstMessage) {
+      console.log("No specific error found, returning first available message:", firstMessage);
+      return firstMessage;
+    }
+
+    console.log("No error message found, returning default");
+    return "Đăng ký thất bại. Vui lòng thử lại.";
   };
 
   // ===== SUBMIT =====
@@ -85,22 +309,108 @@ export default function SignUp() {
     } catch (error) {
       setLoadingMessage("");
       console.error("Lỗi đăng ký:", error.response?.data || error.message);
-      const backendMsg =
-        error.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
+      console.log("Full error object:", error);
+      console.log("Error response:", error.response);
+      console.log("Error response data:", error.response?.data);
+
+      // Direct check for the specific error structure you mentioned
+      const errorData = error.response?.data;
+      let backendMsg = "Đăng ký thất bại. Vui lòng thử lại.";
+
+      // Direct check for "Email already exits" in any possible location
+      if (errorData) {
+        const errorString = JSON.stringify(errorData);
+        console.log("Error data as string:", errorString);
+
+        if (errorString.includes("Email already exits")) {
+          console.log("Found 'Email already exits' in error data");
+          backendMsg = "Email này đã được sử dụng. Vui lòng sử dụng email khác.";
+        } else if (errorString.includes("Username already exits")) {
+          console.log("Found 'Username already exits' in error data");
+          backendMsg = "Tên đăng nhập này đã được sử dụng. Vui lòng chọn tên khác.";
+        } else if (errorString.includes("IllegalArgumentException")) {
+          console.log("Found 'IllegalArgumentException' in error data");
+          backendMsg = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.";
+        } else {
+          // Use the helper function as fallback
+          backendMsg = parseBackendError(errorData);
+        }
+      } else if (error.message) {
+        // Fallback nếu không có response data
+        if (error.message.includes("Network Error")) {
+          backendMsg = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và thử lại.";
+        } else if (error.message.includes("timeout")) {
+          backendMsg = "Kết nối quá thời gian. Vui lòng kiểm tra kết nối mạng và thử lại.";
+        } else {
+          backendMsg = error.message;
+        }
+      }
+
+      console.log("Final backend message:", backendMsg);
       setBackendError(backendMsg);
     }
   };
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
+
+    // Validation cho OTP
+    if (!otp.trim()) {
+      setBackendError("Vui lòng nhập mã OTP.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      setBackendError("Mã OTP phải là 6 chữ số.");
+      return;
+    }
+
     try {
       await authApi.verifyOtp({
         email: formData.email,
         otp: otp,
       });
       navigate("/signin");
-    } catch {
-      setBackendError("Mã OTP không hợp lệ hoặc đã hết hạn.");
+    } catch (error) {
+      console.error("Lỗi xác thực OTP:", error.response?.data || error.message);
+
+      let errorMsg = "Mã OTP không hợp lệ hoặc đã hết hạn.";
+
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        const status = error.response.status;
+
+        switch (status) {
+          case 400:
+            if (errorData.message?.includes("invalid") || errorData.message?.includes("incorrect")) {
+              errorMsg = "Mã OTP không chính xác. Vui lòng kiểm tra lại.";
+            } else if (errorData.message?.includes("expired")) {
+              errorMsg = "Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.";
+            } else {
+              errorMsg = errorData.message || "Mã OTP không hợp lệ.";
+            }
+            break;
+          case 404:
+            errorMsg = "Không tìm thấy phiên xác thực. Vui lòng đăng ký lại.";
+            break;
+          case 429:
+            errorMsg = "Quá nhiều lần thử sai. Vui lòng đợi và thử lại sau.";
+            break;
+          case 500:
+            errorMsg = "Lỗi hệ thống. Vui lòng thử lại sau.";
+            break;
+          default:
+            errorMsg = errorData.message || "Xác thực OTP thất bại.";
+        }
+      } else if (error.message) {
+        if (error.message.includes("Network Error")) {
+          errorMsg = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+        } else if (error.message.includes("timeout")) {
+          errorMsg = "Kết nối quá thời gian. Vui lòng thử lại.";
+        }
+      }
+
+      setBackendError(errorMsg);
     }
   };
 
@@ -172,7 +482,7 @@ export default function SignUp() {
         status === 401
           ? "Token Google không hợp lệ hoặc đã hết hạn."
           : error.response?.data?.message ||
-            "Đăng nhập/Đăng ký Google thất bại. Vui lòng thử lại.";
+          "Đăng nhập/Đăng ký Google thất bại. Vui lòng thử lại.";
       setBackendError(message);
       // Clear authType nếu signup/login thất bại
       localStorage.removeItem("authType");
@@ -229,6 +539,8 @@ export default function SignUp() {
                     placeholder="Tên đăng nhập"
                     value={formData.username}
                     onChange={handleChange}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
                   />
                   <div className="input-border"></div>
                 </div>
@@ -254,6 +566,8 @@ export default function SignUp() {
                     placeholder="Mật khẩu"
                     value={formData.password}
                     onChange={handleChange}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
                   />
                   <div className="input-border"></div>
                 </div>
@@ -277,6 +591,8 @@ export default function SignUp() {
                     placeholder="Email"
                     value={formData.email}
                     onChange={handleChange}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
                   />
                   <div className="input-border"></div>
                 </div>
@@ -291,8 +607,11 @@ export default function SignUp() {
               {/* Backend Error */}
               {backendError && (
                 <div className="backend-error">
-                  <i className="fas fa-times-circle"></i>
-                  <span>{backendError}</span>
+                  <i className="fas fa-exclamation-triangle"></i>
+                  <div className="error-content">
+                    <span className="error-title">Lỗi đăng ký</span>
+                    <span className="error-message">{backendError}</span>
+                  </div>
                 </div>
               )}
 
@@ -369,8 +688,11 @@ export default function SignUp() {
 
               {backendError && (
                 <div className="backend-error">
-                  <i className="fas fa-times-circle"></i>
-                  <span>{backendError}</span>
+                  <i className="fas fa-exclamation-triangle"></i>
+                  <div className="error-content">
+                    <span className="error-title">Lỗi xác thực</span>
+                    <span className="error-message">{backendError}</span>
+                  </div>
                 </div>
               )}
 

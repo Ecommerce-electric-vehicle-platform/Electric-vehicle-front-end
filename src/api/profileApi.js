@@ -72,20 +72,26 @@ const profileApi = {
     return axiosInstance.get('/api/v1/buyer/wallet');
   },
 
-  getActiveSellerPackages: () => { // Đổi tên hàm
+  getAvailableSellerPackages: () => { // Đổi tên hàm
     return axiosInstance.get('/api/v1/packages/active'); // <<< Đổi endpoint
   },
 
-  
+  getCurrentSubscription: () => {
+ return axiosInstance.get('/api/v1/packages/current-subscription'); 
+ },
 
 
   signPackage: (purchaseData) => {
     // purchaseData = { packageId, priceId, price, durationByDay }
     console.log("API Call: Signing package with data:", purchaseData);
-    // Thay bằng endpoint thực tế của bạn
     return axiosInstance.post('/api/v1/packages/sign-package', purchaseData); // <<< Endpoint mới
-    // For testing:
     // return new Promise((resolve) => setTimeout(() => resolve({ data: { success: true, message: "Signed package (mock)" } }), 1000));
+  },
+
+  cancelSubscription: () => {
+    console.log("API Call: Canceling current subscription...");
+    // Endpoint POST mới để hủy gói hiện tại
+    return axiosInstance.post('/api/v1/packages/cancel');
   },
 
 };
