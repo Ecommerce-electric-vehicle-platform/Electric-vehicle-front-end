@@ -28,6 +28,10 @@ export default function ApproveSeller() {
   const [rejectReason, setRejectReason] = useState("");
   const [selectedSeller, setSelectedSeller] = useState(null);
 
+  // Modal chi tiết
+  const [detailModal, setDetailModal] = useState(false);
+  const [detailSeller, setDetailSeller] = useState(null);
+
   // Pagination
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -78,11 +82,9 @@ export default function ApproveSeller() {
 
       // Hiển thị thông báo thành công
       if (decision === "APPROVED") {
-        alert(
-          "✅ Phê duyệt thành công! Buyer sẽ nhận được thông báo realtime."
-        );
+        alert("Phê duyệt thành công! Buyer sẽ nhận được thông báo realtime.");
       } else {
-        alert("❌ Đã từ chối yêu cầu nâng cấp seller.");
+        alert("Đã từ chối yêu cầu nâng cấp seller.");
       }
 
       // sau khi duyệt hoặc từ chối thì reload danh sách từ đầu
@@ -118,9 +120,17 @@ export default function ApproveSeller() {
     setRejectModal(false);
   };
 
+  // ===== Xem chi tiết seller =====
+  const onViewDetail = (seller) => {
+    setDetailSeller(seller);
+    setDetailModal(true);
+  };
+
   return (
     <div>
-      <h2 className="fw-semibold mb-4">Phê duyệt yêu cầu nâng cấp Seller</h2>
+      <h2 className="fw-semibold mb-4">
+        Phê duyệt yêu cầu nâng cấp thành Người bán
+      </h2>
 
       {/* Ô nhập thủ công Seller ID */}
       <div className="d-flex align-items-end gap-2 mb-3">
@@ -228,6 +238,12 @@ export default function ApproveSeller() {
                         >
                           Từ chối
                         </button>
+                        <button
+                          className="btn btn-info btn-sm"
+                          onClick={() => onViewDetail(r)}
+                        >
+                          Chi tiết
+                        </button>
                       </div>
                     </CTableDataCell>
                   </CTableRow>
@@ -277,6 +293,192 @@ export default function ApproveSeller() {
           </button>
           <button className="btn btn-danger" onClick={confirmReject}>
             Xác nhận từ chối
+          </button>
+        </CModalFooter>
+      </CModal>
+
+      {/* Modal chi tiết seller */}
+      <CModal
+        visible={detailModal}
+        onClose={() => setDetailModal(false)}
+        alignment="center"
+        size="lg"
+      >
+        <CModalHeader>
+          <CModalTitle>Chi tiết Seller</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {detailSeller ? (
+            <div>
+              <h5 className="fw-bold mb-3">{detailSeller.storeName}</h5>
+
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <p className="mb-2">
+                    <strong>Seller ID:</strong> {detailSeller.sellerId}
+                  </p>
+                </div>
+                <div className="col-md-6">
+                  <p className="mb-2">
+                    <strong>Trạng thái:</strong>{" "}
+                    <span className="badge bg-warning text-dark">
+                      {detailSeller.status}
+                    </span>
+                  </p>
+                </div>
+                <div className="col-md-6">
+                  <p className="mb-2">
+                    <strong>Tên người bán:</strong>{" "}
+                    {detailSeller.sellerName || "N/A"}
+                  </p>
+                </div>
+                <div className="col-md-6">
+                  <p className="mb-2">
+                    <strong>Quốc tịch:</strong>{" "}
+                    {detailSeller.nationality || "N/A"}
+                  </p>
+                </div>
+                <div className="col-12">
+                  <p className="mb-2">
+                    <strong>Mã số thuế:</strong>{" "}
+                    {detailSeller.taxNumber || "N/A"}
+                  </p>
+                </div>
+                <div className="col-12">
+                  <p className="mb-2">
+                    <strong>Địa chỉ:</strong> {detailSeller.home || "N/A"}
+                  </p>
+                </div>
+                <div className="col-md-6">
+                  <p className="mb-2">
+                    <strong>Ngày tạo:</strong>{" "}
+                    {detailSeller.createAt
+                      ? new Date(detailSeller.createAt).toLocaleString("vi-VN")
+                      : "N/A"}
+                  </p>
+                </div>
+                <div className="col-md-6">
+                  <p className="mb-2">
+                    <strong>Ngày cập nhật:</strong>{" "}
+                    {detailSeller.updateAt
+                      ? new Date(detailSeller.updateAt).toLocaleString("vi-VN")
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              <hr className="my-3" />
+
+              {/* Giấy tờ và hình ảnh */}
+              <h6 className="fw-bold mb-3">Giấy tờ và hình ảnh</h6>
+              <div className="row g-3">
+                {detailSeller.storePolicyUrl && (
+                  <div className="col-12">
+                    <p className="mb-1">
+                      <strong>Chính sách cửa hàng:</strong>
+                    </p>
+                    <a
+                      href={detailSeller.storePolicyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-sm btn-outline-primary"
+                    >
+                      Xem chính sách
+                    </a>
+                  </div>
+                )}
+
+                {detailSeller.identityFrontImageUrl && (
+                  <div className="col-md-6">
+                    <p className="mb-1">
+                      <strong>CMND/CCCD mặt trước:</strong>
+                    </p>
+                    <a
+                      href={detailSeller.identityFrontImageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        src={detailSeller.identityFrontImageUrl}
+                        alt="CMND mặt trước"
+                        className="img-fluid rounded border"
+                        style={{ maxHeight: "200px", objectFit: "cover" }}
+                      />
+                    </a>
+                  </div>
+                )}
+
+                {detailSeller.identityBackImageUrl && (
+                  <div className="col-md-6">
+                    <p className="mb-1">
+                      <strong>CMND/CCCD mặt sau:</strong>
+                    </p>
+                    <a
+                      href={detailSeller.identityBackImageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        src={detailSeller.identityBackImageUrl}
+                        alt="CMND mặt sau"
+                        className="img-fluid rounded border"
+                        style={{ maxHeight: "200px", objectFit: "cover" }}
+                      />
+                    </a>
+                  </div>
+                )}
+
+                {detailSeller.businessLicenseUrl && (
+                  <div className="col-md-6">
+                    <p className="mb-1">
+                      <strong>Giấy phép kinh doanh:</strong>
+                    </p>
+                    <a
+                      href={detailSeller.businessLicenseUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        src={detailSeller.businessLicenseUrl}
+                        alt="Giấy phép kinh doanh"
+                        className="img-fluid rounded border"
+                        style={{ maxHeight: "200px", objectFit: "cover" }}
+                      />
+                    </a>
+                  </div>
+                )}
+
+                {detailSeller.selfieUrl && (
+                  <div className="col-md-6">
+                    <p className="mb-1">
+                      <strong>Ảnh selfie:</strong>
+                    </p>
+                    <a
+                      href={detailSeller.selfieUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        src={detailSeller.selfieUrl}
+                        alt="Ảnh selfie"
+                        className="img-fluid rounded border"
+                        style={{ maxHeight: "200px", objectFit: "cover" }}
+                      />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p>Không có dữ liệu chi tiết.</p>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setDetailModal(false)}
+          >
+            Đóng
           </button>
         </CModalFooter>
       </CModal>

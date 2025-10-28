@@ -74,7 +74,7 @@ export default function SignIn() {
     try {
       // Step 1: Gọi API đăng nhập
       const loginResponse = await authApi.signin(formData);
-      const loginData = loginResponse?.data?.data;
+const loginData = loginResponse?.data?.data;
 
       // === KIỂM TRA RESPONSE CÓ ĐỦ THÔNG TIN (TOKEN + ROLE) ===
       if (!loginData?.accessToken || !loginData?.refreshToken || !loginData?.role) {
@@ -138,7 +138,7 @@ export default function SignIn() {
         "authType", "sellerId", // Xóa key cũ
         "userRole", // <<< Xóa key mới
         "activeSellerPackage" // Xóa thông tin gói nếu có lỗi đăng nhập
-      ].forEach((k) => localStorage.removeItem(k));
+].forEach((k) => localStorage.removeItem(k));
     }
   };
 
@@ -207,7 +207,7 @@ export default function SignIn() {
         <div className="greentrade-text">
           <span className="green-text">Green</span>
           <span className="trade-text">Trade</span>
-        </div>
+</div>
         <div className="logo-glow"></div>
       </div>
 
@@ -290,5 +290,3 @@ export default function SignIn() {
     </form>
   );
 }
-
-
