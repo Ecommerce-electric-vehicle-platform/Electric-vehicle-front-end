@@ -77,8 +77,8 @@ const profileApi = {
   },
 
   getCurrentSubscription: () => {
- return axiosInstance.get('/api/v1/packages/current-subscription'); 
- },
+    return axiosInstance.get('/api/v1/packages/current-subscription');
+  },
 
 
   signPackage: (purchaseData) => {
@@ -92,6 +92,19 @@ const profileApi = {
     console.log("API Call: Canceling current subscription...");
     // Endpoint POST mới để hủy gói hiện tại
     return axiosInstance.post('/api/v1/packages/cancel');
+  },
+
+  // === DISPUTE APIS ===
+  // GET: Lấy danh sách các loại khiếu nại
+  getDisputeCategories: () => {
+    return axiosInstance.get('/api/v1/dispute-category/dispute-categories');
+  },
+
+  // POST: Gửi đơn khiếu nại (Multipart Form Data)
+  raiseDispute: (formData) => {
+    return axiosInstance.post('/api/v1/dispute/raise-dispute', formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
   },
 
 };
