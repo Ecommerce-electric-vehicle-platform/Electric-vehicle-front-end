@@ -553,6 +553,5 @@ body.hamburger-menu-open {
 .navbar-icon-button:focus,
 .navbar-notification-button:focus,
 .navbar-action-button:focus {
-  outline: 2px solid #16a34a;
-  outline-offset: 2px;
+  outline: none;
 }

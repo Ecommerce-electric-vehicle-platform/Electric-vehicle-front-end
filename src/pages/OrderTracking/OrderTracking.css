@@ -2,7 +2,8 @@
 .order-tracking-page {
     min-height: 100vh;
     background-color: #f8f9fa;
-    padding: 20px 0;
+    padding: 100px 0 20px 0;
+    /* Added top padding to avoid header overlap */
 }
 
 .order-tracking-container {
@@ -14,6 +15,93 @@
 /* Header */
 .order-tracking-header {
     margin-bottom: 30px;
+}
+
+/* Success Header */
+.success-header {
+    text-align: center;
+    padding: 12px 0 8px;
+}
+
+.success-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #e9fbf2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.success-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0;
+    color: #1f2937;
+}
+
+.success-subtitle {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* Progress Card */
+.progress-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+    padding: 20px;
+    margin: 12px 0 24px;
+}
+
+.progress-steps {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    align-items: center;
+    gap: 12px;
+}
+
+.p-step {
+    text-align: center;
+}
+
+.p-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 6px;
+}
+
+.p-step.active .p-dot {
+    background: #22c55e;
+}
+
+.p-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.p-time {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.p-sep {
+    height: 2px;
+    background: #e5e7eb;
+    width: 100%;
+    border-radius: 1px;
+}
+
+.p-sep.active {
+    background: #22c55e;
 }
 
 .breadcrumb-nav {
@@ -56,6 +144,78 @@
     font-weight: 700;
     color: #212529;
     margin-bottom: 30px;
+}
+
+/* Page Meta */
+.page-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 12px 16px;
+}
+
+.meta-left {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #f8f9fa;
+    color: #495057;
+    border: 1px solid #e9ecef;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+}
+
+.status-badge.pending {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.status-badge.confirmed {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.status-badge.shipping {
+    background: #d6e4ff;
+    color: #083a7a;
+    border: 1px solid #b3ccff;
+}
+
+.status-badge.delivered {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-badge.cancelled {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
 }
 
 /* Content Layout */
@@ -127,6 +287,7 @@
 /* Product Item */
 .product-item {
     display: flex;
+    align-items: center;
     gap: 16px;
     padding: 16px;
     background-color: #f8f9fa;
@@ -139,6 +300,7 @@
     border-radius: 8px;
     overflow: hidden;
     flex-shrink: 0;
+    background: #fff;
 }
 
 .product-image img {
@@ -149,33 +311,35 @@
 
 .product-info {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .product-title {
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 700;
     color: #212529;
-    margin-bottom: 4px;
-    line-height: 1.3;
+    margin: 0;
+    line-height: 1.35;
 }
 
 .product-brand {
     font-size: 14px;
     color: #6c757d;
-    margin-bottom: 4px;
+    margin: 0;
 }
 
 .product-condition {
     font-size: 12px;
     color: #28a745;
-    font-weight: 500;
-    margin-bottom: 8px;
+    font-weight: 600;
 }
 
 .product-price {
     font-size: 16px;
-    font-weight: 700;
-    color: #dc3545;
+    font-weight: 800;
+    color: #0f9d58;
 }
 
 /* Delivery Details */
@@ -364,6 +528,213 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Order Items Card */
+.order-items-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+    padding: 16px 16px 0;
+}
+
+.order-items-card .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0 12px;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 12px;
+}
+
+.order-items-card .card-head h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.code-badge {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #bbf7d0;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 8px;
+    padding: 12px 0;
+    border-bottom: 1px solid #eef2f6;
+}
+
+.i-thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.i-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.i-info {
+    flex: 1;
+}
+
+.i-name {
+    font-weight: 700;
+    color: #111827;
+    font-size: 15px;
+    margin: 0;
+}
+
+.i-sub {
+    color: #6b7280;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.i-price {
+    font-weight: 700;
+    color: #111827;
+    min-width: 140px;
+    text-align: right;
+}
+
+/* Totals inside the order-items-card */
+.order-items-card .price-breakdown {
+    padding: 6px 0 6px;
+}
+
+.order-items-card .price-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 12px;
+    padding: 12px 4px;
+}
+
+.order-items-card .price-item:not(.total) {
+    border-bottom: 1px solid #edf2f7;
+}
+
+.order-items-card .price-label {
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.order-items-card .price-item.total {
+    border-top: 1px solid #e5e7eb;
+    margin-top: 4px;
+    padding-top: 12px;
+}
+
+.order-items-card .price-item.total .price-value {
+    color: #10b981;
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.order-items-card .price-value {
+    text-align: right;
+    min-width: 160px;
+    font-weight: 700;
+}
+
+/* 2-column info grid */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.info-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+    padding: 16px;
+}
+
+.info-card .card-head {
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f3f4f6;
+    margin-bottom: 10px;
+}
+
+.info-card h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.info-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #374151;
+    font-size: 14px;
+    padding: 6px 0;
+}
+
+/* Card icons */
+.card-icon {
+    color: #10b981;
+    margin-right: 8px;
+}
+
+/* Payment method styling */
+.payment-method {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.payment-icon {
+    width: 40px;
+    height: 40px;
+    background: #10b981;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.payment-info {
+    flex: 1;
+}
+
+.payment-label {
+    font-weight: 600;
+    color: #111827;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+/* Action buttons bottom */
+.action-buttons-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.action-buttons-bottom .btn {
+    width: 100%;
+}
+
 .support-title {
     font-size: 16px;
     font-weight: 600;
@@ -492,6 +863,24 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .progress-steps {
+        grid-template-columns: 1fr;
+    }
+
+    .p-sep {
+        display: none;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .page-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
     .order-tracking-content {
         grid-template-columns: 1fr;
         gap: 20px;

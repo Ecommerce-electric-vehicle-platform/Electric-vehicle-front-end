@@ -17,6 +17,7 @@ import {
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
 import OrderStatus from '../../components/OrderStatus/OrderStatus';
 import './OrderTracking.css';
+import { getOrderHistory } from '../../api/orderApi';
 
 function OrderTracking() {
     const { orderId } = useParams();
@@ -24,6 +25,29 @@ function OrderTracking() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isGuest, setIsGuest] = useState(true);
+    const getPaymentMethodLabel = (method) => {
+        if (method === 'cod') return 'Thanh toán khi nhận hàng';
+        if (method === 'bank_transfer') return 'Chuyển khoản ngân hàng';
+        if (method === 'ewallet') return 'Ví điện tử';
+        return 'Khác';
+    };
+
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case 'pending':
+                return 'Chờ xác nhận';
+            case 'confirmed':
+                return 'Đã xác nhận';
+            case 'shipping':
+                return 'Đang giao hàng';
+            case 'delivered':
+                return 'Đã giao hàng';
+            case 'cancelled':
+                return 'Đã hủy';
+            default:
+                return 'Không xác định';
+        }
+    };
 
     // Kiểm tra đăng nhập
     useEffect(() => {
@@ -36,12 +60,12 @@ function OrderTracking() {
         }
     }, [navigate]);
 
-    // Tải thông tin đơn hàng
+    // Tải thông tin đơn hàng (ưu tiên localStorage, fallback Backend order history)
     useEffect(() => {
-        const loadOrder = () => {
+        const loadOrder = async () => {
             try {
                 const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-                const foundOrder = orders.find(o => o.id === orderId);
+                let foundOrder = orders.find(o => String(o.id) === String(orderId));
 
                 if (foundOrder) {
                     // Giả lập cập nhật trạng thái đơn hàng theo thời gian
@@ -71,7 +95,22 @@ function OrderTracking() {
 
                     setOrder(foundOrder);
                 } else {
-                    setOrder(null);
+                    // Fallback: gọi Backend lịch sử và tìm theo id hoặc orderCode
+                    try {
+                        const { items } = await getOrderHistory({ page: 1, size: 50 });
+                        const byId = (items || []).find(x => String(x?.id) === String(orderId));
+                        const byCode = (items || []).find(x => String(x?._raw?.orderCode) === String(orderId));
+                        const beOrder = byId || byCode || null;
+                        if (beOrder) {
+                            const mapped = mapHistoryItemToTracking(beOrder);
+                            setOrder(mapped);
+                        } else {
+                            setOrder(null);
+                        }
+                    } catch (e) {
+                        console.error('Không lấy được order history:', e);
+                        setOrder(null);
+                    }
                 }
             } catch (error) {
                 console.error('Error loading order:', error);
@@ -83,6 +122,37 @@ function OrderTracking() {
 
         loadOrder();
     }, [orderId]);
+
+    function mapHistoryItemToTracking(item) {
+        const id = item.id ?? item._raw?.orderCode ?? String(Date.now());
+        const createdAt = item.createdAt || item._raw?.createdAt || new Date().toISOString();
+        const shippingFee = Number(item.shippingFee || 0);
+        const finalPrice = Number(item.finalPrice || item._raw?.price || 0);
+        const totalPrice = finalPrice - shippingFee;
+        const status = item.status || 'confirmed';
+
+        const product = {
+            image: item.product?.image || '/vite.svg',
+            title: item.product?.title || `Đơn hàng ${item._raw?.orderCode || id}`,
+            price: totalPrice,
+        };
+
+        return {
+            id,
+            createdAt,
+            estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+            status,
+            product,
+            items: [],
+            totalPrice,
+            shippingFee,
+            finalPrice: totalPrice + shippingFee,
+            buyerName: '',
+            buyerPhone: item._raw?.phoneNumber || '',
+            deliveryAddress: item._raw?.shippingAddress || '',
+            paymentMethod: status === 'confirmed' ? 'ewallet' : 'cod',
+        };
+    }
 
     // Xử lý quay lại
     const handleGoBack = () => {
@@ -159,148 +229,187 @@ function OrderTracking() {
                     </div>
 
                     <h1 className="page-title">Theo dõi đơn hàng</h1>
+                    <div className="page-meta">
+                        <div className="meta-left">
+                            <span className="chip">
+                                <Package size={14} />
+                                Mã đơn: {order.id}
+                            </span>
+                            <span className="chip">
+                                <Calendar size={14} />
+                                Đặt: {formatDate(order.createdAt)}
+                            </span>
+                            <span className="chip">
+                                <Clock size={14} />
+                                Dự kiến: {formatDate(order.estimatedDelivery)}
+                            </span>
+                            <span className="chip">
+                                <CreditCard size={14} />
+                                {getPaymentMethodLabel(order.paymentMethod)}
+                            </span>
+                        </div>
+                        <span className={`status-badge ${order.status}`}>
+                            {getStatusLabel(order.status)}
+                        </span>
+                    </div>
                 </div>
 
                 <div className="order-tracking-content">
                     {/* Cột trái - Thông tin đơn hàng */}
                     <div className="order-info-column">
-                        {/* Trạng thái đơn hàng */}
-                        <OrderStatus status={order.status} />
+                        {/* Header thành công + bước tiến trình (theo mẫu) */}
+                        <div className="success-header">
+                            <div className="success-icon">
+                                <CheckCircle size={28} color="#2bb673" />
+                            </div>
+                            <h2 className="success-title">Đặt hàng thành công!</h2>
+                            <p className="success-subtitle">Cảm ơn bạn đã đặt hàng. Đơn hàng của bạn đang được xử lý.</p>
+                        </div>
 
-                        {/* Thông tin đơn hàng */}
-                        <div className="order-details">
-                            <h3 className="section-title">
-                                <Package className="section-icon" />
-                                Thông tin đơn hàng
-                            </h3>
-
-                            <div className="order-info-grid">
-                                <div className="info-item">
-                                    <span className="info-label">Mã đơn hàng:</span>
-                                    <span className="info-value">{order.id}</span>
+                        <div className="progress-card">
+                            <div className="progress-steps">
+                                <div className={`p-step ${['pending', 'confirmed', 'shipping', 'delivered'].indexOf(order.status) >= 0 ? 'active' : ''}`}>
+                                    <div className="p-dot"><CheckCircle size={16} color="#fff" /></div>
+                                    <div className="p-label">Đã đặt hàng</div>
+                                    <div className="p-time">{formatDate(order.createdAt)}</div>
                                 </div>
-                                <div className="info-item">
-                                    <span className="info-label">Ngày đặt:</span>
-                                    <span className="info-value">{formatDate(order.createdAt)}</span>
+                                <div className={`p-sep ${['confirmed', 'shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}></div>
+                                <div className={`p-step ${['confirmed', 'shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}>
+                                    <div className="p-dot"><CheckCircle size={16} color="#fff" /></div>
+                                    <div className="p-label">Đang xử lý</div>
+                                    <div className="p-time">{formatDate(order.createdAt)}</div>
                                 </div>
-                                <div className="info-item">
-                                    <span className="info-label">Dự kiến giao:</span>
-                                    <span className="info-value">{formatDate(order.estimatedDelivery)}</span>
+                                <div className={`p-sep ${['shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}></div>
+                                <div className={`p-step ${['shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}>
+                                    <div className="p-dot"><Truck size={16} color="#fff" /></div>
+                                    <div className="p-label">Đang vận chuyển</div>
+                                    <div className="p-time">{formatDate(order.estimatedDelivery)}</div>
                                 </div>
-                                <div className="info-item">
-                                    <span className="info-label">Phương thức thanh toán:</span>
-                                    <span className="info-value">
-                                        {order.paymentMethod === 'cod'
-                                            ? 'Thanh toán khi nhận hàng'
-                                            : order.paymentMethod === 'bank_transfer'
-                                                ? 'Chuyển khoản ngân hàng'
-                                                : order.paymentMethod === 'ewallet'
-                                                    ? 'Ví điện tử'
-                                                    : 'Khác'}
-                                    </span>
+                                <div className={`p-sep ${order.status === 'delivered' ? 'active' : ''}`}></div>
+                                <div className={`p-step ${order.status === 'delivered' ? 'active' : ''}`}>
+                                    <div className="p-dot"><Package size={16} color="#fff" /></div>
+                                    <div className="p-label">Đã giao hàng</div>
+                                    <div className="p-time">{formatDate(order.estimatedDelivery)}</div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Thông tin sản phẩm */}
-                        <div className="product-details">
-                            <h3 className="section-title">
-                                <Package className="section-icon" />
-                                Sản phẩm đã đặt
-                            </h3>
-
-                            <div className="product-item">
-                                <div className="product-image">
-                                    <img src={order.product.image} alt={order.product.title} />
-                                </div>
-                                <div className="product-info">
-                                    <h4 className="product-title">{order.product.title}</h4>
-                                    <p className="product-brand">{order.product.brand} • {order.product.model}</p>
-                                    <div className="product-condition">{order.product.conditionLevel}</div>
-                                    <div className="product-price">{formatCurrency(order.product.price)}</div>
-                                </div>
+                        {/* Danh sách sản phẩm (theo mẫu) */}
+                        <div className="order-items-card">
+                            <div className="card-head">
+                                <h3>Chi tiết đơn hàng</h3>
+                                <span className="code-badge">#{order.id}</span>
                             </div>
-                        </div>
-
-                        {/* Thông tin giao hàng */}
-                        <div className="delivery-info">
-                            <h3 className="section-title">
-                                <MapPin className="section-icon" />
-                                Thông tin giao hàng
-                            </h3>
-
-                            <div className="delivery-details">
-                                <div className="delivery-item">
-                                    <MapPin className="delivery-icon" />
-                                    <div className="delivery-content">
-                                        <div className="delivery-label">Địa chỉ giao hàng:</div>
-                                        <div className="delivery-value">{order.deliveryAddress}</div>
-                                    </div>
-                                </div>
-                                <div className="delivery-item">
-                                    <Phone className="delivery-icon" />
-                                    <div className="delivery-content">
-                                        <div className="delivery-label">Số điện thoại:</div>
-                                        <div className="delivery-value">{order.deliveryPhone}</div>
-                                    </div>
-                                </div>
-                                {order.deliveryNote && (
-                                    <div className="delivery-item">
-                                        <AlertCircle className="delivery-icon" />
-                                        <div className="delivery-content">
-                                            <div className="delivery-label">Ghi chú:</div>
-                                            <div className="delivery-value">{order.deliveryNote}</div>
+                            {(order.items && Array.isArray(order.items) && order.items.length > 0)
+                                ? (
+                                    order.items.map((it) => (
+                                        <div key={it.id || it.name} className="item-row">
+                                            <div className="i-thumb">
+                                                <img
+                                                    src={it.image}
+                                                    alt={it.name}
+                                                    onError={(e) => {
+                                                        if (e.target && !e.target.dataset.fallback) {
+                                                            e.target.dataset.fallback = 'true';
+                                                            e.target.src = '/default-avatar.png';
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="i-info">
+                                                <div className="i-name">{it.name}</div>
+                                                <div className="i-sub">Số lượng: {it.quantity}</div>
+                                            </div>
+                                            <div className="i-price">{formatCurrency(it.price)}</div>
                                         </div>
+                                    ))
+                                ) : (
+                                    <div className="item-row">
+                                        <div className="i-thumb">
+                                            <img
+                                                src={order.product.image}
+                                                alt={order.product.title}
+                                                onError={(e) => {
+                                                    if (e.target && !e.target.dataset.fallback) {
+                                                        e.target.dataset.fallback = 'true';
+                                                        e.target.src = '/default-avatar.png';
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="i-info">
+                                            <div className="i-name">{order.product.title}</div>
+                                            <div className="i-sub">Số lượng: 1</div>
+                                        </div>
+                                        <div className="i-price">{formatCurrency(order.product.price)}</div>
                                     </div>
                                 )}
-                            </div>
-                        </div>
 
-                        {/* Thông tin người mua */}
-                        <div className="buyer-info">
-                            <h3 className="section-title">
-                                <User className="section-icon" />
-                                Thông tin người mua
-                            </h3>
-
-                            <div className="buyer-details">
-                                <div className="buyer-item">
-                                    <span className="buyer-label">Họ tên:</span>
-                                    <span className="buyer-value">{order.buyerName}</span>
-                                </div>
-                                <div className="buyer-item">
-                                    <span className="buyer-label">Số điện thoại:</span>
-                                    <span className="buyer-value">{order.buyerPhone}</span>
-                                </div>
-                                <div className="buyer-item">
-                                    <span className="buyer-label">Email:</span>
-                                    <span className="buyer-value">{order.buyerEmail}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Cột phải - Tổng tiền và hành động */}
-                    <div className="order-actions-column">
-                        {/* Tổng tiền */}
-                        <div className="order-summary">
-                            <h3 className="summary-title">Tổng đơn hàng</h3>
-
+                            {/* Tổng tiền nằm cùng trong chi tiết đơn hàng */}
                             <div className="price-breakdown">
                                 <div className="price-item">
-                                    <span className="price-label">Tạm tính:</span>
+                                    <span className="price-label">Tạm tính</span>
                                     <span className="price-value">{formatCurrency(order.totalPrice)}</span>
                                 </div>
                                 <div className="price-item">
-                                    <span className="price-label">Phí vận chuyển:</span>
+                                    <span className="price-label">Phí vận chuyển</span>
                                     <span className="price-value">{formatCurrency(order.shippingFee)}</span>
                                 </div>
                                 <div className="price-item total">
-                                    <span className="price-label">Tổng cộng:</span>
+                                    <span className="price-label">Tổng cộng</span>
                                     <span className="price-value">{formatCurrency(order.finalPrice)}</span>
                                 </div>
                             </div>
                         </div>
+
+                        {/* Thông tin giao hàng & thanh toán (2 cột) */}
+                        <div className="info-grid">
+                            <div className="info-card">
+                                <div className="card-head">
+                                    <h4>
+                                        <MapPin size={16} className="card-icon" />
+                                        Thông tin giao hàng
+                                    </h4>
+                                </div>
+                                <div className="info-line"><User size={16} /> {order.buyerName}</div>
+                                <div className="info-line"><Phone size={16} /> {order.buyerPhone}</div>
+                                <div className="info-line"><MapPin size={16} /> {order.deliveryAddress}</div>
+                            </div>
+                            <div className="info-card">
+                                <div className="card-head">
+                                    <h4>
+                                        <CreditCard size={16} className="card-icon" />
+                                        Phương thức thanh toán
+                                    </h4>
+                                </div>
+                                <div className="payment-method">
+                                    <div className="payment-icon">
+                                        <CreditCard size={20} color="white" />
+                                    </div>
+                                    <div className="payment-info">
+                                        <div className="payment-label">{getPaymentMethodLabel(order.paymentMethod)}</div>
+                                        <div className="paid-note">Đã thanh toán</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="action-buttons-bottom">
+                            <button className="btn btn-success">
+                                <Package className="btn-icon" />
+                                Tải hóa đơn
+                            </button>
+                            <button className="btn btn-outline-primary">
+                                <Home className="btn-icon" />
+                                Tiếp tục mua sắm
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Cột phải - Hành động & hỗ trợ (tổng tiền đã chuyển sang chi tiết đơn hàng) */}
+                    <div className="order-actions-column">
+                        {/* Bỏ card tổng tiền riêng để tránh trùng lặp */}
 
                         {/* Hành động */}
                         <div className="order-actions">

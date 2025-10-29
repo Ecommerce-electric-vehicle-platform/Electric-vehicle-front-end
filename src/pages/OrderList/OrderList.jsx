@@ -10,7 +10,12 @@ import {
     AlertCircle,
     Eye,
     Phone,
-    Calendar
+    Calendar,
+    ChevronDown,
+    ChevronUp,
+    CreditCard,
+    MapPin,
+    ShoppingBag
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
 import { getOrderHistory } from '../../api/orderApi';
@@ -22,6 +27,8 @@ function OrderList() {
     const [loading, setLoading] = useState(true);
     const [isGuest, setIsGuest] = useState(true);
     const [filter, setFilter] = useState('all'); // all, pending, confirmed, shipping, delivered, cancelled
+    const [query, setQuery] = useState('');
+    const [expandedId, setExpandedId] = useState(null);
 
     // Kiểm tra đăng nhập (đúng key token thực tế)
     useEffect(() => {
@@ -43,13 +50,18 @@ function OrderList() {
         async function load() {
             setLoading(true);
             try {
-                // Xóa dữ liệu fake/local trước đây để chỉ hiển thị đơn thật từ hệ thống
-                localStorage.removeItem('orders');
+                const { items } = await getOrderHistory({ page: 1, size: 10 });
 
-                const { items } = await getOrderHistory({ page: 1, size: 20 });
+                let list = Array.isArray(items) ? items.filter(Boolean) : [];
 
-                // Giữ lại duy nhất các đơn hàng thật, ưu tiên đơn mới nhất lên đầu
-                const list = Array.isArray(items) ? items.filter(Boolean) : [];
+                // Fallback: nếu BE chưa trả lịch sử (trễ đồng bộ), hiển thị đơn mới nhất lưu localStorage
+                if (list.length === 0) {
+                    try {
+                        const local = JSON.parse(localStorage.getItem('orders') || '[]');
+                        if (Array.isArray(local) && local.length > 0) list = [local[local.length - 1]];
+                    } catch (e) { console.warn('Local orders parse failed:', e); }
+                }
+
                 if (isMounted) setOrders(list.reverse());
             } catch (err) {
                 console.error('Không tải được lịch sử đơn hàng:', err);
@@ -62,11 +74,22 @@ function OrderList() {
         return () => { isMounted = false; };
     }, []);
 
-    // Lọc đơn hàng theo trạng thái
-    const filteredOrders = orders.filter(order => {
-        if (filter === 'all') return true;
-        return order.status === filter;
-    });
+    // Lọc theo trạng thái + tìm kiếm
+    const filteredOrders = orders
+        .filter(order => (filter === 'all' ? true : order.status === filter))
+        .filter(order => {
+            if (!query.trim()) return true;
+            const q = query.trim().toLowerCase();
+            const idStr = String(order.id || '').toLowerCase();
+            const title = String(order.product?.title || '').toLowerCase();
+            const code = String(order._raw?.orderCode || '').toLowerCase();
+            return idStr.includes(q) || title.includes(q) || code.includes(q);
+        });
+
+    // Stats
+    const totalOrders = orders.length;
+    const totalDelivered = orders.filter(o => o.status === 'delivered').length;
+    const totalSpent = orders.reduce((sum, o) => sum + Number(o.finalPrice || 0), 0);
 
     // Xử lý quay lại
     const handleGoBack = () => {
@@ -83,18 +106,15 @@ function OrderList() {
         navigate(`/order-tracking/${orderId}`);
     };
 
-    // Xử lý liên hệ người bán
-    const handleContactSeller = (orderId) => {
-        alert(`Liên hệ người bán cho đơn hàng ${orderId}`);
-    };
+    // Xử lý liên hệ người bán (không dùng ở layout mới)
 
-    // Lấy icon và màu sắc cho trạng thái
+    // Lấy icon và màu sắc cho trạng thái (label theo mockup)
     const getStatusInfo = (status) => {
         const statusConfig = {
-            pending: { icon: Clock, color: '#ffc107', label: 'Chờ xác nhận' },
-            confirmed: { icon: CheckCircle, color: '#17a2b8', label: 'Đã xác nhận' },
-            shipping: { icon: Truck, color: '#007bff', label: 'Đang giao hàng' },
-            delivered: { icon: Package, color: '#28a745', label: 'Đã giao hàng' },
+            pending: { icon: Clock, color: '#ffc107', label: 'Chờ xử lý' },
+            confirmed: { icon: CheckCircle, color: '#0d6efd', label: 'Đã xác nhận' },
+            shipping: { icon: Truck, color: '#0d6efd', label: 'Đang giao' },
+            delivered: { icon: Package, color: '#28a745', label: 'Đã giao' },
             cancelled: { icon: AlertCircle, color: '#dc3545', label: 'Đã hủy' }
         };
         return statusConfig[status] || statusConfig.pending;
@@ -132,7 +152,25 @@ function OrderList() {
                         <span className="breadcrumb-current">Đơn hàng của tôi</span>
                     </div>
 
-                    <h1 className="page-title">Đơn hàng của tôi</h1>
+                    <h1 className="page-title">Lịch sử đơn hàng</h1>
+
+                    {/* Search */}
+                    <div style={{ marginBottom: 16 }}>
+                        <input
+                            type="text"
+                            placeholder="Tìm kiếm đơn hàng theo mã hoặc sản phẩm..."
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '10px 14px',
+                                borderRadius: 10,
+                                border: '2px solid #e9ecef',
+                                outline: 'none',
+                                fontSize: 14
+                            }}
+                        />
+                    </div>
 
                     {/* Filter Tabs */}
                     <div className="filter-tabs">
@@ -172,25 +210,30 @@ function OrderList() {
                 {/* Orders List */}
                 <div className="orders-content">
                     {filteredOrders.length === 0 ? (
-                        <div className="no-orders">
-                            <Package size={64} color="#6c757d" />
-                            <h3>Chưa có đơn hàng nào</h3>
-                            <p>Bạn chưa có đơn hàng nào trong trạng thái này.</p>
-                            <button className="btn btn-primary" onClick={handleGoHome}>
-                                Mua sắm ngay
-                            </button>
+                        <div className="empty-orders">
+                            <div className="empty-hero">
+                                <div className="empty-hero-glow"></div>
+                                <div className="empty-hero-icon">
+                                    <ShoppingBag className="empty-hero-svg" />
+                                </div>
+                            </div>
+                            <h3 className="empty-title">Chưa có đơn hàng nào</h3>
+                            <p className="empty-subtitle">Bạn chưa có đơn hàng nào. Hãy khám phá và mua sắm sản phẩm yêu thích!</p>
+                            <button className="btn btn-primary" onClick={handleGoHome}>Bắt đầu mua sắm</button>
                         </div>
                     ) : (
                         <div className="orders-list">
                             {filteredOrders.map(order => {
                                 const statusInfo = getStatusInfo(order.status);
                                 const StatusIcon = statusInfo.icon;
+                                const orderCode = order._raw?.orderCode || order.id;
+                                const productCount = Number(order._raw?.quantity || 1);
 
                                 return (
                                     <div key={order.id} className="order-card">
                                         <div className="order-header">
                                             <div className="order-info">
-                                                <h3 className="order-id">Đơn hàng {order.id}</h3>
+                                                <h3 className="order-id">Đơn hàng #{orderCode}</h3>
                                                 <div className="order-date">
                                                     <Calendar className="date-icon" />
                                                     <span>{formatDate(order.createdAt)}</span>
@@ -208,52 +251,65 @@ function OrderList() {
                                         </div>
 
                                         <div className="order-content">
-                                            <div className="product-info">
-                                                <div className="product-image">
-                                                    <img src={order.product.image} alt={order.product.title} />
+                                            <div className="order-product-row">
+                                                <div className="thumb">
+                                                    <img src={order.product?.image || '/vite.svg'} alt={order.product?.title || 'product'} />
                                                 </div>
-                                                <div className="product-details">
-                                                    <h4 className="product-title">{order.product.title}</h4>
-                                                    <p className="product-brand">{order.product.brand} • {order.product.model}</p>
-                                                    <div className="product-condition">{order.product.conditionLevel}</div>
-                                                </div>
-                                            </div>
-
-                                            <div className="order-summary">
-                                                <div className="price-info">
-                                                    <div className="total-price">{formatCurrency(order.finalPrice)}</div>
-                                                    <div className="shipping-info">
-                                                        Bao gồm phí ship: {formatCurrency(order.shippingFee)}
+                                                <div className="info-rows">
+                                                    <div className="info-row">
+                                                        <span className="label">Số lượng sản phẩm:</span>
+                                                        <span className="value">{productCount} sản phẩm</span>
                                                     </div>
-                                                </div>
-
-                                                <div className="order-actions">
-                                                    <button
-                                                        className="btn btn-outline-primary"
-                                                        onClick={() => handleViewOrder(order.id)}
-                                                    >
-                                                        <Eye className="btn-icon" />
-                                                        Xem chi tiết
-                                                    </button>
-
-                                                    {order.status !== 'cancelled' && order.status !== 'delivered' && (
-                                                        <button
-                                                            className="btn btn-outline-secondary"
-                                                            onClick={() => handleContactSeller(order.id)}
-                                                        >
-                                                            <Phone className="btn-icon" />
-                                                            Liên hệ
-                                                        </button>
-                                                    )}
+                                                    <div className="info-row">
+                                                        <span className="label">Tổng cộng:</span>
+                                                        <span className="value total-price-blue">{formatCurrency(order.finalPrice)}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {order.status === 'delivered' && (
-                                            <div className="order-footer">
-                                                <div className="delivery-success">
-                                                    <CheckCircle size={16} color="#28a745" />
-                                                    <span>Đơn hàng đã được giao thành công</span>
+                                        <div className="expand-actions">
+                                            <button
+                                                className="btn btn-soft-primary btn-sm btn-animate"
+                                                onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
+                                            >
+                                                {expandedId === order.id ? (
+                                                    <>
+                                                        Thu gọn <ChevronUp className="btn-icon" />
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        Xem chi tiết <ChevronDown className="btn-icon" />
+                                                    </>
+                                                )}
+                                            </button>
+                                            <button className="btn btn-primary btn-sm btn-animate" onClick={() => handleViewOrder(order.id)}>
+                                                <Eye className="btn-icon" />
+                                                Theo dõi đơn hàng
+                                            </button>
+                                        </div>
+
+                                        {expandedId === order.id && (
+                                            <div className="order-expanded">
+                                                <div className="expanded-section">
+                                                    <h4>Thông tin giao hàng</h4>
+                                                    <div className="expanded-row">
+                                                        <MapPin className="expanded-icon" />
+                                                        <div>
+                                                            <div className="expanded-label">Địa chỉ</div>
+                                                            <div className="expanded-text">{order._raw?.shippingAddress || 'Chưa cập nhật'}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="expanded-section">
+                                                    <h4>Thanh toán</h4>
+                                                    <div className="expanded-row">
+                                                        <CreditCard className="expanded-icon" />
+                                                        <div>
+                                                            <div className="expanded-label">Phương thức</div>
+                                                            <div className="expanded-text">{order._raw?.paymentMethod || (order.status === 'confirmed' ? 'Ví điện tử' : 'COD')}</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
@@ -262,6 +318,23 @@ function OrderList() {
                             })}
                         </div>
                     )}
+                </div>
+                {/* Summary Footer */}
+                <div className="order-card" style={{ marginTop: 20 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', textAlign: 'center' }}>
+                        <div>
+                            <div style={{ color: '#6c757d', marginBottom: 6 }}>Tổng đơn hàng</div>
+                            <div style={{ fontWeight: 700, color: '#0d6efd' }}>{totalOrders}</div>
+                        </div>
+                        <div>
+                            <div style={{ color: '#6c757d', marginBottom: 6 }}>Đã giao thành công</div>
+                            <div style={{ fontWeight: 700, color: '#28a745' }}>{totalDelivered}</div>
+                        </div>
+                        <div>
+                            <div style={{ color: '#6c757d', marginBottom: 6 }}>Tổng chi tiêu</div>
+                            <div style={{ fontWeight: 700, color: '#0d6efd' }}>{formatCurrency(totalSpent)}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
