@@ -1,5 +1,4 @@
 /* --- UserSidebar.css --- */
-/* (CSS bạn cung cấp) */
 .user-sidebar {
   width: 320px;
   background: rgba(255, 255, 255, 0.95);
@@ -20,20 +19,17 @@
   animation: slideInLeft 0.6s ease-out;
 }
 
-
 @keyframes slideInLeft {
   from {
     opacity: 0;
     transform: translateX(-30px);
   }
 
-
   to {
     opacity: 1;
     transform: translateX(0);
   }
 }
-
 
 .user-sidebar:hover {
   box-shadow:
@@ -55,7 +51,6 @@
   position: relative;
 }
 
-
 .sidebar-profile::after {
   content: '';
   position: absolute;
@@ -67,7 +62,6 @@
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border-radius: 1px;
 }
-
 
 .profile-avatar { /* This class is now primarily for the container */
   width: 100px;
@@ -92,7 +86,6 @@
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-
 .profile-avatar::before {
   content: '';
   position: absolute;
@@ -104,14 +97,12 @@
   border-radius: 50%;
 }
 
-
 .profile-avatar:hover {
   transform: scale(1.05);
   box-shadow:
     0 12px 30px -5px rgba(0, 0, 0, 0.15),
     0 6px 8px -2px rgba(0, 0, 0, 0.08);
 }
-
 
 /* Styles for the actual image inside the avatar container */
 .avatar-image { /* Use this class on the <img> tag */
@@ -122,12 +113,9 @@
 }
 
 
-
-
 .profile-info { /* Added container for name and role */
     text-align: center; /* Center text below avatar */
 }
-
 
 .profile-name {
   font-size: 16px;
@@ -141,7 +129,6 @@
   -webkit-text-fill-color: transparent;
   background-clip: text; */
 }
-
 
 .profile-role { /* Added style for role */
     font-size: 14px;
@@ -175,7 +162,6 @@
   gap: 12px;
 }
 
-
 .nav-item::before {
   content: '';
   position: absolute;
@@ -188,7 +174,6 @@
   border-radius: 0 2px 2px 0;
   transition: height 0.3s ease;
 }
-
 
 .nav-item:hover {
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
@@ -212,14 +197,10 @@
   transform: translateX(4px);
 }
 
-
 .nav-item.active::before {
   height: 24px;
   background: #ffffff; /* White indicator for active item */
 }
-
-
-
 
 /* Responsive Design (Copied from your CSS) */
 @media (max-width: 1024px) {
@@ -228,13 +209,14 @@
     padding: 32px 24px;
   }
 
-
   .profile-avatar {
     width: 80px;
     height: 80px;
     font-size: 24px;
   }
 }
+
+
 
 
 @media (max-width: 768px) {
@@ -247,6 +229,8 @@
   }
 
 
+
+
   .sidebar-profile {
     flex-direction: row;
     align-items: center;
@@ -254,6 +238,8 @@
     padding: 16px 0;
     margin-bottom: 24px;
   }
+
+
 
 
   .profile-avatar {
@@ -264,9 +250,13 @@
   }
 
 
+
+
   .profile-info {
       text-align: left; /* Align text left on mobile */
   }
+
+
 
 
   .profile-name {
@@ -274,11 +264,15 @@
   }
 
 
+
+
   .sidebar-nav {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 8px;
   }
+
+
 
 
   .nav-item {
@@ -301,6 +295,8 @@
 }
 
 
+
+
 @media (max-width: 480px) {
   .user-sidebar {
     padding: 20px 16px;
@@ -314,6 +310,8 @@
     flex-direction: column; /* Stack vertically again on very small screens */
     gap: 4px;
   }
+
+
 
 
   .nav-item {

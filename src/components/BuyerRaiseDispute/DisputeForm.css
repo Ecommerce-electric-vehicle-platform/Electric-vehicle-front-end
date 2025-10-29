@@ -1,0 +1,374 @@
+/* src/components/Profile/DisputeForm/DisputeForm.css */
+
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+
+.dispute-form-container {
+  max-width: 600px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  border-radius: 12px; /* Bo góc nhẹ hơn */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+
+.dispute-form-header {
+  display: flex;
+  justify-content: center; /* Căn giữa tiêu đề */
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  position: relative;
+}
+
+
+.dispute-form-header h1 {
+  font-size: 22px; /* Kích thước tiêu đề */
+  font-weight: 600;
+  color: #1f2937;
+}
+
+
+.close-btn {
+  position: absolute;
+  right: 15px; /* Điều chỉnh vị trí nút đóng */
+  top: 15px;
+  width: 32px;
+  height: 32px;
+  background-color: transparent; /* Bỏ màu nền */
+  border: none;
+  border-radius: 50%;
+  font-size: 24px;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+
+.close-btn:hover {
+  color: #ef4444; /* Màu đỏ khi hover */
+}
+
+
+.dispute-form {
+  padding: 24px;
+}
+
+
+.form-section {
+  margin-bottom: 24px;
+}
+
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+
+/* === Read-Only Info Section (Order ID display) === */
+.read-only-info {
+    padding: 12px 15px;
+    background-color: #f3f4f6; /* Nền xám nhạt */
+    border-left: 4px solid #10b981; /* Thanh màu xanh lá cây */
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+.read-only-info strong {
+    font-size: 15px;
+    color: #10b981;
+}
+.read-only-info .note {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+
+
+
+.category-toggle {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: #e5e7eb;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background-color 0.2s;
+}
+
+
+.category-toggle:hover {
+  background-color: #d1d5db;
+}
+
+
+.toggle-arrow {
+  display: inline-block;
+  transition: transform 0.3s;
+  font-size: 12px;
+  transform: rotate(-90deg); /* Mặc định mũi tên quay ngang */
+}
+
+
+.toggle-arrow.expanded {
+  transform: rotate(0deg); /* Quay xuống khi mở */
+}
+
+
+.category-content {
+  padding: 16px 0;
+  animation: slideDown 0.3s ease-out;
+}
+
+
+/* Các animations (Giữ nguyên) */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+.form-select,
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #374151;
+  transition: border-color 0.2s;
+}
+
+
+.form-select:focus,
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+
+.form-select {
+  cursor: pointer;
+  background-color: #ffffff;
+}
+.form-textarea {
+    resize: vertical;
+}
+
+
+
+
+/* === Pictures Grid === */
+.pictures-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* 5 cột */
+  gap: 8px; /* Giảm gap */
+  margin-bottom: 16px;
+}
+@media (max-width: 640px) {
+    .pictures-grid {
+        grid-template-columns: repeat(3, 1fr); /* 3 cột trên mobile */
+    }
+}
+
+
+
+
+.picture-slot {
+  aspect-ratio: 1;
+  border: 1px dashed #cccccc; /* Border nét đứt */
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f9fafb;
+  position: relative;
+  overflow: hidden;
+}
+
+
+.picture-upload-label {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+
+.picture-upload-label:hover {
+  background-color: #f0f0f0;
+}
+
+
+.plus-icon {
+  font-size: 28px;
+  color: #9ca3af;
+  font-weight: 300;
+}
+
+
+/* Picture Preview */
+.picture-preview {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.picture-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+
+.remove-image-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background-color: rgba(239, 68, 68, 0.9);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  z-index: 10;
+}
+
+
+.remove-image-btn:hover {
+  background-color: #dc2626;
+}
+
+
+
+
+/* === Form Actions === */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end; /* Đẩy nút sang phải */
+  margin-top: 24px;
+}
+
+
+.btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+
+.btn-submit {
+  background-color: #10b981; /* Màu xanh lá cây */
+  color: white;
+}
+.btn-submit:hover:not(:disabled) {
+    background-color: #059669;
+}
+
+
+.btn-cancel {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+.btn-cancel:hover:not(:disabled) {
+    background-color: #d1d5db;
+}
+
+
+/* === Status Messages === */
+.status-message {
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    font-weight: 500;
+}
+.status-message.success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+.status-message.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .dispute-form-container {
+    border-radius: 0;
+  }
+
+
+  .dispute-form {
+    padding: 16px;
+  }
+
+
+  .pictures-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+
+  .form-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+
+  .btn {
+    width: 100%;
+  }
+}
+
+
+
+
+
