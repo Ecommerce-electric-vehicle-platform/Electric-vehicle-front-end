@@ -1,0 +1,154 @@
+/* SellerDocumentView.css */
+.seller-doc-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px;
+    background-color: #f9fafb;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    font-family: Arial, sans-serif;
+}
+
+.doc-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #10b981;
+    padding-bottom: 10px;
+}
+
+/* Trạng thái duyệt */
+.doc-status {
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+.doc-status.accepted {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+/* Thông tin cửa hàng */
+.doc-info-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background-color: #ffffff;
+}
+
+.doc-info-section h3 {
+    font-size: 20px;
+    color: #111827;
+    margin-bottom: 15px;
+    border-bottom: 1px dashed #e5e7eb;
+    padding-bottom: 5px;
+}
+
+.doc-info-section p {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #374151;
+}
+
+.doc-info-section strong {
+    color: #1f2937;
+    font-weight: 600;
+    width: 120px; /* Cố định chiều rộng cho label */
+    display: inline-block;
+}
+
+/* Lưới hiển thị ảnh */
+.doc-images-grid {
+    margin-top: 30px;
+}
+
+.doc-images-grid h3 {
+    font-size: 20px;
+    color: #111827;
+    margin-bottom: 20px;
+}
+
+.doc-images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 25px;
+}
+
+.image-card {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    overflow: hidden;
+    text-align: center;
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s;
+}
+.image-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.image-card h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    padding: 10px 0;
+    background-color: #f3f4f6;
+    margin: 0;
+}
+
+.doc-image-preview {
+    width: 100%;
+    height: 120px; /* Chiều cao cố định cho ảnh */
+    object-fit: cover;
+    display: block;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.doc-image-preview:hover {
+    opacity: 0.85;
+}
+
+.image-link-text {
+    font-size: 13px;
+    color: #3b82f6;
+    margin: 8px 0;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* Lỗi và Loading */
+.error-message {
+    color: #dc2626;
+    background-color: #fee2e2;
+    padding: 15px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+.loading {
+    text-align: center;
+    font-size: 16px;
+    color: #6b7280;
+    padding: 40px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .seller-doc-container {
+        padding: 15px;
+    }
+    .doc-images-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .doc-info-section strong {
+        display: block;
+        width: auto;
+    }
+}

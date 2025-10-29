@@ -107,6 +107,13 @@ const profileApi = {
     });
   },
 
+  getSellerKycDocuments: () => {
+    // API này trả về tất cả thông tin KYC đã được duyệt
+    return axiosInstance.get('/api/v1/seller/profile');
+  },
+
+  
+
 };
 
 

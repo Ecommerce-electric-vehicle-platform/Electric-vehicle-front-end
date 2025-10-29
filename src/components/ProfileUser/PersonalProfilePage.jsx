@@ -8,7 +8,9 @@ import UpgradeToSeller from "./UpgradeToSeller";
 import PersonalEWallet from "./PersonalEWallet";
 import SellerBuyPackage from "./SellerBuyPackage";
 // test raise dispute
-import DisputeForm from "../BuyerRaiseDispute/DisputeForm";
+import DisputeForm from "../BuyerRaiseDispute/DisputeForm"; 
+import SellerDocumentView from "./SellerDocumentView"; 
+
 
 
 
@@ -20,7 +22,9 @@ export default function PersonalProfilePage() {
   const [, forceUpdate] = useState({});
 
 
-  console.log("🔄 PersonalProfilePage render | Section:", activeSection);
+
+
+  console.log(" PersonalProfilePage render | Section:", activeSection);
 
 
 
@@ -42,10 +46,14 @@ export default function PersonalProfilePage() {
     };
 
 
+
+
     const handleRoleChange = () => {
       console.log("Role changed event received, forcing re-render of PersonalProfilePage.");
       forceUpdate({}); // Buộc component re-render để đọc lại localStorage
     };
+
+
 
 
     // Lắng nghe sự kiện đăng nhập/đăng xuất và thay đổi role
@@ -53,10 +61,12 @@ export default function PersonalProfilePage() {
     window.addEventListener("roleChanged", handleRoleChange);
 
 
+
+
     // Dọn dẹp listener khi component unmount
     return () => {
       window.removeEventListener("authStatusChanged", handleAuthChange);
-      window.removeEventListener("roleChanged", handleRoleChange);
+      window.removeEventListener("roleChanged", handleAuthChange);
     };
   }, []); // Chỉ chạy 1 lần khi mount và cleanup
 
@@ -70,6 +80,8 @@ export default function PersonalProfilePage() {
     console.log(" URL tab =", tab);
 
 
+
+
     switch (tab) {
       case "wallet": setActiveSection("Ví điện tử"); break;
       case "profile": setActiveSection("Hồ sơ cá nhân"); break;
@@ -77,7 +89,8 @@ export default function PersonalProfilePage() {
       case "orders": setActiveSection("Đơn hàng của tôi"); break;
       case "upgrade": setActiveSection("Nâng cấp thành người bán"); break;
       case "buy-seller-package": setActiveSection("Mua gói dịch vụ"); break;
-      // test raise dispute
+      // Thêm case cho tab quản lý giấy tờ
+      case "seller-docs": setActiveSection("Quản lý giấy tờ kinh doanh"); break;
       case "dispute": setActiveSection("Gửi khiếu nại"); break;
       default: break; // Giữ nguyên nếu tab không hợp lệ
     }
@@ -132,14 +145,24 @@ export default function PersonalProfilePage() {
           {activeSection === "Hồ sơ cá nhân" && <PersonalProfileForm />}
           {activeSection === "Đổi mật khẩu" && <ChangePassword />}
 
-          {/* === TÍCH HỢP TẠM DisputeForm VÀO TAB "Đơn hàng của tôi" === */}
+
+          {/* === TÍCH HỢP TẠM DisputeForm VÀO TAB "Đơn hàng của tôi" (Tạm thời) === */}
           {activeSection === "Đơn hàng của tôi" && (
-            // Truyền Order ID hardcode tạm thời là 'ORD-TEMP-1'
             <DisputeForm initialOrderId={1} />
+          )}
+          {/* === TÍCH HỢP SELLER DOCUMENT VIEW (Chỉ hiển thị khi chọn tab) === */}
+          {activeSection === "Quản lý giấy tờ kinh doanh" && (
+            <SellerDocumentView />
           )}
 
 
           {activeSection === "Ví điện tử" && <PersonalEWallet />}
+          {/* Tạm thời render DisputeForm vào tab Gửi Khiếu Nại */}
+          {activeSection === "Gửi khiếu nại" && (
+            <DisputeForm initialOrderId={1} />
+          )}
+
+
           {activeSection === "Nâng cấp thành người bán" && (
             <UpgradeToSeller
               onGoToProfile={() => setActiveSection("Hồ sơ cá nhân")}
@@ -149,9 +172,9 @@ export default function PersonalProfilePage() {
           {/* Truyền giá trị đọc trực tiếp xuống SellerBuyPackage */}
           {activeSection === "Mua gói dịch vụ" && <SellerBuyPackage userRole={currentUserRole} />}
         </main>
-      </div>
-    </div>
-  );
+     </div>
+   </div>
+ );
 }
 
 
