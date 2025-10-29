@@ -44,7 +44,26 @@ export function NotificationPopup({ notifications, onClose, onClick }) {
     }
   };
 
-  const getRelativeTime = (timestamp) => {
+  const getRelativeTime = (notification) => {
+    // ⭐ Ưu tiên: Nếu là real-time notification từ WebSocket
+    if (notification.isRealtime && notification.realtimeReceivedAt) {
+      const now = new Date();
+      const receivedTime = new Date(notification.realtimeReceivedAt);
+      const diffMs = now - receivedTime;
+      const diffSecs = Math.floor(diffMs / 1000);
+
+      // Trong vòng 60 giây → "Vừa xong"
+      if (diffSecs < 60) return "Vừa xong";
+
+      // 1-59 phút → "X phút trước"
+      const diffMins = Math.floor(diffSecs / 60);
+      if (diffMins < 60) return `${diffMins} phút trước`;
+
+      // Sau 1 giờ → fallback to timestamp
+    }
+
+    // Fallback: Dùng timestamp gốc
+    const timestamp = notification.createdAt;
     if (!timestamp) return "Vừa xong";
 
     const now = new Date();
@@ -85,7 +104,7 @@ export function NotificationPopup({ notifications, onClose, onClick }) {
             <h4 className="notification-popup-title">{notification.title}</h4>
             <p className="notification-popup-message">{notification.message}</p>
             <div className="notification-popup-time">
-              {getRelativeTime(notification.createdAt)}
+              {getRelativeTime(notification)}
             </div>
           </div>
           <button

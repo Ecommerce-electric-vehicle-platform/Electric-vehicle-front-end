@@ -1,6 +1,7 @@
 // src/services/websocketService.js
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
+import { Environment } from '../environments/environment';
 
 class WebSocketService {
   constructor() {
@@ -23,10 +24,10 @@ class WebSocketService {
       return;
     }
 
-    console.log('🔌 [WebSocket] 🔄 Connecting to backend ws://localhost:8080/ws ...');
+    console.log(`🔌 [WebSocket] 🔄 Connecting to backend ${Environment.WS_URL} ...`);
 
     // Tạo SockJS connection
-    const socket = new SockJS('http://localhost:8080/ws');
+    const socket = new SockJS(Environment.WS_URL);
 
     // Tạo STOMP client
     this.stompClient = new Client({
@@ -47,7 +48,7 @@ class WebSocketService {
       onConnect: () => {
         console.log('[WebSocket] 🎉 Successfully connected to Backend!');
         console.log('📡 [WebSocket] Connection details:', {
-          backend: 'http://localhost:8080/ws',
+          backend: Environment.WS_URL,
           protocol: 'STOMP over SockJS',
           time: new Date().toLocaleTimeString()
         });

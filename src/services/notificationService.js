@@ -167,10 +167,10 @@ class NotificationService {
         const userId = buyerId || sellerId; // Support both buyer and seller
         
         if (userId) {
-          const topic = `/topic/notifications/${userId}`;
-          console.log(`[NotificationService] Subscribing to: ${topic}`);
+          const destination = `/queue/notifications/${userId}`;
+          console.log(`[NotificationService] Subscribing to: ${destination}`);
           
-          websocketService.subscribe(topic, (notification) => {
+          websocketService.subscribe(destination, (notification) => {
             console.log('[NotificationService] Received WebSocket notification:', notification);
             
             // Transform notification từ backend
@@ -182,7 +182,13 @@ class NotificationService {
               isRead: !!notification.readAt,
               createdAt: notification.createdAt || notification.sendAt,
               receiverId: notification.receiverId,
+              
+              // ⭐ Đánh dấu đây là notification real-time từ WebSocket
+              isRealtime: true,
+              realtimeReceivedAt: new Date().toISOString()
             };
+            
+            console.log('[NotificationService] ⚡ Real-time notification! Will display as "Vừa xong"');
             
             // Notify all listeners
             this.notify(transformedNotification);

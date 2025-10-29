@@ -98,9 +98,19 @@ export default function SignIn() {
         `Login successful. Role from API: ${loginData.role}. Saved userRole: ${userRole}`
       );
 
+      // === LƯU buyerId VÀ sellerId TỪ LOGIN RESPONSE ===
+      if (loginData.buyer?.id) {
+        localStorage.setItem("buyerId", loginData.buyer.id);
+        console.log("[Login] Saved buyerId:", loginData.buyer.id);
+      }
+
+      if (loginData.seller?.id) {
+        localStorage.setItem("sellerId", loginData.seller.id);
+        console.log("[Login] Saved sellerId:", loginData.seller.id);
+      }
+
       // === DỌN DẸP KEY CŨ KHÔNG DÙNG NỮA ===
       localStorage.removeItem("authType");
-      localStorage.removeItem("sellerId");
 
       // Xóa dữ liệu admin nếu có (Giữ nguyên)
       [
@@ -225,9 +235,19 @@ export default function SignIn() {
       localStorage.setItem("userRole", finalRole);
       console.log(`Google Login successful. Final userRole: ${finalRole}`);
 
+      // === LƯU buyerId VÀ sellerId TỪ GOOGLE LOGIN RESPONSE ===
+      if (loginData.buyer?.id) {
+        localStorage.setItem("buyerId", loginData.buyer.id);
+        console.log("[Google Login] Saved buyerId:", loginData.buyer.id);
+      }
+
+      if (loginData.seller?.id) {
+        localStorage.setItem("sellerId", loginData.seller.id);
+        console.log("[Google Login] Saved sellerId:", loginData.seller.id);
+      }
+
       // === DỌN DẸP KEY CŨ ===
       localStorage.removeItem("authType");
-      localStorage.removeItem("sellerId");
 
       // === LẤY AVATAR ===
       try {
