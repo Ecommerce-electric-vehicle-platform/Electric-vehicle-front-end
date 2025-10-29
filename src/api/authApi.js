@@ -25,6 +25,7 @@ const authApi = {
         refreshToken: result.refreshToken,
         username: result.username,
         email: result.email,
+        buyerId: result.buyerId,
       });
     }
 

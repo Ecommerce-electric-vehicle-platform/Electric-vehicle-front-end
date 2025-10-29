@@ -5,6 +5,14 @@ import authApi from "../../../api/authApi";
 import profileApi from "../../../api/profileApi";
 import { GoogleLogin } from "@react-oauth/google";
 
+// Helper function để convert backend role sang frontend role
+const mapRole = (backendRole) => {
+  if (backendRole === "ROLE_SELLER") {
+    return "seller";
+  }
+  return "buyer"; // Default
+};
+
 export default function SignUp() {
   const navigate = useNavigate();
 
@@ -58,7 +66,9 @@ export default function SignUp() {
         if (isFocused) {
           message = "Mật khẩu là bắt buộc.";
         }
-      } else if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d\s])[^\s]{8,}$/.test(value)) {
+      } else if (
+        !/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d\s])[^\s]{8,}$/.test(value)
+      ) {
         if (value.length < 8) {
           message = "Mật khẩu phải có ít nhất 8 ký tự.";
         } else if (/\s/.test(value)) {
@@ -78,7 +88,9 @@ export default function SignUp() {
         if (isFocused) {
           message = "Email là bắt buộc.";
         }
-      } else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/.test(value)) {
+      } else if (
+        !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/.test(value)
+      ) {
         if (!value.includes("@")) {
           message = "Email phải chứa ký tự @.";
         } else if (!value.includes(".")) {
@@ -113,9 +125,15 @@ export default function SignUp() {
       // Validate username immediately if it has invalid characters
       if (!/^[a-zA-Z]*$/.test(value)) {
         if (/\d/.test(value)) {
-          setErrors((prev) => ({ ...prev, [name]: "Tên đăng nhập chỉ được chứa chữ cái (a-z, A-Z)." }));
+          setErrors((prev) => ({
+            ...prev,
+            [name]: "Tên đăng nhập chỉ được chứa chữ cái (a-z, A-Z).",
+          }));
         } else if (/[^a-zA-Z]/.test(value)) {
-          setErrors((prev) => ({ ...prev, [name]: "Tên đăng nhập chỉ được chứa chữ cái (a-z, A-Z)." }));
+          setErrors((prev) => ({
+            ...prev,
+            [name]: "Tên đăng nhập chỉ được chứa chữ cái (a-z, A-Z).",
+          }));
         }
         return;
       }
@@ -124,7 +142,10 @@ export default function SignUp() {
     if (name === "password" && value.length > 0) {
       // Validate password immediately if it has spaces
       if (/\s/.test(value)) {
-        setErrors((prev) => ({ ...prev, [name]: "Mật khẩu không được chứa khoảng trắng." }));
+        setErrors((prev) => ({
+          ...prev,
+          [name]: "Mật khẩu không được chứa khoảng trắng.",
+        }));
         return;
       }
     }
@@ -162,22 +183,28 @@ export default function SignUp() {
         if (!value.trim()) {
           message = "Tên đăng nhập là bắt buộc.";
         } else if (!/^[a-zA-Z]{8,}$/.test(value)) {
-          message = "Tên đăng nhập phải có ít nhất 8 chữ cái, không có số, ký tự đặc biệt hoặc khoảng trắng.";
+          message =
+            "Tên đăng nhập phải có ít nhất 8 chữ cái, không có số, ký tự đặc biệt hoặc khoảng trắng.";
         }
       }
 
       if (key === "password") {
         if (!value.trim()) {
           message = "Mật khẩu là bắt buộc.";
-        } else if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d\s])[^\s]{8,}$/.test(value)) {
-          message = "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ cái, số và ký tự đặc biệt, không có khoảng trắng.";
+        } else if (
+          !/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d\s])[^\s]{8,}$/.test(value)
+        ) {
+          message =
+            "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ cái, số và ký tự đặc biệt, không có khoảng trắng.";
         }
       }
 
       if (key === "email") {
         if (!value.trim()) {
           message = "Email là bắt buộc.";
-        } else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/.test(value)) {
+        } else if (
+          !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/.test(value)
+        ) {
           message = "Email không đúng định dạng. Ví dụ: user@example.com";
         }
       }
@@ -210,10 +237,16 @@ export default function SignUp() {
 
       const lowerMessage = message.toLowerCase();
 
-      if (lowerMessage.includes("email already exits") || lowerMessage.includes("email already exists")) {
+      if (
+        lowerMessage.includes("email already exits") ||
+        lowerMessage.includes("email already exists")
+      ) {
         return "Email này đã được sử dụng. Vui lòng sử dụng email khác.";
       }
-      if (lowerMessage.includes("username already exits") || lowerMessage.includes("username already exists")) {
+      if (
+        lowerMessage.includes("username already exits") ||
+        lowerMessage.includes("username already exists")
+      ) {
         return "Tên đăng nhập này đã được sử dụng. Vui lòng chọn tên khác.";
       }
       if (lowerMessage.includes("invalid email format")) {
@@ -225,10 +258,16 @@ export default function SignUp() {
       if (lowerMessage.includes("username")) {
         return "Tên đăng nhập không đáp ứng yêu cầu.";
       }
-      if (lowerMessage.includes("database") || lowerMessage.includes("connection")) {
+      if (
+        lowerMessage.includes("database") ||
+        lowerMessage.includes("connection")
+      ) {
         return "Lỗi kết nối cơ sở dữ liệu. Vui lòng thử lại sau.";
       }
-      if (lowerMessage.includes("email service") || lowerMessage.includes("mail")) {
+      if (
+        lowerMessage.includes("email service") ||
+        lowerMessage.includes("mail")
+      ) {
         return "Lỗi dịch vụ email. Không thể gửi mã xác thực. Vui lòng thử lại sau.";
       }
       if (lowerMessage.includes("illegalargumentexception")) {
@@ -237,13 +276,19 @@ export default function SignUp() {
       if (lowerMessage.includes("nullpointerexception")) {
         return "Lỗi xử lý dữ liệu. Vui lòng thử lại sau.";
       }
-      if (lowerMessage.includes("sqlexception") || lowerMessage.includes("sql")) {
+      if (
+        lowerMessage.includes("sqlexception") ||
+        lowerMessage.includes("sql")
+      ) {
         return "Lỗi cơ sở dữ liệu. Vui lòng thử lại sau.";
       }
       if (lowerMessage.includes("timeout")) {
         return "Kết nối quá thời gian. Vui lòng thử lại sau.";
       }
-      if (lowerMessage.includes("validation") || lowerMessage.includes("constraint")) {
+      if (
+        lowerMessage.includes("validation") ||
+        lowerMessage.includes("constraint")
+      ) {
         return "Dữ liệu không đáp ứng yêu cầu hệ thống. Vui lòng kiểm tra lại thông tin.";
       }
 
@@ -257,7 +302,7 @@ export default function SignUp() {
       error.data?.error?.message,
       error.data?.message,
       error.response?.data?.error?.message,
-      error.response?.data?.message
+      error.response?.data?.message,
     ];
 
     console.log("Possible error messages:", possibleErrorMessages);
@@ -269,16 +314,24 @@ export default function SignUp() {
         console.log(`Checking error message ${i + 1}:`, errorMessage);
         const specificError = checkForSpecificErrors(errorMessage);
         if (specificError) {
-          console.log(`Found specific error in message ${i + 1}:`, specificError);
+          console.log(
+            `Found specific error in message ${i + 1}:`,
+            specificError
+          );
           return specificError;
         }
       }
     }
 
     // If no specific error found, return the first available message or default
-    const firstMessage = possibleErrorMessages.find(msg => msg && msg !== "Internal Server Error");
+    const firstMessage = possibleErrorMessages.find(
+      (msg) => msg && msg !== "Internal Server Error"
+    );
     if (firstMessage) {
-      console.log("No specific error found, returning first available message:", firstMessage);
+      console.log(
+        "No specific error found, returning first available message:",
+        firstMessage
+      );
       return firstMessage;
     }
 
@@ -324,10 +377,12 @@ export default function SignUp() {
 
         if (errorString.includes("Email already exits")) {
           console.log("Found 'Email already exits' in error data");
-          backendMsg = "Email này đã được sử dụng. Vui lòng sử dụng email khác.";
+          backendMsg =
+            "Email này đã được sử dụng. Vui lòng sử dụng email khác.";
         } else if (errorString.includes("Username already exits")) {
           console.log("Found 'Username already exits' in error data");
-          backendMsg = "Tên đăng nhập này đã được sử dụng. Vui lòng chọn tên khác.";
+          backendMsg =
+            "Tên đăng nhập này đã được sử dụng. Vui lòng chọn tên khác.";
         } else if (errorString.includes("IllegalArgumentException")) {
           console.log("Found 'IllegalArgumentException' in error data");
           backendMsg = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.";
@@ -338,9 +393,11 @@ export default function SignUp() {
       } else if (error.message) {
         // Fallback nếu không có response data
         if (error.message.includes("Network Error")) {
-          backendMsg = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và thử lại.";
+          backendMsg =
+            "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và thử lại.";
         } else if (error.message.includes("timeout")) {
-          backendMsg = "Kết nối quá thời gian. Vui lòng kiểm tra kết nối mạng và thử lại.";
+          backendMsg =
+            "Kết nối quá thời gian. Vui lòng kiểm tra kết nối mạng và thử lại.";
         } else {
           backendMsg = error.message;
         }
@@ -382,7 +439,10 @@ export default function SignUp() {
 
         switch (status) {
           case 400:
-            if (errorData.message?.includes("invalid") || errorData.message?.includes("incorrect")) {
+            if (
+              errorData.message?.includes("invalid") ||
+              errorData.message?.includes("incorrect")
+            ) {
               errorMsg = "Mã OTP không chính xác. Vui lòng kiểm tra lại.";
             } else if (errorData.message?.includes("expired")) {
               errorMsg = "Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.";
@@ -404,7 +464,8 @@ export default function SignUp() {
         }
       } else if (error.message) {
         if (error.message.includes("Network Error")) {
-          errorMsg = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+          errorMsg =
+            "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
         } else if (error.message.includes("timeout")) {
           errorMsg = "Kết nối quá thời gian. Vui lòng thử lại.";
         }
@@ -439,15 +500,31 @@ export default function SignUp() {
         localStorage.setItem("token", loginData.accessToken);
         localStorage.setItem("username", loginData.username);
         localStorage.setItem("userEmail", loginData.email);
-        localStorage.setItem("authType", "user");
 
-        if (loginData.buyerId) {
-          localStorage.setItem("buyerId", loginData.buyerId);
-        } else {
-          localStorage.removeItem("buyerId");
+        // === LƯU buyerId VÀ sellerId TỪ GOOGLE SIGNUP RESPONSE ===
+        if (loginData.buyerId || loginData.buyer?.id) {
+          const buyerId = loginData.buyerId || loginData.buyer?.id;
+          localStorage.setItem("buyerId", buyerId);
+          console.log("[Google Signup] Saved buyerId:", buyerId);
         }
 
-        console.log("[Google Signup] Signup/Login successful (authType: user)");
+        if (loginData.sellerId || loginData.seller?.id) {
+          const sellerId = loginData.sellerId || loginData.seller?.id;
+          localStorage.setItem("sellerId", sellerId);
+          console.log("[Google Signup] Saved sellerId:", sellerId);
+        }
+
+        // === LƯU userRole ===
+        const userRole = loginData.role ? mapRole(loginData.role) : "buyer";
+        localStorage.setItem("userRole", userRole);
+
+        // Dọn dẹp key cũ
+        localStorage.removeItem("authType");
+
+        console.log(
+          "[Google Signup] Signup/Login successful. userRole:",
+          userRole
+        );
 
         // Gọi API getProfile để lấy avatar
         try {
@@ -482,7 +559,7 @@ export default function SignUp() {
         status === 401
           ? "Token Google không hợp lệ hoặc đã hết hạn."
           : error.response?.data?.message ||
-          "Đăng nhập/Đăng ký Google thất bại. Vui lòng thử lại.";
+            "Đăng nhập/Đăng ký Google thất bại. Vui lòng thử lại.";
       setBackendError(message);
       // Clear authType nếu signup/login thất bại
       localStorage.removeItem("authType");
