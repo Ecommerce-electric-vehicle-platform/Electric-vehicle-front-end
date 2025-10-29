@@ -9,14 +9,13 @@ import { GoogleLogin } from "@react-oauth/google";
 
 // Helper function để chuyển đổi role từ backend sang frontend
 const mapRole = (backendRole) => {
-    // Nếu backend trả về "ROLE_SELLER", chuyển thành "seller"
-    if (backendRole === "ROLE_SELLER") {
-        return "seller";
-    }
-    // Mặc định tất cả các trường hợp khác (bao gồm "ROLE_BUYER", null, undefined...) là "buyer"
-    return "buyer";
+  // Nếu backend trả về "ROLE_SELLER", chuyển thành "seller"
+  if (backendRole === "ROLE_SELLER") {
+    return "seller";
+  }
+  // Mặc định tất cả các trường hợp khác (bao gồm "ROLE_BUYER", null, undefined...) là "buyer"
+  return "buyer";
 };
-
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -68,8 +67,7 @@ export default function SignIn() {
   // ===== SUBMIT (ĐÃ SỬA LOGIC ROLE) =====
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Bỏ comment dòng dưới nếu bạn muốn bật lại validation
-    // if (!validateAll()) return;
+    if (!validateAll()) return; // Validation enabled
 
     try {
       // Step 1: Gọi API đăng nhập
@@ -77,7 +75,11 @@ export default function SignIn() {
       const loginData = loginResponse?.data?.data;
 
       // === KIỂM TRA RESPONSE CÓ ĐỦ THÔNG TIN (TOKEN + ROLE) ===
-      if (!loginData?.accessToken || !loginData?.refreshToken || !loginData?.role) {
+      if (
+        !loginData?.accessToken ||
+        !loginData?.refreshToken ||
+        !loginData?.role
+      ) {
         console.error("API login response missing token or role:", loginData);
         throw new Error("API login không trả về đủ thông tin (token, role).");
       }
@@ -92,16 +94,21 @@ export default function SignIn() {
       // === XỬ LÝ VÀ LƯU userRole ===
       const userRole = mapRole(loginData.role); // Chuyển đổi role từ API
       localStorage.setItem("userRole", userRole); // Lưu role đã xử lý
-      console.log(`Login successful. Role from API: ${loginData.role}. Saved userRole: ${userRole}`);
+      console.log(
+        `Login successful. Role from API: ${loginData.role}. Saved userRole: ${userRole}`
+      );
 
       // === DỌN DẸP KEY CŨ KHÔNG DÙNG NỮA ===
       localStorage.removeItem("authType");
       localStorage.removeItem("sellerId");
 
       // Xóa dữ liệu admin nếu có (Giữ nguyên)
-      ["adminAuthType", "adminToken", "adminRefreshToken", "adminProfile"].forEach((k) =>
-        localStorage.removeItem(k)
-      );
+      [
+        "adminAuthType",
+        "adminToken",
+        "adminRefreshToken",
+        "adminProfile",
+      ].forEach((k) => localStorage.removeItem(k));
 
       // === BỎ HOÀN TOÀN VIỆC GỌI sellerApi.getSellerProfile ===
       // console.log("Vai trò đã được xác định từ API login.");
@@ -124,7 +131,6 @@ export default function SignIn() {
       // Step 5: Thông báo cập nhật và chuyển trang (Giữ nguyên)
       window.dispatchEvent(new CustomEvent("authStatusChanged"));
       navigate("/"); // Chuyển về trang chủ
-
     } catch (error) {
       console.error("Lỗi đăng nhập:", error.response?.data || error.message);
       setBackendError(
@@ -133,24 +139,33 @@ export default function SignIn() {
 
       // Xóa sạch nếu lỗi (Đảm bảo xóa các key liên quan)
       [
-        "accessToken", "refreshToken", "token",
-        "username", "userEmail", "buyerId", "buyerAvatar",
-        "authType", "sellerId", // Xóa key cũ
+        "accessToken",
+        "refreshToken",
+        "token",
+        "username",
+        "userEmail",
+        "buyerId",
+        "buyerAvatar",
+        "authType",
+        "sellerId", // Xóa key cũ
         "userRole", // <<< Xóa key mới
-        "activeSellerPackage" // Xóa thông tin gói nếu có lỗi đăng nhập
+        "activeSellerPackage", // Xóa thông tin gói nếu có lỗi đăng nhập
       ].forEach((k) => localStorage.removeItem(k));
     }
   };
 
-  // ===== GOOGLE LOGIN (ĐÃ SỬA TƯƠNG TỰ) =====
+  // ===== GOOGLE LOGIN (ĐÃ SỬA - CHECK SELLER STATUS) =====
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const response = await authApi.googleSignin(credentialResponse.credential);
+      const response = await authApi.googleSignin(
+        credentialResponse.credential
+      );
       const loginData = response?.data?.data;
-      // === KIỂM TRA RESPONSE GOOGLE CÓ ROLE KHÔNG ===
-      if (!loginData?.accessToken || !loginData?.role) { // Giả định API google cũng trả role
-         console.error("Google login response missing token or role:", loginData);
-         throw new Error("Google login lỗi hoặc thiếu thông tin role!");
+
+      // === KIỂM TRA RESPONSE GOOGLE CÓ TOKEN KHÔNG ===
+      if (!loginData?.accessToken) {
+        console.error("Google login response missing token:", loginData);
+        throw new Error("Google login lỗi hoặc thiếu thông tin!");
       }
 
       localStorage.setItem("accessToken", loginData.accessToken);
@@ -159,18 +174,62 @@ export default function SignIn() {
       localStorage.setItem("username", loginData.username);
       localStorage.setItem("userEmail", loginData.email);
 
-      // === XỬ LÝ VÀ LƯU userRole ===
-      const userRole = mapRole(loginData.role);
-      localStorage.setItem("userRole", userRole);
-      console.log(`Google Login successful. Role: ${loginData.role}. Saved userRole: ${userRole}`);
+      // === XỬ LÝ ROLE - KIỂM TRA SELLER STATUS ===
+      let finalRole = "buyer"; // Default
+
+      // Kiểm tra role từ API login trước
+      if (loginData.role) {
+        finalRole = mapRole(loginData.role);
+        console.log(
+          `Google Login - Role from API: ${loginData.role} → ${finalRole}`
+        );
+      } else {
+        console.log(
+          "Google Login - No role in response, checking seller status..."
+        );
+      }
+
+      // QUAN TRỌNG: Kiểm tra seller status để đảm bảo role chính xác
+      try {
+        const sellerResponse = await profileApi.getSellerstatus();
+        const sellerData = sellerResponse?.data?.data;
+        const sellerStatus = sellerData?.status;
+
+        if (sellerStatus === "ACCEPTED") {
+          finalRole = "seller";
+          console.log(
+            "Google Login - User is ACCEPTED seller, updating role to 'seller'"
+          );
+        } else {
+          console.log(
+            `Google Login - Seller status: ${
+              sellerStatus || "NOT_SUBMITTED"
+            }, keeping role as 'buyer'`
+          );
+        }
+      } catch (sellerError) {
+        // 404 = chưa submit KYC, giữ role buyer
+        if (sellerError.response?.status === 404) {
+          console.log(
+            "Google Login - No seller profile found, keeping role as 'buyer'"
+          );
+        } else {
+          console.warn(
+            "Google Login - Error checking seller status:",
+            sellerError.message
+          );
+        }
+      }
+
+      // Lưu role cuối cùng
+      localStorage.setItem("userRole", finalRole);
+      console.log(`Google Login successful. Final userRole: ${finalRole}`);
 
       // === DỌN DẸP KEY CŨ ===
       localStorage.removeItem("authType");
       localStorage.removeItem("sellerId");
 
-      // === BỎ GỌI sellerApi.getSellerProfile ===
-
-      // <<< Cân nhắc thêm logic lấy avatar ở đây nếu cần >>>
+      // === LẤY AVATAR ===
       try {
         const profileResponse = await profileApi.getProfile();
         const profileData = profileResponse?.data?.data;
@@ -181,7 +240,10 @@ export default function SignIn() {
           localStorage.removeItem("buyerAvatar");
         }
       } catch (err) {
-        console.warn("Không lấy được avatar khi đăng nhập Google:", err.message);
+        console.warn(
+          "Không lấy được avatar khi đăng nhập Google:",
+          err.message
+        );
         localStorage.removeItem("buyerAvatar");
       }
 
@@ -191,14 +253,26 @@ export default function SignIn() {
       console.error("Google login error:", error);
       setBackendError("Đăng nhập Google thất bại.");
       // Xóa các key khi lỗi
-      [ "accessToken", "refreshToken", "token", "username", "userEmail", "buyerId", "buyerAvatar", "authType", "sellerId", "userRole", "activeSellerPackage" ].forEach((k) => localStorage.removeItem(k));
+      [
+        "accessToken",
+        "refreshToken",
+        "token",
+        "username",
+        "userEmail",
+        "buyerId",
+        "buyerAvatar",
+        "authType",
+        "sellerId",
+        "userRole",
+        "activeSellerPackage",
+      ].forEach((k) => localStorage.removeItem(k));
     }
   };
 
   const handleGoogleError = () => {
-     console.error("Google login process error.");
-     setBackendError("Đăng nhập Google thất bại. Vui lòng thử lại.");
-   }
+    console.error("Google login process error.");
+    setBackendError("Đăng nhập Google thất bại. Vui lòng thử lại.");
+  };
 
   // ===== UI (Giữ nguyên) =====
   return (
@@ -226,7 +300,11 @@ export default function SignIn() {
           aria-describedby={errors.username ? "username-error" : undefined}
         />
       </div>
-      {errors.username && <p id="username-error" className="error-message">{errors.username}</p>}
+      {errors.username && (
+        <p id="username-error" className="error-message">
+          {errors.username}
+        </p>
+      )}
 
       <div className={`input-field ${errors.password ? "error" : ""}`}>
         <i className="fas fa-lock"></i>
@@ -241,10 +319,17 @@ export default function SignIn() {
           aria-describedby={errors.password ? "password-error" : undefined}
         />
       </div>
-      {errors.password && <p id="password-error" className="error-message">{errors.password}</p>}
+      {errors.password && (
+        <p id="password-error" className="error-message">
+          {errors.password}
+        </p>
+      )}
 
       {backendError && (
-        <p className="error-message backend-error" style={{ textAlign: "center" }}>
+        <p
+          className="error-message backend-error"
+          style={{ textAlign: "center" }}
+        >
           {backendError}
         </p>
       )}
@@ -290,5 +375,3 @@ export default function SignIn() {
     </form>
   );
 }
-
-

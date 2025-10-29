@@ -25,6 +25,9 @@ import {
     placeOrder
 } from '../../api/orderApi';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
+import profileApi from '../../api/profileApi';
+import { useAddressLoading } from '../../components/ProfileUser/hooks/useAddressLoading';
+import ProfileIncompleteModal from '../../components/ProfileIncompleteModal/ProfileIncompleteModal';
 import './PlaceOrder.css';
 
 function PlaceOrder() {
@@ -43,6 +46,8 @@ function PlaceOrder() {
         message: '',
         actions: []
     });
+    const [, setProfileData] = useState(null);
+    const [, setMissingProfileFields] = useState([]);
 
     // API data states
     const [shippingPartners, setShippingPartners] = useState([]);
@@ -50,7 +55,6 @@ function PlaceOrder() {
 
     // Sử dụng custom hook để quản lý số dư ví
     const { balance: walletBalance, loading: walletLoading, error: walletError, refreshBalance: refreshWalletBalance, formatCurrency: formatWalletCurrency } = useWalletBalance();
-    const [, setUserProfile] = useState(null);
     const [loadingProfile, setLoadingProfile] = useState(true);
 
     const [orderData, setOrderData] = useState({
@@ -60,7 +64,7 @@ function PlaceOrder() {
         shippingAddress: '',
         phoneNumber: '',
         shippingPartnerId: 1, // Default to Fast Delivery (id = 1)
-        paymentId: 1, // Default to e-wallet payment
+        paymentId: 2, // Default to e-wallet payment
 
         // UI display fields (not sent to API)
         shippingFee: 0,
@@ -70,72 +74,175 @@ function PlaceOrder() {
         buyer_email: '',
         delivery_phone: '',
         delivery_note: '',
-        need_order_invoice: false
+        need_order_invoice: false,
+
+        // Thông tin đơn hàng mở rộng
+        order_code: '',
+        order_status: 'PENDING_PAYMENT',
+        payment_method: 'WALLET',
+        transaction_id: '',
+        created_at: '',
+        paid_at: '',
+        shipped_at: '',
+        delivered_at: '',
+        cancelled_at: '',
+        cancel_reason: '',
+        shipping_partner: '',
+        tracking_number: '',
+
+        // Thông tin vận chuyển chi tiết
+        shipping_distance: 0,
+        shipping_base_fee: 0,
+        shipping_per_km_fee: 0
     });
+
+    // Địa chỉ dạng từng cấp giống Profile
+    const [provinces, setProvinces] = useState([]);
+    const [selectedProvince, setSelectedProvince] = useState('');
+    const [selectedDistrict, setSelectedDistrict] = useState('');
+    const [selectedWard, setSelectedWard] = useState('');
+    const { districts, wards, isLoadingDistricts, isLoadingWards } = useAddressLoading(selectedProvince, selectedDistrict);
 
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderId, setOrderId] = useState(null);
 
-    // Generate unique order code
+    // Hàm tạo mã đơn hàng
     const generateOrderCode = () => {
-        const timestamp = Date.now();
-        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        return `ORD${timestamp}${random}`;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        return `GT-${year}${month}${day}-${random}`;
     };
 
-    // Load user profile
+    // Hàm format trạng thái đơn hàng
+    const getOrderStatusText = (status) => {
+        const statusMap = {
+            'PENDING_PAYMENT': 'Chờ thanh toán',
+            'PAID': 'Đã thanh toán',
+            'PROCESSING': 'Đang xử lý',
+            'SHIPPED': 'Đã giao cho đơn vị vận chuyển',
+            'DELIVERED': 'Đã giao thành công',
+            'CANCELLED': 'Đã hủy',
+            'RETURN_REQUESTED': 'Yêu cầu hoàn hàng',
+            'REFUNDED': 'Đã hoàn tiền'
+        };
+        return statusMap[status] || status;
+    };
+
+    // Hàm format phương thức thanh toán
+    const getPaymentMethodText = (method) => {
+        const methodMap = {
+            'WALLET': 'Ví điện tử',
+            'COD': 'Thanh toán khi nhận hàng',
+            'VNPAY': 'VnPay',
+            'BANKING': 'Chuyển khoản ngân hàng',
+            'MOMO': 'Ví MoMo'
+        };
+        return methodMap[method] || method;
+    };
+
+    // Hàm tính phí vận chuyển dựa trên khoảng cách
+    const calculateShippingFee = (sellerLocation, buyerLocation) => {
+        // Mock data - trong thực tế sẽ gọi API tính khoảng cách
+        const baseFee = 30000; // Phí cơ bản
+        const perKmFee = 5000; // Phí mỗi km
+
+        // Giả sử khoảng cách (km) - trong thực tế sẽ tính từ tọa độ
+        const distance = Math.floor(Math.random() * 50) + 5; // 5-55km
+
+        const calculatedFee = baseFee + (distance * perKmFee);
+
+        console.log('🚚 Calculating shipping fee:', {
+            sellerLocation,
+            buyerLocation,
+            distance: `${distance}km`,
+            baseFee,
+            perKmFee,
+            calculatedFee
+        });
+
+        return {
+            fee: calculatedFee,
+            distance: distance,
+            baseFee: baseFee,
+            perKmFee: perKmFee
+        };
+    };
+
+    // Hàm format thời gian
+    const formatDateTime = (dateString) => {
+        if (!dateString) return 'Chưa cập nhật';
+        const date = new Date(dateString);
+        return date.toLocaleString('vi-VN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    };
+
+    // Load user profile (không bắt buộc)
     const loadUserProfile = useCallback(async () => {
         setLoadingProfile(true);
         try {
-            // Lấy thông tin từ localStorage hoặc gọi API profile
-            const username = localStorage.getItem('username') || 'user123';
-            const email = localStorage.getItem('email') || 'user@example.com';
-            const phone = localStorage.getItem('phone') || '+84911213150';
-            const address = localStorage.getItem('address') || '123 Đường ABC, Quận 1, TP.HCM';
+            // Lấy thông tin profile (nếu có)
+            const response = await profileApi.getProfile();
+            const profileData = response.data.data;
 
-            const profile = {
-                username: username,
-                email: email,
-                phone: phone,
-                address: address,
-                fullName: localStorage.getItem('fullName') || 'Nguyễn Văn A'
-            };
+            if (profileData) {
+                setProfileData(profileData);
 
-            setUserProfile(profile);
+                // Tạm thời bỏ kiểm tra profile - luôn coi như đầy đủ
+                setMissingProfileFields([]);
 
-            // Cập nhật orderData với thông tin từ profile
-            setOrderData(prev => ({
-                ...prev,
-                username: profile.username,
-                buyer_name: profile.fullName,
-                buyer_email: profile.email,
-                phoneNumber: profile.phone,
-                shippingAddress: profile.address,
-                delivery_phone: profile.phone
-            }));
+                console.log('🔍 Profile loaded (validation disabled):', profileData);
 
+                // Tự động fill thông tin nếu có
+                if (profileData.fullName) {
+                    // Tạo địa chỉ đầy đủ từ các trường địa chỉ
+                    const fullAddress = [
+                        profileData.street,
+                        profileData.wardName,
+                        profileData.districtName,
+                        profileData.provinceName
+                    ].filter(Boolean).join(', ');
+
+                    console.log('🔍 Setting order data:', {
+                        fullName: profileData.fullName,
+                        phoneNumber: profileData.phoneNumber,
+                        email: profileData.email,
+                        fullAddress
+                    });
+
+                    setOrderData(prev => ({
+                        ...prev,
+                        username: localStorage.getItem('username') || 'user123',
+                        buyer_name: profileData.fullName,
+                        fullName: profileData.fullName,
+                        buyer_email: profileData.email || '',
+                        phoneNumber: profileData.phoneNumber || '',
+                        shippingAddress: fullAddress || '',
+                        street: profileData.street || '',
+                        provinceId: profileData.provinceId || '',
+                        districtId: profileData.districtId || '',
+                        wardId: profileData.wardId || '',
+                        delivery_phone: profileData.phoneNumber || ''
+                    }));
+
+                    // Sync dropdowns
+                    setSelectedProvince(profileData.provinceId || '');
+                    setSelectedDistrict(profileData.districtId || '');
+                    setSelectedWard(profileData.wardId || '');
+                }
+            }
         } catch (error) {
             console.error('Error loading user profile:', error);
-            // Set default profile data
-            const defaultProfile = {
-                username: 'user123',
-                email: 'user@example.com',
-                phone: '+84911213150',
-                address: '123 Đường ABC, Quận 1, TP.HCM',
-                fullName: 'Nguyễn Văn A'
-            };
-            setUserProfile(defaultProfile);
-
-            setOrderData(prev => ({
-                ...prev,
-                username: defaultProfile.username,
-                buyer_name: defaultProfile.fullName,
-                buyer_email: defaultProfile.email,
-                phoneNumber: defaultProfile.phone,
-                shippingAddress: defaultProfile.address,
-                delivery_phone: defaultProfile.phone
-            }));
+            // Không bắt buộc phải có profile
         } finally {
             setLoadingProfile(false);
         }
@@ -144,16 +251,96 @@ function PlaceOrder() {
     // Load API data
     const loadApiData = useCallback(async () => {
         try {
+            // Load provinces for address selects
+            try {
+                const provincesResponse = await profileApi.getAddressProvinces();
+                const data = provincesResponse.data?.data || {};
+                const transformed = Object.keys(data).map(key => ({ value: key, label: data[key] }));
+                setProvinces(transformed);
+            } catch (e) {
+                console.error('Failed to load provinces:', e);
+            }
+
             const shippingData = await getShippingPartners();
-            setShippingPartners(shippingData || []);
+            console.log('🚚 Shipping partners from API:', shippingData);
+
+            // Show all shipping partners from API
+            if (shippingData && shippingData.length > 0) {
+                setShippingPartners(shippingData);
+
+                // Auto-select first fast delivery option
+                const fastDeliveryPartner = shippingData.find(partner =>
+                    partner.name?.toLowerCase().includes('nhanh') ||
+                    partner.name?.toLowerCase().includes('fast') ||
+                    partner.description?.toLowerCase().includes('nhanh') ||
+                    partner.description?.toLowerCase().includes('fast')
+                );
+
+                if (fastDeliveryPartner) {
+                    // Tính phí vận chuyển dựa trên khoảng cách
+                    const shippingCalculation = calculateShippingFee(
+                        product?.sellerLocation || 'Hà Nội', // Vị trí seller
+                        orderData.shippingAddress || 'TP.HCM' // Vị trí buyer
+                    );
+
+                    setOrderData(prev => ({
+                        ...prev,
+                        shippingPartnerId: fastDeliveryPartner.id,
+                        shippingFee: shippingCalculation.fee,
+                        final_price: prev.total_price + shippingCalculation.fee,
+                        shipping_distance: shippingCalculation.distance,
+                        shipping_base_fee: shippingCalculation.baseFee,
+                        shipping_per_km_fee: shippingCalculation.perKmFee
+                    }));
+                }
+            } else {
+                // Fallback data if API fails
+                setShippingPartners([
+                    { id: 1, name: 'Giao hàng nhanh', description: 'Giao hàng nhanh trong 24h', fee: 50000 },
+                    { id: 2, name: 'Giao hàng tiêu chuẩn', description: 'Giao hàng tiêu chuẩn 2-3 ngày', fee: 30000 },
+                    { id: 3, name: 'Giao hàng tiết kiệm', description: 'Giao hàng tiết kiệm 3-5 ngày', fee: 20000 }
+                ]);
+
+                // Auto-select fast delivery với tính toán khoảng cách
+                const shippingCalculation = calculateShippingFee(
+                    product?.sellerLocation || 'Hà Nội',
+                    orderData.shippingAddress || 'TP.HCM'
+                );
+
+                setOrderData(prev => ({
+                    ...prev,
+                    shippingPartnerId: 1,
+                    shippingFee: shippingCalculation.fee,
+                    final_price: prev.total_price + shippingCalculation.fee,
+                    shipping_distance: shippingCalculation.distance,
+                    shipping_base_fee: shippingCalculation.baseFee,
+                    shipping_per_km_fee: shippingCalculation.perKmFee
+                }));
+            }
         } catch (error) {
             console.error('Error loading shipping partners:', error);
             // Set default shipping partners if API fails
             setShippingPartners([
-                { id: 1, name: 'Fast Delivery', description: 'Giao hàng nhanh trong 24h', fee: 50000 },
-                { id: 2, name: 'Standard Delivery', description: 'Giao hàng tiêu chuẩn 2-3 ngày', fee: 30000 },
-                { id: 3, name: 'Economy Delivery', description: 'Giao hàng tiết kiệm 3-5 ngày', fee: 20000 }
+                { id: 1, name: 'Giao hàng nhanh', description: 'Giao hàng nhanh trong 24h', fee: 50000 },
+                { id: 2, name: 'Giao hàng tiêu chuẩn', description: 'Giao hàng tiêu chuẩn 2-3 ngày', fee: 30000 },
+                { id: 3, name: 'Giao hàng tiết kiệm', description: 'Giao hàng tiết kiệm 3-5 ngày', fee: 20000 }
             ]);
+
+            // Auto-select fast delivery với tính toán khoảng cách
+            const shippingCalculation = calculateShippingFee(
+                product?.sellerLocation || 'Hà Nội',
+                orderData.shippingAddress || 'TP.HCM'
+            );
+
+            setOrderData(prev => ({
+                ...prev,
+                shippingPartnerId: 1,
+                shippingFee: shippingCalculation.fee,
+                final_price: prev.total_price + shippingCalculation.fee,
+                shipping_distance: shippingCalculation.distance,
+                shipping_base_fee: shippingCalculation.baseFee,
+                shipping_per_km_fee: shippingCalculation.perKmFee
+            }));
         }
     }, []);
 
@@ -178,6 +365,23 @@ function PlaceOrder() {
         loadUserProfile();
         loadApiData();
     }, [navigate, loadUserProfile, loadApiData]);
+
+    // Reload profile khi user quay lại từ trang profile
+    useEffect(() => {
+        const handleFocus = () => {
+            if (document.visibilityState === 'visible') {
+                loadUserProfile();
+            }
+        };
+
+        window.addEventListener('focus', handleFocus);
+        document.addEventListener('visibilitychange', handleFocus);
+
+        return () => {
+            window.removeEventListener('focus', handleFocus);
+            document.removeEventListener('visibilitychange', handleFocus);
+        };
+    }, [loadUserProfile]);
 
     // Tìm sản phẩm
     useEffect(() => {
@@ -315,6 +519,11 @@ function PlaceOrder() {
         setShowModal(true);
     }, [navigate]);
 
+    // Hàm chuyển đến trang profile để điền thông tin
+    const handleFillProfile = useCallback(() => {
+        navigate('/profile?tab=profile');
+    }, [navigate]);
+
     // Hiển thị modal nhiều người bán
     const showMultipleSellersModal = useCallback(() => {
         setModalConfig({
@@ -343,7 +552,7 @@ function PlaceOrder() {
         setShowModal(true);
     }, [navigate]);
 
-    // Quy trình kiểm tra validation
+    // Quy trình kiểm tra validation (bỏ kiểm tra profile)
     const startValidationProcess = useCallback(async () => {
         console.log('🚀 Starting validation process...');
         console.log('🔍 Current product state:', product);
@@ -394,13 +603,13 @@ function PlaceOrder() {
         setValidationStep('payment');
     }, [product, id, checkProductAvailability, showMultipleSellersModal, showProductUnavailableModal]);
 
-    // Tự động bắt đầu validation khi product đã được load
+    // Tự động bắt đầu validation khi product và profile đã được load
     useEffect(() => {
-        if (product && validationStep === 'checking') {
-            console.log('🔍 Product loaded, starting validation...');
+        if (product && !loadingProfile && validationStep === 'checking') {
+            console.log('🔍 Product and profile loaded, starting validation...');
             startValidationProcess();
         }
-    }, [product, validationStep, startValidationProcess]);
+    }, [product, loadingProfile, validationStep, startValidationProcess]);
 
     // Hiển thị modal số dư không đủ
     const showInsufficientBalanceModal = useCallback((neededAmount) => {
@@ -436,15 +645,42 @@ function PlaceOrder() {
     };
 
 
-    // Xử lý thay đổi địa chỉ
-    const handleDeliveryAddressChange = (value) => {
-        const selectedPartner = shippingPartners.find(p => p.id === orderData.shippingPartnerId);
-        const shippingFee = selectedPartner?.fee || 50000;
+    // (Bỏ input địa chỉ tự do; địa chỉ được ghép tự động từ 4 field)
+
+    // Cập nhật địa chỉ chi tiết theo từng cấp và assemble lại `shippingAddress`
+    const recomputeShippingAddress = useCallback((overrides = {}) => {
+        const next = { ...orderData, ...overrides };
+        const provinceName = provinces.find(p => p.value === next.provinceId)?.label || '';
+        const districtName = districts.find(d => d.value === next.districtId)?.label || '';
+        const wardName = wards.find(w => w.value === next.wardId)?.label || '';
+        const full = [next.street, wardName, districtName, provinceName].filter(Boolean).join(', ');
+        setOrderData(prev => ({ ...prev, ...overrides, shippingAddress: full }));
+    }, [orderData, provinces, districts, wards]);
+
+    const handleProvinceChange = (provId) => {
+        setSelectedProvince(provId);
+        setSelectedDistrict('');
+        setSelectedWard('');
+        recomputeShippingAddress({ provinceId: provId, districtId: '', wardId: '' });
+    };
+
+    const handleDistrictChange = (distId) => {
+        setSelectedDistrict(distId);
+        setSelectedWard('');
+        recomputeShippingAddress({ districtId: distId, wardId: '' });
+    };
+
+    const handleWardChange = (wardId) => {
+        setSelectedWard(wardId);
+        recomputeShippingAddress({ wardId });
+    };
+
+    // Xử lý thay đổi phương thức thanh toán (1: COD, 2: Ví điện tử)
+    const handlePaymentMethodChange = (paymentId) => {
         setOrderData(prev => ({
             ...prev,
-            shippingAddress: value,
-            shippingFee: shippingFee,
-            final_price: prev.total_price + shippingFee
+            paymentId,
+            payment_method: paymentId === 2 ? 'WALLET' : 'COD'
         }));
     };
 
@@ -452,6 +688,10 @@ function PlaceOrder() {
     const handleShippingPartnerChange = (partnerId) => {
         const selectedPartner = shippingPartners.find(p => p.id === partnerId);
         const shippingFee = selectedPartner?.fee || 50000;
+
+        console.log('🚚 Selected shipping partner:', selectedPartner);
+        console.log('💰 Shipping fee:', shippingFee);
+
         setOrderData(prev => ({
             ...prev,
             shippingPartnerId: partnerId,
@@ -462,8 +702,14 @@ function PlaceOrder() {
 
     // Kiểm tra form hợp lệ
     const isFormValid = () => {
-        // Các field từ profile đã được điền sẵn, chỉ cần kiểm tra địa chỉ giao hàng
-        const shippingValidation = orderData.shippingAddress.trim() && orderData.delivery_phone.trim();
+        // Kiểm tra địa chỉ giao hàng chi tiết
+        const shippingValidation = (
+            (orderData.street || '').trim() &&
+            (orderData.provinceId || selectedProvince) &&
+            (orderData.districtId || selectedDistrict) &&
+            (orderData.wardId || selectedWard) &&
+            orderData.delivery_phone.trim()
+        );
 
         // Kiểm tra các field bắt buộc từ profile
         const profileValidation = orderData.buyer_name.trim() &&
@@ -480,11 +726,13 @@ function PlaceOrder() {
             return;
         }
 
-        // Kiểm tra số dư ví trước khi đặt hàng
-        const amountToPay = orderData.final_price || 0;
-        if (walletBalance < amountToPay) {
-            showInsufficientBalanceModal(amountToPay);
-            return;
+        // Kiểm tra số dư ví trước khi đặt hàng (chỉ với ví điện tử)
+        if (orderData.paymentId === 2) {
+            const amountToPay = orderData.final_price || 0;
+            if (walletBalance < amountToPay) {
+                showInsufficientBalanceModal(amountToPay);
+                return;
+            }
         }
 
         setIsSubmitting(true);
@@ -494,8 +742,12 @@ function PlaceOrder() {
             // Các field khác sẽ được backend tự động tạo hoặc sử dụng fake data
             const apiOrderData = {
                 postProductId: orderData.postProductId,        // ID sản phẩm
-                username: orderData.username,                  // Tên đăng nhập
-                shippingAddress: orderData.shippingAddress,    // Địa chỉ giao hàng
+                username: orderData.username,
+                fullName: orderData.fullName || orderData.buyer_name, // Tên người nhận
+                street: orderData.street,
+                provinceName: provinces.find(p => p.value === (orderData.provinceId || selectedProvince))?.label || '',
+                districtName: districts.find(d => d.value === (orderData.districtId || selectedDistrict))?.label || '',
+                wardName: wards.find(w => w.value === (orderData.wardId || selectedWard))?.label || '',
                 phoneNumber: orderData.phoneNumber,            // Số điện thoại
                 shippingPartnerId: orderData.shippingPartnerId, // ID đối tác vận chuyển
                 paymentId: orderData.paymentId                 // ID phương thức thanh toán
@@ -506,27 +758,55 @@ function PlaceOrder() {
             // Gọi API đặt hàng
             const response = await placeOrder(apiOrderData);
 
-            if (response.success) {
+            console.log('📦 API Response:', response);
+
+            // Backend response có thể là:
+            // - response.data.orderId (nếu cấu trúc: { data: { orderId: ... } })
+            // - response.orderId (nếu cấu trúc: { orderId: ... })
+            // - response.success (nếu cấu trúc: { success: true, data: {...} })
+
+            const orderId = response.data?.orderId || response.orderId || null;
+
+            if (orderId || response.success !== false) {
+                console.log('✅ Order placed successfully:', orderId);
+
                 // Refresh số dư ví sau khi đặt hàng thành công
                 refreshWalletBalance();
 
-                const newOrderId = response.data.orderId || `ORD${Date.now()}`;
+                const newOrderId = orderId || `ORD${Date.now()}`;
+                const orderCode = response.data?.orderCode || generateOrderCode();
+                const currentTime = new Date().toISOString();
+
                 setOrderId(newOrderId);
+
+                // Cập nhật orderData với thông tin đơn hàng mới
+                setOrderData(prev => ({
+                    ...prev,
+                    order_code: orderCode,
+                    order_status: orderData.paymentId === 2 ? 'PAID' : 'PENDING_PAYMENT',
+                    created_at: currentTime,
+                    paid_at: orderData.paymentId === 2 ? currentTime : '',
+                    transaction_id: response.data?.transactionId || `TXN${Date.now()}`,
+                    shipping_partner: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Giao hàng nhanh'
+                }));
 
                 // Lưu đơn hàng vào localStorage để có thể theo dõi
                 const newOrder = {
                     id: newOrderId,
-                    status: 'pending',
-                    createdAt: new Date().toISOString(),
+                    order_code: orderCode,
+                    status: orderData.paymentId === 2 ? 'confirmed' : 'pending',
+                    order_status: orderData.paymentId === 2 ? 'PAID' : 'PENDING_PAYMENT',
+                    createdAt: currentTime,
+                    paidAt: orderData.paymentId === 2 ? currentTime : '',
                     estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // +3 ngày
                     product: product,
-                    buyerName: orderData.buyerName,
-                    buyerPhone: orderData.buyerPhone,
-                    buyerEmail: orderData.buyerEmail,
+                    buyerName: orderData.buyer_name,
+                    buyerPhone: orderData.phoneNumber,
+                    buyerEmail: orderData.buyer_email,
                     deliveryAddress: orderData.shippingAddress,
                     deliveryPhone: orderData.phoneNumber,
                     deliveryNote: orderData.deliveryNote || '',
-                    paymentMethod: 'ewallet',
+                    paymentMethod: orderData.paymentId === 2 ? 'ewallet' : 'cod',
                     totalPrice: product.price,
                     shippingFee: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000,
                     finalPrice: product.price + (shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000)
@@ -539,44 +819,48 @@ function PlaceOrder() {
 
                 setCurrentStep(3);
             } else {
-                throw new Error(response.message || 'Có lỗi xảy ra khi đặt hàng');
+                throw new Error(response.message || response.data?.message || 'Có lỗi xảy ra khi đặt hàng');
             }
         } catch (error) {
-            console.error('Place order error:', error);
-            // Nếu API lỗi, vẫn cho phép đặt hàng với fake data
-            console.log('🔄 API failed, proceeding with fake order...');
+            console.error('❌ Place order error:', error);
 
-            // Refresh số dư ví (fake)
-            refreshWalletBalance();
+            // Hiển thị lỗi chi tiết cho người dùng
+            const errorMessage = error.response?.data?.message ||
+                error.message ||
+                'Không thể đặt hàng. Vui lòng thử lại sau.';
 
-            const fakeOrderId = `ORD${Date.now()}`;
-            setOrderId(fakeOrderId);
+            console.error('🔍 Error details:', {
+                message: errorMessage,
+                status: error.response?.status,
+                data: error.response?.data,
+                url: error.config?.url
+            });
 
-            // Lưu đơn hàng fake vào localStorage để có thể theo dõi
-            const fakeOrder = {
-                id: fakeOrderId,
-                status: 'pending',
-                createdAt: new Date().toISOString(),
-                estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // +3 ngày
-                product: product,
-                buyerName: orderData.buyerName,
-                buyerPhone: orderData.buyerPhone,
-                buyerEmail: orderData.buyerEmail,
-                deliveryAddress: orderData.shippingAddress,
-                deliveryPhone: orderData.phoneNumber,
-                deliveryNote: orderData.deliveryNote || '',
-                paymentMethod: 'ewallet',
-                totalPrice: product.price,
-                shippingFee: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000,
-                finalPrice: product.price + (shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000)
-            };
-
-            // Lưu vào localStorage
-            const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-            existingOrders.push(fakeOrder);
-            localStorage.setItem('orders', JSON.stringify(existingOrders));
-
-            setCurrentStep(3);
+            // Hiển thị thông báo lỗi cho người dùng
+            setModalConfig({
+                type: 'error',
+                title: 'Đặt hàng thất bại',
+                message: errorMessage,
+                actions: [
+                    {
+                        label: 'Thử lại',
+                        type: 'primary',
+                        onClick: () => {
+                            setShowModal(false);
+                            // Không làm gì, để người dùng thử lại
+                        }
+                    },
+                    {
+                        label: 'Quay lại',
+                        type: 'secondary',
+                        onClick: () => {
+                            setShowModal(false);
+                            navigate(-1);
+                        }
+                    }
+                ]
+            });
+            setShowModal(true);
         } finally {
             setIsSubmitting(false);
         }
@@ -658,7 +942,7 @@ function PlaceOrder() {
     }
 
     // Hiển thị modal nếu có lỗi
-    if (showModal && validationStep !== 'payment') {
+    if (showModal) {
         return (
             <div className="place-order-page">
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
@@ -733,10 +1017,21 @@ function PlaceOrder() {
                             <div className="order-form">
                                 {/* Thông tin người mua */}
                                 <div className="form-section">
-                                    <h3 className="section-title">
-                                        <User className="section-icon" />
-                                        Thông tin người mua
-                                    </h3>
+                                    <div className="section-header">
+                                        <h3 className="section-title">
+                                            <User className="section-icon" />
+                                            Thông tin người mua
+                                        </h3>
+                                        <button
+                                            className="btn btn-outline-primary"
+                                            onClick={handleFillProfile}
+                                            style={{ fontSize: '14px', padding: '8px 16px' }}
+                                        >
+                                            <User size={16} />
+                                            Cập nhật thông tin
+                                        </button>
+                                    </div>
+
                                     <div className="form-group">
                                         <label className="form-label">Họ và tên *</label>
                                         <input
@@ -772,35 +1067,6 @@ function PlaceOrder() {
                                     </div>
                                 </div>
 
-                                {/* Thông tin đơn hàng */}
-                                <div className="form-section">
-                                    <h3 className="section-title">
-                                        <Settings className="section-icon" />
-                                        Thông tin đơn hàng
-                                    </h3>
-                                    <div className="form-group">
-                                        <label className="form-label">Mã đơn hàng</label>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            value={orderData.order_code || `ORD${Date.now()}`}
-                                            readOnly
-                                            style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
-                                        />
-                                        <small className="form-help">Mã đơn hàng được tạo tự động</small>
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Trạng thái đơn hàng</label>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            value="Chờ xử lý"
-                                            readOnly
-                                            style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
-                                        />
-                                        <small className="form-help">Trạng thái sẽ được cập nhật bởi hệ thống</small>
-                                    </div>
-                                </div>
 
                                 {/* Thông tin giao hàng */}
                                 <div className="form-section">
@@ -808,17 +1074,62 @@ function PlaceOrder() {
                                         <MapPin className="section-icon" />
                                         Thông tin giao hàng
                                     </h3>
+                                    {/* Địa chỉ theo từng cấp giống Profile */}
                                     <div className="form-group">
-                                        <label className="form-label">Địa chỉ giao hàng *</label>
-                                        <textarea
-                                            className="form-textarea"
-                                            value={orderData.shippingAddress}
-                                            onChange={(e) => handleDeliveryAddressChange(e.target.value)}
-                                            placeholder="Nhập địa chỉ giao hàng chi tiết"
-                                            rows={3}
-                                        />
-                                        <small className="form-help">Có thể chỉnh sửa địa chỉ giao hàng khác với địa chỉ profile</small>
+                                        <label className="form-label">Tỉnh/Thành phố*</label>
+                                        <select
+                                            className="form-input"
+                                            value={selectedProvince}
+                                            onChange={(e) => handleProvinceChange(e.target.value)}
+                                        >
+                                            <option value="">-- Chọn Tỉnh/Thành --</option>
+                                            {provinces.map(p => (
+                                                <option key={p.value} value={p.value}>{p.label}</option>
+                                            ))}
+                                        </select>
                                     </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Quận/Huyện*</label>
+                                        <select
+                                            className="form-input"
+                                            value={selectedDistrict}
+                                            onChange={(e) => handleDistrictChange(e.target.value)}
+                                            disabled={!selectedProvince || isLoadingDistricts}
+                                        >
+                                            <option value="">{isLoadingDistricts ? 'Đang tải huyện...' : '-- Chọn Quận/Huyện --'}</option>
+                                            {districts.map(d => (
+                                                <option key={d.value} value={d.value}>{d.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Phường/Xã*</label>
+                                        <select
+                                            className="form-input"
+                                            value={selectedWard}
+                                            onChange={(e) => handleWardChange(e.target.value)}
+                                            disabled={!selectedDistrict || isLoadingWards}
+                                        >
+                                            <option value="">{isLoadingWards ? 'Đang tải xã...' : '-- Chọn Phường/Xã --'}</option>
+                                            {wards.map(w => (
+                                                <option key={w.value} value={w.value}>{w.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Địa chỉ chi tiết (Số nhà, đường)*</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={orderData.street || ''}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                recomputeShippingAddress({ street: value });
+                                            }}
+                                            placeholder="Ví dụ: 7 Đ. D1, Long Thạnh Mỹ, Thủ Đức"
+                                        />
+                                    </div>
+                                    {/* Bỏ phần nhập địa chỉ tự do vì đã có 4 trường trên */}
                                     <div className="form-group">
                                         <label className="form-label">Số điện thoại nhận hàng *</label>
                                         <input
@@ -828,7 +1139,7 @@ function PlaceOrder() {
                                             onChange={(e) => handleInputChange('delivery_phone', e.target.value)}
                                             placeholder="Nhập số điện thoại nhận hàng"
                                         />
-                                        <small className="form-help">Có thể chỉnh sửa số điện thoại nhận hàng khác với profile</small>
+                                        <small className="form-help">Tự động điền từ profile, có thể chỉnh sửa</small>
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Ghi chú giao hàng</label>
@@ -857,41 +1168,53 @@ function PlaceOrder() {
                                             >
                                                 <div className="shipping-partner-info">
                                                     <div className="shipping-partner-name">
-                                                        {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Fast Delivery'}
+                                                        {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Giao hàng nhanh'}
                                                     </div>
                                                     <div className="shipping-partner-desc">
                                                         {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.description || 'Giao hàng nhanh trong 24h'}
                                                     </div>
-                                                </div>
-                                                <div className="shipping-partner-fee">
-                                                    {formatCurrency(shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000)}
                                                 </div>
                                                 {showShippingOptions ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                             </div>
 
                                             {showShippingOptions && (
                                                 <div className="shipping-partners-list">
-                                                    {shippingPartners.map((partner) => (
-                                                        <div
-                                                            key={partner.id}
-                                                            className={`shipping-partner-option ${orderData.shippingPartnerId === partner.id ? 'selected' : ''}`}
-                                                            onClick={() => {
-                                                                handleShippingPartnerChange(partner.id);
-                                                                setShowShippingOptions(false);
-                                                            }}
-                                                        >
-                                                            <div className="shipping-partner-info">
-                                                                <div className="shipping-partner-name">{partner.name}</div>
-                                                                <div className="shipping-partner-desc">{partner.description}</div>
+                                                    {shippingPartners.map((partner) => {
+                                                        const isFastDelivery = partner.name?.toLowerCase().includes('nhanh') ||
+                                                            partner.name?.toLowerCase().includes('fast') ||
+                                                            partner.description?.toLowerCase().includes('nhanh') ||
+                                                            partner.description?.toLowerCase().includes('fast');
+                                                        const isSelected = orderData.shippingPartnerId === partner.id;
+                                                        const isDisabled = !isFastDelivery;
+
+                                                        return (
+                                                            <div
+                                                                key={partner.id}
+                                                                className={`shipping-partner-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                                                                onClick={() => {
+                                                                    if (!isDisabled) {
+                                                                        handleShippingPartnerChange(partner.id);
+                                                                        setShowShippingOptions(false);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <div className="shipping-partner-info">
+                                                                    <div className="shipping-partner-name">
+                                                                        {partner.name}
+                                                                        {isDisabled && <span className="disabled-badge">(Không khả dụng)</span>}
+                                                                    </div>
+                                                                    <div className="shipping-partner-desc">{partner.description}</div>
+                                                                </div>
+                                                                {isSelected && <div className="selected-indicator">✓</div>}
                                                             </div>
-                                                            <div className="shipping-partner-fee">
-                                                                {formatCurrency(partner.fee)}
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>
+                                        <small className="form-help">
+                                            Hiện tại chỉ hỗ trợ giao hàng nhanh để đảm bảo chất lượng dịch vụ tốt nhất
+                                        </small>
                                     </div>
                                 </div>
 
@@ -902,44 +1225,68 @@ function PlaceOrder() {
                                         Phương thức thanh toán
                                     </h3>
                                     <div className="payment-methods">
-                                        <div className="payment-option selected">
+                                        {/* COD */}
+                                        <div
+                                            className={`payment-option ${orderData.paymentId === 1 ? 'selected' : ''}`}
+                                            onClick={() => handlePaymentMethodChange(1)}
+                                            role="button"
+                                            tabIndex={0}
+                                        >
+                                            <div className="payment-info">
+                                                <div className="payment-name">
+                                                    <Package size={20} />
+                                                    Thanh toán khi nhận hàng (COD)
+                                                </div>
+                                                <div className="payment-desc">Thanh toán cho shipper khi nhận hàng</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Ví điện tử */}
+                                        <div
+                                            className={`payment-option ${orderData.paymentId === 2 ? 'selected' : ''}`}
+                                            onClick={() => handlePaymentMethodChange(2)}
+                                            role="button"
+                                            tabIndex={0}
+                                        >
                                             <div className="payment-info">
                                                 <div className="payment-name">
                                                     <Wallet size={20} />
                                                     Ví điện tử
                                                 </div>
-                                                <div className="payment-desc">Thanh toán qua ví điện tử</div>
-                                                <div className="wallet-balance">
-                                                    {walletLoading ? (
-                                                        <div className="wallet-loading">
-                                                            <div className="loading-spinner-small"></div>
-                                                            Đang tải số dư ví...
-                                                        </div>
-                                                    ) : walletError ? (
-                                                        <div className="wallet-error">
-                                                            <AlertCircle size={16} />
-                                                            {walletError}
-                                                            <button
-                                                                className="retry-btn"
-                                                                onClick={refreshWalletBalance}
-                                                                title="Thử lại"
-                                                            >
-                                                                🔄
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="wallet-success">
-                                                            Số dư hiện tại: <span className="balance-amount">{formatWalletCurrency(walletBalance)}</span>
-                                                            <button
-                                                                className="refresh-btn"
-                                                                onClick={refreshWalletBalance}
-                                                                title="Cập nhật số dư"
-                                                            >
-                                                                🔄
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <div className="payment-desc">Thanh toán trực tuyến qua ví điện tử</div>
+                                                {orderData.paymentId === 2 && (
+                                                    <div className="wallet-balance">
+                                                        {walletLoading ? (
+                                                            <div className="wallet-loading">
+                                                                <div className="loading-spinner-small"></div>
+                                                                Đang tải số dư ví...
+                                                            </div>
+                                                        ) : walletError ? (
+                                                            <div className="wallet-error">
+                                                                <AlertCircle size={16} />
+                                                                {walletError}
+                                                                <button
+                                                                    className="retry-btn"
+                                                                    onClick={refreshWalletBalance}
+                                                                    title="Thử lại"
+                                                                >
+                                                                    🔄
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="wallet-success">
+                                                                Số dư hiện tại: <span className="balance-amount">{formatWalletCurrency(walletBalance)}</span>
+                                                                <button
+                                                                    className="refresh-btn"
+                                                                    onClick={refreshWalletBalance}
+                                                                    title="Cập nhật số dư"
+                                                                >
+                                                                    🔄
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -999,6 +1346,23 @@ function PlaceOrder() {
                             <div className="order-confirmation">
                                 <h3 className="section-title">Xác nhận đơn hàng</h3>
 
+                                {/* Thông tin đơn hàng */}
+                                <div className="confirmation-section">
+                                    <h4>Thông tin đơn hàng</h4>
+                                    <div className="info-item">
+                                        <span className="info-label">Mã đơn hàng:</span>
+                                        <span className="info-value order-code">{orderData.order_code || 'Sẽ được tạo sau khi đặt hàng'}</span>
+                                    </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Trạng thái:</span>
+                                        <span className="info-value order-status" data-status={orderData.order_status}>{getOrderStatusText(orderData.order_status)}</span>
+                                    </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Thời gian tạo:</span>
+                                        <span className="info-value">{formatDateTime(orderData.created_at)}</span>
+                                    </div>
+                                </div>
+
                                 <div className="confirmation-section">
                                     <h4>Thông tin người mua</h4>
                                     <div className="info-item">
@@ -1007,7 +1371,7 @@ function PlaceOrder() {
                                     </div>
                                     <div className="info-item">
                                         <span className="info-label">Số điện thoại:</span>
-                                        <span className="info-value">{orderData.phone_number}</span>
+                                        <span className="info-value">{orderData.phoneNumber}</span>
                                     </div>
                                     <div className="info-item">
                                         <span className="info-label">Email:</span>
@@ -1018,55 +1382,74 @@ function PlaceOrder() {
                                 <div className="confirmation-section">
                                     <h4>Thông tin giao hàng</h4>
                                     <div className="info-item">
-                                        <span className="info-label">Địa chỉ:</span>
+                                        <span className="info-label">Địa chỉ giao hàng:</span>
                                         <span className="info-value">{orderData.shippingAddress}</span>
                                     </div>
                                     <div className="info-item">
-                                        <span className="info-label">Số điện thoại:</span>
+                                        <span className="info-label">Số điện thoại nhận hàng:</span>
                                         <span className="info-value">{orderData.delivery_phone}</span>
                                     </div>
                                     <div className="info-item">
                                         <span className="info-label">Đối tác vận chuyển:</span>
                                         <span className="info-value">
-                                            {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Fast Delivery'}
+                                            {orderData.shipping_partner || shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Giao hàng nhanh'}
                                         </span>
                                     </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Mã vận đơn:</span>
+                                        <span className="info-value tracking-number">{orderData.tracking_number || 'Sẽ được cập nhật khi giao hàng'}</span>
+                                    </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Phí vận chuyển:</span>
+                                        <span className="info-value">
+                                            {formatCurrency(orderData.shippingFee || 50000)}
+                                        </span>
+                                    </div>
+                                    {orderData.shipped_at && (
+                                        <div className="info-item">
+                                            <span className="info-label">Thời gian giao cho vận chuyển:</span>
+                                            <span className="info-value">{formatDateTime(orderData.shipped_at)}</span>
+                                        </div>
+                                    )}
+                                    {orderData.delivered_at && (
+                                        <div className="info-item">
+                                            <span className="info-label">Thời gian giao thành công:</span>
+                                            <span className="info-value">{formatDateTime(orderData.delivered_at)}</span>
+                                        </div>
+                                    )}
                                     {orderData.delivery_note && (
                                         <div className="info-item">
-                                            <span className="info-label">Ghi chú:</span>
+                                            <span className="info-label">Ghi chú giao hàng:</span>
                                             <span className="info-value">{orderData.delivery_note}</span>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="confirmation-section">
-                                    <h4>Thông tin đơn hàng</h4>
-                                    <div className="info-item">
-                                        <span className="info-label">Mã đơn hàng:</span>
-                                        <span className="info-value">{orderData.order_code || `ORD${Date.now()}`}</span>
-                                    </div>
-                                    <div className="info-item">
-                                        <span className="info-label">Trạng thái:</span>
-                                        <span className="info-value">Chờ xử lý</span>
-                                    </div>
-                                    <div className="info-item">
-                                        <span className="info-label">Đối tác vận chuyển:</span>
-                                        <span className="info-value">
-                                            {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Fast Delivery'}
-                                        </span>
-                                    </div>
-                                </div>
 
                                 <div className="confirmation-section">
-                                    <h4>Phương thức thanh toán</h4>
+                                    <h4>Thông tin thanh toán</h4>
                                     <div className="info-item">
-                                        <span className="info-label">Phương thức:</span>
-                                        <span className="info-value">Ví điện tử</span>
+                                        <span className="info-label">Phương thức thanh toán:</span>
+                                        <span className="info-value">{getPaymentMethodText(orderData.payment_method)}</span>
+                                    </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Mã giao dịch:</span>
+                                        <span className="info-value transaction-id">{orderData.transaction_id || 'Sẽ được tạo sau khi thanh toán'}</span>
                                     </div>
                                     <div className="info-item">
                                         <span className="info-label">Số dư hiện tại:</span>
                                         <span className="info-value">{formatCurrency(walletBalance)}</span>
                                     </div>
+                                    <div className="info-item">
+                                        <span className="info-label">Số tiền thanh toán:</span>
+                                        <span className="info-value payment-amount">{formatCurrency(orderData.final_price)}</span>
+                                    </div>
+                                    {orderData.paid_at && (
+                                        <div className="info-item">
+                                            <span className="info-label">Thời gian thanh toán:</span>
+                                            <span className="info-value">{formatDateTime(orderData.paid_at)}</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="confirmation-section">
@@ -1146,22 +1529,6 @@ function PlaceOrder() {
                                     <h3 className="card-title">Tóm tắt đơn hàng</h3>
                                 </div>
                                 <div className="card-content space-y-4">
-                                    <div className="rounded-lg bg-muted p-3 space-y-1">
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-muted-foreground">Mã đơn hàng:</span>
-                                            <span className="font-mono text-xs text-foreground">{orderData.order_code || `ORD${Date.now()}`}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-muted-foreground">Trạng thái:</span>
-                                            <span className="badge badge-secondary text-xs">
-                                                Chờ xác nhận
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-muted-foreground">Ngày tạo:</span>
-                                            <span className="text-xs text-foreground">{new Date().toLocaleDateString("vi-VN")}</span>
-                                        </div>
-                                    </div>
 
                                     <div className="separator"></div>
 
@@ -1173,13 +1540,9 @@ function PlaceOrder() {
                                         <div>
                                             <h3 className="font-semibold text-card-foreground">{product.title}</h3>
                                             <p className="text-sm text-muted-foreground">{product.brand} • {product.model}</p>
-                                            <p className="text-xs text-muted-foreground font-mono mt-1">ID: PROD-{product.id}</p>
                                         </div>
 
                                         <div className="flex items-center gap-2">
-                                            <span className="badge badge-accent">
-                                                Đã kiểm định
-                                            </span>
                                             <span className="badge badge-outline">{product.conditionLevel}</span>
                                         </div>
                                     </div>
@@ -1193,13 +1556,18 @@ function PlaceOrder() {
                                         </div>
 
                                         <div className="flex items-center justify-between text-sm">
-                                            <span className="text-muted-foreground">Phí kiểm định</span>
-                                            <span className="font-medium text-foreground">500.000₫</span>
-                                        </div>
-
-                                        <div className="flex items-center justify-between text-sm">
                                             <span className="text-muted-foreground">Phí vận chuyển</span>
-                                            <span className="font-medium text-foreground">{formatCurrency(orderData.shippingFee)}</span>
+                                            <div className="text-right">
+                                                <span className="font-medium text-foreground">{formatCurrency(orderData.shippingFee)}</span>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {orderData.shipping_distance > 0 && (
+                                                        <>
+                                                            Khoảng cách: {orderData.shipping_distance}km<br />
+                                                            Phí cơ bản: {formatCurrency(orderData.shipping_base_fee)} + {formatCurrency(orderData.shipping_per_km_fee)}/km
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div className="separator"></div>

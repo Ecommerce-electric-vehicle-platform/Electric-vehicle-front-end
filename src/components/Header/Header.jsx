@@ -87,7 +87,7 @@ export function Header() {
 
     const loadNotificationCount = async () => {
       try {
-        const response = await notificationApi.getUnreadCount();
+const response = await notificationApi.getUnreadCount();
         setNotificationCount(response?.data?.unreadCount || 0);
       } catch {
         console.warn("Cannot load notification count");
@@ -186,7 +186,7 @@ export function Header() {
   };
   const handleSmartNavigation = (sectionId) => {
     if (location.pathname === "/") scrollToSection(sectionId);
-    else navigate(`/#${sectionId}`);
+else navigate(`/#${sectionId}`);
   };
 
 
@@ -294,7 +294,7 @@ export function Header() {
             aria-label="Mở menu danh mục"
           >
             {hamburgerMenuOpen ? <X /> : <Menu />}
-          </button>
+</button>
 
 
           {/* Logo */}
@@ -386,7 +386,7 @@ export function Header() {
                   {showNotificationDropdown && (
                     <NotificationList
                         isOpen={showNotificationDropdown}
-                        onClose={() => setShowNotificationDropdown(false)}
+onClose={() => setShowNotificationDropdown(false)}
                         onNotificationClick={handleNotificationPopupClick} // Reuse handler
                     />
                   )}
@@ -467,10 +467,3 @@ export function Header() {
     </nav>
   );
 }
-
-
-
-
-
-
-

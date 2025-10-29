@@ -13,6 +13,7 @@ import {
     Calendar
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
+import { getOrderHistory } from '../../api/orderApi';
 import './OrderList.css';
 
 function OrderList() {
@@ -22,63 +23,43 @@ function OrderList() {
     const [isGuest, setIsGuest] = useState(true);
     const [filter, setFilter] = useState('all'); // all, pending, confirmed, shipping, delivered, cancelled
 
-    // Kiểm tra đăng nhập
+    // Kiểm tra đăng nhập (đúng key token thực tế)
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        setIsGuest(!token);
+        const accessToken = localStorage.getItem('accessToken');
+        const legacyToken = localStorage.getItem('token');
+        const refreshToken = localStorage.getItem('refreshToken');
+        const hasToken = Boolean(accessToken || legacyToken || refreshToken);
+        setIsGuest(!hasToken);
 
-        if (!token) {
+        if (!hasToken) {
             navigate('/signin');
             return;
         }
     }, [navigate]);
 
-    // Tải danh sách đơn hàng
+    // Tải danh sách đơn hàng từ Backend (order history)
     useEffect(() => {
-        const loadOrders = () => {
+        let isMounted = true;
+        async function load() {
+            setLoading(true);
             try {
-                const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                // Xóa dữ liệu fake/local trước đây để chỉ hiển thị đơn thật từ hệ thống
+                localStorage.removeItem('orders');
 
-                // Giả lập cập nhật trạng thái đơn hàng theo thời gian
-                const updatedOrders = savedOrders.map(order => {
-                    const orderDate = new Date(order.createdAt);
-                    const now = new Date();
-                    const daysDiff = Math.floor((now - orderDate) / (1000 * 60 * 60 * 24));
+                const { items } = await getOrderHistory({ page: 1, size: 20 });
 
-                    let updatedStatus = order.status;
-
-                    if (daysDiff >= 0 && order.status === 'pending') {
-                        updatedStatus = 'confirmed';
-                    }
-                    if (daysDiff >= 1 && order.status === 'confirmed') {
-                        updatedStatus = 'shipping';
-                    }
-                    if (daysDiff >= 3 && order.status === 'shipping') {
-                        updatedStatus = 'delivered';
-                    }
-
-                    return { ...order, status: updatedStatus };
-                });
-
-                // Cập nhật localStorage nếu có thay đổi
-                const hasChanges = updatedOrders.some((order, index) =>
-                    order.status !== savedOrders[index].status
-                );
-
-                if (hasChanges) {
-                    localStorage.setItem('orders', JSON.stringify(updatedOrders));
-                }
-
-                setOrders(updatedOrders.reverse()); // Mới nhất lên đầu
-            } catch (error) {
-                console.error('Error loading orders:', error);
-                setOrders([]);
+                // Giữ lại duy nhất các đơn hàng thật, ưu tiên đơn mới nhất lên đầu
+                const list = Array.isArray(items) ? items.filter(Boolean) : [];
+                if (isMounted) setOrders(list.reverse());
+            } catch (err) {
+                console.error('Không tải được lịch sử đơn hàng:', err);
+                if (isMounted) setOrders([]);
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
-        };
-
-        loadOrders();
+        }
+        load();
+        return () => { isMounted = false; };
     }, []);
 
     // Lọc đơn hàng theo trạng thái

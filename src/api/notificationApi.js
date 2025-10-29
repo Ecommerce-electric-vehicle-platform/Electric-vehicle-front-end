@@ -8,7 +8,7 @@ const notificationApi = {
     try {
       console.log("[API] Calling GET /api/v1/notifications", { page, size });
       
-      const res = await axiosInstance.get("/", {
+      const res = await axiosInstance.get("/api/v1/notifications", {
         params: { page, size },
       });
       

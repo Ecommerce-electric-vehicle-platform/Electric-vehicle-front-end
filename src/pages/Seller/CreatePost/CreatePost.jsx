@@ -1,4 +1,3 @@
-// src/pages/Seller/CreatePost/CreatePost.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ServicePackageGuard } from "../../../components/ServicePackageGuard/ServicePackageGuard";
@@ -9,11 +8,16 @@ export default function CreatePost() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [sellerId, setSellerId] = useState("");
+  const [pictures, setPictures] = useState([]);
+  const [pictureUrls, setPictureUrls] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const [formData, setFormData] = useState({
     title: "",
     brand: "",
     model: "",
-    manufacturerYear: new Date().getFullYear(),
+    manufacturerYear: new Date().getFullYear(), // hiển thị cho người dùng
     usedDuration: "",
     color: "",
     price: "",
@@ -21,14 +25,13 @@ export default function CreatePost() {
     width: "",
     height: "",
     weight: "",
+    conditionLevel: "",
     description: "",
     locationTrading: "",
+    categoryId: "",
   });
-  const [pictures, setPictures] = useState([]);
-  const [pictureUrls, setPictureUrls] = useState([]);
-  const [errors, setErrors] = useState({});
 
-  // Load seller profile để lấy sellerId
+  // ✅ Lấy sellerId
   useEffect(() => {
     loadSellerProfile();
   }, []);
@@ -37,9 +40,7 @@ export default function CreatePost() {
     try {
       const response = await sellerApi.getSellerProfile();
       const profile = response?.data?.data;
-      if (profile?.sellerId) {
-        setSellerId(profile.sellerId);
-      }
+      if (profile?.sellerId) setSellerId(profile.sellerId);
     } catch (error) {
       console.error("Error loading seller profile:", error);
     }
@@ -48,24 +49,18 @@ export default function CreatePost() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error khi user nhập
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
-
     if (files.length + pictures.length > 10) {
       alert("Tối đa 10 ảnh!");
       return;
     }
-
-    // Preview images
-    const newPreviews = files.map((file) => URL.createObjectURL(file));
+    const previews = files.map((file) => URL.createObjectURL(file));
     setPictures((prev) => [...prev, ...files]);
-    setPictureUrls((prev) => [...prev, ...newPreviews]);
+    setPictureUrls((prev) => [...prev, ...previews]);
   };
 
   const removeImage = (index) => {
@@ -75,7 +70,6 @@ export default function CreatePost() {
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.title.trim()) newErrors.title = "Tiêu đề là bắt buộc";
     if (!formData.brand.trim()) newErrors.brand = "Thương hiệu là bắt buộc";
     if (!formData.model.trim()) newErrors.model = "Model là bắt buộc";
@@ -85,6 +79,7 @@ export default function CreatePost() {
       newErrors.description = "Mô tả là bắt buộc";
     if (!formData.locationTrading.trim())
       newErrors.locationTrading = "Địa điểm giao dịch là bắt buộc";
+    if (!formData.categoryId) newErrors.categoryId = "Vui lòng chọn danh mục";
     if (pictures.length === 0)
       newErrors.pictures = "Vui lòng thêm ít nhất 1 ảnh";
 
@@ -92,19 +87,9 @@ export default function CreatePost() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const uploadImages = async () => {
-    // TODO: Implement image upload to server
-    // Giả định trả về array of URLs
-    // Tạm thời return mock URLs
-    const mockUrls = pictures.map(
-      (_, index) => `https://example.com/images/${Date.now()}_${index}.jpg`
-    );
-    return mockUrls;
-  };
-
+  // ✅ Gửi dữ liệu multipart/form-data lên BE
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validateForm()) {
       alert("Vui lòng kiểm tra lại thông tin!");
       return;
@@ -117,62 +102,54 @@ export default function CreatePost() {
 
     try {
       setLoading(true);
+      setUploadProgress(0);
 
-      // 1. Upload images
-      console.log("Uploading images...");
-      const uploadedUrls = await uploadImages();
+      const formDataToSend = new FormData();
+      formDataToSend.append("sellerId", sellerId);
+      formDataToSend.append("title", formData.title);
+      formDataToSend.append("brand", formData.brand);
+      formDataToSend.append("model", formData.model);
+      formDataToSend.append(
+        "manufactureYear",
+        parseInt(formData.manufacturerYear)
+      );
+      formDataToSend.append("usedDuration", formData.usedDuration);
+      formDataToSend.append(
+        "conditionLevel",
+        formData.conditionLevel || "Good"
+      );
+      formDataToSend.append("price", parseFloat(formData.price));
+      formDataToSend.append("length", formData.length);
+      formDataToSend.append("width", formData.width);
+      formDataToSend.append("height", formData.height);
+      formDataToSend.append("weight", formData.weight);
+      formDataToSend.append("color", formData.color);
+      formDataToSend.append("description", formData.description);
+      formDataToSend.append("locationTrading", formData.locationTrading);
+      formDataToSend.append("categoryId", formData.categoryId);
 
-      // 2. Create post
-      const postData = {
-        sellerId: sellerId,
-        title: formData.title,
-        brand: formData.brand,
-        model: formData.model,
-        manufacturerYear: parseInt(formData.manufacturerYear),
-        usedDuration: formData.usedDuration,
-        color: formData.color,
-        price: parseFloat(formData.price),
-        length: formData.length,
-        width: formData.width,
-        height: formData.height,
-        weight: formData.weight,
-        description: formData.description,
-        locationTrading: formData.locationTrading,
-        pictures: uploadedUrls,
-      };
+      pictures.forEach((file) => formDataToSend.append("pictures", file));
 
-      console.log("Creating post with data:", postData);
-      const response = await sellerApi.createPostProduct(postData);
+      const response = await sellerApi.createPostProduct(
+        formDataToSend,
+        setUploadProgress
+      );
 
       if (response?.data?.success) {
-        const postId = response.data.data?.postId;
-
-        alert("Đăng tin thành công!");
-
-        // 3. Optionally: Request verification
-        if (
-          postId &&
-          window.confirm("Bạn có muốn gửi yêu cầu xác minh bài đăng không?")
-        ) {
-          try {
-            await sellerApi.requestPostVerification(postId);
-            alert("Yêu cầu xác minh đã được gửi!");
-          } catch (verifyError) {
-            console.error("Verification request failed:", verifyError);
-          }
-        }
-
-        // 4. Navigate to manage posts
+        alert("🎉 Đăng tin thành công!");
         navigate("/seller/manage-posts");
+      } else {
+        throw new Error(response?.data?.message || "Tạo bài thất bại");
       }
     } catch (error) {
-      console.error("Error creating post:", error);
+      console.error("❌ Lỗi khi tạo bài đăng:", error);
       const errorMsg =
         error?.response?.data?.message ||
         "Đăng tin thất bại. Vui lòng thử lại!";
       alert(errorMsg);
     } finally {
       setLoading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -191,17 +168,14 @@ export default function CreatePost() {
               <h2>Thông tin cơ bản</h2>
 
               <div className="form-group">
-                <label htmlFor="title">
-                  Tiêu đề <span className="required">*</span>
-                </label>
+                <label>Tiêu đề *</label>
                 <input
                   type="text"
-                  id="title"
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
-                  placeholder="VD: Xe máy điện VinFast Klara S 2023"
                   className={errors.title ? "error" : ""}
+                  placeholder="VD: Xe máy điện VinFast Klara S 2024"
                 />
                 {errors.title && (
                   <span className="error-msg">{errors.title}</span>
@@ -210,17 +184,14 @@ export default function CreatePost() {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="brand">
-                    Thương hiệu <span className="required">*</span>
-                  </label>
+                  <label>Thương hiệu *</label>
                   <input
                     type="text"
-                    id="brand"
                     name="brand"
                     value={formData.brand}
                     onChange={handleChange}
-                    placeholder="VD: VinFast"
                     className={errors.brand ? "error" : ""}
+                    placeholder="VD: VinFast, Honda, Yamaha..."
                   />
                   {errors.brand && (
                     <span className="error-msg">{errors.brand}</span>
@@ -228,17 +199,14 @@ export default function CreatePost() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="model">
-                    Model <span className="required">*</span>
-                  </label>
+                  <label>Model *</label>
                   <input
                     type="text"
-                    id="model"
                     name="model"
                     value={formData.model}
                     onChange={handleChange}
-                    placeholder="VD: Klara S"
                     className={errors.model ? "error" : ""}
+                    placeholder="VD: Klara S, Vision, SH Mode..."
                   />
                   {errors.model && (
                     <span className="error-msg">{errors.model}</span>
@@ -248,56 +216,56 @@ export default function CreatePost() {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="manufacturerYear">Năm sản xuất</label>
+                  <label>Năm sản xuất *</label>
                   <input
                     type="number"
-                    id="manufacturerYear"
                     name="manufacturerYear"
                     value={formData.manufacturerYear}
                     onChange={handleChange}
-                    min="2000"
+                    min="1900"
                     max="2100"
+                    placeholder="VD: 2024"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="usedDuration">Thời gian sử dụng</label>
+                  <label>Thời gian sử dụng *</label>
                   <input
                     type="text"
-                    id="usedDuration"
                     name="usedDuration"
                     value={formData.usedDuration}
                     onChange={handleChange}
-                    placeholder="VD: 2 năm"
+                    placeholder="VD: Mới 100%, 6 tháng, 1 năm..."
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="color">Màu sắc</label>
-                  <input
-                    type="text"
-                    id="color"
-                    name="color"
-                    value={formData.color}
+                  <label>Danh mục *</label>
+                  <select
+                    name="categoryId"
+                    value={formData.categoryId}
                     onChange={handleChange}
-                    placeholder="VD: Đỏ"
-                  />
+                    className={errors.categoryId ? "error" : ""}
+                  >
+                    <option value="">-- Chọn danh mục --</option>
+                    <option value="1">Xe điện</option>
+                    <option value="2">Pin điện</option>
+                  </select>
+                  {errors.categoryId && (
+                    <span className="error-msg">{errors.categoryId}</span>
+                  )}
                 </div>
               </div>
 
               <div className="form-group">
-                <label htmlFor="price">
-                  Giá bán (VNĐ) <span className="required">*</span>
-                </label>
+                <label>Giá bán (VNĐ) *</label>
                 <input
                   type="number"
-                  id="price"
                   name="price"
                   value={formData.price}
                   onChange={handleChange}
-                  placeholder="VD: 25000000"
-                  min="0"
                   className={errors.price ? "error" : ""}
+                  placeholder="VD: 50000000"
                 />
                 {errors.price && (
                   <span className="error-msg">{errors.price}</span>
@@ -305,56 +273,81 @@ export default function CreatePost() {
               </div>
             </div>
 
-            {/* Kích thước */}
+            {/* Thông số kỹ thuật */}
             <div className="form-section">
-              <h2>Kích thước & Trọng lượng</h2>
+              <h2>Thông số kỹ thuật</h2>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="length">Chiều dài</label>
+                  <label>Chiều dài (cm)</label>
                   <input
-                    type="text"
-                    id="length"
+                    type="number"
                     name="length"
                     value={formData.length}
                     onChange={handleChange}
-                    placeholder="VD: 1750mm"
+                    placeholder="VD: 180"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="width">Chiều rộng</label>
+                  <label>Chiều rộng (cm)</label>
                   <input
-                    type="text"
-                    id="width"
+                    type="number"
                     name="width"
                     value={formData.width}
                     onChange={handleChange}
-                    placeholder="VD: 700mm"
+                    placeholder="VD: 70"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="height">Chiều cao</label>
+                  <label>Chiều cao (cm)</label>
                   <input
-                    type="text"
-                    id="height"
+                    type="number"
                     name="height"
                     value={formData.height}
                     onChange={handleChange}
-                    placeholder="VD: 1100mm"
+                    placeholder="VD: 110"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Trọng lượng (kg)</label>
+                  <input
+                    type="number"
+                    name="weight"
+                    value={formData.weight}
+                    onChange={handleChange}
+                    placeholder="VD: 95"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="weight">Trọng lượng</label>
+                  <label>Tình trạng</label>
+                  <select
+                    name="conditionLevel"
+                    value={formData.conditionLevel || ""}
+                    onChange={handleChange}
+                  >
+                    <option value="">-- Chọn tình trạng --</option>
+                    <option value="New">Mới 100%</option>
+                    <option value="Like New">Như mới</option>
+                    <option value="Good">Tốt</option>
+                    <option value="Fair">Khá</option>
+                    <option value="Poor">Cần sửa chữa</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Màu sắc</label>
                   <input
                     type="text"
-                    id="weight"
-                    name="weight"
-                    value={formData.weight}
+                    name="color"
+                    value={formData.color}
                     onChange={handleChange}
-                    placeholder="VD: 110kg"
+                    placeholder="VD: Đen, Trắng, Đỏ..."
                   />
                 </div>
               </div>
@@ -363,94 +356,73 @@ export default function CreatePost() {
             {/* Mô tả */}
             <div className="form-section">
               <h2>Mô tả chi tiết</h2>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows="8"
+                className={`description-textarea ${
+                  errors.description ? "error" : ""
+                }`}
+                placeholder="Nhập mô tả chi tiết về sản phẩm của bạn (tình trạng, màu sắc, lý do bán, v.v.)..."
+              />
+              {errors.description && (
+                <span className="error-msg">{errors.description}</span>
+              )}
+            </div>
 
-              <div className="form-group">
-                <label htmlFor="description">
-                  Mô tả <span className="required">*</span>
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows="6"
-                  placeholder="Mô tả chi tiết về sản phẩm: tình trạng, tính năng, lý do bán..."
-                  className={errors.description ? "error" : ""}
-                />
-                {errors.description && (
-                  <span className="error-msg">{errors.description}</span>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="locationTrading">
-                  Địa điểm giao dịch <span className="required">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="locationTrading"
-                  name="locationTrading"
-                  value={formData.locationTrading}
-                  onChange={handleChange}
-                  placeholder="VD: Quận 1, TP.HCM"
-                  className={errors.locationTrading ? "error" : ""}
-                />
-                {errors.locationTrading && (
-                  <span className="error-msg">{errors.locationTrading}</span>
-                )}
-              </div>
+            {/* Địa điểm */}
+            <div className="form-section">
+              <h2>Địa điểm giao dịch *</h2>
+              <input
+                type="text"
+                name="locationTrading"
+                value={formData.locationTrading}
+                onChange={handleChange}
+                className={`location-input ${
+                  errors.locationTrading ? "error" : ""
+                }`}
+                placeholder="VD: Hà Nội, Quận Hoàn Kiếm, Phố Tràng Tiền..."
+              />
+              {errors.locationTrading && (
+                <span className="error-msg">{errors.locationTrading}</span>
+              )}
             </div>
 
             {/* Hình ảnh */}
             <div className="form-section">
-              <h2>Hình ảnh</h2>
+              <h2>Hình ảnh sản phẩm *</h2>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageChange}
+              />
+              {errors.pictures && (
+                <span className="error-msg">{errors.pictures}</span>
+              )}
 
-              <div className="form-group">
-                <label>
-                  Ảnh sản phẩm <span className="required">*</span> (Tối đa 10
-                  ảnh)
-                </label>
-
-                <div className="image-upload-area">
-                  <input
-                    type="file"
-                    id="pictures"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageChange}
-                    style={{ display: "none" }}
-                  />
-                  <label htmlFor="pictures" className="upload-label">
-                    <div className="upload-icon"></div>
-                    <p>Click để chọn ảnh</p>
-                    <span>Hoặc kéo thả ảnh vào đây</span>
-                  </label>
+              {pictureUrls.length > 0 && (
+                <div className="image-preview-grid">
+                  {pictureUrls.map((url, index) => (
+                    <div key={index} className="image-preview-item">
+                      <img src={url} alt={`preview-${index}`} />
+                      <button type="button" onClick={() => removeImage(index)}>
+                        ✕
+                      </button>
+                    </div>
+                  ))}
                 </div>
-
-                {errors.pictures && (
-                  <span className="error-msg">{errors.pictures}</span>
-                )}
-
-                {pictureUrls.length > 0 && (
-                  <div className="image-preview-grid">
-                    {pictureUrls.map((url, index) => (
-                      <div key={index} className="image-preview-item">
-                        <img src={url} alt={`Preview ${index + 1}`} />
-                        <button
-                          type="button"
-                          className="remove-image-btn"
-                          onClick={() => removeImage(index)}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
-            {/* Actions */}
+            {loading && (
+              <div className="upload-progress">
+                <p>Đang tải ảnh... {uploadProgress}%</p>
+                <progress value={uploadProgress} max="100"></progress>
+              </div>
+            )}
+
             <div className="form-actions">
               <button
                 type="button"

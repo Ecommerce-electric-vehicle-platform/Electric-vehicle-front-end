@@ -2,7 +2,7 @@
 .place-order-page {
     min-height: 100vh;
     background-color: #f8f9fa;
-    padding: 20px 0;
+    padding: calc(20px + var(--app-header-height, 72px)) 0 20px 0;
 }
 
 .place-order-container {
@@ -167,6 +167,15 @@
     margin-bottom: 40px;
 }
 
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f8f9fa;
+}
+
 .section-title {
     display: flex;
     align-items: center;
@@ -174,9 +183,41 @@
     font-size: 18px;
     font-weight: 600;
     color: #212529;
+    margin: 0;
+}
+
+.profile-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    color: #856404;
+    font-size: 14px;
     margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #f8f9fa;
+}
+
+.btn-outline-primary {
+    background-color: transparent;
+    color: #007bff;
+    border: 2px solid #007bff;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-outline-primary:hover {
+    background-color: #007bff;
+    color: white;
+    transform: translateY(-1px);
 }
 
 .section-icon {
@@ -361,10 +402,12 @@
     margin-bottom: 15px;
 }
 
+/* Left-aligned, two-column info layout for a more professional look */
 .info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    column-gap: 16px;
+    align-items: start;
     margin-bottom: 8px;
     padding: 8px 0;
 }
@@ -373,14 +416,22 @@
     font-weight: 500;
     color: #6c757d;
     font-size: 14px;
+    text-align: left;
 }
 
 .info-value {
     color: #212529;
     font-size: 14px;
-    text-align: right;
-    max-width: 60%;
+    text-align: left;
+    max-width: 100%;
     word-wrap: break-word;
+}
+
+/* Ensure section titles are left-aligned consistently */
+.order-confirmation .confirmation-section h4,
+.order-confirmation .section-title,
+.confirmation-section h4 {
+    text-align: left;
 }
 
 /* Order Success */
@@ -426,7 +477,7 @@
 /* Order Summary Column */
 .order-summary-column {
     position: sticky;
-    top: 20px;
+    top: calc(20px + var(--app-header-height, 72px));
     height: fit-content;
 }
 
@@ -849,7 +900,7 @@
 
 .card.sticky {
     position: sticky;
-    top: 1rem;
+    top: calc(1rem + var(--app-header-height, 72px));
 }
 
 .card-header {
@@ -1276,6 +1327,18 @@
     background-color: #f8f9ff;
 }
 
+/* Style for single shipping option (non-clickable) */
+.shipping-partner-selected:not([onclick]) {
+    cursor: default;
+    background-color: #f8f9fa;
+    border-color: #28a745;
+}
+
+.shipping-partner-selected:not([onclick]):hover {
+    border-color: #28a745;
+    background-color: #f8f9fa;
+}
+
 .shipping-partner-info {
     flex: 1;
 }
@@ -1293,12 +1356,7 @@
     line-height: 1.4;
 }
 
-.shipping-partner-fee {
-    font-weight: 700;
-    color: #dc3545;
-    font-size: 16px;
-    margin-left: 16px;
-}
+/* Removed shipping fee display from dropdown */
 
 .shipping-partners-list {
     position: absolute;
@@ -1340,6 +1398,32 @@
 
 .shipping-partner-option.selected .shipping-partner-name {
     color: #007bff;
+}
+
+/* Disabled shipping options */
+.shipping-partner-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #f8f9fa;
+    color: #6c757d;
+}
+
+.shipping-partner-option.disabled:hover {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+.disabled-badge {
+    color: #dc3545;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.selected-indicator {
+    color: #28a745;
+    font-weight: bold;
+    font-size: 16px;
 }
 
 /* Wallet Balance Styles */
@@ -1409,6 +1493,21 @@
 .balance-amount {
     font-weight: 700;
     color: #28a745;
+}
+
+/* Fast delivery indicator */
+.shipping-partner-selected .shipping-partner-name::before {
+    content: "⚡ ";
+    color: #ffc107;
+    font-weight: bold;
+}
+
+/* Fast delivery badge */
+.shipping-partner-selected .shipping-partner-desc::after {
+    content: " (Chỉ hỗ trợ giao hàng nhanh)";
+    color: #28a745;
+    font-weight: 600;
+    font-size: 12px;
 }
 
 @keyframes spin {
@@ -1595,4 +1694,76 @@
     .shipping-partners-list {
         max-height: 200px;
     }
+}
+
+/* Enhanced Order Information Styling */
+.order-code {
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    color: #007bff;
+    background-color: #e3f2fd;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.order-status {
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.order-status[data-status="PENDING_PAYMENT"] {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.order-status[data-status="PAID"] {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.order-status[data-status="PROCESSING"] {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.order-status[data-status="SHIPPED"] {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.order-status[data-status="DELIVERED"] {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.order-status[data-status="CANCELLED"] {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.transaction-id {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #6c757d;
+    background-color: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.tracking-number {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #007bff;
+    background-color: #e3f2fd;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.payment-amount {
+    font-weight: 700;
+    color: #28a745;
+    font-size: 16px;
 }

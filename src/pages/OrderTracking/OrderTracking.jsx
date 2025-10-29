@@ -190,9 +190,13 @@ function OrderTracking() {
                                 <div className="info-item">
                                     <span className="info-label">Phương thức thanh toán:</span>
                                     <span className="info-value">
-                                        {order.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' :
-                                            order.paymentMethod === 'bank_transfer' ? 'Chuyển khoản ngân hàng' :
-                                                'Ví MoMo'}
+                                        {order.paymentMethod === 'cod'
+                                            ? 'Thanh toán khi nhận hàng'
+                                            : order.paymentMethod === 'bank_transfer'
+                                                ? 'Chuyển khoản ngân hàng'
+                                                : order.paymentMethod === 'ewallet'
+                                                    ? 'Ví điện tử'
+                                                    : 'Khác'}
                                     </span>
                                 </div>
                             </div>

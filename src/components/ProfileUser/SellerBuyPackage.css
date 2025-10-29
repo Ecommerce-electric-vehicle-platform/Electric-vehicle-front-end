@@ -137,6 +137,7 @@
     overflow: visible; /* Allow badge to overflow slightly */
     width: 100%;
 }
+
 .price-button:hover:not(:disabled) {
     border-color: #9ca3af;
     background-color: #f9fafb;
@@ -148,6 +149,7 @@
     font-weight: 600;
     /* Remove selected box-shadow */
 }
+
 .price-button:disabled {
     cursor: not-allowed; opacity: 0.6; background-color: #f3f4f6; border-color: #e5e7eb;
 }
@@ -208,18 +210,27 @@
     font-weight: 600; cursor: pointer; transition: all 0.2s ease;
     font-family: inherit; text-align: center;
 }
+
 .btn-purchase {
     background-color: #10b981; color: white; padding: 12px 40px; /* Adjusted padding */
     font-size: 16px; border-radius: 8px; /* Standard radius */
     /* Remove shadow */
 }
+
 .btn-purchase:hover:not(:disabled) {
     background-color: #059669; transform: translateY(-2px);
     /* Remove shadow */
 }
-.btn-purchase:active:not(:disabled) { transform: translateY(0); }
+
+.btn-purchase:active:not(:disabled) {
+    transform: translateY(0);
+}
+
 .btn-purchase:disabled {
-    background-color: #d1d5db; color: #9ca3af; cursor: not-allowed; box-shadow: none;
+    background-color: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 .purchase-note { /* Style for the note explaining disabled button */
     font-size: 13px;
@@ -231,7 +242,13 @@
 
 
 /* Loading and Error States */
-.loading { text-align: center; padding: 40px; color: #6b7280; font-size: 16px; }
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+    font-size: 16px;
+}
+
 .error-message {
     text-align: center; padding: 12px; border-radius: 8px; margin: 15px auto; /* Adjusted */
     background-color: #fee2e2; color: #b91c1c; /* Darker red */ border: 1px solid #fecaca; /* Lighter border */

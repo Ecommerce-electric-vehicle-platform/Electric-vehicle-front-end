@@ -33,7 +33,14 @@ export function VehicleShowcase() {
     return () => { mounted = false }
   }, [])
 
-  const items = useMemo(() => (itemsRaw || []).map(normalizeProduct).filter(Boolean), [itemsRaw])
+  const items = useMemo(
+    () =>
+      (itemsRaw || [])
+        .map(normalizeProduct)
+        .filter(Boolean)
+        .filter((p) => !(p?.isSold || String(p?.status).toLowerCase() === "sold")),
+    [itemsRaw]
+  )
   const allLocations = ["Tất cả khu vực", ...new Set(items.map((i) => i.locationTrading))]
 
   // ✅ Lọc dữ liệu
@@ -65,23 +72,6 @@ export function VehicleShowcase() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="showcase-tabs">
-          <button
-            className={`tab-button ${activeTab === "vehicles" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("vehicles")}
-          >
-            <Car className="tab-icon" />
-            <span>Xe điện</span>
-          </button>
-          <button
-            className={`tab-button ${activeTab === "batteries" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("batteries")}
-          >
-            <Battery className="tab-icon" />
-            <span>Pin xe điện</span>
-          </button>
-        </div>
 
         {/* Global Search */}
         <div className="vehicle-search-section">

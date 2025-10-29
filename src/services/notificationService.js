@@ -65,17 +65,17 @@ class NotificationService {
     
     try {
       const token = localStorage.getItem("token");
-      const authType = localStorage.getItem("authType");
+      const userRole = localStorage.getItem("userRole");
       const buyerId = localStorage.getItem("buyerId");
       
       console.log("[Notification] Auth check:", {
         hasToken: !!token,
-        authType,
+        userRole,
         buyerId
       });
       
       // Chỉ poll khi user đã đăng nhập và không phải admin
-      if (!token || authType === "admin") {
+      if (!token || userRole === "admin") {
         console.log("[Notification] Polling stopped: No token or is admin");
         return;
       }
@@ -140,9 +140,9 @@ class NotificationService {
   initWebSocket() {
     const checkAndConnectWebSocket = () => {
       const token = localStorage.getItem("token");
-      const authType = localStorage.getItem("authType");
+      const userRole = localStorage.getItem("userRole");
       
-      if (token && authType !== "admin") {
+      if (token && userRole !== "admin") {
         console.log('🔌 [NotificationService] Starting WebSocket connection...');
         
         // Connect WebSocket
@@ -163,8 +163,12 @@ class NotificationService {
 
         // Subscribe to WebSocket notifications
         const buyerId = localStorage.getItem('buyerId');
-        if (buyerId) {
-          const topic = `/topic/notifications/${buyerId}`;
+        const sellerId = localStorage.getItem('sellerId');
+        const userId = buyerId || sellerId; // Support both buyer and seller
+        
+        if (userId) {
+          const topic = `/topic/notifications/${userId}`;
+          console.log(`[NotificationService] Subscribing to: ${topic}`);
           
           websocketService.subscribe(topic, (notification) => {
             console.log('[NotificationService] Received WebSocket notification:', notification);
@@ -183,6 +187,8 @@ class NotificationService {
             // Notify all listeners
             this.notify(transformedNotification);
           });
+        } else {
+          console.warn('[NotificationService] No buyerId or sellerId found for WebSocket subscription');
         }
       } else {
         console.log('[NotificationService] Not starting WebSocket: No token or is admin');
@@ -206,9 +212,9 @@ class NotificationService {
   initPolling() {
     const checkAndStartPolling = () => {
       const token = localStorage.getItem("token");
-      const authType = localStorage.getItem("authType");
+      const userRole = localStorage.getItem("userRole");
       
-      if (token && authType !== "admin") {
+      if (token && userRole !== "admin") {
         this.startPolling();
       } else {
         this.stopPolling();
