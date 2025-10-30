@@ -140,13 +140,25 @@ html {
 #vehicleshowcase-section,
 #upgrade,
 #footer {
-    scroll-margin-top: 80px; /* approximate navbar height incl. shadow */
+    scroll-margin-top: 80px;
+    /* approximate navbar height incl. shadow */
 }
 
 /* Focus styles */
 *:focus {
     outline: 2px solid var(--primary-500);
     outline-offset: 2px;
+}
+
+/* Disable outlines specifically for buttons sitewide */
+button:focus,
+button:focus-visible,
+.btn:focus,
+.btn:focus-visible,
+a.btn:focus,
+a.btn:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 /* Selection styles */

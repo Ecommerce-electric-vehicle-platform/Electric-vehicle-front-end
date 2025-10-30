@@ -46,9 +46,9 @@
 
 /* Progress Steps */
 .status-progress {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
     margin-bottom: 20px;
     position: relative;
 }
@@ -59,7 +59,6 @@
     align-items: center;
     gap: 8px;
     position: relative;
-    flex: 1;
 }
 
 .step-icon {
@@ -105,11 +104,11 @@
     position: absolute;
     top: 20px;
     left: 50%;
-    width: 100%;
+    width: calc(100% + 16px);
     height: 2px;
     background-color: #e9ecef;
     z-index: 1;
-    transform: translateX(50%);
+    transform: translateX(0);
 }
 
 .step-connector.completed {
