@@ -1,7 +1,7 @@
 import axiosInstance from "./axiosInstance";
 
 const sellerApi = {
-  // Kiểm tra gói dịch vụ
+  // Kiểm tra gói dịch vụ còn hạn hay không, hay chưa mua gói dịch vụ
   checkServicePackageValidity: async (username) => {
     try {
       const accessToken = localStorage.getItem("accessToken");
