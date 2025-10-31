@@ -15,15 +15,16 @@ const sellerApi = {
   },
 
   // ✅ Lấy thông tin seller profile
-  getSellerProfile: async () => {
+  getSellerProfile: async (sellerId) => {
+    if (!sellerId) return null;
     try {
-      const response = await axiosInstance.get("/api/v1/seller/profile");
-      const data = response?.data?.data || {};
-      const sellerId = data.sellerId || data.id || data.seller?.id;
-      return { ...response, data: { data: { ...data, sellerId } } };
+      const response = await axiosInstance.get(`/api/v1/seller/${sellerId}`);
+      if (!response?.data?.success || !response.data?.data) return null;
+      return response.data.data;
     } catch (error) {
-      console.error("[SellerAPI] Error fetching seller profile:", error);
-      throw error;
+      if ([401, 403, 404].includes(error?.response?.status)) return null;
+      console.error('[sellerApi] Error in getSellerProfile', error);
+      return null;
     }
   },
 
@@ -167,6 +168,46 @@ const sellerApi = {
     } catch (error) {
       console.error("[SellerAPI] Error fetching seller statistics:", error);
       throw error;
+    }
+  },
+
+  // Lấy seller theo postId
+  getSellerByProductId: async (postId) => {
+    if (!postId) return null;
+    try {
+      const response = await axiosInstance.get(`/api/v1/post-product/${postId}/seller`);
+      if (!response?.data?.success || !response.data?.data) return null;
+      const raw = response.data.data;
+      return {
+        sellerId: raw.sellerId,
+        storeName: raw.storeName,
+        sellerName: raw.sellerName,
+        status: raw.status,
+        home: raw.home,
+        nationality: raw.nationality
+      };
+    } catch (error) {
+      if ([401, 403, 404].includes(error?.response?.status)) {
+        console.warn('[sellerApi] seller not found or permission:', error?.response?.status);
+        return null;
+      }
+      console.error('[sellerApi] Error in getSellerByProductId', error);
+      return null;
+    }
+  },
+  // (Tuỳ chọn) Lấy sản phẩm theo sellerId
+  getProductsBySeller: async (sellerId, params = {}) => {
+    if (!sellerId) return [];
+    try {
+      const response = await axiosInstance.get(`/api/v1/post-product`, { params: { sellerId, ...params } });
+      // Tìm array phù hợp
+      const data = response?.data?.data || response?.data || {};
+      const products = data.postList || data.content || data.items || data.list || (Array.isArray(data) ? data : []);
+      return Array.isArray(products) ? products : [];
+    } catch (error) {
+      if ([401, 403, 404].includes(error?.response?.status)) return [];
+      console.error('[sellerApi] Error in getProductsBySeller', error);
+      return [];
     }
   },
 };

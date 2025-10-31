@@ -146,6 +146,117 @@
     margin-bottom: 30px;
 }
 
+/* Delivered Hero (Magic UI inspired) */
+.delivered-hero {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.delivered-glow {
+    position: absolute;
+    inset: 0;
+    transform: translateY(-8px);
+    background: radial-gradient(1200px 120px at 50% -10%, rgba(16, 185, 129, 0.18), rgba(59, 130, 246, 0.12) 38%, rgba(16, 185, 129, 0) 68%);
+    filter: blur(6px);
+    pointer-events: none;
+}
+
+.shine-border {
+    position: relative;
+    border-radius: 14px;
+    padding: 1px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0)) padding-box,
+        linear-gradient(120deg, rgba(16, 185, 129, .65), rgba(59, 130, 246, .65), rgba(16, 185, 129, .65)) border-box;
+}
+
+.delivered-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px;
+    background: linear-gradient(135deg, #ffffff 0%, #f9fbff 60%, #f5fff9 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    overflow: hidden;
+}
+
+.delivered-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.delivered-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #10b981 0%, #22c55e 100%);
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(16, 185, 129, .25);
+}
+
+.delivered-texts h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.delivered-texts p {
+    margin: 4px 0 8px;
+    color: #334155;
+    font-size: 14px;
+}
+
+.badge-code {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #bbf7d0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 800;
+}
+
+.delivered-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip.alt {
+    background: #eef2ff;
+    color: #3730a3;
+    border-color: #c7d2fe;
+}
+
+.chip.success {
+    background: #ecfdf5;
+    color: #065f46;
+    border-color: #bbf7d0;
+}
+
+.delivered-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn-soft {
+    background: #f8fafc;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+}
+
+.btn-soft:hover {
+    background: #e2e8f0;
+}
+
 /* Page Meta */
 .page-meta {
     display: flex;
