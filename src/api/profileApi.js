@@ -112,7 +112,13 @@ const profileApi = {
     return axiosInstance.get('/api/v1/seller/profile');
   },
 
-  
+  updateSellerKyc: (formData) => {
+    // Endpoint: POST /api/v1/kyc/update (Dạng multipart/form-data)
+    // Nhận: store_name, business_license (file), store_policy (file)
+    return axiosInstance.post('/api/v1/kyc/update', formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 
 };
 
