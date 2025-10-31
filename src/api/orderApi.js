@@ -216,17 +216,50 @@ export const createOrderReview = async ({ orderId, rating, feedback, pictures = 
     return res.data;
 };
 
+// GET /api/v1/order/get-review/{orderId}
+// Lấy đánh giá của đơn hàng từ Backend
+export const getOrderReviewById = async (orderId) => {
+    try {
+        const response = await axiosInstance.get(`/api/v1/order/get-review/${orderId}`);
+        const raw = response?.data ?? {};
+
+        // Chỉ trả về review nếu success === true VÀ có data hợp lệ với orderId và rating
+        if (raw.success === true && raw.data && raw.data.orderId && raw.data.rating != null) {
+            const rating = Number(raw.data.rating);
+            // Rating phải trong khoảng 1-5 để hợp lệ
+            if (rating >= 1 && rating <= 5) {
+                return {
+                    success: true,
+                    orderId: Number(raw.data.orderId),
+                    rating: rating,
+                    feedback: String(raw.data.feedback ?? ''),
+                    reviewImages: Array.isArray(raw.data.reviewImages) ? raw.data.reviewImages : []
+                };
+            }
+        }
+        return null;
+    } catch (error) {
+        // Nếu API trả 404 hoặc lỗi không tìm thấy → không có review
+        if (error?.response?.status === 404) {
+            return null;
+        }
+        console.error('Error fetching order review:', error);
+        return null;
+    }
+};
+
 // Kiểm tra đơn hàng đã có đánh giá hay chưa
 // Trả về { hasReview: boolean, review: object|null }
 export const getOrderReview = async (orderId) => {
-    // Ưu tiên data cục bộ để ẩn nút nhanh chóng và tránh lỗi 404 từ BE
+    // Chỉ dùng API từ BE - không fallback localStorage để tránh hiển thị sai
     try {
-        const local = JSON.parse(localStorage.getItem('orderReviews') || '{}');
-        if (local && local[String(orderId)]) {
-            return { hasReview: true, review: local[String(orderId)] };
+        const review = await getOrderReviewById(orderId);
+        if (review && review.success && review.orderId && review.rating >= 1 && review.rating <= 5) {
+            return { hasReview: true, review };
         }
     } catch { /* no-op */; }
-    // Không có endpoint GET ổn định → tránh gọi BE để không spam 500
+
+    // Không check localStorage nữa vì API là nguồn chính xác nhất
     return { hasReview: false, review: null };
 };
 
