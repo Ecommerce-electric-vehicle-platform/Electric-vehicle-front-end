@@ -1,11 +1,18 @@
 import axiosInstance from "./axiosInstance";
 
 const sellerApi = {
-  // ✅ Kiểm tra gói dịch vụ
+  // Kiểm tra gói dịch vụ
   checkServicePackageValidity: async (username) => {
     try {
+      const accessToken = localStorage.getItem("accessToken");
       const response = await axiosInstance.post(
-        `/api/v1/seller/${username}/check-service-package-validity`
+        `/api/v1/seller/${username}/check-service-package-validity`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
       );
       return response;
     } catch (error) {
@@ -14,7 +21,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy thông tin seller profile
+  // Lấy thông tin seller profile
   getSellerProfile: async () => {
     try {
       const response = await axiosInstance.get("/api/v1/seller/profile");
@@ -45,11 +52,15 @@ const sellerApi = {
         throw new Error("createPostProduct expects a FormData object");
       }
 
+      const accessToken = localStorage.getItem("accessToken");
       const response = await axiosInstance.post(
         "/api/v1/seller/post-products",
         formData,
         {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: { 
+            "Content-Type": "multipart/form-data",
+            "Authorization": `Bearer ${accessToken}`
+          },
           onUploadProgress: (event) => {
             if (onUploadProgress && event.total) {
               const percent = Math.round((event.loaded * 100) / event.total);
@@ -81,11 +92,19 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy danh sách bài đăng của seller
-  getMyPosts: async (page = 0, size = 10) => {
+  // ✅ Lấy danh sách bài đăng của seller (BE đã filter theo seller)
+  getMyPosts: async (page = 0, size = 10, sortBy = 'postId', sortDirection = 'desc') => {
     try {
-      const response = await axiosInstance.get("/api/v1/seller/my-posts", {
-        params: { page, size },
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/seller/seller-post', {
+        params: { 
+          page, 
+          size,
+          sort: `${sortBy},${sortDirection}` // Spring Boot format: "postId,desc"
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
       });
       return response;
     } catch (error) {
@@ -117,6 +136,62 @@ const sellerApi = {
       return response;
     } catch (error) {
       console.error("[SellerAPI] Error deleting post:", error);
+      throw error;
+    }
+  },
+
+  // ✅ Ẩn bài đăng
+  hidePost: async (postId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.post(
+        `/api/v1/post-product/hide/${postId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error hiding post:", error);
+      throw error;
+    }
+  },
+
+  // ✅ Lấy thông tin seller theo postId
+  getSellerByPostId: async (postId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get(
+        `/api/v1/post-product/${postId}/seller`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching seller by post ID:", error);
+      throw error;
+    }
+  },
+
+  // ✅ Lấy danh sách tất cả sản phẩm (có phân trang và sắp xếp)
+  getAllPosts: async (page = 0, size = 10, sortBy = 'id', isAsc = true) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/post-product', {
+        params: { page, size, sort_by: sortBy, is_asc: isAsc },
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching all posts:", error);
       throw error;
     }
   },

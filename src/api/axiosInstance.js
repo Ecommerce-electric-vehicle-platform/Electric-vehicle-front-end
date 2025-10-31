@@ -21,9 +21,8 @@ const publicEndpoints = [
   "/api/v1/auth/admin/refresh-token",
   "/api/v1/vnpay/return",
   // Post product public endpoints
-  "/api/v1/post-product",
+  //"/api/v1/post-product",
   // Seller public endpoints (view only)
-  "/api/v1/seller/",
 ];
 
 // ===== INTERCEPTOR REQUEST =====
