@@ -74,17 +74,40 @@ export async function fetchSellerByPostId(postId) {
 export function normalizeProduct(item) {
     if (!item || typeof item !== "object") return null;
 
-    // 🖼️ Ảnh chính và danh sách ảnh
+    // Ảnh chính và danh sách ảnh
     let imageUrl = "";
-    if (Array.isArray(item.imageUrls)) imageUrl = item.imageUrls[0] || "";
-    else if (typeof item.imageUrls === "string") imageUrl = item.imageUrls;
-    else imageUrl = item.thumbnail || item.image || item.coverUrl || "";
+    let images = [];
 
-    const images = Array.isArray(item.imageUrls)
-        ? item.imageUrls
-        : (item.imageUrls || item.thumbnail || item.image
-            ? [item.imageUrls || item.thumbnail || item.image]
-            : []);
+    // Xử lý trường hợp BE trả về images là mảng object với imgUrl
+    if (Array.isArray(item.images) && item.images.length > 0) {
+        // Sắp xếp theo order nếu có
+        const sortedImages = [...item.images].sort((a, b) => 
+            (a.order || 0) - (b.order || 0)
+        );
+        
+        // Lấy mảng các URL từ imgUrl
+        images = sortedImages.map(img => img.imgUrl || img.url || img).filter(Boolean);
+        
+        // Ảnh chính là ảnh đầu tiên
+        imageUrl = images[0] || "";
+    } 
+    // Fallback cho các format cũ
+    else if (Array.isArray(item.imageUrls)) {
+        images = item.imageUrls;
+        imageUrl = images[0] || "";
+    } 
+    else if (typeof item.imageUrls === "string") {
+        images = [item.imageUrls];
+        imageUrl = item.imageUrls;
+    } 
+    else {
+        // Thử các trường khác
+        const fallbackImg = item.thumbnail || item.image || item.coverUrl || "";
+        if (fallbackImg) {
+            images = [fallbackImg];
+            imageUrl = fallbackImg;
+        }
+    }
 
     // 💰 Giá
     const price = Number(item.price ?? 0);
