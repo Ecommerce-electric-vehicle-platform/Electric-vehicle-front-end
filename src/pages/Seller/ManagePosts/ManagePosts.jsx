@@ -240,10 +240,6 @@ export default function ManagePosts() {
                       {parseInt(post.price).toLocaleString()} VNĐ
                     </p>
                     <p className="post-location">{post.locationTrading}</p>
-
-                    {post.verified && (
-                      <div className="verified-badge">✓ Đã xác minh</div>
-                    )}
                   </div>
 
                   {/* Actions */}
