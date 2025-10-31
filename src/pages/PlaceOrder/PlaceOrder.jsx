@@ -22,7 +22,8 @@ import {
 import { vehicleProducts, batteryProducts, formatCurrency } from '../../test-mock-data/data/productsData';
 import {
     getShippingPartners,
-    placeOrder
+    placeOrder,
+    getShippingFee
 } from '../../api/orderApi';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
 import profileApi from '../../api/profileApi';
@@ -249,6 +250,7 @@ function PlaceOrder() {
     }, []);
 
     // Load API data
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const loadApiData = useCallback(async () => {
         try {
             // Load provinces for address selects
@@ -657,6 +659,47 @@ function PlaceOrder() {
         setOrderData(prev => ({ ...prev, ...overrides, shippingAddress: full }));
     }, [orderData, provinces, districts, wards]);
 
+    // Gọi API tính phí vận chuyển khi đủ dữ liệu địa chỉ + sản phẩm + phương thức thanh toán
+    const refreshShippingFee = useCallback(async () => {
+        try {
+            const postId = orderData.postProductId || product?.id;
+            const provinceName = provinces.find(p => p.value === (orderData.provinceId || selectedProvince))?.label || '';
+            const districtName = districts.find(d => d.value === (orderData.districtId || selectedDistrict))?.label || '';
+            const wardName = wards.find(w => w.value === (orderData.wardId || selectedWard))?.label || '';
+            const paymentId = orderData.paymentId || 2;
+
+            if (!postId || !provinceName || !districtName || !wardName) return; // Chưa đủ thông tin
+
+            const res = await getShippingFee({ postId, provinceName, districtName, wardName, paymentId });
+            // Chuẩn hóa các trường phổ biến: fee, shippingFee, data.shippingFee
+            const fee = Number(
+                res?.data?.shippingFee ??
+                res?.shippingFee ??
+                res?.fee ??
+                0
+            );
+
+            setOrderData(prev => ({
+                ...prev,
+                shippingFee: fee,
+                final_price: (prev.total_price || 0) + fee,
+            }));
+        } catch (e) {
+            console.warn('Failed to fetch shipping fee, fallback to 50000:', e);
+            setOrderData(prev => ({
+                ...prev,
+                shippingFee: prev.shippingFee || 50000,
+                final_price: (prev.total_price || 0) + (prev.shippingFee || 50000)
+            }));
+        }
+    }, [orderData.postProductId, orderData.paymentId, orderData.provinceId, orderData.districtId, orderData.wardId, selectedProvince, selectedDistrict, selectedWard, product?.id, provinces, districts, wards]);
+
+    // Tự động tính lại phí vận chuyển khi địa chỉ hoặc phương thức thanh toán thay đổi
+    useEffect(() => {
+        refreshShippingFee();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [orderData.postProductId, orderData.paymentId, orderData.provinceId, orderData.districtId, orderData.wardId, selectedProvince, selectedDistrict, selectedWard]);
+
     const handleProvinceChange = (provId) => {
         setSelectedProvince(provId);
         setSelectedDistrict('');
@@ -687,16 +730,10 @@ function PlaceOrder() {
     // Xử lý thay đổi đối tác vận chuyển
     const handleShippingPartnerChange = (partnerId) => {
         const selectedPartner = shippingPartners.find(p => p.id === partnerId);
-        const shippingFee = selectedPartner?.fee || 50000;
-
         console.log('🚚 Selected shipping partner:', selectedPartner);
-        console.log('💰 Shipping fee:', shippingFee);
-
         setOrderData(prev => ({
             ...prev,
-            shippingPartnerId: partnerId,
-            shippingFee: shippingFee,
-            final_price: prev.total_price + shippingFee
+            shippingPartnerId: partnerId
         }));
     };
 
@@ -1644,7 +1681,7 @@ function PlaceOrder() {
         </div>
     );
 }
-
 export default PlaceOrder;
 
 //Hello
+

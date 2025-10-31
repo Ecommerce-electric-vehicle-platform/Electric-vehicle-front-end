@@ -61,6 +61,16 @@ export async function fetchPostProductById(id) {
         }
     }
 }
+
+/**
+ * GET /api/v1/post-product/{postId}/seller
+ */
+export async function fetchSellerByPostId(postId) {
+    if (!postId) throw new Error("Thiếu postId (ID sản phẩm)");
+    const response = await axiosInstance.get(`/api/v1/post-product/${postId}/seller`);
+    return response.data?.data || response.data;
+}
+
 export function normalizeProduct(item) {
     if (!item || typeof item !== "object") return null;
 

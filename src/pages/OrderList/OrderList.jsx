@@ -8,6 +8,7 @@ import {
     CheckCircle,
     Truck,
     AlertCircle,
+    Star,
     Eye,
     Phone,
     Calendar,
@@ -104,6 +105,55 @@ function OrderList() {
     // Xử lý xem chi tiết đơn hàng
     const handleViewOrder = (orderId) => {
         navigate(`/order-tracking/${orderId}`);
+    };
+
+    // Hành động theo trạng thái (placeholder, sẽ nối API sau)
+    const handleCancelOrder = (orderId) => {
+        alert(`Hủy đơn #${orderId} (sẽ triển khai API sau)`);
+    };
+
+    const handleTrackShipment = (orderId) => {
+        navigate(`/order-tracking/${orderId}`);
+    };
+
+    const handleRaiseDispute = (orderId) => {
+        alert(`Khiếu nại đơn #${orderId} (flow dispute sẽ thêm sau)`);
+    };
+
+    const handleRateOrder = (orderId) => {
+        alert(`Đánh giá đơn #${orderId} (flow rating sẽ thêm sau)`);
+    };
+
+    const handleReorder = (orderId) => {
+        alert(`Đặt lại đơn #${orderId} (sẽ thiết kế sau)`);
+    };
+
+    const getActionsForStatus = (status, orderId) => {
+        switch (status) {
+            case 'pending':
+                return [
+                    { key: 'cancel', label: 'Hủy đơn', className: 'btn btn-danger btn-sm btn-animate', onClick: () => handleCancelOrder(orderId) }
+                ];
+            case 'confirmed':
+                return [
+                    { key: 'cancel', label: 'Hủy đơn', className: 'btn btn-danger btn-sm btn-animate', onClick: () => handleCancelOrder(orderId) }
+                ];
+            case 'shipping':
+                return [
+                    { key: 'track', label: 'Theo dõi vận đơn', className: 'btn btn-primary btn-sm btn-animate', onClick: () => handleTrackShipment(orderId) }
+                ];
+            case 'delivered':
+                return [
+                    { key: 'dispute', label: 'Khiếu nại', className: 'btn btn-warning btn-sm btn-animate', onClick: () => handleRaiseDispute(orderId) },
+                    { key: 'rate', label: 'Đánh giá', className: 'btn btn-success btn-sm btn-animate', onClick: () => handleRateOrder(orderId) }
+                ];
+            case 'cancelled':
+                return [
+                    { key: 'reorder', label: 'Đặt lại', className: 'btn btn-secondary btn-sm btn-animate', onClick: () => handleReorder(orderId) }
+                ];
+            default:
+                return [];
+        }
     };
 
     // Xử lý liên hệ người bán (không dùng ở layout mới)
@@ -230,7 +280,7 @@ function OrderList() {
                                 const productCount = Number(order._raw?.quantity || 1);
 
                                 return (
-                                    <div key={order.id} className="order-card">
+                                    <div key={order.id} className="order-card" onClick={() => handleViewOrder(order.id)}>
                                         <div className="order-header">
                                             <div className="order-info">
                                                 <h3 className="order-id">Đơn hàng #{orderCode}</h3>
@@ -268,10 +318,21 @@ function OrderList() {
                                             </div>
                                         </div>
 
-                                        <div className="expand-actions">
+                                        <div className="expand-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            {/* Chỉ giữ action trái cho trạng thái cần thiết (ví dụ: shipping: theo dõi vận đơn) */}
+                                            {order.status === 'shipping' && getActionsForStatus(order.status, order.id).map(action => (
+                                                <button
+                                                    key={action.key}
+                                                    className={action.className}
+                                                    onClick={(e) => { e.stopPropagation(); action.onClick(); }}
+                                                >
+                                                    {action.label}
+                                                </button>
+                                            ))}
+                                            {/* Nút xem chi tiết */}
                                             <button
                                                 className="btn btn-soft-primary btn-sm btn-animate"
-                                                onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
+                                                onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === order.id ? null : order.id); }}
                                             >
                                                 {expandedId === order.id ? (
                                                     <>
@@ -283,10 +344,40 @@ function OrderList() {
                                                     </>
                                                 )}
                                             </button>
-                                            <button className="btn btn-primary btn-sm btn-animate" onClick={() => handleViewOrder(order.id)}>
+                                            {/* Nút theo dõi đơn hàng */}
+                                            <button className="btn btn-primary btn-sm btn-animate" onClick={(e) => { e.stopPropagation(); handleViewOrder(order.id); }}>
                                                 <Eye className="btn-icon" />
                                                 Theo dõi đơn hàng
                                             </button>
+                                            {/* Nhóm bên phải: Huỷ (pending/confirmed) hoặc Khiếu nại/Đánh giá (delivered) */}
+                                            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                                                {(order.status === 'pending' || order.status === 'confirmed') && (
+                                                    <button
+                                                        className="btn btn-danger btn-sm btn-animate"
+                                                        onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id); }}
+                                                    >
+                                                        Hủy đơn
+                                                    </button>
+                                                )}
+                                                {order.status === 'delivered' && (
+                                                    <>
+                                                        <button
+                                                            className="btn btn-success btn-sm btn-animate"
+                                                            style={{ backgroundColor: '#28a745', boxShadow: '0 0 0 0 rgba(0,0,0,0)', filter: 'drop-shadow(0 0 8px rgba(40,167,69,0.45))' }}
+                                                            onClick={(e) => { e.stopPropagation(); handleRateOrder(order.id); }}
+                                                        >
+                                                            Đánh giá
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-warning btn-sm btn-animate"
+                                                            style={{ backgroundColor: '#ffc107', color: '#212529', filter: 'drop-shadow(0 0 8px rgba(255,193,7,0.45))' }}
+                                                            onClick={(e) => { e.stopPropagation(); handleRaiseDispute(order.id); }}
+                                                        >
+                                                            Khiếu nại
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {expandedId === order.id && (
