@@ -145,33 +145,7 @@ function PlaceOrder() {
         return methodMap[method] || method;
     };
 
-    // Hàm tính phí vận chuyển dựa trên khoảng cách
-    const calculateShippingFee = (sellerLocation, buyerLocation) => {
-        // Mock data - trong thực tế sẽ gọi API tính khoảng cách
-        const baseFee = 30000; // Phí cơ bản
-        const perKmFee = 5000; // Phí mỗi km
-
-        // Giả sử khoảng cách (km) - trong thực tế sẽ tính từ tọa độ
-        const distance = Math.floor(Math.random() * 50) + 5; // 5-55km
-
-        const calculatedFee = baseFee + (distance * perKmFee);
-
-        console.log('🚚 Calculating shipping fee:', {
-            sellerLocation,
-            buyerLocation,
-            distance: `${distance}km`,
-            baseFee,
-            perKmFee,
-            calculatedFee
-        });
-
-        return {
-            fee: calculatedFee,
-            distance: distance,
-            baseFee: baseFee,
-            perKmFee: perKmFee
-        };
-    };
+    // GHN: phí vận chuyển lấy hoàn toàn từ BE → không tính mock ở FE
 
     // Hàm format thời gian
     const formatDateTime = (dateString) => {
@@ -279,20 +253,9 @@ function PlaceOrder() {
                 );
 
                 if (fastDeliveryPartner) {
-                    // Tính phí vận chuyển dựa trên khoảng cách
-                    const shippingCalculation = calculateShippingFee(
-                        product?.sellerLocation || 'Hà Nội', // Vị trí seller
-                        orderData.shippingAddress || 'TP.HCM' // Vị trí buyer
-                    );
-
                     setOrderData(prev => ({
                         ...prev,
-                        shippingPartnerId: fastDeliveryPartner.id,
-                        shippingFee: shippingCalculation.fee,
-                        final_price: prev.total_price + shippingCalculation.fee,
-                        shipping_distance: shippingCalculation.distance,
-                        shipping_base_fee: shippingCalculation.baseFee,
-                        shipping_per_km_fee: shippingCalculation.perKmFee
+                        shippingPartnerId: fastDeliveryPartner.id
                     }));
                 }
             } else {
@@ -303,20 +266,9 @@ function PlaceOrder() {
                     { id: 3, name: 'Giao hàng tiết kiệm', description: 'Giao hàng tiết kiệm 3-5 ngày', fee: 20000 }
                 ]);
 
-                // Auto-select fast delivery với tính toán khoảng cách
-                const shippingCalculation = calculateShippingFee(
-                    product?.sellerLocation || 'Hà Nội',
-                    orderData.shippingAddress || 'TP.HCM'
-                );
-
                 setOrderData(prev => ({
                     ...prev,
-                    shippingPartnerId: 1,
-                    shippingFee: shippingCalculation.fee,
-                    final_price: prev.total_price + shippingCalculation.fee,
-                    shipping_distance: shippingCalculation.distance,
-                    shipping_base_fee: shippingCalculation.baseFee,
-                    shipping_per_km_fee: shippingCalculation.perKmFee
+                    shippingPartnerId: 1
                 }));
             }
         } catch (error) {
@@ -328,20 +280,9 @@ function PlaceOrder() {
                 { id: 3, name: 'Giao hàng tiết kiệm', description: 'Giao hàng tiết kiệm 3-5 ngày', fee: 20000 }
             ]);
 
-            // Auto-select fast delivery với tính toán khoảng cách
-            const shippingCalculation = calculateShippingFee(
-                product?.sellerLocation || 'Hà Nội',
-                orderData.shippingAddress || 'TP.HCM'
-            );
-
             setOrderData(prev => ({
                 ...prev,
-                shippingPartnerId: 1,
-                shippingFee: shippingCalculation.fee,
-                final_price: prev.total_price + shippingCalculation.fee,
-                shipping_distance: shippingCalculation.distance,
-                shipping_base_fee: shippingCalculation.baseFee,
-                shipping_per_km_fee: shippingCalculation.perKmFee
+                shippingPartnerId: 1
             }));
         }
     }, []);
@@ -401,7 +342,7 @@ function PlaceOrder() {
 
         if (foundProduct) {
             console.log('   ✅ Product found, setting up order data');
-            const defaultShippingFee = 50000; // Fast Delivery fee
+            const defaultShippingFee = 0; // GHN fee sẽ do BE trả về
             setOrderData(prev => ({
                 ...prev,
                 postProductId: foundProduct.id,
@@ -421,7 +362,7 @@ function PlaceOrder() {
         if (location.state?.product && !product) {
             console.log('🔍 Setting product from location.state:', location.state.product);
             setProduct(location.state.product);
-            const defaultShippingFee = 50000;
+            const defaultShippingFee = 0;
             setOrderData(prev => ({
                 ...prev,
                 postProductId: location.state.product.id,
@@ -663,25 +604,35 @@ function PlaceOrder() {
     const refreshShippingFee = useCallback(async () => {
         try {
             const postId = orderData.postProductId || product?.id;
-            const provinceName = provinces.find(p => p.value === (orderData.provinceId || selectedProvince))?.label || '';
-            const districtName = districts.find(d => d.value === (orderData.districtId || selectedDistrict))?.label || '';
-            const wardName = wards.find(w => w.value === (orderData.wardId || selectedWard))?.label || '';
+            const provinceId = (orderData.provinceId || selectedProvince) || '';
+            const districtId = (orderData.districtId || selectedDistrict) || '';
+            const wardId = (orderData.wardId || selectedWard) || '';
+            const provinceName = provinces.find(p => p.value === provinceId)?.label || '';
+            const districtName = districts.find(d => d.value === districtId)?.label || '';
+            const wardName = wards.find(w => w.value === wardId)?.label || '';
             const paymentId = orderData.paymentId || 2;
 
             if (!postId || !provinceName || !districtName || !wardName) return; // Chưa đủ thông tin
 
-            const res = await getShippingFee({ postId, provinceName, districtName, wardName, paymentId });
-            // Chuẩn hóa các trường phổ biến: fee, shippingFee, data.shippingFee
+            const res = await getShippingFee({ postId, provinceName, districtName, wardName, provinceId, districtId, wardId, paymentId });
+            // Chuẩn hóa nhiều định dạng đáp ứng từ BE
+            const raw = res?.data ?? res ?? {};
+            const data = raw?.data ?? raw;
             const fee = Number(
-                res?.data?.shippingFee ??
-                res?.shippingFee ??
-                res?.fee ??
+                data?.shippingFee ??
+                data?.fee ??
+                data?.total ??
+                raw?.total ??
+                raw?.shippingFee ??
                 0
             );
 
             setOrderData(prev => ({
                 ...prev,
                 shippingFee: fee,
+                // Map thêm thông tin chi tiết nếu có (phục vụ UI hiển thị)
+                shipping_base_fee: Number(data?.service_fee ?? prev.shipping_base_fee ?? 0),
+                shipping_per_km_fee: Number(prev.shipping_per_km_fee ?? 0),
                 final_price: (prev.total_price || 0) + fee,
             }));
         } catch (e) {
@@ -735,6 +686,10 @@ function PlaceOrder() {
             ...prev,
             shippingPartnerId: partnerId
         }));
+        // GHN: thay đổi đối tác có thể ảnh hưởng phí → tính lại nếu đủ dữ liệu
+        setTimeout(() => {
+            refreshShippingFee();
+        }, 0);
     };
 
     // Kiểm tra form hợp lệ
@@ -845,8 +800,8 @@ function PlaceOrder() {
                     deliveryNote: orderData.deliveryNote || '',
                     paymentMethod: orderData.paymentId === 2 ? 'ewallet' : 'cod',
                     totalPrice: product.price,
-                    shippingFee: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000,
-                    finalPrice: product.price + (shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.fee || 50000)
+                    shippingFee: orderData.shippingFee || 0,
+                    finalPrice: product.price + (orderData.shippingFee || 0)
                 };
 
                 // Lưu vào localStorage
@@ -1596,14 +1551,6 @@ function PlaceOrder() {
                                             <span className="text-muted-foreground">Phí vận chuyển</span>
                                             <div className="text-right">
                                                 <span className="font-medium text-foreground">{formatCurrency(orderData.shippingFee)}</span>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {orderData.shipping_distance > 0 && (
-                                                        <>
-                                                            Khoảng cách: {orderData.shipping_distance}km<br />
-                                                            Phí cơ bản: {formatCurrency(orderData.shipping_base_fee)} + {formatCurrency(orderData.shipping_per_km_fee)}/km
-                                                        </>
-                                                    )}
-                                                </div>
                                             </div>
                                         </div>
 
