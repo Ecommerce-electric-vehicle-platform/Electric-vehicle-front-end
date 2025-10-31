@@ -18,6 +18,7 @@ import OrderTracking from "./pages/OrderTracking/OrderTracking";
 import WalletDeposit from "./pages/WalletDeposit/WalletDeposit";
 import VnPayReturn from "./pages/WalletDeposit/VnPayReturn";
 import OrderList from "./pages/OrderList/OrderList";
+import OrderReview from "./pages/OrderReview/OrderReview";
 import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
 import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
 import CreatePost from "./pages/Seller/CreatePost/CreatePost";
@@ -147,6 +148,14 @@ function AppContent() {
           element={
             <PageTransition className="fade-up">
               <OrderList />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/order/review/:orderId"
+          element={
+            <PageTransition className="fade-up">
+              <OrderReview />
             </PageTransition>
           }
         />

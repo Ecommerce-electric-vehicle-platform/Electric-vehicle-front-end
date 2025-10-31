@@ -1,0 +1,161 @@
+.review-page {
+    background: #f6f7f8;
+    padding: 96px 16px 24px;
+    /* đẩy nội dung xuống để không bị header che */
+}
+
+.layout {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.crumb {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.crumb:hover {
+    text-decoration: underline;
+}
+
+.crumb-sep {
+    color: #94a3b8;
+}
+
+.crumb.current {
+    color: #0f172a;
+    font-weight: 600;
+    cursor: default;
+}
+
+.page-title {
+    margin: 0 0 16px;
+    font-size: 32px;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    overflow: hidden;
+}
+
+.card-product {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.order-thumb {
+    width: 88px;
+    height: 88px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+}
+
+.order-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.order-info {
+    display: grid;
+    gap: 4px;
+}
+
+.order-title {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.order-sub {
+    color: #64748b;
+    font-size: 13px;
+}
+
+.card-section {
+    padding: 20px;
+}
+
+.section {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.divider {
+    height: 1px;
+    width: 100%;
+    background: #e5e7eb;
+    margin: 16px 0;
+}
+
+.textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    outline: none;
+    background: #ffffff;
+    font-size: 14px;
+    color: #0f172a;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.textarea::placeholder {
+    color: #94a3b8;
+}
+
+.textarea:focus {
+    border-color: #137fec;
+    box-shadow: 0 0 0 3px rgba(19, 127, 236, 0.15);
+}
+
+.hint {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.submit-wrap {
+    margin-top: 12px;
+}
+
+.btn-submit {
+    width: 100%;
+    height: 48px;
+    border: none;
+    border-radius: 10px;
+    background: #00A878;
+    color: #ffffff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

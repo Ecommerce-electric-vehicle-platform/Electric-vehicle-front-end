@@ -19,7 +19,7 @@ import {
     ShoppingBag
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
-import { getOrderHistory } from '../../api/orderApi';
+import { getOrderHistory, hasOrderReview, getOrderReview } from '../../api/orderApi';
 import './OrderList.css';
 
 function OrderList() {
@@ -30,6 +30,7 @@ function OrderList() {
     const [filter, setFilter] = useState('all'); // all, pending, confirmed, shipping, delivered, cancelled
     const [query, setQuery] = useState('');
     const [expandedId, setExpandedId] = useState(null);
+    const [reviewedMap, setReviewedMap] = useState({}); // orderId -> true/false
 
     // Kiểm tra đăng nhập (đúng key token thực tế)
     useEffect(() => {
@@ -63,7 +64,25 @@ function OrderList() {
                     } catch (e) { console.warn('Local orders parse failed:', e); }
                 }
 
-                if (isMounted) setOrders(list.reverse());
+                const reversed = list.reverse();
+                if (isMounted) setOrders(reversed);
+
+                // tải trạng thái đánh giá cho các đơn đã giao
+                const delivered = reversed.filter(o => o.status === 'delivered');
+                const tasks = delivered.map(async (o) => {
+                    const ok = await hasOrderReview(o.id);
+                    return [o.id, ok];
+                });
+                const pairs = await Promise.allSettled(tasks);
+                if (isMounted) {
+                    const map = {};
+                    pairs.forEach((p) => {
+                        if (p.status === 'fulfilled' && Array.isArray(p.value)) {
+                            map[p.value[0]] = Boolean(p.value[1]);
+                        }
+                    });
+                    setReviewedMap(map);
+                }
             } catch (err) {
                 console.error('Không tải được lịch sử đơn hàng:', err);
                 if (isMounted) setOrders([]);
@@ -120,8 +139,25 @@ function OrderList() {
         alert(`Khiếu nại đơn #${orderId} (flow dispute sẽ thêm sau)`);
     };
 
-    const handleRateOrder = (orderId) => {
-        alert(`Đánh giá đơn #${orderId} (flow rating sẽ thêm sau)`);
+    const handleRateOrder = (orderId, order) => {
+        // Truyền kèm id thực từ BE nếu có để BE nhận diện đúng đơn hàng
+        navigate(`/order/review/${orderId}`, {
+            state: {
+                orderIdRaw: order?._raw?.id ?? order?.id,
+                orderCode: order?._raw?.orderCode || null
+            }
+        });
+    };
+
+    const handleViewReview = async (orderId) => {
+        try {
+            const res = await getOrderReview(orderId);
+            const content = res?.review?.feedback || res?.review?.content || JSON.stringify(res?.review || {}, null, 2);
+            const rating = res?.review?.rating ? `⭐ ${res.review.rating}/5` : '';
+            alert(`Đánh giá của bạn\n${rating}\n\n${content}`);
+        } catch {
+            alert('Không lấy được đánh giá.');
+        }
     };
 
     const handleReorder = (orderId) => {
@@ -145,7 +181,9 @@ function OrderList() {
             case 'delivered':
                 return [
                     { key: 'dispute', label: 'Khiếu nại', className: 'btn btn-warning btn-sm btn-animate', onClick: () => handleRaiseDispute(orderId) },
-                    { key: 'rate', label: 'Đánh giá', className: 'btn btn-success btn-sm btn-animate', onClick: () => handleRateOrder(orderId) }
+                    reviewedMap[orderId]
+                        ? { key: 'view-review', label: 'Xem đánh giá', className: 'btn btn-secondary btn-sm btn-animate', onClick: () => handleViewReview(orderId) }
+                        : { key: 'rate', label: 'Đánh giá', className: 'btn btn-success btn-sm btn-animate', onClick: () => handleRateOrder(orderId) }
                 ];
             case 'cancelled':
                 return [
@@ -364,7 +402,7 @@ function OrderList() {
                                                         <button
                                                             className="btn btn-success btn-sm btn-animate"
                                                             style={{ backgroundColor: '#28a745', boxShadow: '0 0 0 0 rgba(0,0,0,0)', filter: 'drop-shadow(0 0 8px rgba(40,167,69,0.45))' }}
-                                                            onClick={(e) => { e.stopPropagation(); handleRateOrder(order.id); }}
+                                                            onClick={(e) => { e.stopPropagation(); handleRateOrder(order.id, order); }}
                                                         >
                                                             Đánh giá
                                                         </button>
