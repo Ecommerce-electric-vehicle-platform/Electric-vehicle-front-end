@@ -604,6 +604,199 @@
     font-size: 14px;
 }
 
+/* Transaction Detail Modal */
+.transaction-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    backdrop-filter: blur(4px);
+}
+
+/* Hide scrollbar for overlay but allow scrolling */
+.transaction-modal-overlay::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+}
+
+.transaction-modal-content {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 480px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.transaction-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.transaction-modal-close:hover {
+    background: #f3f4f6;
+    color: #1f2937;
+}
+
+.transaction-modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 24px 0;
+    padding-right: 40px;
+}
+
+.transaction-modal-amount {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1f2937;
+    text-align: center;
+    margin-bottom: 16px;
+    line-height: 1.2;
+}
+
+.transaction-modal-status-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 32px;
+}
+
+.transaction-modal-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.transaction-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    min-height: 24px;
+}
+
+.transaction-detail-label {
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.transaction-detail-value {
+    font-size: 14px;
+    color: #1f2937;
+    font-weight: 600;
+    text-align: right;
+    flex: 1;
+    margin-left: 16px;
+    word-break: break-word;
+}
+
+.transaction-detail-value-with-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.transaction-detail-value-with-action .transaction-detail-value {
+    margin-left: 0;
+}
+
+.transaction-copy-btn {
+    background: none;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.transaction-copy-btn:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    color: #1f2937;
+}
+
+.transaction-copy-btn:active {
+    background: #e5e7eb;
+}
+
+.transaction-detail-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 0;
+}
+
+/* Modal responsive */
+@media (max-width: 768px) {
+    .transaction-modal-content {
+        padding: 20px;
+        max-width: calc(100% - 32px);
+        margin: 16px;
+    }
+
+    .transaction-modal-title {
+        font-size: 18px;
+        margin-bottom: 20px;
+    }
+
+    .transaction-modal-amount {
+        font-size: 28px;
+        margin-bottom: 14px;
+    }
+
+    .transaction-detail-row {
+        padding: 14px 0;
+    }
+
+    .transaction-detail-label,
+    .transaction-detail-value {
+        font-size: 13px;
+    }
+}
+
 @media (max-width: 768px) {
     .wallet-page {
         padding: 100px 12px 24px 12px;

@@ -20,6 +20,8 @@ import {
     ArrowUpRight as ExpandIcon,
     ChevronLeft,
     ChevronRight,
+    X,
+    Copy,
 } from "lucide-react";
 import "./WalletDashboard.css";
 
@@ -47,6 +49,10 @@ export default function WalletDashboard() {
     // Pagination - using backend pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10; // Match API default size
+
+    // Modal state
+    const [selectedTransaction, setSelectedTransaction] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Map API transaction to UI format
     const mapTransactionFromAPI = (apiTransaction) => {
@@ -136,22 +142,47 @@ export default function WalletDashboard() {
                 console.warn('⚠️ No timestamp found');
                 return "Chưa có";
             }
+
             try {
-                const date = new Date(timestamp);
-                if (isNaN(date.getTime())) {
-                    console.warn('⚠️ Invalid date:', timestamp);
-                    return timestamp;
+                let date;
+
+                // Nếu timestamp là số (Unix timestamp in milliseconds)
+                if (typeof timestamp === 'number') {
+                    date = new Date(timestamp);
                 }
+                // Nếu timestamp là string, thử parse
+                else if (typeof timestamp === 'string') {
+                    // Thử parse trực tiếp
+                    date = new Date(timestamp);
+
+                    // Nếu không thành công, thử parse với các format khác
+                    if (isNaN(date.getTime())) {
+                        // Thử với format ISO hoặc các format khác
+                        const trimmed = timestamp.trim();
+                        date = new Date(trimmed);
+                    }
+                } else {
+                    date = new Date(timestamp);
+                }
+
+                if (isNaN(date.getTime())) {
+                    console.warn('⚠️ Invalid date format:', timestamp, typeof timestamp);
+                    return timestamp; // Trả về giá trị gốc nếu không parse được
+                }
+
                 const day = String(date.getDate()).padStart(2, '0');
                 const month = String(date.getMonth() + 1).padStart(2, '0');
                 const year = date.getFullYear();
                 const hours = String(date.getHours()).padStart(2, '0');
                 const minutes = String(date.getMinutes()).padStart(2, '0');
                 const seconds = String(date.getSeconds()).padStart(2, '0');
-                return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+
+                const formatted = `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+                console.log('✅ Formatted timestamp:', timestamp, '->', formatted);
+                return formatted;
             } catch (err) {
-                console.warn('⚠️ Error formatting timestamp:', err);
-                return timestamp;
+                console.warn('⚠️ Error formatting timestamp:', err, 'timestamp:', timestamp);
+                return timestamp; // Trả về giá trị gốc nếu có lỗi
             }
         };
 
@@ -159,7 +190,99 @@ export default function WalletDashboard() {
         const transactionType = apiTransaction.transactionType || apiTransaction.type || apiTransaction.transaction_type;
         const rawDescription = apiTransaction.description || apiTransaction.note || apiTransaction.reason || apiTransaction.detail || "Giao dịch";
         const description = translateDescription(rawDescription); // Dịch description sang tiếng Việt
-        const timestamp = apiTransaction.timestamp || apiTransaction.createdAt || apiTransaction.transactionDate || apiTransaction.created_at || apiTransaction.date;
+
+        // Tìm timestamp từ nhiều field names có thể có
+        let timestamp =
+            apiTransaction.timestamp ||
+            apiTransaction.createdAt ||
+            apiTransaction.transactionDate ||
+            apiTransaction.created_at ||
+            apiTransaction.date ||
+            apiTransaction.dateTime ||
+            apiTransaction.date_time ||
+            apiTransaction.createdDate ||
+            apiTransaction.created_date ||
+            apiTransaction.transactionDateTime ||
+            apiTransaction.transaction_date_time ||
+            apiTransaction.time ||
+            null;
+
+        // Nếu vẫn không tìm thấy, tự động tìm field có giá trị giống date
+        if (!timestamp) {
+            console.warn('⚠️ Không tìm thấy timestamp với các field names chuẩn, đang tìm tự động...');
+            console.log('🔍 Tất cả các field trong transaction:', apiTransaction);
+
+            // Thử tìm trong tất cả các field có tên liên quan đến date/time
+            for (const [key, value] of Object.entries(apiTransaction)) {
+                if (!value) continue;
+
+                const lowerKey = key.toLowerCase();
+                // Mở rộng danh sách từ khóa tìm kiếm
+                if (lowerKey.includes('date') ||
+                    lowerKey.includes('time') ||
+                    lowerKey.includes('created') ||
+                    lowerKey.includes('timestamp') ||
+                    lowerKey.includes('update') ||
+                    lowerKey === 'when' ||
+                    lowerKey === 'at') {
+                    // Thử parse như date
+                    const testDate = new Date(value);
+                    if (!isNaN(testDate.getTime())) {
+                        timestamp = value;
+                        console.log(`✅ Tìm thấy timestamp tự động trong field: ${key}`, value);
+                        break;
+                    }
+                }
+            }
+
+            // Nếu vẫn chưa tìm thấy, thử tìm trong TẤT CẢ các field (không phân biệt tên)
+            if (!timestamp) {
+                console.warn('⚠️ Không tìm thấy với field names liên quan, đang kiểm tra TẤT CẢ các field...');
+                for (const [key, value] of Object.entries(apiTransaction)) {
+                    if (!value || value === apiTransaction.id || value === apiTransaction.transactionId) continue;
+
+                    // Bỏ qua các field không phải date
+                    if (typeof value === 'number' && value > 1000000000000) {
+                        // Có thể là Unix timestamp (milliseconds)
+                        const testDate = new Date(value);
+                        if (!isNaN(testDate.getTime()) && testDate.getFullYear() > 2000 && testDate.getFullYear() < 2100) {
+                            timestamp = value;
+                            console.log(`✅ Tìm thấy timestamp (number) trong field: ${key}`, value);
+                            break;
+                        }
+                    } else if (typeof value === 'string') {
+                        // Thử parse string như date
+                        const testDate = new Date(value);
+                        if (!isNaN(testDate.getTime()) && testDate.getFullYear() > 2000 && testDate.getFullYear() < 2100) {
+                            // Kiểm tra xem có phải là date hợp lệ không (năm từ 2000-2100)
+                            timestamp = value;
+                            console.log(`✅ Tìm thấy timestamp (string) trong field: ${key}`, value);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!timestamp) {
+                console.error('❌ KHÔNG TÌM THẤY TIMESTAMP trong transaction:', {
+                    transaction: apiTransaction,
+                    availableKeys: Object.keys(apiTransaction),
+                    allFields: JSON.stringify(apiTransaction, null, 2)
+                });
+                console.error('⚠️ Backend có thể không trả về timestamp field. Vui lòng kiểm tra API response.');
+                // Fallback: Sử dụng thời gian hiện tại (tạm thời cho đến khi backend fix)
+                // timestamp = new Date().toISOString();
+            }
+        } else {
+            console.log('✅ Tìm thấy timestamp:', {
+                timestamp,
+                fieldName: Object.keys(apiTransaction).find(key => {
+                    const val = apiTransaction[key];
+                    return val === timestamp;
+                })
+            });
+        }
+
         const amount = Number(apiTransaction.amount) || 0;
         const status = apiTransaction.status || apiTransaction.transactionStatus;
 
@@ -265,6 +388,12 @@ export default function WalletDashboard() {
                 console.log('📦 First transaction sample:', content[0]);
                 console.log('📦 First transaction keys:', Object.keys(content[0]));
                 console.log('📦 First transaction values:', content[0]);
+
+                // Log chi tiết từng field để tìm timestamp
+                console.log('📦 Chi tiết các field trong transaction đầu tiên:');
+                Object.entries(content[0]).forEach(([key, value]) => {
+                    console.log(`  - ${key}:`, value, `(type: ${typeof value})`);
+                });
             } else {
                 console.warn('⚠️ Content array is empty!');
                 console.warn('⚠️ But totalElements:', responseData?.totalElements);
@@ -432,6 +561,43 @@ export default function WalletDashboard() {
     useEffect(() => {
         setCurrentPage(1);
     }, [query, typeFilter, statusFilter]);
+
+    // Disable scroll when modal is open
+    useEffect(() => {
+        if (isModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        // Cleanup on unmount
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isModalOpen]);
+
+    // Handle open modal
+    const handleOpenModal = (transaction) => {
+        setSelectedTransaction(transaction);
+        setIsModalOpen(true);
+    };
+
+    // Handle close modal
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedTransaction(null);
+    };
+
+    // Handle copy transaction ID
+    const handleCopyTransactionId = async (transactionId) => {
+        try {
+            await navigator.clipboard.writeText(transactionId);
+            // Có thể thêm toast notification ở đây
+            alert("Đã sao chép mã giao dịch!");
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            alert("Không thể sao chép mã giao dịch");
+        }
+    };
 
     const fmt = (v) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(v);
 
@@ -616,7 +782,12 @@ export default function WalletDashboard() {
                     return displayTransactions.map((t) => {
                         console.log('🎨 Rendering transaction:', t);
                         return (
-                            <div key={t.id} className="tx-item">
+                            <div
+                                key={t.id}
+                                className="tx-item"
+                                onClick={() => handleOpenModal(t)}
+                                style={{ cursor: 'pointer' }}
+                            >
                                 <div className="tx-left">
                                     <div className="tx-icon">{typeIcon(t.type)}</div>
                                     <div className="tx-info">
@@ -695,6 +866,73 @@ export default function WalletDashboard() {
                         >
                             <ChevronRight size={18} />
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Transaction Detail Modal */}
+            {isModalOpen && selectedTransaction && (
+                <div className="transaction-modal-overlay" onClick={handleCloseModal}>
+                    <div className="transaction-modal-content" onClick={(e) => e.stopPropagation()}>
+                        {/* Close Button */}
+                        <button className="transaction-modal-close" onClick={handleCloseModal}>
+                            <X size={20} />
+                        </button>
+
+                        {/* Modal Header */}
+                        <h2 className="transaction-modal-title">Chi tiết giao dịch</h2>
+
+                        {/* Amount */}
+                        <div className="transaction-modal-amount">
+                            {selectedTransaction.amount > 0 ? "+" : ""}
+                            {fmt(selectedTransaction.amount)}
+                        </div>
+
+                        {/* Status Badge */}
+                        <div className="transaction-modal-status-wrapper">
+                            {statusPill(selectedTransaction.status)}
+                        </div>
+
+                        {/* Transaction Details */}
+                        <div className="transaction-modal-details">
+                            <div className="transaction-detail-row">
+                                <span className="transaction-detail-label">Loại giao dịch</span>
+                                <span className="transaction-detail-value">{selectedTransaction.type}</span>
+                            </div>
+
+                            <div className="transaction-detail-divider"></div>
+
+                            <div className="transaction-detail-row">
+                                <span className="transaction-detail-label">Mã giao dịch</span>
+                                <div className="transaction-detail-value-with-action">
+                                    <span className="transaction-detail-value">{selectedTransaction.id}</span>
+                                    <button
+                                        className="transaction-copy-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCopyTransactionId(selectedTransaction.id);
+                                        }}
+                                        title="Sao chép mã giao dịch"
+                                    >
+                                        <Copy size={16} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="transaction-detail-divider"></div>
+
+                            <div className="transaction-detail-row">
+                                <span className="transaction-detail-label">Thời gian</span>
+                                <span className="transaction-detail-value">{selectedTransaction.time}</span>
+                            </div>
+
+                            <div className="transaction-detail-divider"></div>
+
+                            <div className="transaction-detail-row">
+                                <span className="transaction-detail-label">Nội dung</span>
+                                <span className="transaction-detail-value">{selectedTransaction.note}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

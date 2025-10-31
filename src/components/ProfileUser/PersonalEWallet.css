@@ -223,6 +223,28 @@
     gap: 10px;
 }
 
+.transactions-loading {
+    text-align: center;
+    padding: 24px 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.transactions-loading p {
+    margin: 0;
+}
+
+.transactions-empty {
+    text-align: center;
+    padding: 24px 0;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.transactions-empty p {
+    margin: 0;
+}
+
 .transaction-item {
     display: flex;
     align-items: center;
