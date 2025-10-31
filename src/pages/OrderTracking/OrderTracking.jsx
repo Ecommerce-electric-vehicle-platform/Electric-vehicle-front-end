@@ -12,7 +12,10 @@ import {
     Truck,
     Clock,
     CheckCircle,
-    AlertCircle
+    AlertCircle,
+    Star,
+    FileDown,
+    MessageSquareWarning
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
 import OrderStatus from '../../components/OrderStatus/OrderStatus';
@@ -126,10 +129,19 @@ function OrderTracking() {
     function mapHistoryItemToTracking(item) {
         const id = item.id ?? item._raw?.orderCode ?? String(Date.now());
         const createdAt = item.createdAt || item._raw?.createdAt || new Date().toISOString();
-        const shippingFee = Number(item.shippingFee || 0);
-        const finalPrice = Number(item.finalPrice || item._raw?.price || 0);
-        const totalPrice = finalPrice - shippingFee;
+        const shippingFee = Number(item.shippingFee || item._raw?.shippingFee || 0);
+        const fallbackSubtotal = Number(item._raw?.price || 0);
+        const subtotalFromFinal = Number(item.finalPrice || 0) - shippingFee;
+        const totalPrice = subtotalFromFinal > 0 ? subtotalFromFinal : fallbackSubtotal;
+        const finalPrice = totalPrice + shippingFee;
         const status = item.status || 'confirmed';
+
+        const deliveredAt = item._raw?.deliveredAt || item._raw?.delivered_at || null;
+        const shippedAt = item._raw?.shippedAt || item._raw?.shipped_at || null;
+        const trackingNumber = item._raw?.trackingNumber || item._raw?.tracking_code || '';
+        const carrier = item._raw?.shippingPartner || item._raw?.carrier || '';
+        const paymentMethod = (item._raw?.paymentMethod || '').toLowerCase() || (status === 'confirmed' ? 'ewallet' : 'cod');
+        const needInvoice = Boolean(item._raw?.needInvoice || item._raw?.invoiceRequired);
 
         const product = {
             image: item.product?.image || '/vite.svg',
@@ -146,11 +158,16 @@ function OrderTracking() {
             items: [],
             totalPrice,
             shippingFee,
-            finalPrice: totalPrice + shippingFee,
+            finalPrice,
             buyerName: '',
             buyerPhone: item._raw?.phoneNumber || '',
             deliveryAddress: item._raw?.shippingAddress || '',
-            paymentMethod: status === 'confirmed' ? 'ewallet' : 'cod',
+            paymentMethod,
+            deliveredAt,
+            shippedAt,
+            trackingNumber,
+            carrier,
+            needInvoice,
         };
     }
 
@@ -254,17 +271,58 @@ function OrderTracking() {
                     </div>
                 </div>
 
+                {/* Delivered Hero (Magic UI style) */}
+                {order.status === 'delivered' && (
+                    <div className="delivered-hero">
+                        <div className="delivered-glow"></div>
+                        <div className="delivered-card shine-border">
+                            <div className="delivered-left">
+                                <div className="delivered-icon">
+                                    <CheckCircle size={28} />
+                                </div>
+                                <div className="delivered-texts">
+                                    <h2>Đã giao thành công</h2>
+                                    <p>
+                                        Mã đơn <span className="badge-code">#{order.id}</span> đã được giao tới bạn
+                                        {order.deliveredAt ? ` vào ${formatDate(order.deliveredAt)}` : ''}.
+                                    </p>
+                                    <div className="delivered-meta">
+                                        {order.carrier && <span className="chip alt">Đơn vị: {order.carrier}</span>}
+                                        {order.trackingNumber && <span className="chip alt">Vận đơn: {order.trackingNumber}</span>}
+                                        <span className="chip success">Tổng: {formatCurrency(order.finalPrice)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="delivered-actions">
+                                <button className="btn btn-warning" onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}>
+                                    <MessageSquareWarning className="btn-icon" /> Khiếu nại
+                                </button>
+                                <button className="btn btn-success" onClick={() => alert('Đánh giá đơn hàng (sẽ triển khai)')}>
+                                    <Star className="btn-icon" /> Đánh giá
+                                </button>
+                                {order.needInvoice && (
+                                    <button className="btn btn-soft" onClick={() => alert('Tải hóa đơn (sẽ triển khai)')}>
+                                        <FileDown className="btn-icon" /> Tải hóa đơn
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="order-tracking-content">
                     {/* Cột trái - Thông tin đơn hàng */}
                     <div className="order-info-column">
                         {/* Header thành công + bước tiến trình (theo mẫu) */}
-                        <div className="success-header">
-                            <div className="success-icon">
-                                <CheckCircle size={28} color="#2bb673" />
+                        {order.status !== 'delivered' && (
+                            <div className="success-header">
+                                <div className="success-icon">
+                                    <CheckCircle size={28} color="#2bb673" />
+                                </div>
+                                <h2 className="success-title">Đặt hàng thành công!</h2>
+                                <p className="success-subtitle">Cảm ơn bạn đã đặt hàng. Đơn hàng của bạn đang được xử lý.</p>
                             </div>
-                            <h2 className="success-title">Đặt hàng thành công!</h2>
-                            <p className="success-subtitle">Cảm ơn bạn đã đặt hàng. Đơn hàng của bạn đang được xử lý.</p>
-                        </div>
+                        )}
 
                         <div className="progress-card">
                             <div className="progress-steps">
@@ -289,7 +347,7 @@ function OrderTracking() {
                                 <div className={`p-step ${order.status === 'delivered' ? 'active' : ''}`}>
                                     <div className="p-dot"><Package size={16} color="#fff" /></div>
                                     <div className="p-label">Đã giao hàng</div>
-                                    <div className="p-time">{formatDate(order.estimatedDelivery)}</div>
+                                    <div className="p-time">{formatDate(order.deliveredAt || order.estimatedDelivery)}</div>
                                 </div>
                             </div>
                         </div>
@@ -374,6 +432,15 @@ function OrderTracking() {
                                 <div className="info-line"><User size={16} /> {order.buyerName}</div>
                                 <div className="info-line"><Phone size={16} /> {order.buyerPhone}</div>
                                 <div className="info-line"><MapPin size={16} /> {order.deliveryAddress}</div>
+                                {order.carrier && (
+                                    <div className="info-line"><Truck size={16} /> Đơn vị: {order.carrier}</div>
+                                )}
+                                {order.trackingNumber && (
+                                    <div className="info-line"><Package size={16} /> Mã vận đơn: {order.trackingNumber}</div>
+                                )}
+                                {order.deliveredAt && (
+                                    <div className="info-line"><CheckCircle size={16} /> Giao thành công: {formatDate(order.deliveredAt)}</div>
+                                )}
                             </div>
                             <div className="info-card">
                                 <div className="card-head">
@@ -396,11 +463,13 @@ function OrderTracking() {
 
                         {/* Action buttons */}
                         <div className="action-buttons-bottom">
-                            <button className="btn btn-success">
-                                <Package className="btn-icon" />
-                                Tải hóa đơn
-                            </button>
-                            <button className="btn btn-outline-primary">
+                            {order.needInvoice && (
+                                <button className="btn btn-success" onClick={() => alert('Tải hóa đơn (sẽ triển khai)')}>
+                                    <Package className="btn-icon" />
+                                    Tải hóa đơn
+                                </button>
+                            )}
+                            <button className="btn btn-outline-primary" onClick={() => navigate('/')}>
                                 <Home className="btn-icon" />
                                 Tiếp tục mua sắm
                             </button>
@@ -454,13 +523,20 @@ function OrderTracking() {
 
                             {order.status === 'delivered' && (
                                 <div className="action-buttons">
-                                    <button className="btn btn-success">
-                                        <CheckCircle className="btn-icon" />
-                                        Đã nhận hàng
-                                    </button>
                                     <div className="status-note success">
                                         <CheckCircle className="note-icon" />
                                         <span>Đơn hàng đã được giao thành công</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                        <button className="btn btn-warning" onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}>
+                                            Khiếu nại
+                                        </button>
+                                        <button className="btn btn-success" onClick={() => alert('Đánh giá đơn hàng (sẽ triển khai)')}>
+                                            Đánh giá
+                                        </button>
+                                        <button className="btn btn-secondary" onClick={() => alert('Đặt lại đơn (sẽ triển khai)')}>
+                                            Đặt lại
+                                        </button>
                                     </div>
                                 </div>
                             )}

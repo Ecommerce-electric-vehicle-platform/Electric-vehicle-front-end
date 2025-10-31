@@ -1,69 +1,102 @@
 import { useParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import "./Seller.css";
+import sellerApi from '../../api/sellerApi';
 
 export function Seller() {
-    const { id } = useParams();
+    const { id: sellerId } = useParams();
     const [seller, setSeller] = useState(null);
+    const [sellerLoading, setSellerLoading] = useState(false);
+    const [sellerError, setSellerError] = useState(null);
     const [products, setProducts] = useState([]);
+    const [productsLoading, setProductsLoading] = useState(false);
+    const [productsError, setProductsError] = useState(null);
     const [activeFilter, setActiveFilter] = useState("all"); // all | battery | vehicle | accessory
 
+    // Bước 1: Lấy sản phẩm của seller
     useEffect(() => {
-        // Mock cá nhân bán hàng (không phải cửa hàng)
-        const profile = {
-            id,
-            name: "Nguyễn Văn A",
-            avatar: "/default-avatar.png",
-            rating: 4.8,
-            totalReviews: 37,
-            responseRate: 98, // %
-            lastActive: "Hoạt động 2 giờ trước",
-            joinedAt: "Tham gia 2023",
-            location: "Quận Bình Thạnh, TP.HCM",
-            meetupNote: "Ưu tiên hẹn xem xe tại Bình Thạnh hoặc giao pin tại các quận lân cận.",
-            bio: "Cá nhân cần thanh lý pin/xe điện đã qua sử dụng, cam kết thông tin trung thực và kiểm định pin trước khi bán.",
-            verifications: ["Số điện thoại xác minh", "CMND/CCCD xác minh"],
-        };
-        setSeller(profile);
+        let mounted = true;
+        if (sellerId) {
+            setProductsLoading(true);
+            sellerApi.getProductsBySeller(sellerId)
+                .then(items => {
+                    if (!mounted) return;
+                    const list = Array.isArray(items) ? items : [];
+                    setProducts(list);
+                    setProductsError(null);
+                })
+                .catch(() => {
+                    if (!mounted) return;
+                    setProducts([]);
+                    setProductsError("Không tải được danh sách sản phẩm.");
+                })
+                .finally(() => {
+                    if (!mounted) return;
+                    setProductsLoading(false);
+                });
+        }
+        return () => { mounted = false; };
+    }, [sellerId]);
 
-        // Mock tin đăng — phân loại theo loại hàng
-        setProducts([
-            { id: 101, title: "Pin Lithium 48V 20Ah", price: 2800000, thumbnail: "/default-avatar.png", condition: "Đã qua sử dụng", warranty: "3 tháng", type: "battery", cycles: 320 },
-            { id: 102, title: "Xe máy điện VinFast Klara S 2021", price: 11500000, thumbnail: "/default-avatar.png", condition: "Đã qua sử dụng", warranty: "6 tháng", type: "vehicle", km: 4200 },
-            { id: 103, title: "Bộ sạc nhanh 54.6V", price: 450000, thumbnail: "/default-avatar.png", condition: "Mới", warranty: "1 tháng", type: "accessory" },
-            { id: 104, title: "Pin 60V 24Ah – đo dung lượng 88%", price: 3500000, thumbnail: "/default-avatar.png", condition: "Đã qua sử dụng", warranty: "2 tháng", type: "battery", cycles: 410 },
-            { id: 105, title: "Xe đạp điện JVC 2020", price: 3800000, thumbnail: "/default-avatar.png", condition: "Đã qua sử dụng", warranty: "1 tháng", type: "vehicle", km: 1800 }
-        ]);
-    }, [id]);
+    // Bước 2: Khi có post đầu tiên: lấy info seller từ postId đó
+    useEffect(() => {
+        let mounted = true;
+        if (Array.isArray(products) && products.length > 0) {
+            const postId = products[0].postId || products[0].id;
+            if (postId) {
+                setSellerLoading(true);
+                sellerApi.getSellerByProductId(postId)
+                    .then(data => {
+                        if (!mounted) return;
+                        if (data) {
+                            setSeller(data);
+                            setSellerError(null);
+                        } else {
+                            setSeller(null);
+                            setSellerError("Không tìm thấy seller.");
+                        }
+                    })
+                    .catch(() => {
+                        if (!mounted) return;
+                        setSeller(null);
+                        setSellerError("Không tìm thấy seller.");
+                    })
+                    .finally(() => {
+                        if (!mounted) return;
+                        setSellerLoading(false);
+                    });
+            }
+        } else if (!productsLoading) {
+            setSeller(null);
+        }
+        return () => { mounted = false; };
+    }, [products, productsLoading]);
 
-    const filtered = useMemo(() => {
-        if (activeFilter === "all") return products;
-        return products.filter(p => p.type === activeFilter);
-    }, [products, activeFilter]);
-
-    if (!seller) return null;
+    const filtered = activeFilter === "all"
+        ? products
+        : products.filter(p => p.type === activeFilter);
 
     return (
         <div className="seller-page">
             <div className="seller-hero">
-                <img className="seller-avatar" src={seller.avatar} alt={seller.name} />
-                <div className="seller-meta">
-                    <h1>{seller.name}</h1>
-                    <div className="seller-stats">
-                        <span>⭐ {seller.rating} ({seller.totalReviews} đánh giá)</span>
-                        <span>• Tỉ lệ phản hồi {seller.responseRate}%</span>
-                        <span>• {seller.lastActive}</span>
-                        <span>• {seller.joinedAt}</span>
-                    </div>
-                    <div className="seller-badges">
-                        {seller.verifications.map((b, idx) => <span key={idx} className="badge">{b}</span>)}
-                    </div>
-                    <p className="seller-desc">{seller.bio}</p>
-                    <div className="seller-actions">
-                        <a className="btn-primary" href="/chat">Chat với người bán</a>
-                        <span className="meetup-note">{seller.location} • {seller.meetupNote}</span>
-                    </div>
-                </div>
+                {sellerLoading ? (
+                    <div>Đang tải thông tin người bán…</div>
+                ) : sellerError ? (
+                    <div style={{ color: '#ef4444' }}>{sellerError}</div>
+                ) : seller ? (
+                    <>
+                        <div className="seller-avatar" style={{ background: '#eee', borderRadius: '50%', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 32, color: '#10b981' }}>
+                            {(seller.storeName || seller.sellerName || 'S')[0]}
+                        </div>
+                        <div className="seller-meta">
+                            <h1>{seller.storeName || seller.sellerName || 'Seller'}</h1>
+                            {seller.status && <span className="badge">{seller.status}</span>}
+                            {(seller.home || seller.nationality) && <span className="meetup-note">{seller.home || seller.nationality}</span>}
+                        </div>
+                    </>
+                ) : (
+                    <div>Không tìm thấy thông tin người bán.</div>
+                )}
             </div>
 
             <div className="seller-sections">
@@ -77,22 +110,28 @@ export function Seller() {
                             <button className={`filter-btn ${activeFilter === 'accessory' ? 'active' : ''}`} onClick={() => setActiveFilter('accessory')}>Phụ kiện & Sạc</button>
                         </div>
                     </div>
-                    <div className="product-grid">
-                        {filtered.map(p => (
-                            <a key={p.id} className="product-card" href={`/product/${p.id}`}>
-                                <div className="thumb"><img src={p.thumbnail} alt={p.title} /></div>
-                                <div className="title" title={p.title}>{p.title}</div>
-                                <div className="meta">
-                                    <span className="price">{p.price.toLocaleString('vi-VN')} đ</span>
-                                    <span className="dot">•</span>
-                                    <span className="cond">{p.condition}</span>
-                                </div>
-                                <div className="warranty">Bảo hành: {p.warranty}</div>
-                                {p.type === 'battery' && <div className="spec">Số chu kỳ sạc ~ {p.cycles}</div>}
-                                {p.type === 'vehicle' && <div className="spec">Odo ~ {p.km.toLocaleString('vi-VN')} km</div>}
-                            </a>
-                        ))}
-                    </div>
+                    {productsLoading ? (
+                        <div>Đang tải sản phẩm…</div>
+                    ) : productsError ? (
+                        <div style={{ color: '#ef4444' }}>{productsError}</div>
+                    ) : (
+                        <div className="product-grid">
+                            {filtered && filtered.length > 0 ? filtered.map(p => (
+                                <a key={p.id || p.postId} className="product-card" href={`/product/${p.postId || p.id}`}>
+                                    <div className="thumb"><img src={p.thumbnail || p.image || (Array.isArray(p.imageUrls) ? p.imageUrls[0] : null) || "/default-avatar.png"} alt={p.title} /></div>
+                                    <div className="title" title={p.title}>{p.title}</div>
+                                    <div className="meta">
+                                        <span className="price">{p.price ? p.price.toLocaleString('vi-VN') + ' đ' : ''}</span>
+                                        <span className="dot">•</span>
+                                        <span className="cond">{p.condition}</span>
+                                    </div>
+                                    {p.warranty && <div className="warranty">Bảo hành: {p.warranty}</div>}
+                                    {p.type === 'battery' && p.cycles && <div className="spec">Số chu kỳ sạc ~ {p.cycles}</div>}
+                                    {p.type === 'vehicle' && p.km && <div className="spec">Odo ~ {p.km.toLocaleString('vi-VN')} km</div>}
+                                </a>
+                            )) : <div>Không có sản phẩm nào</div>}
+                        </div>
+                    )}
                 </div>
 
                 <div className="section">

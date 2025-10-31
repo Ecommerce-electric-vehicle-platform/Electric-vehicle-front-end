@@ -22,19 +22,20 @@ const sellerApi = {
   },
 
   // Lấy thông tin seller profile
-  getSellerProfile: async () => {
+  getSellerProfile: async (sellerId) => {
+    if (!sellerId) return null;
     try {
-      const response = await axiosInstance.get("/api/v1/seller/profile");
-      const data = response?.data?.data || {};
-      const sellerId = data.sellerId || data.id || data.seller?.id;
-      return { ...response, data: { data: { ...data, sellerId } } };
+      const response = await axiosInstance.get(`/api/v1/seller/${sellerId}`);
+      if (!response?.data?.success || !response.data?.data) return null;
+      return response.data.data;
     } catch (error) {
-      console.error("[SellerAPI] Error fetching seller profile:", error);
-      throw error;
+      if ([401, 403, 404].includes(error?.response?.status)) return null;
+      console.error('[sellerApi] Error in getSellerProfile', error);
+      return null;
     }
   },
 
-  // ✅ Lấy thông tin seller theo sellerId (public)
+  // Lấy thông tin seller theo sellerId (public)
   getSellerById: async (sellerId) => {
     try {
       const response = await axiosInstance.get(`/api/v1/seller/${sellerId}`);
@@ -45,7 +46,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Đăng tin bán sản phẩm (multipart/form-data)
+  // Đăng tin bán sản phẩm (multipart/form-data)
   createPostProduct: async (formData, onUploadProgress) => {
     try {
       if (!(formData instanceof FormData)) {
@@ -78,7 +79,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Gửi yêu cầu xác minh bài đăng
+  // Gửi yêu cầu xác minh bài đăng
   requestPostVerification: async (postId) => {
     try {
       const response = await axiosInstance.post(
@@ -92,7 +93,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy danh sách bài đăng của seller (BE đã filter theo seller)
+  // Lấy danh sách bài đăng của seller (BE đã filter theo seller)
   getMyPosts: async (page = 0, size = 10, sortBy = 'postId', sortDirection = 'desc') => {
     try {
       const accessToken = localStorage.getItem("accessToken");
@@ -113,7 +114,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Cập nhật bài đăng
+  // Cập nhật bài đăng
   updatePost: async (postId, productData) => {
     try {
       const response = await axiosInstance.put(
@@ -127,7 +128,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Xóa bài đăng
+  // Xóa bài đăng
   deletePost: async (postId) => {
     try {
       const response = await axiosInstance.delete(
@@ -140,7 +141,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Ẩn bài đăng
+  // Ẩn bài đăng
   hidePost: async (postId) => {
     try {
       const accessToken = localStorage.getItem("accessToken");
@@ -160,7 +161,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy thông tin seller theo postId
+  // Lấy thông tin seller theo postId
   getSellerByPostId: async (postId) => {
     try {
       const accessToken = localStorage.getItem("accessToken");
@@ -179,7 +180,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy danh sách tất cả sản phẩm (có phân trang và sắp xếp)
+  // Lấy danh sách tất cả sản phẩm (có phân trang và sắp xếp)
   getAllPosts: async (page = 0, size = 10, sortBy = 'id', isAsc = true) => {
     try {
       const accessToken = localStorage.getItem("accessToken");
@@ -196,7 +197,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy danh sách đơn hàng của seller
+  // Lấy danh sách đơn hàng của seller
   getSellerOrders: async (page = 0, size = 10, status = '') => {
     try {
       const params = { page, size };
@@ -209,7 +210,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy thông tin đơn hàng chi tiết
+  // Lấy thông tin đơn hàng chi tiết
   getOrderDetails: async (orderId) => {
     try {
       const response = await axiosInstance.get(`/api/v1/seller/orders/${orderId}`);
@@ -220,7 +221,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Cập nhật trạng thái đơn hàng
+  // Cập nhật trạng thái đơn hàng
   updateOrderStatus: async (orderId, newStatus) => {
     try {
       const response = await axiosInstance.patch(
@@ -234,7 +235,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy thống kê seller
+  // Lấy thống kê seller
   getSellerStatistics: async () => {
     try {
       const response = await axiosInstance.get('/api/v1/seller/statistics');
@@ -242,6 +243,46 @@ const sellerApi = {
     } catch (error) {
       console.error("[SellerAPI] Error fetching seller statistics:", error);
       throw error;
+    }
+  },
+
+  // Lấy seller theo postId
+  getSellerByProductId: async (postId) => {
+    if (!postId) return null;
+    try {
+      const response = await axiosInstance.get(`/api/v1/post-product/${postId}/seller`);
+      if (!response?.data?.success || !response.data?.data) return null;
+      const raw = response.data.data;
+      return {
+        sellerId: raw.sellerId,
+        storeName: raw.storeName,
+        sellerName: raw.sellerName,
+        status: raw.status,
+        home: raw.home,
+        nationality: raw.nationality
+      };
+    } catch (error) {
+      if ([401, 403, 404].includes(error?.response?.status)) {
+        console.warn('[sellerApi] seller not found or permission:', error?.response?.status);
+        return null;
+      }
+      console.error('[sellerApi] Error in getSellerByProductId', error);
+      return null;
+    }
+  },
+  // (Tuỳ chọn) Lấy sản phẩm theo sellerId
+  getProductsBySeller: async (sellerId, params = {}) => {
+    if (!sellerId) return [];
+    try {
+      const response = await axiosInstance.get(`/api/v1/post-product`, { params: { sellerId, ...params } });
+      // Tìm array phù hợp
+      const data = response?.data?.data || response?.data || {};
+      const products = data.postList || data.content || data.items || data.list || (Array.isArray(data) ? data : []);
+      return Array.isArray(products) ? products : [];
+    } catch (error) {
+      if ([401, 403, 404].includes(error?.response?.status)) return [];
+      console.error('[sellerApi] Error in getProductsBySeller', error);
+      return [];
     }
   },
 };

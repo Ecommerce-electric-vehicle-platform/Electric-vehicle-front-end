@@ -23,6 +23,7 @@ const publicEndpoints = [
   // Post product public endpoints
   //"/api/v1/post-product",
   // Seller public endpoints (view only)
+  
 ];
 
 // ===== INTERCEPTOR REQUEST =====

@@ -21,17 +21,19 @@ import {
     Eye
 } from 'lucide-react';
 import { fetchPostProductById } from '../../api/productApi';
-import sellerApi from '../../api/sellerApi';
 import { NotificationModal } from '../../components/NotificationModal/NotificationModal';
 import './ProductDetail.css';
 import { Breadcrumbs } from '../../components/Breadcrumbs/Breadcrumbs';
 import { toggleFavorite, isFavorite } from '../../utils/favorites';
+import sellerApi from '../../api/sellerApi';
 
 function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [product, setProduct] = useState(null);
-    const [sellerInfo, setSellerInfo] = useState(null);
+    const [seller, setSeller] = useState(null);
+    const [sellerLoading, setSellerLoading] = useState(false);
+    const [sellerError, setSellerError] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isGuest, setIsGuest] = useState(true);
     const [hasPurchased] = useState(false); // Giả sử chưa mua sản phẩm này
@@ -78,24 +80,57 @@ function ProductDetail() {
                 if (!mounted) return;
                 setProduct(p);
                 if (p) setFav(isFavorite(p.id));
-
-                // Load seller info if sellerId exists
-                if (p?.sellerId) {
+                // Chỉ lấy thông tin seller qua API thật
+                if (p?.id) {
                     try {
-                        const sellerResponse = await sellerApi.getSellerById(p.sellerId);
+                        const seller = await sellerApi.getSellerByProductId(p.id);
                         if (!mounted) return;
-                        setSellerInfo(sellerResponse?.data?.data || sellerResponse?.data);
+                        setSeller(seller);
                     } catch (sellerError) {
+                        setSeller(null);
                         console.error("Error fetching seller info:", sellerError);
                     }
+                } else {
+                    setSeller(null);
                 }
             } catch {
                 if (!mounted) return;
                 setProduct(null);
+                setSeller(null);
             }
         })();
         return () => { mounted = false; };
     }, [id]);
+
+    // Tải seller info khi product.postId có giá trị
+    useEffect(() => {
+        if (product?.id || product?.postId) {
+            const pid = product.postId || product.id;
+            setSellerLoading(true);
+            setSellerError(null);
+            setSeller(null);
+            sellerApi.getSellerByProductId(pid)
+                .then(data => {
+                    if (data) {
+                        setSeller(data);
+                        setSellerError(null);
+                    } else {
+                        setSeller(null);
+                        setSellerError("NO_SELLER");
+                    }
+                })
+                .catch(() => {
+                    setSeller(null);
+                    setSellerError("NO_SELLER");
+                })
+                .finally(() => {
+                    setSellerLoading(false);
+                });
+        } else {
+            setSeller(null);
+            setSellerError(null);
+        }
+    }, [product?.id, product?.postId]);
 
     // Xử lý chuyển ảnh
     const nextImage = () => {
@@ -729,128 +764,29 @@ function ProductDetail() {
                                     </button>
                                 </div>
 
-                                {/* Seller Info */}
-                                <div
-                                    style={{
-                                        padding: "24px",
-                                        borderRadius: "12px",
-                                        border: "1px solid #e5e7eb",
-                                        backgroundColor: "#fff",
-                                    }}
-                                >
-                                    <div style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "16px" }}>
+                                {/* Seller Information box (real data) */}
+                                <section style={{ marginBottom: 16, padding: 16, background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb' }}>
+                                    <h3 style={{ marginBottom: 8, fontWeight: 600 }}>Seller Information</h3>
+                                    {sellerLoading ? (
+                                        <p>Loading seller info…</p>
+                                    ) : sellerError ? (
+                                        <p style={{ color: '#ef4444' }}>Không tìm thấy thông tin người bán.</p>
+                                    ) : seller ? (
                                         <div
-                                            style={{
-                                                width: "48px",
-                                                height: "48px",
-                                                overflow: "hidden",
-                                                borderRadius: "9999px",
-                                                backgroundColor: "#10b981",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                color: "white",
-                                                fontWeight: 600,
-                                                fontSize: "18px"
-                                            }}
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={() => seller?.sellerId && navigate(`/seller/${seller.sellerId}`, { state: { sellerPrefetch: seller } })}
+                                            style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: seller?.sellerId ? 'pointer' : 'not-allowed', padding: 12, borderRadius: 8, border: '1px solid #10b981' }}
                                         >
-                                            {((sellerInfo?.avatar || product.sellerAvatar)) ? (
-                                                <img
-                                                    src={sellerInfo?.avatar || product.sellerAvatar || ""}
-                                                    alt={sellerInfo?.fullName || product.sellerName || "Seller"}
-                                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                                                    onError={(e) => {
-                                                        e.target.style.display = 'none';
-                                                    }}
-                                                />
-                                            ) : (
-                                                <User size={24} />
-                                            )}
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ marginBottom: "4px", display: "flex", alignItems: "center", gap: "8px" }}>
-                                                <h3 style={{ fontWeight: 600 }}>
-                                                    {sellerInfo?.fullName || sellerInfo?.username || product.sellerName || "Người bán"}
-                                                </h3>
-                                                {(product.verified || sellerInfo?.verified) && (
-                                                    <span
-                                                        style={{
-                                                            height: "20px",
-                                                            padding: "0 8px",
-                                                            borderRadius: "4px",
-                                                            backgroundColor: "rgba(16, 185, 129, 0.1)",
-                                                            color: "#10b981",
-                                                            fontSize: "12px",
-                                                            display: "flex",
-                                                            alignItems: "center",
-                                                            gap: "4px",
-                                                        }}
-                                                    >
-                                                        <Shield size={12} />
-                                                        Đã xác minh
-                                                    </span>
-                                                )}
+                                            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 20, color: '#fff' }}>{(seller.storeName || seller.sellerName || 'S')[0]}</div>
+                                            <div>
+                                                <span style={{ fontWeight: 600 }}>{seller.storeName || seller.sellerName || 'Seller'}</span>
+                                                {seller.status && <span style={{ marginLeft: 8, padding: '2px 8px', fontSize: 12, background: '#e0f9ef', borderRadius: 4 }}>{seller.status}</span>}
+                                                <div style={{ fontSize: 13, color: '#64748b' }}>{seller.home || seller.nationality || ''}</div>
                                             </div>
-                                            <p style={{ fontSize: "14px", color: "#6b7280" }}>
-                                                ID: {product.sellerId || sellerInfo?.sellerId || sellerInfo?.id || "N/A"}
-                                            </p>
                                         </div>
-                                    </div>
-
-                                    {sellerInfo?.email && (
-                                        <div
-                                            style={{
-                                                marginBottom: "8px",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                fontSize: "14px",
-                                            }}
-                                        >
-                                            <span style={{ color: "#6b7280" }}>Email:</span>
-                                            <span style={{ fontWeight: 500 }}>{sellerInfo.email}</span>
-                                        </div>
-                                    )}
-
-                                    {sellerInfo?.phone && (
-                                        <div
-                                            style={{
-                                                marginBottom: "16px",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                fontSize: "14px",
-                                            }}
-                                        >
-                                            <span style={{ color: "#6b7280" }}>Điện thoại:</span>
-                                            <span style={{ fontWeight: 500 }}>{sellerInfo.phone}</span>
-                                        </div>
-                                    )}
-
-                                    {product.sellerId && (
-                                        <button
-                                            onClick={() => navigate(`/seller/${product.sellerId}`)}
-                                            style={{
-                                                width: "100%",
-                                                padding: "8px 16px",
-                                                borderRadius: "8px",
-                                                border: "1px solid #10b981",
-                                                backgroundColor: "rgba(16, 185, 129, 0.1)",
-                                                color: "#10b981",
-                                                cursor: "pointer",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                gap: "8px",
-                                                fontSize: "14px",
-                                                fontWeight: 500,
-                                            }}
-                                        >
-                                            <Eye size={16} />
-                                            Xem trang người bán
-                                        </button>
-                                    )}
-                                </div>
+                                    ) : null}
+                                </section>
 
                                 {/* FAQ */}
                                 <div

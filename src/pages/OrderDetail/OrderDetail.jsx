@@ -12,8 +12,12 @@ import {
     CheckCircle,
     AlertCircle,
     XCircle,
-    RefreshCw
+    RefreshCw,
+    FileDown,
+    Star,
+    MessageSquareWarning
 } from 'lucide-react';
+import { getOrderDetails } from '../../api/orderApi';
 import './OrderDetail.css';
 
 function OrderDetail() {
@@ -23,68 +27,63 @@ function OrderDetail() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Mock data - trong thực tế sẽ fetch từ API
-    const mockOrderData = {
-        id: orderId,
-        order_code: 'GT-20250126-0001',
-        order_status: 'PAID',
-        created_at: '2025-01-26T10:30:00Z',
-        paid_at: '2025-01-26T10:32:00Z',
-        shipped_at: null,
-        delivered_at: null,
-        cancelled_at: null,
-        cancel_reason: '',
-
-        // Thông tin sản phẩm
-        product: {
-            id: 1,
-            name: 'Pin xe đạp điện 48V 20Ah',
-            price: 2500000,
-            image: '/src/assets/imgs_pin/Pin-xe-dap-dien-Bridgestone-36V-10Ah-600x600.jpg',
-            quantity: 1
-        },
-
-        // Thông tin người mua
-        buyer: {
-            name: 'Nguyễn Văn A',
-            email: 'nguyenvana@email.com',
-            phone: '0123456789'
-        },
-
-        // Thông tin giao hàng
-        shipping: {
-            address: '123 Đường ABC, Phường XYZ, Quận 1, TP.HCM',
-            phone: '0123456789',
-            partner: 'Giao hàng nhanh',
-            tracking_number: 'GHN123456789',
-            fee: 50000,
-            note: 'Giao trong giờ hành chính'
-        },
-
-        // Thông tin thanh toán
-        payment: {
-            method: 'WALLET',
-            transaction_id: 'TXN20250126001',
-            amount: 2550000,
-            paid_at: '2025-01-26T10:32:00Z'
-        },
-
-        // Thông tin hóa đơn
-        invoice: {
-            need_invoice: true,
-            company_name: 'Công ty ABC',
-            tax_code: '0123456789'
-        }
-    };
-
     useEffect(() => {
-        // Simulate API call
         const loadOrderDetail = async () => {
             try {
                 setLoading(true);
-                // Trong thực tế sẽ gọi API: const response = await orderApi.getOrderDetail(orderId);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
-                setOrderData(mockOrderData);
+                const res = await getOrderDetails(orderId);
+                const data = res?.data || res;
+
+                // Chuẩn hóa dữ liệu chi tiết đơn
+                const normalized = {
+                    id: data.id || data.orderId || orderId,
+                    order_code: data.orderCode || data.code || String(orderId),
+                    order_status: String(data.status || data.order_status || 'PROCESSING').toUpperCase(),
+                    created_at: data.createdAt || data.created_at || null,
+                    paid_at: data.paidAt || data.paid_at || null,
+                    shipped_at: data.shippedAt || data.shipped_at || data.deliveringAt || null,
+                    delivered_at: data.deliveredAt || data.delivered_at || null,
+                    cancelled_at: data.cancelledAt || data.cancelled_at || null,
+                    cancel_reason: data.cancelReason || data.cancel_reason || '',
+
+                    product: {
+                        id: data.product?.id,
+                        name: data.product?.name || data.productName || 'Sản phẩm',
+                        price: Number(data.product?.price ?? data.price ?? 0),
+                        image: data.product?.image || '/vite.svg',
+                        quantity: Number(data.product?.quantity ?? data.quantity ?? 1)
+                    },
+
+                    buyer: {
+                        name: data.buyer?.name || data.customerName || 'Người mua',
+                        email: data.buyer?.email || '',
+                        phone: data.buyer?.phone || ''
+                    },
+
+                    shipping: {
+                        address: data.shipping?.address || data.shippingAddress || 'Chưa cập nhật',
+                        phone: data.shipping?.phone || data.receiverPhone || '',
+                        partner: data.shipping?.partner || data.shippingPartner || 'Đối tác vận chuyển',
+                        tracking_number: data.shipping?.trackingNumber || data.trackingNumber || '-',
+                        fee: Number(data.shipping?.fee ?? data.shippingFee ?? 0),
+                        note: data.shipping?.note || data.note || ''
+                    },
+
+                    payment: {
+                        method: String(data.payment?.method || data.paymentMethod || 'WALLET').toUpperCase(),
+                        transaction_id: data.payment?.transactionId || data.transactionId || '-',
+                        amount: Number(data.payment?.amount ?? data.totalAmount ?? data.finalPrice ?? 0),
+                        paid_at: data.payment?.paidAt || data.paidAt || data.paid_at || null
+                    },
+
+                    invoice: {
+                        need_invoice: Boolean(data.invoice?.needInvoice || data.needInvoice || false),
+                        company_name: data.invoice?.companyName || '',
+                        tax_code: data.invoice?.taxCode || ''
+                    }
+                };
+
+                setOrderData(normalized);
             } catch (err) {
                 setError('Không thể tải thông tin đơn hàng');
                 console.error('Error loading order detail:', err);
@@ -165,6 +164,8 @@ function OrderDetail() {
         }
     };
 
+    const isDelivered = String(orderData?.order_status || '').toUpperCase() === 'DELIVERED';
+
     if (loading) {
         return (
             <div className="order-detail-page">
@@ -238,9 +239,48 @@ function OrderDetail() {
                         <div className="status-details">
                             <h3>{getOrderStatusText(orderData.order_status)}</h3>
                             <p>Mã đơn hàng: <span className="order-code">{orderData.order_code}</span></p>
+                            {isDelivered && (
+                                <p>Đã giao lúc: <strong>{formatDateTime(orderData.delivered_at)}</strong></p>
+                            )}
                         </div>
                     </div>
                 </div>
+
+                {isDelivered && (
+                    <div className="timeline-section">
+                        <h2>Tiến trình giao hàng</h2>
+                        <div className="timeline">
+                            <div className="timeline-item done">
+                                <Clock />
+                                <div>
+                                    <div>Đặt hàng</div>
+                                    <small>{formatDateTime(orderData.created_at)}</small>
+                                </div>
+                            </div>
+                            <div className="timeline-item done">
+                                <CheckCircle />
+                                <div>
+                                    <div>Thanh toán</div>
+                                    <small>{formatDateTime(orderData.paid_at)}</small>
+                                </div>
+                            </div>
+                            <div className="timeline-item done">
+                                <Truck />
+                                <div>
+                                    <div>Bàn giao vận chuyển</div>
+                                    <small>{formatDateTime(orderData.shipped_at)}</small>
+                                </div>
+                            </div>
+                            <div className="timeline-item done">
+                                <CheckCircle />
+                                <div>
+                                    <div>Giao thành công</div>
+                                    <small>{formatDateTime(orderData.delivered_at)}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Order Information */}
                 <div className="order-info-section">
@@ -406,6 +446,28 @@ function OrderDetail() {
                     >
                         In đơn hàng
                     </button>
+                    {isDelivered && (
+                        <>
+                            <button
+                                className="btn btn-warning"
+                                onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}
+                            >
+                                <MessageSquareWarning style={{ marginRight: 6 }} /> Khiếu nại
+                            </button>
+                            <button
+                                className="btn btn-success"
+                                onClick={() => alert('Đánh giá đơn hàng (sẽ triển khai)')}
+                            >
+                                <Star style={{ marginRight: 6 }} /> Đánh giá
+                            </button>
+                            <button
+                                className="btn btn-soft"
+                                onClick={() => alert('Tải hóa đơn PDF (sẽ triển khai)')}
+                            >
+                                <FileDown style={{ marginRight: 6 }} /> Tải hóa đơn
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
