@@ -54,6 +54,12 @@ export default function VnPayReturn() {
                 const msg = res?.data?.message || (ok ? "Giao dịch thành công" : "Giao dịch thất bại");
                 if (!isMounted) return;
                 setStatus({ loading: false, ok: !!ok, message: msg });
+
+                // 🔄 Dispatch event để refresh wallet data và transactions
+                if (ok) {
+                    console.log("🔄 Dispatching walletUpdated event after successful payment");
+                    window.dispatchEvent(new CustomEvent("walletUpdated"));
+                }
             } catch (err) {
                 if (!isMounted) return;
                 setStatus({ loading: false, ok: false, message: err?.message || "Xác minh giao dịch thất bại" });

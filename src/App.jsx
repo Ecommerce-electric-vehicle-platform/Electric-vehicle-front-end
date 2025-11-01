@@ -34,6 +34,7 @@ import { NotificationModal } from "./components/NotificationModal/NotificationMo
 import ForgotPassword from "./pages/Auth/login/ForgotPassword"; //thêm route này
 import { useState, useEffect } from "react";
 import notificationService from "./services/notificationService";
+import WalletDashboard from "./pages/Wallet/WalletDashboard";
 
 function AppContent() {
   const location = useLocation();
@@ -46,6 +47,7 @@ function AppContent() {
     location.pathname === "/chat" ||
     location.pathname.startsWith("/place-order") ||
     location.pathname.startsWith("/order-tracking") ||
+    location.pathname.startsWith("/wallet") ||
     location.pathname.startsWith("/admin");
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -245,6 +247,15 @@ function AppContent() {
           element={
             <PageTransition className="fade-up">
               <VnPayReturn />
+            </PageTransition>
+          }
+        />
+        {/* 🧾 Wallet Dashboard */}
+        <Route
+          path="/wallet"
+          element={
+            <PageTransition className="fade-up">
+              <WalletDashboard />
             </PageTransition>
           }
         />

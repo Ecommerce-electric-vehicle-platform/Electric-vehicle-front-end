@@ -120,6 +120,16 @@ const profileApi = {
     });
   },
 
+  // Lấy lịch sử giao dịch ví với pagination
+  getTransactionHistory: (page = 1, size = 10) => {
+    return axiosInstance.get('/api/v1/buyer/transaction-history', {
+      params: {
+        page: page,
+        size: size
+      }
+    });
+  },
+
 };
 
 
