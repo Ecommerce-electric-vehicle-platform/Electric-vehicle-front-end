@@ -5,6 +5,8 @@
   top: calc(100% + 8px);
   right: 0;
   width: 380px;
+  min-width: 320px;
+  max-width: 90vw;
   max-height: 600px;
   background: white;
   border-radius: 12px;
@@ -14,6 +16,7 @@
   flex-direction: column;
   overflow: hidden;
   animation: fadeIn 0.2s ease-out;
+  box-sizing: border-box;
 }
 
 @keyframes fadeIn {
@@ -90,6 +93,9 @@
   display: flex;
   gap: 12px;
   position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .notification-item:hover {
@@ -146,6 +152,9 @@
 .notification-item-content {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+  word-wrap: break-word;
 }
 
 .notification-item-title {
@@ -153,10 +162,13 @@
   font-weight: 600;
   color: #111827;
   margin: 0 0 4px 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: block;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.4;
 }
 
 .notification-item-message {
