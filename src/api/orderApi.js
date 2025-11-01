@@ -12,40 +12,19 @@ export const getShippingPartners = async () => {
     }
 };
 
-// Get shipping fee for a post and destination address
-// Backend expects a `request` object in query with fields:
-// { postId, provinceName, districtName, wardName, paymentId }
-export const getShippingFee = async ({ postId, provinceName, districtName, wardName, paymentId }) => {
-    const payload = { postId, provinceName, districtName, wardName, paymentId };
-    // Try 1: Top-level params (common for Spring @ModelAttribute or @RequestParam without prefix)
+// Get shipping fee for a post and destination address (GHN via BE)
+// Send BOTH names and ids to avoid mapping ambiguity on BE
+// { postId, provinceName, districtName, wardName, provinceId, districtId, wardId, paymentId }
+export const getShippingFee = async ({ postId, provinceName, districtName, wardName, provinceId, districtId, wardId, paymentId }) => {
+    const payload = { postId, provinceName, districtName, wardName, provinceId, districtId, wardId, paymentId };
     try {
-        const res = await axiosInstance.get('/api/v1/shipping/shipping-fee', { params: payload });
+        console.log('📦 Shipping fee payload:', payload);
+        const res = await axiosInstance.post('/api/v1/shipping/shipping-fee', payload);
+        console.log('🚀 Shipping fee response:', res.data);
         return res.data;
-    } catch (e1) {
-        // Try 2: Nested request.* params (as shown in Swagger UI)
-        try {
-            const res = await axiosInstance.get('/api/v1/shipping/shipping-fee', {
-                params: {
-                    'request.postId': postId,
-                    'request.provinceName': provinceName,
-                    'request.districtName': districtName,
-                    'request.wardName': wardName,
-                    'request.paymentId': paymentId,
-                }
-            });
-            return res.data;
-        } catch (e2) {
-            // Try 3: request as JSON string (some controllers bind a single @RequestParam("request") String)
-            try {
-                const res = await axiosInstance.get('/api/v1/shipping/shipping-fee', {
-                    params: { request: JSON.stringify(payload) }
-                });
-                return res.data;
-            } catch (e3) {
-                console.error('Error fetching shipping fee:', e3 || e2 || e1);
-                throw (e3 || e2 || e1);
-            }
-        }
+    } catch (error) {
+        console.error('Error fetching shipping fee:', error);
+        throw error;
     }
 };
 
@@ -83,14 +62,9 @@ export const placeOrder = async (orderData) => {
 };
 
 // Get order details
-export const getOrderDetails = async (orderId) => {
-    try {
-        const response = await axiosInstance.get(`/api/v1/orders/${orderId}`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching order details:', error);
-        throw error;
-    }
+export const getOrderDetails = async () => {
+    // BE hiện không có API chi tiết đơn → trả rỗng để UI dùng fallback, không gọi network
+    return {};
 };
 
 // Get user's orders
@@ -183,3 +157,96 @@ function normalizeOrderHistoryItem(item) {
         _raw: item,
     };
 }
+
+// Create product review for an order (rating/feedback with optional images)
+// POST /api/v1/order/review
+// Content-Type: multipart/form-data
+// Fields:
+// - request: JSON object { orderId, rating, feedback }
+// - pictures: optional list of image files
+export const createOrderReview = async ({ orderId, rating, feedback, pictures = [] }) => {
+    // Theo BE: @ModelAttribute ReviewRequest + @RequestPart("pictures")
+    // → cần gửi multipart với các field phẳng: orderId, rating, feedback và part "pictures"
+    const files = Array.from(pictures || []);
+
+    const fd = new FormData();
+    fd.append('orderId', String(orderId));
+    fd.append('rating', String(rating));
+    fd.append('feedback', String(feedback || ''));
+    files.forEach((file) => { if (file) fd.append('pictures', file); });
+
+    const res = await axiosInstance.post('/api/v1/order/review', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    const ok = (res?.data?.success !== false);
+    if (!ok) throw new Error('Backend returned unsuccessful response');
+
+    try {
+        const store = JSON.parse(localStorage.getItem('orderReviews') || '{}');
+        store[String(orderId)] = {
+            rating: Number(rating),
+            feedback: String(feedback || ''),
+            picturesCount: files.length,
+            reviewedAt: new Date().toISOString()
+        };
+        localStorage.setItem('orderReviews', JSON.stringify(store));
+    } catch { /* no-op */ }
+
+    return res.data;
+};
+
+// GET /api/v1/order/get-review/{orderId}
+// Lấy đánh giá của đơn hàng từ Backend
+export const getOrderReviewById = async (orderId) => {
+    try {
+        const response = await axiosInstance.get(`/api/v1/order/get-review/${orderId}`);
+        const raw = response?.data ?? {};
+
+        // Chỉ trả về review nếu success === true VÀ có data hợp lệ với orderId và rating
+        if (raw.success === true && raw.data && raw.data.orderId && raw.data.rating != null) {
+            const rating = Number(raw.data.rating);
+            // Rating phải trong khoảng 1-5 để hợp lệ
+            if (rating >= 1 && rating <= 5) {
+                return {
+                    success: true,
+                    orderId: Number(raw.data.orderId),
+                    rating: rating,
+                    feedback: String(raw.data.feedback ?? ''),
+                    reviewImages: Array.isArray(raw.data.reviewImages) ? raw.data.reviewImages : []
+                };
+            }
+        }
+        return null;
+    } catch (error) {
+        // Nếu API trả 404 hoặc lỗi không tìm thấy → không có review
+        if (error?.response?.status === 404) {
+            return null;
+        }
+        console.error('Error fetching order review:', error);
+        return null;
+    }
+};
+
+// Kiểm tra đơn hàng đã có đánh giá hay chưa
+// Trả về { hasReview: boolean, review: object|null }
+export const getOrderReview = async (orderId) => {
+    // Chỉ dùng API từ BE - không fallback localStorage để tránh hiển thị sai
+    try {
+        const review = await getOrderReviewById(orderId);
+        if (review && review.success && review.orderId && review.rating >= 1 && review.rating <= 5) {
+            return { hasReview: true, review };
+        }
+    } catch { /* no-op */; }
+
+    // Không check localStorage nữa vì API là nguồn chính xác nhất
+    return { hasReview: false, review: null };
+};
+
+export const hasOrderReview = async (orderId) => {
+    try {
+        const { hasReview } = await getOrderReview(orderId);
+        return Boolean(hasReview);
+    } catch {
+        return false;
+    }
+};

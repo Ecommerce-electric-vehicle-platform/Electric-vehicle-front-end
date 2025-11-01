@@ -18,6 +18,7 @@ import OrderTracking from "./pages/OrderTracking/OrderTracking";
 import WalletDeposit from "./pages/WalletDeposit/WalletDeposit";
 import VnPayReturn from "./pages/WalletDeposit/VnPayReturn";
 import OrderList from "./pages/OrderList/OrderList";
+import OrderReview from "./pages/OrderReview/OrderReview";
 import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
 import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
 import CreatePost from "./pages/Seller/CreatePost/CreatePost";
@@ -33,6 +34,7 @@ import { NotificationModal } from "./components/NotificationModal/NotificationMo
 import ForgotPassword from "./pages/Auth/login/ForgotPassword"; //thêm route này
 import { useState, useEffect } from "react";
 import notificationService from "./services/notificationService";
+import WalletDashboard from "./pages/Wallet/WalletDashboard";
 
 function AppContent() {
   const location = useLocation();
@@ -45,6 +47,7 @@ function AppContent() {
     location.pathname === "/chat" ||
     location.pathname.startsWith("/place-order") ||
     location.pathname.startsWith("/order-tracking") ||
+    location.pathname.startsWith("/wallet") ||
     location.pathname.startsWith("/admin");
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -151,6 +154,14 @@ function AppContent() {
           }
         />
         <Route
+          path="/order/review/:orderId"
+          element={
+            <PageTransition className="fade-up">
+              <OrderReview />
+            </PageTransition>
+          }
+        />
+        <Route
           path="/seller-dashboard"
           element={
             <PageTransition className="fade-up">
@@ -236,6 +247,15 @@ function AppContent() {
           element={
             <PageTransition className="fade-up">
               <VnPayReturn />
+            </PageTransition>
+          }
+        />
+        {/* 🧾 Wallet Dashboard */}
+        <Route
+          path="/wallet"
+          element={
+            <PageTransition className="fade-up">
+              <WalletDashboard />
             </PageTransition>
           }
         />
