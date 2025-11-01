@@ -12,40 +12,19 @@ export const getShippingPartners = async () => {
     }
 };
 
-// Get shipping fee for a post and destination address
-// Backend expects a `request` object in query with fields:
-// { postId, provinceName, districtName, wardName, paymentId }
-export const getShippingFee = async ({ postId, provinceName, districtName, wardName, paymentId }) => {
-    const payload = { postId, provinceName, districtName, wardName, paymentId };
-    // Try 1: Top-level params (common for Spring @ModelAttribute or @RequestParam without prefix)
+// Get shipping fee for a post and destination address (GHN via BE)
+// Send BOTH names and ids to avoid mapping ambiguity on BE
+// { postId, provinceName, districtName, wardName, provinceId, districtId, wardId, paymentId }
+export const getShippingFee = async ({ postId, provinceName, districtName, wardName, provinceId, districtId, wardId, paymentId }) => {
+    const payload = { postId, provinceName, districtName, wardName, provinceId, districtId, wardId, paymentId };
     try {
-        const res = await axiosInstance.get('/api/v1/shipping/shipping-fee', { params: payload });
+        console.log('📦 Shipping fee payload:', payload);
+        const res = await axiosInstance.post('/api/v1/shipping/shipping-fee', payload);
+        console.log('🚀 Shipping fee response:', res.data);
         return res.data;
-    } catch (e1) {
-        // Try 2: Nested request.* params (as shown in Swagger UI)
-        try {
-            const res = await axiosInstance.get('/api/v1/shipping/shipping-fee', {
-                params: {
-                    'request.postId': postId,
-                    'request.provinceName': provinceName,
-                    'request.districtName': districtName,
-                    'request.wardName': wardName,
-                    'request.paymentId': paymentId,
-                }
-            });
-            return res.data;
-        } catch (e2) {
-            // Try 3: request as JSON string (some controllers bind a single @RequestParam("request") String)
-            try {
-                const res = await axiosInstance.get('/api/v1/shipping/shipping-fee', {
-                    params: { request: JSON.stringify(payload) }
-                });
-                return res.data;
-            } catch (e3) {
-                console.error('Error fetching shipping fee:', e3 || e2 || e1);
-                throw (e3 || e2 || e1);
-            }
-        }
+    } catch (error) {
+        console.error('Error fetching shipping fee:', error);
+        throw error;
     }
 };
 
