@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
 import { getOrderHistory } from '../../api/orderApi';
+// tui có thêm phần này
+import DisputeForm from "../../components/BuyerRaiseDispute/DisputeForm";
 import './OrderList.css';
 
 function OrderList() {
@@ -30,6 +32,9 @@ function OrderList() {
     const [filter, setFilter] = useState('all'); // all, pending, confirmed, shipping, delivered, cancelled
     const [query, setQuery] = useState('');
     const [expandedId, setExpandedId] = useState(null);
+
+    // thêm dòng này nữa
+    const [selectedDisputeOrderId, setSelectedDisputeOrderId] = useState(null);
 
     // Kiểm tra đăng nhập (đúng key token thực tế)
     useEffect(() => {
@@ -115,9 +120,15 @@ function OrderList() {
     const handleTrackShipment = (orderId) => {
         navigate(`/order-tracking/${orderId}`);
     };
-
+    // ******
     const handleRaiseDispute = (orderId) => {
-        alert(`Khiếu nại đơn #${orderId} (flow dispute sẽ thêm sau)`);
+        setSelectedDisputeOrderId(orderId);  // thêm dòng này thay thế cho cái alert nha Vy
+    };
+
+    const handleCancelDispute = () => {
+        setSelectedDisputeOrderId(null);
+        // Sau khi gửi/hủy dispute, ta cũng nên tải lại danh sách orders (tùy chọn)
+        // load(); // Có thể uncomment nếu muốn refresh list sau khi gửi khiếu nại
     };
 
     const handleRateOrder = (orderId) => {
@@ -159,6 +170,27 @@ function OrderList() {
     // Xử lý liên hệ người bán (không dùng ở layout mới)
 
     // Lấy icon và màu sắc cho trạng thái (label theo mockup)
+
+    if (selectedDisputeOrderId !== null) {
+        return (
+            <div className="dispute-flow-wrapper">
+                <button 
+                    className="btn-back-order-list" 
+                    onClick={handleCancelDispute}
+                    style={{ marginBottom: '15px', padding: '8px 15px', border: '1px solid #ccc', borderRadius: '4px', background: '#f8f9fa' }}
+                >
+                    <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
+                </button>
+                <DisputeForm 
+                    initialOrderId={selectedDisputeOrderId} 
+                    onCancelDispute={handleCancelDispute} // Thêm prop để form có thể tự thoát
+                />
+            </div>
+        );
+    }
+    
+    // 2. Nếu đang ở chế độ xem Danh sách đơn hàng
+
     const getStatusInfo = (status) => {
         const statusConfig = {
             pending: { icon: Clock, color: '#ffc107', label: 'Chờ xử lý' },
