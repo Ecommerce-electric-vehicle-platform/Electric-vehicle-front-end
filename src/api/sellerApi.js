@@ -1,11 +1,18 @@
 import axiosInstance from "./axiosInstance";
 
 const sellerApi = {
-  // ✅ Kiểm tra gói dịch vụ
+  // Kiểm tra gói dịch vụ còn hạn hay không, hay chưa mua gói dịch vụ
   checkServicePackageValidity: async (username) => {
     try {
+      const accessToken = localStorage.getItem("accessToken");
       const response = await axiosInstance.post(
-        `/api/v1/seller/${username}/check-service-package-validity`
+        `/api/v1/seller/${username}/check-service-package-validity`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
       );
       return response;
     } catch (error) {
@@ -14,7 +21,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy thông tin seller profile
+  // Lấy thông tin seller profile
   getSellerProfile: async (sellerId) => {
     if (!sellerId) return null;
     try {
@@ -28,7 +35,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy thông tin seller theo sellerId (public)
+  // Lấy thông tin seller theo sellerId (public)
   getSellerById: async (sellerId) => {
     try {
       const response = await axiosInstance.get(`/api/v1/seller/${sellerId}`);
@@ -39,18 +46,22 @@ const sellerApi = {
     }
   },
 
-  // ✅ Đăng tin bán sản phẩm (multipart/form-data)
+  // Đăng tin bán sản phẩm (multipart/form-data)
   createPostProduct: async (formData, onUploadProgress) => {
     try {
       if (!(formData instanceof FormData)) {
         throw new Error("createPostProduct expects a FormData object");
       }
 
+      const accessToken = localStorage.getItem("accessToken");
       const response = await axiosInstance.post(
         "/api/v1/seller/post-products",
         formData,
         {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: { 
+            "Content-Type": "multipart/form-data",
+            "Authorization": `Bearer ${accessToken}`
+          },
           onUploadProgress: (event) => {
             if (onUploadProgress && event.total) {
               const percent = Math.round((event.loaded * 100) / event.total);
@@ -68,7 +79,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Gửi yêu cầu xác minh bài đăng
+  // Gửi yêu cầu xác minh bài đăng
   requestPostVerification: async (postId) => {
     try {
       const response = await axiosInstance.post(
@@ -82,11 +93,19 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy danh sách bài đăng của seller
-  getMyPosts: async (page = 0, size = 10) => {
+  // Lấy danh sách bài đăng của seller (BE đã filter theo seller)
+  getMyPosts: async (page = 0, size = 10, sortBy = 'postId', sortDirection = 'desc') => {
     try {
-      const response = await axiosInstance.get("/api/v1/seller/my-posts", {
-        params: { page, size },
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/seller/seller-post', {
+        params: { 
+          page, 
+          size,
+          sort: `${sortBy},${sortDirection}` // Spring Boot format: "postId,desc"
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
       });
       return response;
     } catch (error) {
@@ -95,7 +114,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Cập nhật bài đăng
+  // Cập nhật bài đăng
   updatePost: async (postId, productData) => {
     try {
       const response = await axiosInstance.put(
@@ -109,7 +128,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Xóa bài đăng
+  // Xóa bài đăng
   deletePost: async (postId) => {
     try {
       const response = await axiosInstance.delete(
@@ -122,7 +141,63 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy danh sách đơn hàng của seller
+  // Ẩn bài đăng
+  hidePost: async (postId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.post(
+        `/api/v1/post-product/hide/${postId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error hiding post:", error);
+      throw error;
+    }
+  },
+
+  // Lấy thông tin seller theo postId
+  getSellerByPostId: async (postId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get(
+        `/api/v1/post-product/${postId}/seller`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching seller by post ID:", error);
+      throw error;
+    }
+  },
+
+  // Lấy danh sách tất cả sản phẩm (có phân trang và sắp xếp)
+  getAllPosts: async (page = 0, size = 10, sortBy = 'id', isAsc = true) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/post-product', {
+        params: { page, size, sort_by: sortBy, is_asc: isAsc },
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching all posts:", error);
+      throw error;
+    }
+  },
+
+  // Lấy danh sách đơn hàng của seller
   getSellerOrders: async (page = 0, size = 10, status = '') => {
     try {
       const params = { page, size };
@@ -135,7 +210,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy thông tin đơn hàng chi tiết
+  // Lấy thông tin đơn hàng chi tiết
   getOrderDetails: async (orderId) => {
     try {
       const response = await axiosInstance.get(`/api/v1/seller/orders/${orderId}`);
@@ -146,7 +221,7 @@ const sellerApi = {
     }
   },
 
-  // ✅ Cập nhật trạng thái đơn hàng
+  // Cập nhật trạng thái đơn hàng
   updateOrderStatus: async (orderId, newStatus) => {
     try {
       const response = await axiosInstance.patch(
@@ -160,7 +235,31 @@ const sellerApi = {
     }
   },
 
-  // ✅ Lấy thống kê seller
+  // Lấy danh sách đơn hàng đang chờ xử lý (pending orders)
+  getPendingOrders: async (page = 0, size = 10) => {
+    try {
+      const response = await axiosInstance.get('/api/v1/seller/pending-orders', {
+        params: { page, size }
+      });
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching pending orders:", error);
+      throw error;
+    }
+  },
+
+  // Xác nhận (verify) một đơn hàng đang chờ
+  verifyOrder: async (orderId) => {
+    try {
+      const response = await axiosInstance.post(`/api/v1/seller/verify-order/${orderId}`);
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error verifying order:", error);
+      throw error;
+    }
+  },
+
+  // Lấy thống kê seller
   getSellerStatistics: async () => {
     try {
       const response = await axiosInstance.get('/api/v1/seller/statistics');

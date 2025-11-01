@@ -40,9 +40,12 @@ export default function CreatePost() {
     try {
       const response = await sellerApi.getSellerProfile();
       const profile = response?.data?.data;
-      if (profile?.sellerId) setSellerId(profile.sellerId);
+      if (profile?.sellerId) {
+        setSellerId(profile.sellerId);
+      }
     } catch (error) {
-      console.error("Error loading seller profile:", error);
+      // Không load được seller ID thì để trống, không báo lỗi
+      console.log("Seller profile not found, continuing without seller ID");
     }
   };
 
@@ -95,11 +98,6 @@ export default function CreatePost() {
       return;
     }
 
-    if (!sellerId) {
-      alert("Không tìm thấy thông tin seller. Vui lòng thử lại!");
-      return;
-    }
-
     try {
       setLoading(true);
       setUploadProgress(0);
@@ -136,13 +134,13 @@ export default function CreatePost() {
       );
 
       if (response?.data?.success) {
-        alert("🎉 Đăng tin thành công!");
+        alert("Đăng tin thành công!");
         navigate("/seller/manage-posts");
       } else {
         throw new Error(response?.data?.message || "Tạo bài thất bại");
       }
     } catch (error) {
-      console.error("❌ Lỗi khi tạo bài đăng:", error);
+      console.error("Lỗi khi tạo bài đăng:", error);
       const errorMsg =
         error?.response?.data?.message ||
         "Đăng tin thất bại. Vui lòng thử lại!";

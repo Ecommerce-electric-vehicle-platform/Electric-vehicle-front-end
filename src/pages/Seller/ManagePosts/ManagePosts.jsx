@@ -10,7 +10,7 @@ export default function ManagePosts() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filterStatus, setFilterStatus] = useState("all"); // all, verified, pending, rejected
+  const [filterStatus, setFilterStatus] = useState("all"); // all, verified, pending, rejected, hidden
 
   useEffect(() => {
     loadPosts();
@@ -21,13 +21,23 @@ export default function ManagePosts() {
       setLoading(true);
       setError(null);
 
-      // Giả định API trả về danh sách posts
-      const response = await sellerApi.getMyPosts();
-      const data = response?.data?.data || [];
+      console.log("Loading posts...");
 
-      setPosts(data);
+      // BE đã filter theo seller rồi, chỉ cần lấy data
+      const response = await sellerApi.getMyPosts(0, 100);
+      console.log("Response:", response);
+      console.log("Response data:", response?.data);
+
+      // BE trả về data.content (Spring Boot Pageable format)
+      const myPosts = response?.data?.data?.content || [];
+      console.log("My posts:", myPosts);
+      console.log("Total elements:", response?.data?.data?.totalElements);
+      console.log("Total pages:", response?.data?.data?.totalPages);
+
+      setPosts(myPosts);
     } catch (err) {
-      console.error("Error loading posts:", err);
+      console.error(" Error loading posts:", err);
+      console.error("Response error:", err.response?.data);
       setError(err.message || "Không thể tải danh sách tin đăng");
     } finally {
       setLoading(false);
@@ -51,23 +61,37 @@ export default function ManagePosts() {
     }
   };
 
-  const handleDeletePost = async (postId) => {
-    if (!window.confirm("Bạn có chắc muốn xóa tin đăng này?")) {
+  const handleHidePost = async (postId) => {
+    if (
+      !window.confirm(
+        "Bạn có chắc muốn ẩn tin đăng này? Tin đăng sẽ không hiển thị cho người mua nhưng vẫn được lưu trong hệ thống."
+      )
+    ) {
       return;
     }
 
     try {
-      await sellerApi.deletePost(postId);
-      alert("Xóa tin đăng thành công!");
+      await sellerApi.hidePost(postId);
+      alert("Ẩn tin đăng thành công!");
       loadPosts(); // Reload
     } catch (error) {
-      console.error("Error deleting post:", error);
-      alert("Xóa tin đăng thất bại. Vui lòng thử lại!");
+      console.error("Error hiding post:", error);
+      alert("Ẩn tin đăng thất bại. Vui lòng thử lại!");
     }
   };
 
   const filteredPosts = posts.filter((post) => {
-    if (filterStatus === "all") return true;
+    if (filterStatus === "all") {
+      // Hiển thị tất cả tin đăng trừ những tin đã ẩn
+      return post.active !== false && post.active !== 0;
+    }
+    if (filterStatus === "hidden") {
+      // Kiểm tra trạng thái active - nếu active === false thì đã bị ẩn
+      return post.active === false || post.active === 0;
+    }
+    // Đối với các filter khác (approved, pending, rejected), chỉ hiển thị tin chưa bị ẩn
+    const isHidden = post.active === false || post.active === 0;
+    if (isHidden) return false;
     return (
       post.verifiedDecisionStatus?.toLowerCase() === filterStatus.toLowerCase()
     );
@@ -166,6 +190,14 @@ export default function ManagePosts() {
             >
               Từ chối
             </button>
+            <button
+              className={filterStatus === "hidden" ? "active" : ""}
+              onClick={() => setFilterStatus("hidden")}
+            >
+              Tin đã ẩn (
+              {posts.filter((p) => p.active === false || p.active === 0).length}
+              )
+            </button>
           </div>
 
           {/* Posts List */}
@@ -187,12 +219,15 @@ export default function ManagePosts() {
                 <div key={post.postId} className="post-card">
                   {/* Thumbnail */}
                   <div className="post-thumbnail">
-                    {post.pictures && post.pictures.length > 0 ? (
-                      <img src={post.pictures[0]} alt={post.title} />
+                    {post.images && post.images.length > 0 ? (
+                      <img src={post.images[0].imgUrl} alt={post.title} />
                     ) : (
                       <div className="no-image">Chưa có ảnh</div>
                     )}
                     {getStatusBadge(post.verifiedDecisionStatus)}
+                    {(post.active === false || post.active === 0) && (
+                      <span className="status-badge status-hidden">Đã ẩn</span>
+                    )}
                   </div>
 
                   {/* Info */}
@@ -205,19 +240,27 @@ export default function ManagePosts() {
                       {parseInt(post.price).toLocaleString()} VNĐ
                     </p>
                     <p className="post-location">{post.locationTrading}</p>
-
-                    {post.verified && (
-                      <div className="verified-badge">✓ Đã xác minh</div>
-                    )}
                   </div>
 
                   {/* Actions */}
                   <div className="post-actions">
                     <button
-                      className="btn-view"
-                      onClick={() => navigate(`/product/${post.postId}`)}
+                      className="btn-edit"
+                      onClick={() =>
+                        navigate(`/seller/edit-post/${post.postId}`)
+                      }
                     >
-                      Xem
+                      Sửa
+                    </button>
+
+                    <button
+                      className="btn-view"
+                      onClick={() =>
+                        window.open(`/product/${post.postId}`, "_blank")
+                      }
+                      title="Xem trước bài đăng như người mua"
+                    >
+                      Xem trước
                     </button>
 
                     {!post.verified && (
@@ -230,19 +273,11 @@ export default function ManagePosts() {
                     )}
 
                     <button
-                      className="btn-edit"
-                      onClick={() =>
-                        navigate(`/seller/edit-post/${post.postId}`)
-                      }
+                      className="btn-hide"
+                      onClick={() => handleHidePost(post.postId)}
+                      title="Ẩn tin đăng này khỏi danh sách công khai"
                     >
-                      Sửa
-                    </button>
-
-                    <button
-                      className="btn-delete"
-                      onClick={() => handleDeletePost(post.postId)}
-                    >
-                      Xóa
+                      Ẩn
                     </button>
                   </div>
                 </div>

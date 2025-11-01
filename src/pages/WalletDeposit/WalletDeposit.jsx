@@ -1,11 +1,28 @@
 import { useState } from "react";
+import { Lock } from "lucide-react";
 import vnpayApi from "../../api/vnpayApi";
+import { useWalletBalance } from "../../hooks/useWalletBalance";
 import "./WalletDeposit.css";
 
 export default function WalletDeposit() {
-    const [amount, setAmount] = useState(100000);
+    const [amount, setAmount] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const { balance, formatCurrency } = useWalletBalance();
+
+    // Quick amount options (in VND)
+    const quickAmounts = [500000, 1000000, 2000000, 5000000];
+
+    const handleQuickAmount = (quickAmount) => {
+        setAmount(quickAmount.toString());
+        setError("");
+    };
+
+    const formatInputAmount = (value) => {
+        // Remove all non-digit characters
+        const numericValue = value.replace(/\D/g, "");
+        return numericValue;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -52,36 +69,85 @@ export default function WalletDeposit() {
         }
     };
 
+    // Format amount for display
+    const displayAmount = amount ? parseInt(amount).toLocaleString("vi-VN") : "0";
+
     return (
-        <div className="wallet-deposit-container">
-            <h2 className="wallet-deposit-title">Nạp tiền vào ví</h2>
-            <form className="wallet-deposit-form" onSubmit={handleSubmit}>
-                <div className="form-group">
-                    <label className="form-label">
-                        Số tiền nạp (VND)
-                    </label>
-                    <input
-                        type="number"
-                        min={1000}
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="form-input"
-                        placeholder="Nhập số tiền cần nạp"
-                    />
+        <div className="wallet-deposit-page">
+            <div className="wallet-deposit-header">
+                <h1 className="page-title">Nạp tiền vào ví</h1>
+                <p className="current-balance">
+                    Số dư hiện tại của bạn là <strong>{formatCurrency(balance)}</strong>
+                </p>
+            </div>
+
+            <div className="wallet-deposit-card">
+                {/* Payment Method Section */}
+                <div className="payment-method-section">
+                    <div className="payment-method-header">
+                        <div className="vnpay-icon-wrapper">
+                            <span className="vnpay-text">VNPAY</span>
+                        </div>
+                        <div className="payment-method-info">
+                            <div className="payment-method-title">Nạp tiền qua VNPAY</div>
+                            <div className="no-fee-badge">Miễn phí giao dịch</div>
+                        </div>
+                    </div>
                 </div>
 
-                {error && (
-                    <div className="error-message">{error}</div>
-                )}
+                <form className="wallet-deposit-form" onSubmit={handleSubmit}>
+                    {/* Amount Input */}
+                    <div className="form-group">
+                        <label className="form-label">Nhập số tiền nạp</label>
+                        <div className="amount-input-wrapper">
+                            <span className="currency-symbol">₫</span>
+                            <input
+                                type="text"
+                                value={displayAmount}
+                                onChange={(e) => {
+                                    const numericValue = formatInputAmount(e.target.value);
+                                    setAmount(numericValue);
+                                    setError("");
+                                }}
+                                className="amount-input"
+                                placeholder="0"
+                            />
+                        </div>
+                    </div>
 
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="submit-button"
-                >
-                    {loading ? "Đang chuyển đến VNPay..." : "Thanh toán qua VNPay"}
-                </button>
-            </form>
+                    {/* Quick Amount Buttons */}
+                    <div className="quick-amount-section">
+                        {quickAmounts.map((quickAmount) => (
+                            <button
+                                key={quickAmount}
+                                type="button"
+                                className={`quick-amount-btn ${amount === quickAmount.toString() || parseInt(amount) === quickAmount ? "active" : ""}`}
+                                onClick={() => handleQuickAmount(quickAmount)}
+                            >
+                                {formatCurrency(quickAmount)}
+                            </button>
+                        ))}
+                    </div>
+
+                    {error && (
+                        <div className="error-message">{error}</div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading || !amount || parseInt(amount) < 1000}
+                        className="continue-button"
+                    >
+                        {loading ? "Đang chuyển hướng..." : "Tiếp tục"}
+                    </button>
+                </form>
+
+                {/* Security Info */}
+                <div className="security-info">
+                    <Lock size={16} />
+                    <span>Kết nối SSL bảo mật</span>
+                </div>
+            </div>
         </div>
     );
 }
