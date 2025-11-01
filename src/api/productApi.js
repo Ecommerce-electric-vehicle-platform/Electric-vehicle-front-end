@@ -124,7 +124,12 @@ export function normalizeProduct(item) {
         price,
         description: item.description ?? "",
         locationTrading: item.locationTrading ?? item.location_trading ?? "Toàn quốc",
-        verified: Boolean(item.verified),
+        // Verified: chỉ true khi đã được admin duyệt (APPROVED) và verified === true
+        verified: Boolean(
+            item.verified && 
+            item.verifiedDecisionStatus === "APPROVED"
+        ),
+        verifiedDecisionStatus: item.verifiedDecisionStatus,
         createdAt: item.createdAt || item.created_at || new Date().toISOString(),
         updatedAt: item.updatedAt || item.updated_at || item.created_at || item.createdAt || new Date().toISOString(),
         isSold: Boolean(item.is_sold),
