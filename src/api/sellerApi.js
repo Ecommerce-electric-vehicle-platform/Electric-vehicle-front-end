@@ -235,6 +235,30 @@ const sellerApi = {
     }
   },
 
+  // Lấy danh sách đơn hàng đang chờ xử lý (pending orders)
+  getPendingOrders: async (page = 0, size = 10) => {
+    try {
+      const response = await axiosInstance.get('/api/v1/seller/pending-orders', {
+        params: { page, size }
+      });
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching pending orders:", error);
+      throw error;
+    }
+  },
+
+  // Xác nhận (verify) một đơn hàng đang chờ
+  verifyOrder: async (orderId) => {
+    try {
+      const response = await axiosInstance.post(`/api/v1/seller/verify-order/${orderId}`);
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error verifying order:", error);
+      throw error;
+    }
+  },
+
   // Lấy thống kê seller
   getSellerStatistics: async () => {
     try {
