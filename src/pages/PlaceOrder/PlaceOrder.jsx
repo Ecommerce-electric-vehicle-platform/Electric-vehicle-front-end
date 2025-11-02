@@ -53,6 +53,9 @@ function PlaceOrder() {
     // API data states
     const [shippingPartners, setShippingPartners] = useState([]);
     const [showShippingOptions, setShowShippingOptions] = useState(false);
+    // State để track shipping fee đã được fetch từ API hay chưa
+    const [shippingFeeFromAPI, setShippingFeeFromAPI] = useState(false);
+    const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
 
     // Sử dụng custom hook để quản lý số dư ví
     const { balance: walletBalance, loading: walletLoading, error: walletError, refreshBalance: refreshWalletBalance, formatCurrency: formatWalletCurrency } = useWalletBalance();
@@ -610,37 +613,171 @@ function PlaceOrder() {
         const wardName = wards.find(w => w.value === wardId)?.label || '';
         const paymentId = orderData.paymentId || 2;
 
-        if (!postId || !provinceName || !districtName || !wardName) return; // Chưa đủ thông tin
+        if (!postId || !provinceName || !districtName || !wardName) {
+            // Reset flag nếu chưa đủ thông tin
+            setShippingFeeFromAPI(false);
+            return;
+        }
 
+        setShippingFeeLoading(true);
         try {
             const res = await getShippingFee({ postId, provinceName, districtName, wardName, provinceId, districtId, wardId, paymentId });
-            // Chuẩn hóa nhiều định dạng đáp ứng từ BE
-            const raw = res?.data ?? res ?? {};
-            const data = raw?.data ?? raw;
-            const fee = Number(
-                data?.shippingFee ??
-                data?.fee ??
-                data?.total ??
-                raw?.total ??
-                raw?.shippingFee ??
-                0
-            );
 
-            setOrderData(prev => ({
-                ...prev,
-                shippingFee: fee,
-                // Map thêm thông tin chi tiết nếu có (phục vụ UI hiển thị)
-                shipping_base_fee: Number(data?.service_fee ?? prev.shipping_base_fee ?? 0),
-                shipping_per_km_fee: Number(prev.shipping_per_km_fee ?? 0),
-                final_price: (prev.total_price || 0) + fee,
-            }));
+            // Log đầy đủ response để debug
+            console.log('🔍 Full Shipping Fee API Response Analysis:', {
+                fullResponse: res,
+                res_success: res?.success,
+                res_data: res?.data,
+                res_data_total: res?.data?.total,
+                res_data_shippingFee: res?.data?.shippingFee,
+                res_data_data: res?.data?.data,
+                res_data_data_total: res?.data?.data?.total,
+                res_total: res?.total,
+                res_shippingFee: res?.shippingFee,
+                structure: {
+                    hasSuccess: !!res?.success,
+                    hasData: !!res?.data,
+                    dataType: typeof res?.data,
+                    isDataObject: res?.data && typeof res?.data === 'object' && !Array.isArray(res?.data),
+                    dataHasTotal: !!res?.data?.total,
+                    dataHasShippingFee: !!res?.data?.shippingFee,
+                    dataHasData: !!res?.data?.data,
+                    dataDataHasTotal: !!res?.data?.data?.total
+                }
+            });
+
+            // Chuẩn hóa nhiều định dạng đáp ứng từ BE
+            // Response structure có thể là:
+            // Case 1: { success: true, data: { total: "561000", ... } }
+            // Case 2: { data: { total: "561000", ... } }
+            // Case 3: { total: "561000", ... } (direct)
+            // Case 4: { success: true, data: { data: { total: "561000", ... } } }
+
+            let fee = 0;
+            let extractedFrom = '';
+            let raw = null;
+            let data = null;
+
+            // Xử lý theo nhiều response structure
+            if (res?.data?.total) {
+                // Case 1: { success: true, data: { total: "561000", ... } }
+                raw = res.data;
+                data = raw;
+                fee = Number(res.data.total);
+                extractedFrom = 'res.data.total';
+            } else if (res?.data?.shippingFee) {
+                raw = res.data;
+                data = raw;
+                fee = Number(res.data.shippingFee);
+                extractedFrom = 'res.data.shippingFee';
+            } else if (res?.data?.data?.total) {
+                // Case 4: Nested data structure
+                raw = res.data;
+                data = res.data.data;
+                fee = Number(res.data.data.total);
+                extractedFrom = 'res.data.data.total';
+            } else if (res?.data?.fee) {
+                raw = res.data;
+                data = raw;
+                fee = Number(res.data.fee);
+                extractedFrom = 'res.data.fee';
+            } else if (res?.total) {
+                // Case 3: Direct field
+                raw = res;
+                data = res;
+                fee = Number(res.total);
+                extractedFrom = 'res.total';
+            } else if (res?.shippingFee) {
+                raw = res;
+                data = res;
+                fee = Number(res.shippingFee);
+                extractedFrom = 'res.shippingFee';
+            } else {
+                // Fallback: Try old logic
+                raw = res?.data ?? res ?? {};
+                data = raw?.data ?? raw;
+                fee = Number(
+                    data?.total ??
+                    data?.shippingFee ??
+                    data?.fee ??
+                    raw?.total ??
+                    raw?.shippingFee ??
+                    0
+                );
+                extractedFrom = 'fallback';
+                console.warn('⚠️ Using fallback extraction logic. Response structure may be unexpected:', res);
+            }
+
+            // Tính tổng phí chi tiết để verify
+            const serviceFee = Number(data?.service_fee ?? 0);
+            const codFee = Number(data?.cod_fee ?? 0);
+            const insuranceFee = Number(data?.insurance_fee ?? 0);
+            const pickRemoteFee = Number(data?.pick_remote_areas_fee ?? 0);
+            const deliverRemoteFee = Number(data?.deliver_remote_areas_fee ?? 0);
+            const calculatedTotal = serviceFee + codFee + insuranceFee + pickRemoteFee + deliverRemoteFee;
+
+            console.log('💰 Extracted shipping fee:', {
+                fee: fee,
+                extractedFrom: extractedFrom,
+                rawValue: res?.data?.total ?? res?.data?.shippingFee ?? res?.data?.fee ?? res?.total ?? res?.shippingFee,
+                paymentId: paymentId,
+                isCOD: paymentId === 1,
+                breakdown: {
+                    service_fee: serviceFee,
+                    cod_fee: codFee,
+                    insurance_fee: insuranceFee,
+                    pick_remote_areas_fee: pickRemoteFee,
+                    deliver_remote_areas_fee: deliverRemoteFee,
+                    calculatedTotal: calculatedTotal,
+                    matchesTotal: Math.abs(calculatedTotal - fee) < 100 ? '✅ MATCH' : '⚠️ MISMATCH',
+                    difference: Math.abs(calculatedTotal - fee)
+                },
+                verification: {
+                    extractedFee: fee,
+                    calculatedFromBreakdown: calculatedTotal,
+                    match: Math.abs(calculatedTotal - fee) < 100,
+                    postmanValue: '561000',  // Giá trị từ Postman để so sánh
+                    matchesPostman: fee === 561000 ? '✅' : '⚠️'
+                }
+            });
+
+            setOrderData(prev => {
+                const oldShippingFee = prev.shippingFee;
+                console.log('📝 Setting shippingFee in orderData (refreshShippingFee):', {
+                    old: oldShippingFee,
+                    new: fee,
+                    extractedFrom: extractedFrom,
+                    source: 'refreshShippingFee',
+                    timestamp: new Date().toISOString(),
+                    changed: oldShippingFee !== fee,
+                    difference: fee - (oldShippingFee || 0)
+                });
+
+                return {
+                    ...prev,
+                    shippingFee: fee,
+                    // Map thêm thông tin chi tiết nếu có (phục vụ UI hiển thị)
+                    shipping_base_fee: Number(data?.service_fee ?? prev.shipping_base_fee ?? 0),
+                    shipping_per_km_fee: Number(prev.shipping_per_km_fee ?? 0),
+                    final_price: (prev.total_price || 0) + fee,
+                };
+            });
+
+            // Đánh dấu shippingFee đã được fetch từ API thành công
+            setShippingFeeFromAPI(true);
         } catch (e) {
-            console.warn('Failed to fetch shipping fee, fallback to 50000:', e);
+            console.error('❌ Failed to fetch shipping fee from API:', e);
+            // KHÔNG dùng fallback 50000 - chỉ giữ giá trị hiện tại nếu có
+            // Hoặc set về 0 để hiển thị "Đang tính..."
             setOrderData(prev => ({
                 ...prev,
-                shippingFee: prev.shippingFee || 50000,
-                final_price: (prev.total_price || 0) + (prev.shippingFee || 50000)
+                // Chỉ giữ giá trị cũ nếu đã có, không set fallback 50000
+                shippingFee: prev.shippingFee || 0,
+                final_price: (prev.total_price || 0) + (prev.shippingFee || 0)
             }));
+            setShippingFeeFromAPI(false);
+        } finally {
+            setShippingFeeLoading(false);
         }
     }, [orderData.postProductId, orderData.paymentId, orderData.provinceId, orderData.districtId, orderData.wardId, selectedProvince, selectedDistrict, selectedWard, product?.id, provinces, districts, wards]);
 
@@ -729,13 +866,207 @@ function PlaceOrder() {
         setIsSubmitting(true);
 
         try {
+            // QUAN TRỌNG: Gọi lại API getShippingFee ngay trước khi place order
+            // để đảm bảo phí ship chính xác và mới nhất
+            // Backend có thể tính lại phí ship khác với lần gọi trước
+            let finalShippingFee = Number(orderData.shippingFee || 0);
+
+            try {
+                const postId = orderData.postProductId || product?.postId || product?.id;
+                const provinceId = (orderData.provinceId || selectedProvince) || '';
+                const districtId = (orderData.districtId || selectedDistrict) || '';
+                const wardId = (orderData.wardId || selectedWard) || '';
+                const provinceName = provinces.find(p => p.value === provinceId)?.label || '';
+                const districtName = districts.find(d => d.value === districtId)?.label || '';
+                const wardName = wards.find(w => w.value === wardId)?.label || '';
+                const paymentId = orderData.paymentId || 2;
+
+                if (postId && provinceName && districtName && wardName) {
+                    console.log('🔄 Fetching latest shipping fee before place order...', {
+                        postId,
+                        provinceName,
+                        districtName,
+                        wardName,
+                        paymentId,
+                        currentShippingFee: finalShippingFee
+                    });
+
+                    const shippingFeeResponse = await getShippingFee({
+                        postId,
+                        provinceName,
+                        districtName,
+                        wardName,
+                        provinceId,
+                        districtId,
+                        wardId,
+                        paymentId
+                    });
+
+                    // Log đầy đủ response để debug
+                    console.log('🔍 Latest Shipping Fee API Response Analysis:', {
+                        fullResponse: shippingFeeResponse,
+                        res_success: shippingFeeResponse?.success,
+                        res_data: shippingFeeResponse?.data,
+                        res_data_total: shippingFeeResponse?.data?.total,
+                        res_data_shippingFee: shippingFeeResponse?.data?.shippingFee,
+                        res_data_data: shippingFeeResponse?.data?.data,
+                        res_data_data_total: shippingFeeResponse?.data?.data?.total,
+                        res_total: shippingFeeResponse?.total,
+                        res_shippingFee: shippingFeeResponse?.shippingFee,
+                        structure: {
+                            hasSuccess: !!shippingFeeResponse?.success,
+                            hasData: !!shippingFeeResponse?.data,
+                            dataType: typeof shippingFeeResponse?.data,
+                            isDataObject: shippingFeeResponse?.data && typeof shippingFeeResponse?.data === 'object' && !Array.isArray(shippingFeeResponse?.data),
+                            dataHasTotal: !!shippingFeeResponse?.data?.total,
+                            dataHasShippingFee: !!shippingFeeResponse?.data?.shippingFee,
+                            dataHasData: !!shippingFeeResponse?.data?.data,
+                            dataDataHasTotal: !!shippingFeeResponse?.data?.data?.total
+                        }
+                    });
+
+                    // Robust extraction với nhiều response structure
+                    let latestFee = 0;
+                    let extractedFrom = '';
+                    let raw = null;
+                    let data = null;
+
+                    // Xử lý theo nhiều response structure (giống logic ở trên)
+                    if (shippingFeeResponse?.data?.total) {
+                        raw = shippingFeeResponse.data;
+                        data = raw;
+                        latestFee = Number(shippingFeeResponse.data.total);
+                        extractedFrom = 'shippingFeeResponse.data.total';
+                    } else if (shippingFeeResponse?.data?.shippingFee) {
+                        raw = shippingFeeResponse.data;
+                        data = raw;
+                        latestFee = Number(shippingFeeResponse.data.shippingFee);
+                        extractedFrom = 'shippingFeeResponse.data.shippingFee';
+                    } else if (shippingFeeResponse?.data?.data?.total) {
+                        raw = shippingFeeResponse.data;
+                        data = shippingFeeResponse.data.data;
+                        latestFee = Number(shippingFeeResponse.data.data.total);
+                        extractedFrom = 'shippingFeeResponse.data.data.total';
+                    } else if (shippingFeeResponse?.data?.fee) {
+                        raw = shippingFeeResponse.data;
+                        data = raw;
+                        latestFee = Number(shippingFeeResponse.data.fee);
+                        extractedFrom = 'shippingFeeResponse.data.fee';
+                    } else if (shippingFeeResponse?.total) {
+                        raw = shippingFeeResponse;
+                        data = shippingFeeResponse;
+                        latestFee = Number(shippingFeeResponse.total);
+                        extractedFrom = 'shippingFeeResponse.total';
+                    } else if (shippingFeeResponse?.shippingFee) {
+                        raw = shippingFeeResponse;
+                        data = shippingFeeResponse;
+                        latestFee = Number(shippingFeeResponse.shippingFee);
+                        extractedFrom = 'shippingFeeResponse.shippingFee';
+                    } else {
+                        // Fallback
+                        raw = shippingFeeResponse?.data ?? shippingFeeResponse ?? {};
+                        data = raw?.data ?? raw;
+                        latestFee = Number(
+                            data?.total ??
+                            data?.shippingFee ??
+                            data?.fee ??
+                            raw?.total ??
+                            raw?.shippingFee ??
+                            finalShippingFee
+                        );
+                        extractedFrom = 'fallback';
+                        console.warn('⚠️ Using fallback extraction logic for latest fee:', shippingFeeResponse);
+                    }
+
+                    // Tính tổng phí chi tiết để verify
+                    const serviceFee = Number(data?.service_fee ?? 0);
+                    const codFee = Number(data?.cod_fee ?? 0);
+                    const insuranceFee = Number(data?.insurance_fee ?? 0);
+                    const pickRemoteFee = Number(data?.pick_remote_areas_fee ?? 0);
+                    const deliverRemoteFee = Number(data?.deliver_remote_areas_fee ?? 0);
+                    const calculatedTotal = serviceFee + codFee + insuranceFee + pickRemoteFee + deliverRemoteFee;
+
+                    console.log('💰 Latest shipping fee extracted:', {
+                        fee: latestFee,
+                        extractedFrom: extractedFrom,
+                        rawValue: shippingFeeResponse?.data?.total ?? shippingFeeResponse?.data?.shippingFee ?? shippingFeeResponse?.data?.fee ?? shippingFeeResponse?.total ?? shippingFeeResponse?.shippingFee,
+                        paymentId: paymentId,
+                        isCOD: paymentId === 1,
+                        breakdown: {
+                            service_fee: serviceFee,
+                            cod_fee: codFee,
+                            insurance_fee: insuranceFee,
+                            pick_remote_areas_fee: pickRemoteFee,
+                            deliver_remote_areas_fee: deliverRemoteFee,
+                            calculatedTotal: calculatedTotal,
+                            matchesTotal: Math.abs(calculatedTotal - latestFee) < 100 ? '✅ MATCH' : '⚠️ MISMATCH',
+                            difference: Math.abs(calculatedTotal - latestFee)
+                        },
+                        verification: {
+                            extractedFee: latestFee,
+                            calculatedFromBreakdown: calculatedTotal,
+                            match: Math.abs(calculatedTotal - latestFee) < 100,
+                            previousFee: finalShippingFee,
+                            changed: latestFee !== finalShippingFee,
+                            difference: latestFee - finalShippingFee
+                        }
+                    });
+
+                    if (latestFee !== finalShippingFee) {
+                        console.warn('⚠️ Shipping fee changed between calls!', {
+                            old: finalShippingFee,
+                            new: latestFee,
+                            difference: latestFee - finalShippingFee,
+                            currentPaymentId: paymentId,
+                            response: {
+                                total: data?.total,
+                                service_fee: data?.service_fee,
+                                cod_fee: data?.cod_fee,
+                                pick_remote_areas_fee: data?.pick_remote_areas_fee
+                            }
+                        });
+                    }
+
+                    finalShippingFee = latestFee;
+                    console.log('✅ Latest shipping fee:', finalShippingFee);
+
+                    // Cập nhật lại orderData để hiển thị đúng
+                    setOrderData(prev => {
+                        const oldShippingFee = prev.shippingFee;
+                        console.log('📝 Setting shippingFee in orderData (before place order):', {
+                            old: oldShippingFee,
+                            new: finalShippingFee,
+                            extractedFrom: extractedFrom,
+                            source: 'beforePlaceOrder',
+                            timestamp: new Date().toISOString(),
+                            changed: oldShippingFee !== finalShippingFee,
+                            difference: finalShippingFee - (oldShippingFee || 0)
+                        });
+
+                        return {
+                            ...prev,
+                            shippingFee: finalShippingFee,
+                            final_price: (prev.total_price || 0) + finalShippingFee
+                        };
+                    });
+                } else {
+                    console.warn('⚠️ Cannot fetch latest shipping fee - missing address info');
+                }
+            } catch (shippingError) {
+                console.error('⚠️ Error fetching latest shipping fee, using cached value:', shippingError);
+                // Vẫn dùng giá trị cũ nếu không fetch được
+            }
+
             // Tính toán giá trước khi gửi để đảm bảo tính nhất quán
             const productPrice = Number(orderData.total_price || product?.price || 0);
-            const shippingFeeValue = Number(orderData.shippingFee || 0);
+            const shippingFeeValue = finalShippingFee; // Sử dụng giá mới nhất
             const totalPriceValue = productPrice + shippingFeeValue;
 
             // Chuẩn bị dữ liệu theo format API
-            // QUAN TRỌNG: Gửi kèm giá để backend lưu đúng giá user đã thấy
+            // QUAN TRỌNG: 
+            // 1. Backend PHẢI sử dụng shippingFee từ request (không tự tính lại)
+            // 2. shippingFee này đã được tính từ API /api/v1/shipping/shipping-fee
+            // 3. Backend không nên tự gọi lại GHN API trong placeOrder()
             const apiOrderData = {
                 postProductId: orderData.postProductId || product?.postId || product?.id,        // ID sản phẩm
                 username: orderData.username || localStorage.getItem('username') || '',
@@ -747,22 +1078,42 @@ function PlaceOrder() {
                 phoneNumber: orderData.phoneNumber || '',            // Số điện thoại
                 shippingPartnerId: Number(orderData.shippingPartnerId || 0), // ID đối tác vận chuyển
                 paymentId: Number(orderData.paymentId || 0),                 // ID phương thức thanh toán
-                // Gửi kèm giá để backend lưu chính xác (nếu backend hỗ trợ)
-                // Backend có thể ignore nếu không hỗ trợ, nhưng vẫn nên gửi
-                productPrice: productPrice,                          // Giá sản phẩm tại thời điểm đặt hàng
-                shippingFee: shippingFeeValue,                       // Phí ship đã tính và hiển thị cho user
-                totalPrice: totalPriceValue                          // Tổng giá (để backend verify)
+                // ✅ BẮT BUỘC: Backend phải sử dụng shippingFee này (đã tính từ API /api/v1/shipping/shipping-fee)
+                // ⚠️ Backend KHÔNG nên tự tính lại từ GHN API trong placeOrder()
+                shippingFee: shippingFeeValue,                       // Phí ship đã tính từ API và hiển thị cho user
+                productPrice: productPrice,                          // Giá sản phẩm tại thời điểm đặt hàng (optional)
+                totalPrice: totalPriceValue                          // Tổng giá (optional, để backend verify)
             };
 
             console.log('🚀 Sending order data to API:', apiOrderData);
-            console.log('💰 Price breakdown:', {
+            console.log('💰 Price breakdown (BEFORE place order):', {
                 productPrice: productPrice,
                 shippingFee: shippingFeeValue,
                 totalPrice: totalPriceValue,
                 source: {
                     orderData_total_price: orderData.total_price,
                     product_price: product?.price,
-                    orderData_shippingFee: orderData.shippingFee
+                    orderData_shippingFee: orderData.shippingFee,
+                    finalShippingFee: finalShippingFee,
+                    shippingFee_from_orderData: orderData.shippingFee,
+                    shippingFee_used: shippingFeeValue
+                },
+                verification: {
+                    shippingFee_sent_to_backend: shippingFeeValue,
+                    shippingFee_displayed_to_user: orderData.shippingFee,
+                    match: shippingFeeValue === orderData.shippingFee ? '✅ MATCH' : '⚠️ DIFFERENT'
+                },
+                backend_note: {
+                    message: 'Backend PHẢI sử dụng shippingFee từ request (không tự tính lại)',
+                    shippingFee_source: 'API /api/v1/shipping/shipping-fee',
+                    shippingFee_value: shippingFeeValue,
+                    warning: 'Backend không nên gọi lại GHN API trong placeOrder()',
+                    important: 'Nếu Backend tự tính lại, sẽ ra giá KHÁC (ví dụ: 616000 vs 561000)'
+                },
+                comparison: {
+                    api_shipping_fee: shippingFeeValue,  // Giá từ API /shipping-fee
+                    expected_in_database: shippingFeeValue,  // Giá cần lưu vào DB
+                    warning: 'Backend place-order KHÔNG nên tự tính lại. Phải dùng giá này!'
                 }
             });
 
@@ -1430,7 +1781,13 @@ function PlaceOrder() {
                                     <div className="info-item">
                                         <span className="info-label">Phí vận chuyển:</span>
                                         <span className="info-value">
-                                            {formatCurrency(orderData.shippingFee || 50000)}
+                                            {shippingFeeLoading ? (
+                                                <span className="text-muted-foreground">Đang tính...</span>
+                                            ) : shippingFeeFromAPI && orderData.shippingFee > 0 ? (
+                                                formatCurrency(orderData.shippingFee)
+                                            ) : (
+                                                <span className="text-muted-foreground">Chưa có</span>
+                                            )}
                                         </span>
                                     </div>
                                     {orderData.shipped_at && (
@@ -1586,7 +1943,13 @@ function PlaceOrder() {
                                         <div className="flex items-center justify-between text-sm">
                                             <span className="text-muted-foreground">Phí vận chuyển</span>
                                             <div className="text-right">
-                                                <span className="font-medium text-foreground">{formatCurrency(orderData.shippingFee)}</span>
+                                                {shippingFeeLoading ? (
+                                                    <span className="text-muted-foreground">Đang tính...</span>
+                                                ) : shippingFeeFromAPI && orderData.shippingFee > 0 ? (
+                                                    <span className="font-medium text-foreground">{formatCurrency(orderData.shippingFee)}</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">Chưa có</span>
+                                                )}
                                             </div>
                                         </div>
 
