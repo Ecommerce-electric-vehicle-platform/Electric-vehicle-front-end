@@ -1,5 +1,6 @@
 import axiosInstance from "./axiosInstance";
 import { searchInProduct, sortProductsByRelevance } from "../utils/textUtils";
+import { fetchPostProducts, normalizeProduct } from "./productApi";
 
 /**
  * 🔍 Tìm kiếm sản phẩm toàn diện từ BE
@@ -47,8 +48,13 @@ export async function searchProducts({ query, page = 1, size = 50 } = {}) {
             data?.page?.totalElements ??
             (Array.isArray(items) ? items.length : 0);
 
+        // Normalize all products to ensure proper ID structure
+        const normalizedItems = (Array.isArray(items) ? items : []).map(item => {
+            return normalizeProduct(item);
+        }).filter(Boolean); // Remove null items (invalid products)
+
         return {
-            items: Array.isArray(items) ? items : [],
+            items: normalizedItems,
             totalPages: Number(totalPages) || 1,
             totalElements: Number(totalElements) || 0,
             raw,
@@ -102,5 +108,3 @@ export async function quickSearch(query) {
     }
 }
 
-// Import normalizeProduct từ productApi
-import { fetchPostProducts, normalizeProduct } from "./productApi";

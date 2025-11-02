@@ -23,7 +23,8 @@ import { vehicleProducts, batteryProducts, formatCurrency } from '../../test-moc
 import {
     getShippingPartners,
     placeOrder,
-    getShippingFee
+    getShippingFee,
+    getOrderDetails
 } from '../../api/orderApi';
 import { normalizePhoneNumber, isValidVietnamPhoneNumber, formatPhoneForAPI } from '../../utils/format';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
@@ -111,6 +112,8 @@ function PlaceOrder() {
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderId, setOrderId] = useState(null);
+    // State để lưu order details từ API sau khi đặt hàng thành công
+    const [orderDetailsFromAPI, setOrderDetailsFromAPI] = useState(null);
 
     // Hàm tạo mã đơn hàng
     const generateOrderCode = () => {
@@ -1181,16 +1184,58 @@ function PlaceOrder() {
 
                 setOrderId(newOrderId);
 
-                // Cập nhật orderData với thông tin đơn hàng mới
-                setOrderData(prev => ({
-                    ...prev,
-                    order_code: finalOrderCode,
-                    order_status: orderData.paymentId === 2 ? 'PAID' : 'PENDING_PAYMENT',
-                    created_at: currentTime,
-                    paid_at: orderData.paymentId === 2 ? currentTime : '',
-                    transaction_id: response.data?.transactionId || `TXN${Date.now()}`,
-                    shipping_partner: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Giao hàng nhanh'
-                }));
+                // Fetch order details từ API để lấy shipping fee chính xác
+                try {
+                    console.log('📦 Fetching order details for shipping fee, orderId:', newOrderId);
+                    const orderDetailsResponse = await getOrderDetails(newOrderId);
+                    if (orderDetailsResponse?.success && orderDetailsResponse?.data) {
+                        const details = orderDetailsResponse.data;
+                        console.log('✅ Order details fetched:', details);
+                        console.log('💰 Shipping fee from API:', details.shippingFee);
+
+                        // Lưu order details để hiển thị
+                        setOrderDetailsFromAPI(details);
+
+                        // Cập nhật orderData với shipping fee chính xác từ API
+                        setOrderData(prev => ({
+                            ...prev,
+                            order_code: finalOrderCode,
+                            order_status: orderData.paymentId === 2 ? 'PAID' : 'PENDING_PAYMENT',
+                            created_at: currentTime,
+                            paid_at: orderData.paymentId === 2 ? currentTime : '',
+                            transaction_id: response.data?.transactionId || `TXN${Date.now()}`,
+                            shipping_partner: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Giao hàng nhanh',
+                            // Cập nhật shipping fee từ API
+                            shippingFee: details.shippingFee || prev.shippingFee || 0,
+                            total_price: details.price || prev.total_price || 0,
+                            final_price: details.finalPrice || (details.price + details.shippingFee) || prev.final_price || 0
+                        }));
+                    } else {
+                        console.warn('⚠️ Failed to fetch order details, using cached values');
+                        // Vẫn cập nhật orderData nhưng không có shipping fee từ API
+                        setOrderData(prev => ({
+                            ...prev,
+                            order_code: finalOrderCode,
+                            order_status: orderData.paymentId === 2 ? 'PAID' : 'PENDING_PAYMENT',
+                            created_at: currentTime,
+                            paid_at: orderData.paymentId === 2 ? currentTime : '',
+                            transaction_id: response.data?.transactionId || `TXN${Date.now()}`,
+                            shipping_partner: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Giao hàng nhanh'
+                        }));
+                    }
+                } catch (orderDetailsError) {
+                    console.error('❌ Error fetching order details:', orderDetailsError);
+                    // Vẫn tiếp tục với cached values
+                    setOrderData(prev => ({
+                        ...prev,
+                        order_code: finalOrderCode,
+                        order_status: orderData.paymentId === 2 ? 'PAID' : 'PENDING_PAYMENT',
+                        created_at: currentTime,
+                        paid_at: orderData.paymentId === 2 ? currentTime : '',
+                        transaction_id: response.data?.transactionId || `TXN${Date.now()}`,
+                        shipping_partner: shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Giao hàng nhanh'
+                    }));
+                }
 
                 // Lưu đơn hàng vào localStorage để có thể theo dõi
                 const newOrder = {
@@ -2001,13 +2046,27 @@ function PlaceOrder() {
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between text-sm">
                                             <span className="text-muted-foreground">Giá sản phẩm</span>
-                                            <span className="font-medium text-foreground">{formatCurrency(orderData.total_price)}</span>
+                                            <span className="font-medium text-foreground">
+                                                {currentStep === 3 && orderDetailsFromAPI ? (
+                                                    // Sau khi đặt hàng thành công, ưu tiên dùng price từ API
+                                                    formatCurrency(orderDetailsFromAPI.price || orderData.total_price)
+                                                ) : (
+                                                    formatCurrency(orderData.total_price)
+                                                )}
+                                            </span>
                                         </div>
 
                                         <div className="flex items-center justify-between text-sm">
                                             <span className="text-muted-foreground">Phí vận chuyển</span>
                                             <div className="text-right">
-                                                {shippingFeeLoading ? (
+                                                {currentStep === 3 && orderDetailsFromAPI ? (
+                                                    // Sau khi đặt hàng thành công, ưu tiên dùng shipping fee từ API
+                                                    orderDetailsFromAPI.shippingFee > 0 ? (
+                                                        <span className="font-medium text-foreground">{formatCurrency(orderDetailsFromAPI.shippingFee)}</span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">Miễn phí</span>
+                                                    )
+                                                ) : shippingFeeLoading ? (
                                                     <span className="text-muted-foreground">Đang tính...</span>
                                                 ) : shippingFeeFromAPI && orderData.shippingFee > 0 ? (
                                                     <span className="font-medium text-foreground">{formatCurrency(orderData.shippingFee)}</span>
@@ -2021,7 +2080,14 @@ function PlaceOrder() {
 
                                         <div className="flex items-center justify-between">
                                             <span className="font-semibold text-foreground">Tổng cộng</span>
-                                            <span className="text-2xl font-bold text-foreground">{formatCurrency(orderData.final_price)}</span>
+                                            <span className="text-2xl font-bold text-foreground">
+                                                {currentStep === 3 && orderDetailsFromAPI ? (
+                                                    // Sau khi đặt hàng thành công, ưu tiên dùng finalPrice từ API
+                                                    formatCurrency(orderDetailsFromAPI.finalPrice || orderDetailsFromAPI.price + orderDetailsFromAPI.shippingFee)
+                                                ) : (
+                                                    formatCurrency(orderData.final_price)
+                                                )}
+                                            </span>
                                         </div>
                                     </div>
 

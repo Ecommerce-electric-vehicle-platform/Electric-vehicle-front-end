@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Heart,
@@ -24,8 +24,8 @@ import { fetchPostProductById } from '../../api/productApi';
 import { NotificationModal } from '../../components/NotificationModal/NotificationModal';
 import './ProductDetail.css';
 import { Breadcrumbs } from '../../components/Breadcrumbs/Breadcrumbs';
-import { toggleFavorite, isFavorite } from '../../utils/favorites';
 import sellerApi from '../../api/sellerApi';
+import { addToWishlist, removeFromWishlist, fetchWishlist } from '../../api/wishlistApi';
 
 function ProductDetail() {
     const { id } = useParams();
@@ -42,6 +42,7 @@ function ProductDetail() {
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [notificationType, setNotificationType] = useState('login'); // 'login' hoặc 'purchase'
     const [fav, setFav] = useState(false);
+    const [wishlistLoading, setWishlistLoading] = useState(false);
 
     // Helper functions
     const formatPrice = (price) => {
@@ -71,6 +72,92 @@ function ProductDetail() {
         setIsGuest(!hasToken);
     }, []);
 
+    // Check xem product có trong wishlist không
+    const checkWishlistStatus = useCallback(async (postId) => {
+        if (!postId || isGuest) {
+            setFav(false);
+            return;
+        }
+
+        try {
+            setWishlistLoading(true);
+            // Fetch wishlist với size lớn để check
+            const result = await fetchWishlist({ page: 0, size: 100 });
+            const productId = Number(postId);
+            const isInWishlist = (result.items || []).some(
+                item => Number(item.postId || item.id) === productId
+            );
+            setFav(isInWishlist);
+        } catch (err) {
+            console.error('[ProductDetail] Error checking wishlist status:', err);
+            setFav(false);
+        } finally {
+            setWishlistLoading(false);
+        }
+    }, [isGuest]);
+
+    // Re-check wishlist status khi isGuest thay đổi hoặc product thay đổi
+    useEffect(() => {
+        if (product && !isGuest) {
+            checkWishlistStatus(product.postId || product.id);
+        } else {
+            setFav(false);
+        }
+    }, [isGuest, product?.postId, product?.id, checkWishlistStatus, product]);
+
+    // Toggle wishlist (add hoặc remove)
+    const handleToggleFavorite = async () => {
+        if (isGuest) {
+            handleRequireLogin();
+            return;
+        }
+
+        if (!product || !product.postId) {
+            console.error('[ProductDetail] Cannot toggle favorite: missing product or postId');
+            return;
+        }
+
+        try {
+            setWishlistLoading(true);
+            const postId = product.postId || product.id;
+
+            if (fav) {
+                // Remove from wishlist - cần tìm wishlistId
+                const result = await fetchWishlist({ page: 0, size: 100 });
+                const wishlistItem = (result.items || []).find(
+                    item => Number(item.postId || item.id) === Number(postId)
+                );
+
+                if (wishlistItem && wishlistItem.wishlistId) {
+                    await removeFromWishlist(wishlistItem.wishlistId);
+                    setFav(false);
+                    console.log('[ProductDetail] Removed from wishlist');
+                } else {
+                    console.warn('[ProductDetail] Could not find wishlistId to remove');
+                }
+            } else {
+                // Add to wishlist
+                const result = await addToWishlist({
+                    postId: Number(postId),
+                    priority: "LOW",
+                    note: ""
+                });
+                if (result.success) {
+                    setFav(true);
+                    console.log('[ProductDetail] Added to wishlist');
+                } else {
+                    console.error('[ProductDetail] Failed to add to wishlist:', result.message);
+                }
+            }
+        } catch (err) {
+            console.error('[ProductDetail] Error toggling favorite:', err);
+            const errorMsg = err?.response?.data?.message || err?.message || "Không thể cập nhật danh sách yêu thích";
+            alert(errorMsg);
+        } finally {
+            setWishlistLoading(false);
+        }
+    };
+
     // Tải sản phẩm theo ID từ BE
     useEffect(() => {
         let mounted = true;
@@ -81,12 +168,35 @@ function ProductDetail() {
                 console.log('[ProductDetail] Received product from API:', p);
                 console.log('[ProductDetail] Product ID:', p?.id, 'Type:', typeof p?.id);
                 console.log('[ProductDetail] Product postId:', p?.postId);
+                console.log('[ProductDetail] Product full data:', {
+                    id: p?.id,
+                    postId: p?.postId,
+                    title: p?.title,
+                    price: p?.price,
+                    images: p?.images?.length,
+                    sellerId: p?.sellerId
+                });
+
                 if (!mounted) return;
+
+                // Kiểm tra product có dữ liệu hợp lệ không
+                if (!p) {
+                    console.error('[ProductDetail] Product is null after fetch');
+                    setProduct(null);
+                    setSeller(null);
+                    return;
+                }
+
                 setProduct(p);
-                if (p) setFav(isFavorite(p.id));
+                // Wishlist status sẽ được check trong useEffect riêng
                 // Seller sẽ được fetch trong useEffect thứ hai dựa trên product.postId
             } catch (error) {
                 console.error('[ProductDetail] Error in useEffect:', error);
+                console.error('[ProductDetail] Error details:', {
+                    message: error?.message,
+                    response: error?.response?.data,
+                    status: error?.response?.status
+                });
                 if (!mounted) return;
                 setProduct(null);
                 setSeller(null);
@@ -106,7 +216,25 @@ function ProductDetail() {
         }
 
         // Ưu tiên postId, nếu không có thì mới dùng id
-        const pid = product.postId || product.id;
+        let pid = product.postId || product.id;
+
+        // Validate và convert postId
+        if (pid != null) {
+            const pidStr = String(pid).trim();
+            const pidNum = Number(pidStr);
+
+            // Kiểm tra xem có phải là số hợp lệ không (số nguyên dương, không phải số thập phân lạ)
+            if (isNaN(pidNum) || pidNum <= 0 || !Number.isInteger(pidNum)) {
+                console.error('[ProductDetail] Invalid product ID detected:', pid, 'Type:', typeof pid, 'Product:', product);
+                setSeller(null);
+                setSellerError("INVALID_ID");
+                setSellerLoading(false);
+                return;
+            }
+
+            // Đảm bảo pid là số nguyên
+            pid = pidNum;
+        }
 
         if (!pid) {
             console.warn('[ProductDetail] Product has no postId or id, cannot fetch seller. Product:', product);
@@ -271,22 +399,24 @@ function ProductDetail() {
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <button
                             onClick={() => {
-                                if (isGuest) {
-                                    handleRequireLogin();
-                                } else {
-                                    const added = toggleFavorite({ ...product, type: product.batteryType ? 'battery' : 'vehicle' });
-                                    setFav(added);
-                                }
+                                handleToggleFavorite();
                             }}
+                            disabled={wishlistLoading}
                             style={{
                                 padding: "8px",
                                 border: "none",
                                 background: "transparent",
-                                cursor: "pointer",
+                                cursor: wishlistLoading ? "wait" : "pointer",
                                 color: fav ? "#ef4444" : "#6b7280",
+                                opacity: wishlistLoading ? 0.6 : 1,
                             }}
+                            title={wishlistLoading ? "Đang xử lý..." : (fav ? "Xóa khỏi yêu thích" : "Thêm vào yêu thích")}
                         >
-                            <Heart fill={fav ? "#ef4444" : "none"} />
+                            {wishlistLoading ? (
+                                <span style={{ fontSize: "16px" }}>⏳</span>
+                            ) : (
+                                <Heart fill={fav ? "#ef4444" : "none"} />
+                            )}
                         </button>
                         <button style={{ padding: "8px", border: "none", background: "transparent", cursor: "pointer" }}>
                             <Share2 />
@@ -596,22 +726,24 @@ function ProductDetail() {
                                         </div>
                                         <button
                                             onClick={() => {
-                                                if (isGuest) {
-                                                    handleRequireLogin();
-                                                } else {
-                                                    const added = toggleFavorite({ ...product, type: product.batteryType ? 'battery' : 'vehicle' });
-                                                    setFav(added);
-                                                }
+                                                handleToggleFavorite();
                                             }}
+                                            disabled={wishlistLoading}
                                             style={{
                                                 padding: "8px",
                                                 border: "none",
                                                 background: "transparent",
-                                                cursor: "pointer",
+                                                cursor: wishlistLoading ? "wait" : "pointer",
                                                 color: fav ? "#ef4444" : "#6b7280",
+                                                opacity: wishlistLoading ? 0.6 : 1,
                                             }}
+                                            title={wishlistLoading ? "Đang xử lý..." : (fav ? "Xóa khỏi yêu thích" : "Thêm vào yêu thích")}
                                         >
-                                            <Heart fill={fav ? "#ef4444" : "none"} />
+                                            {wishlistLoading ? (
+                                                <span style={{ fontSize: "16px" }}>⏳</span>
+                                            ) : (
+                                                <Heart fill={fav ? "#ef4444" : "none"} />
+                                            )}
                                         </button>
                                     </div>
 
@@ -781,115 +913,391 @@ function ProductDetail() {
                                     </button>
                                 </div>
 
-                                {/* Seller Information box (real data) */}
-                                <section style={{ marginBottom: 16, padding: 16, background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb' }}>
-                                    <h3 style={{ marginBottom: 8, fontWeight: 600 }}>Seller Information</h3>
-                                    {sellerLoading ? (
-                                        <p>Loading seller info…</p>
-                                    ) : sellerError ? (
-                                        <p style={{ color: '#ef4444' }}>Không tìm thấy thông tin người bán.</p>
-                                    ) : seller ? (
-                                        <div
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={() => seller?.sellerId && navigate(`/seller/${seller.sellerId}`, { state: { sellerPrefetch: seller } })}
-                                            style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: seller?.sellerId ? 'pointer' : 'not-allowed', padding: 12, borderRadius: 8, border: '1px solid #10b981' }}
-                                        >
-                                            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 20, color: '#fff' }}>{(seller.storeName || seller.sellerName || 'S')[0]}</div>
-                                            <div>
-                                                <span style={{ fontWeight: 600 }}>{seller.storeName || seller.sellerName || 'Seller'}</span>
-                                                {seller.status && <span style={{ marginLeft: 8, padding: '2px 8px', fontSize: 12, background: '#e0f9ef', borderRadius: 4 }}>{seller.status}</span>}
-                                                <div style={{ fontSize: 13, color: '#64748b' }}>{seller.home || seller.nationality || ''}</div>
-                                            </div>
-                                        </div>
-                                    ) : null}
-                                </section>
-
-                                {/* FAQ */}
-                                <div
+                                {/* Thông tin người bán - Design chuyên nghiệp */}
+                                <section
                                     style={{
-                                        padding: "24px",
-                                        borderRadius: "12px",
-                                        border: "1px solid #e5e7eb",
-                                        backgroundColor: "#fff",
+                                        marginBottom: 24,
+                                        position: 'relative',
+                                        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                                        borderRadius: 16,
+                                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                        overflow: 'hidden',
                                     }}
                                 >
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                        <button
-                                            style={{
-                                                width: "100%",
-                                                padding: "8px 16px",
-                                                borderRadius: "8px",
-                                                border: "1px solid #e5e7eb",
-                                                backgroundColor: "transparent",
-                                                cursor: "pointer",
-                                                textAlign: "left",
-                                                fontSize: "14px",
-                                            }}
-                                        >
-                                            Sản phẩm này còn không?
-                                        </button>
-                                        <button
-                                            style={{
-                                                width: "100%",
-                                                padding: "8px 16px",
-                                                borderRadius: "8px",
-                                                border: "1px solid #e5e7eb",
-                                                backgroundColor: "transparent",
-                                                cursor: "pointer",
-                                                textAlign: "left",
-                                                fontSize: "14px",
-                                            }}
-                                        >
-                                            Bạn có ship hàng không?
-                                        </button>
-                                        <button
-                                            style={{
-                                                width: "100%",
-                                                padding: "8px 16px",
-                                                borderRadius: "8px",
-                                                border: "1px solid #e5e7eb",
-                                                backgroundColor: "transparent",
-                                                cursor: "pointer",
-                                                textAlign: "left",
-                                                fontSize: "14px",
-                                            }}
-                                        >
-                                            Sản phẩm còn bảo hành không?
-                                        </button>
-                                    </div>
-                                </div>
+                                    {/* Animated border effect */}
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            height: '3px',
+                                            background: 'linear-gradient(90deg, #10b981, #3b82f6, #10b981)',
+                                            backgroundSize: '200% 100%',
+                                            animation: 'gradientShift 3s ease infinite',
+                                        }}
+                                    />
 
-                                {/* Safety Tips */}
+                                    <div style={{ padding: '16px' }}>
+                                        <h3
+                                            style={{
+                                                marginBottom: 12,
+                                                fontWeight: 700,
+                                                fontSize: '16px',
+                                                color: '#1f2937',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px'
+                                            }}
+                                        >
+                                            <User size={18} style={{ color: '#10b981' }} />
+                                            Thông tin người bán
+                                        </h3>
+
+                                        {sellerLoading ? (
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '12px',
+                                                padding: '16px',
+                                                background: '#f9fafb',
+                                                borderRadius: '12px'
+                                            }}>
+                                                <div
+                                                    style={{
+                                                        width: '16px',
+                                                        height: '16px',
+                                                        border: '3px solid #e5e7eb',
+                                                        borderTop: '3px solid #10b981',
+                                                        borderRadius: '50%',
+                                                        animation: 'spin 0.8s linear infinite'
+                                                    }}
+                                                />
+                                                <span style={{ color: '#6b7280', fontSize: '14px' }}>Đang tải thông tin người bán...</span>
+                                            </div>
+                                        ) : sellerError === 'INVALID_ID' ? (
+                                            <div style={{
+                                                padding: '16px',
+                                                background: '#fef2f2',
+                                                borderRadius: '12px',
+                                                border: '1px solid #fecaca'
+                                            }}>
+                                                <p style={{ color: '#dc2626', fontSize: '14px', margin: 0 }}>
+                                                    ⚠️ Lỗi: ID sản phẩm không hợp lệ. Vui lòng thử lại sau.
+                                                </p>
+                                            </div>
+                                        ) : sellerError ? (
+                                            <div style={{
+                                                padding: '16px',
+                                                background: '#fef2f2',
+                                                borderRadius: '12px',
+                                                border: '1px solid #fecaca'
+                                            }}>
+                                                <p style={{ color: '#dc2626', fontSize: '14px', margin: 0 }}>
+                                                    ⚠️ Không tìm thấy thông tin người bán.
+                                                </p>
+                                            </div>
+                                        ) : seller ? (
+                                            <div
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={() => seller?.sellerId && navigate(`/seller/${seller.sellerId}`, { state: { sellerPrefetch: seller } })}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                                    e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(16, 185, 129, 0.3)';
+                                                    const glow = e.currentTarget.querySelector('[data-glow]');
+                                                    if (glow) glow.style.opacity = '1';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                                                    const glow = e.currentTarget.querySelector('[data-glow]');
+                                                    if (glow) glow.style.opacity = '0';
+                                                }}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 12,
+                                                    cursor: seller?.sellerId ? 'pointer' : 'not-allowed',
+                                                    padding: '12px 14px',
+                                                    borderRadius: 10,
+                                                    border: '1.5px solid #10b981',
+                                                    background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)',
+                                                    transition: 'all 0.3s ease',
+                                                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
+                                                    position: 'relative',
+                                                    overflow: 'hidden'
+                                                }}
+                                            >
+                                                {/* Hover glow effect */}
+                                                <div
+                                                    data-glow
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '-50%',
+                                                        left: '-50%',
+                                                        width: '200%',
+                                                        height: '200%',
+                                                        background: 'radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%)',
+                                                        opacity: 0,
+                                                        transition: 'opacity 0.3s ease',
+                                                        pointerEvents: 'none',
+                                                        zIndex: 0
+                                                    }}
+                                                />
+
+                                                {/* Avatar với gradient background */}
+                                                <div style={{
+                                                    width: 48,
+                                                    height: 48,
+                                                    borderRadius: '50%',
+                                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontWeight: 700,
+                                                    fontSize: 20,
+                                                    color: '#fff',
+                                                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+                                                    position: 'relative',
+                                                    zIndex: 1,
+                                                    flexShrink: 0
+                                                }}>
+                                                    {(seller.storeName || seller.sellerName || 'N')[0].toUpperCase()}
+                                                </div>
+
+                                                <div style={{ flex: 1, position: 'relative', zIndex: 1, minWidth: 0 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                                                        <span style={{
+                                                            fontWeight: 600,
+                                                            fontSize: '15px',
+                                                            color: '#1f2937',
+                                                            lineHeight: '1.4',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis'
+                                                        }}>
+                                                            {seller.storeName || seller.sellerName || 'Người bán'}
+                                                        </span>
+                                                        {seller.status && (
+                                                            <span
+                                                                style={{
+                                                                    padding: '3px 8px',
+                                                                    fontSize: '10px',
+                                                                    fontWeight: 600,
+                                                                    background: seller.status === 'ACCEPTED'
+                                                                        ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)'
+                                                                        : '#fef3c7',
+                                                                    color: seller.status === 'ACCEPTED' ? '#065f46' : '#92400e',
+                                                                    borderRadius: 5,
+                                                                    textTransform: 'uppercase',
+                                                                    letterSpacing: '0.3px',
+                                                                    border: seller.status === 'ACCEPTED'
+                                                                        ? '1px solid #10b981'
+                                                                        : '1px solid #fbbf24',
+                                                                    whiteSpace: 'nowrap',
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '3px'
+                                                                }}
+                                                            >
+                                                                <span>✓</span>
+                                                                <span>{seller.status === 'ACCEPTED' ? 'Đã xác thực' : seller.status}</span>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{
+                                                        fontSize: 13,
+                                                        color: '#64748b',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
+                                                        <MapPin size={12} style={{ flexShrink: 0 }} />
+                                                        <span>{seller.home || seller.nationality || 'Địa chỉ chưa cập nhật'}</span>
+                                                    </div>
+                                                </div>
+
+                                                {seller?.sellerId && (
+                                                    <ChevronRight
+                                                        size={18}
+                                                        style={{
+                                                            color: '#10b981',
+                                                            opacity: 0.5,
+                                                            transition: 'all 0.2s ease',
+                                                            flexShrink: 0
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.opacity = '1';
+                                                            e.currentTarget.style.transform = 'translateX(3px)';
+                                                        }}
+                                                    />
+                                                )}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </section>
+
+                                {/* Câu hỏi thường gặp */}
                                 <div
                                     style={{
                                         padding: "24px",
-                                        borderRadius: "12px",
-                                        border: "1px solid rgba(16, 185, 129, 0.2)",
-                                        backgroundColor: "rgba(16, 185, 129, 0.05)",
+                                        borderRadius: "16px",
+                                        border: "1px solid rgba(59, 130, 246, 0.2)",
+                                        background: "linear-gradient(135deg, #ffffff 0%, #eff6ff 100%)",
+                                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                                     }}
                                 >
                                     <h3
-                                        style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px", fontWeight: 600 }}
+                                        style={{
+                                            marginBottom: 16,
+                                            fontWeight: 700,
+                                            fontSize: '18px',
+                                            color: '#1f2937',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}
                                     >
-                                        <Shield size={16} />
-                                        Lưu ý an toàn
+                                        <Info size={20} style={{ color: '#3b82f6' }} />
+                                        Câu hỏi thường gặp
+                                    </h3>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                        {[
+                                            "Sản phẩm này còn không?",
+                                            "Bạn có ship hàng không?",
+                                            "Sản phẩm còn bảo hành không?"
+                                        ].map((question, index) => (
+                                            <button
+                                                key={index}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)';
+                                                    e.currentTarget.style.borderColor = '#3b82f6';
+                                                    e.currentTarget.style.transform = 'translateX(4px)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = '#ffffff';
+                                                    e.currentTarget.style.borderColor = '#e5e7eb';
+                                                    e.currentTarget.style.transform = 'translateX(0)';
+                                                }}
+                                                style={{
+                                                    width: "100%",
+                                                    padding: "12px 16px",
+                                                    borderRadius: "10px",
+                                                    border: "1.5px solid #e5e7eb",
+                                                    backgroundColor: "#ffffff",
+                                                    cursor: "pointer",
+                                                    textAlign: "left",
+                                                    fontSize: "14px",
+                                                    fontWeight: 500,
+                                                    color: '#374151',
+                                                    transition: 'all 0.2s ease',
+                                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px'
+                                                }}
+                                            >
+                                                <span style={{ color: '#3b82f6' }}>💬</span>
+                                                {question}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Lưu ý an toàn */}
+                                <div
+                                    style={{
+                                        padding: "24px",
+                                        borderRadius: "16px",
+                                        border: "2px solid rgba(16, 185, 129, 0.3)",
+                                        background: "linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(236, 253, 245, 0.5) 100%)",
+                                        boxShadow: "0 4px 6px -1px rgba(16, 185, 129, 0.2)",
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}
+                                >
+                                    {/* Decorative corner accent */}
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            right: 0,
+                                            width: '100px',
+                                            height: '100px',
+                                            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%)',
+                                            borderRadius: '0 16px 0 100px',
+                                        }}
+                                    />
+
+                                    <h3
+                                        style={{
+                                            marginBottom: 16,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "10px",
+                                            fontWeight: 700,
+                                            fontSize: '18px',
+                                            color: '#065f46',
+                                            position: 'relative',
+                                            zIndex: 1
+                                        }}
+                                    >
+                                        <Shield size={20} style={{ color: '#10b981' }} />
+                                        Lưu ý an toàn khi mua hàng
                                     </h3>
                                     <ul
                                         style={{
                                             display: "flex",
                                             flexDirection: "column",
-                                            gap: "8px",
+                                            gap: "12px",
                                             fontSize: "14px",
-                                            color: "#6b7280",
+                                            color: "#374151",
                                             paddingLeft: 0,
                                             listStyle: "none",
+                                            position: 'relative',
+                                            zIndex: 1
                                         }}
                                     >
-                                        <li>• Luôn kiểm tra xe trực tiếp</li>
-                                        <li>• Xác minh giấy tờ pháp lý</li>
-                                        <li>• Không chuyển tiền trước</li>
-                                        <li>• Gặp tại nơi công cộng</li>
+                                        {[
+                                            "Luôn kiểm tra sản phẩm trực tiếp",
+                                            "Xác minh giấy tờ pháp lý đầy đủ",
+                                            "Không chuyển tiền trước khi nhận hàng",
+                                            "Gặp mặt tại nơi công cộng, an toàn"
+                                        ].map((tip, index) => (
+                                            <li
+                                                key={index}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '10px',
+                                                    padding: '8px 12px',
+                                                    background: 'rgba(255, 255, 255, 0.6)',
+                                                    borderRadius: '8px',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+                                                    e.currentTarget.style.transform = 'translateX(4px)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
+                                                    e.currentTarget.style.transform = 'translateX(0)';
+                                                }}
+                                            >
+                                                <span style={{
+                                                    color: '#10b981',
+                                                    fontSize: '16px',
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    ✓
+                                                </span>
+                                                <span style={{ fontWeight: 500 }}>{tip}</span>
+                                            </li>
+                                        ))}
                                     </ul>
                                 </div>
                             </div>

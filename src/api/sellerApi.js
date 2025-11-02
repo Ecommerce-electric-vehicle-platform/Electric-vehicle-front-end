@@ -272,9 +272,22 @@ const sellerApi = {
 
   // Lấy seller theo postId
   getSellerByProductId: async (postId) => {
-    if (!postId) return null;
+    if (!postId) {
+      console.warn('[sellerApi] getSellerByProductId called with null/undefined postId');
+      return null;
+    }
+
+    // Validate postId - phải là số nguyên dương hoặc string hợp lệ
+    const pidStr = String(postId).trim();
+    const pidNum = Number(pidStr);
+
+    if (isNaN(pidNum) || pidNum <= 0 || !Number.isInteger(pidNum)) {
+      console.error('[sellerApi] Invalid postId format:', postId, 'Type:', typeof postId);
+      return null;
+    }
+
     try {
-      const response = await axiosInstance.get(`/api/v1/post-product/${postId}/seller`);
+      const response = await axiosInstance.get(`/api/v1/post-product/${pidNum}/seller`);
       if (!response?.data?.success || !response.data?.data) return null;
       const raw = response.data.data;
       return {
