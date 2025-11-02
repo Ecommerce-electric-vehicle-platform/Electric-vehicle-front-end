@@ -23,30 +23,78 @@ export default function OrderReview() {
         async function load() {
             setLoading(true);
             try {
-                // Load order details
-                const data = await getOrderDetails(orderId);
-                if (mounted) setOrder(data?.data || data || null);
+                // Load order details từ API
+                const orderDetailRes = await getOrderDetails(orderId);
+
+                if (orderDetailRes.success && orderDetailRes.data) {
+                    const orderDetailData = orderDetailRes.data;
+
+                    // Map từ order detail API response sang format của OrderReview
+                    const orderData = {
+                        id: orderDetailData.id || orderId,
+                        orderCode: orderDetailData.orderCode || String(orderId),
+                        productName: orderDetailData._raw?.productName || 'Sản phẩm trong đơn hàng',
+                        productImage: orderDetailData._raw?.productImage || '/vite.svg',
+                        createdAt: orderDetailData.createdAt || new Date().toISOString(),
+                        status: orderDetailData.status || 'pending',
+                        price: orderDetailData.price || 0,
+                        shippingFee: orderDetailData.shippingFee || 0,
+                        finalPrice: orderDetailData.finalPrice || 0,
+                        _raw: orderDetailData._raw || {}
+                    };
+
+                    if (mounted) setOrder(orderData);
+                } else {
+                    // Fallback: nếu API fail, tạo order data tối thiểu
+                    if (mounted) setOrder({
+                        id: orderId,
+                        orderCode: String(orderId),
+                        productName: 'Sản phẩm trong đơn hàng',
+                        productImage: '/vite.svg',
+                        createdAt: new Date().toISOString(),
+                        status: 'pending'
+                    });
+                }
 
                 // Load existing review nếu có
                 const rawId = location?.state?.orderIdRaw;
                 const checkId = rawId ?? orderId;
-                const reviewData = await getOrderReview(checkId);
-                if (reviewData && reviewData.hasReview && reviewData.review && mounted) {
-                    setExistingReview(reviewData.review);
-                    setIsViewMode(true);
-                    // Pre-fill form với dữ liệu review đã có
-                    setRating(Number(reviewData.review.rating ?? 0));
-                    setFeedback(String(reviewData.review.feedback ?? ''));
-                    // Load review images nếu có
-                    if (Array.isArray(reviewData.review.reviewImages) && reviewData.review.reviewImages.length > 0) {
-                        const imageUrls = reviewData.review.reviewImages.map(img =>
-                            typeof img === 'string' ? img : (img.imageUrl || img.url || '')
-                        ).filter(Boolean);
-                        setPictures(imageUrls);
+
+                try {
+                    const reviewData = await getOrderReview(checkId);
+                    if (reviewData && reviewData.hasReview && reviewData.review && mounted) {
+                        setExistingReview(reviewData.review);
+                        setIsViewMode(true);
+                        // Pre-fill form với dữ liệu review đã có
+                        setRating(Number(reviewData.review.rating ?? 0));
+                        setFeedback(String(reviewData.review.feedback ?? ''));
+                        // Load review images nếu có
+                        if (Array.isArray(reviewData.review.reviewImages) && reviewData.review.reviewImages.length > 0) {
+                            const imageUrls = reviewData.review.reviewImages.map(img =>
+                                typeof img === 'string' ? img : (img.imageUrl || img.url || '')
+                            ).filter(Boolean);
+                            setPictures(imageUrls);
+                        }
                     }
+                } catch (reviewError) {
+                    console.warn('[OrderReview] Failed to load existing review:', reviewError);
                 }
-            } catch {
-                // ignore; show minimal header using orderId
+
+                // Check view mode từ location state
+                if (location?.state?.viewMode && mounted) {
+                    setIsViewMode(true);
+                }
+            } catch (error) {
+                console.error('[OrderReview] Error loading order details:', error);
+                // Fallback: tạo order data tối thiểu
+                if (mounted) setOrder({
+                    id: orderId,
+                    orderCode: String(orderId),
+                    productName: 'Sản phẩm trong đơn hàng',
+                    productImage: '/vite.svg',
+                    createdAt: new Date().toISOString(),
+                    status: 'pending'
+                });
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -66,7 +114,10 @@ export default function OrderReview() {
             const submitOrderId = Number(rawId ?? orderId); // đảm bảo gửi dạng số đúng với BE
             console.log('[OrderReview] Submitting review with orderId =', submitOrderId, 'rating =', Number(rating), 'feedbackLen =', feedback.trim().length);
             await createOrderReview({ orderId: submitOrderId, rating: Number(rating), feedback: feedback.trim(), pictures });
-            navigate('/orders', { replace: true, state: { toast: 'Cảm ơn bạn đã đánh giá!' } });
+
+            // Quay về trang trước đó (từ location.state.from) hoặc fallback về /orders
+            const returnPath = location?.state?.from || '/orders';
+            navigate(returnPath, { replace: true, state: { toast: 'Cảm ơn bạn đã đánh giá!' } });
         } catch (err) {
             alert('Gửi đánh giá thất bại. Vui lòng thử lại.');
             console.error(err);

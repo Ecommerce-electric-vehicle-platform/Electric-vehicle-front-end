@@ -42,7 +42,33 @@ export function saveAuthData(data) {
     console.log("[AuthUtils] Detected BUYER role");
   }
 
-  // --- B4: Bắn event cho FE cập nhật Header / Navbar ---
+  // --- B4: Cleanup orders trong localStorage của user cũ khi login user mới ---
+  // QUAN TRỌNG: localStorage orders phải được filter theo username hiện tại
+  // Khi login user mới, xóa orders của user cũ để tránh hiển thị sai
+  try {
+    if (username) {
+      const allOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      if (Array.isArray(allOrders) && allOrders.length > 0) {
+        // Chỉ giữ orders của user hiện tại
+        const userOrders = allOrders.filter(order => {
+          if (!order) return false;
+          const orderUsername = order.username || order.userId || order.createdBy || '';
+          return orderUsername === username;
+        });
+
+        // Nếu có orders không thuộc user hiện tại, xóa chúng
+        if (userOrders.length !== allOrders.length) {
+          const removedCount = allOrders.length - userOrders.length;
+          console.log(`[AuthUtils] Cleaned up ${removedCount} orders from localStorage that don't belong to user ${username}`);
+          localStorage.setItem('orders', JSON.stringify(userOrders));
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[AuthUtils] Failed to cleanup localStorage orders:', e);
+  }
+
+  // --- B5: Bắn event cho FE cập nhật Header / Navbar ---
   window.dispatchEvent(new CustomEvent("authStatusChanged"));
   console.log("[AuthUtils] Auth data saved successfully");
 }
