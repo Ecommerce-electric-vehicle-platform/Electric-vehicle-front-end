@@ -445,3 +445,64 @@ export const hasOrderReview = async (orderId) => {
         return false;
     }
 };
+
+// Get order status from shipping service
+// GET /api/v1/shipping/order/{orderId}/status
+// Response: { success: true, message: "string", data: {}, error: {} }
+export const getOrderStatus = async (orderId) => {
+    try {
+        const response = await axiosInstance.get(`/api/v1/shipping/order/${orderId}/status`);
+        const raw = response?.data ?? {};
+
+        // Extract status from response
+        // The data field may contain status information
+        const data = raw?.data ?? {};
+
+        // Normalize status from backend to frontend format
+        // Backend status: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
+        // Frontend status: pending, confirmed, shipping, delivered, cancelled
+        const rawStatus = String(data?.status || raw?.status || '').toUpperCase();
+        let normalizedStatus = 'pending';
+
+        if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') {
+            normalizedStatus = 'pending';
+        } else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') {
+            normalizedStatus = 'confirmed';
+        } else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') {
+            normalizedStatus = 'shipping';
+        } else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') {
+            normalizedStatus = 'delivered';
+        } else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') {
+            normalizedStatus = 'cancelled';
+        }
+
+        return {
+            success: raw?.success !== false,
+            message: raw?.message || '',
+            status: normalizedStatus,
+            rawStatus: rawStatus,
+            data: {
+                ...data,
+                status: normalizedStatus,
+                rawStatus: rawStatus
+            },
+            error: raw?.error || null
+        };
+    } catch (error) {
+        console.error('Error fetching order status:', error);
+
+        // If 404, order might not exist in shipping service yet
+        if (error?.response?.status === 404) {
+            return {
+                success: false,
+                message: 'Order not found in shipping service',
+                status: null,
+                rawStatus: null,
+                data: null,
+                error: 'NOT_FOUND'
+            };
+        }
+
+        throw error;
+    }
+};
