@@ -142,10 +142,11 @@ export const toggleUserActive = async (userId, active) => {
 
 
 // ===== Disputes Management =====
-export const listDisputes = async (page = 0, size = 10, status) => {
+// GET /api/v1/dispute - Lấy danh sách pending disputes
+export const getDisputes = async (page = 0, size = 10) => {
   try {
-    const res = await adminAxios.get(`/api/v1/admin/disputes`, {
-      params: { page, size, status },
+    const res = await adminAxios.get(`/api/v1/dispute`, {
+      params: { page, size },
     });
     return res.data;
   } catch (error) {
@@ -154,15 +155,39 @@ export const listDisputes = async (page = 0, size = 10, status) => {
   }
 };
 
-export const resolveDispute = async (disputeId, resolution) => {
+// GET /api/v1/dispute/{disputeId} - Lấy chi tiết một dispute
+export const getDisputeDetail = async (disputeId) => {
   try {
-    const res = await adminAxios.post(
-      `/api/v1/admin/disputes/${disputeId}/resolve`,
-      { resolution }
-    );
+    const res = await adminAxios.get(`/api/v1/dispute/${disputeId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy chi tiết dispute:", error);
+    throw error;
+  }
+};
+
+// POST /api/v1/dispute/resolve - Đưa ra decision cho dispute
+export const resolveDispute = async ({
+  disputeId,
+  decision,
+  resolution,
+  resolutionType,
+  refundPercent,
+}) => {
+  try {
+    const res = await adminAxios.post(`/api/v1/dispute/resolve`, {
+      disputeId,
+      decision, // ACCEPTED hoặc REJECTED
+      resolution,
+      resolutionType, // REFUND hoặc REJECTED
+      refundPercent,
+    });
     return res.data;
   } catch (error) {
     console.error("Lỗi khi xử lý dispute:", error);
     throw error;
   }
 };
+
+// Giữ lại API cũ để tương thích (nếu cần)
+export const listDisputes = getDisputes;
