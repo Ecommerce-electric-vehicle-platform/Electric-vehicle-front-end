@@ -17,7 +17,7 @@ import {
     Star,
     MessageSquareWarning
 } from 'lucide-react';
-import { getOrderDetails } from '../../api/orderApi';
+import { getOrderDetails, getOrderStatus } from '../../api/orderApi';
 import './OrderDetail.css';
 
 function OrderDetail() {
@@ -84,6 +84,33 @@ function OrderDetail() {
                 };
 
                 setOrderData(normalized);
+
+                // Cập nhật trạng thái từ API shipping status
+                const realOrderId = normalized.id;
+                if (realOrderId) {
+                    try {
+                        const statusResponse = await getOrderStatus(realOrderId);
+                        if (statusResponse.success && statusResponse.status) {
+                            // Map frontend status back to backend status format
+                            const statusMap = {
+                                'pending': 'PENDING_PAYMENT',
+                                'confirmed': 'PROCESSING',
+                                'shipping': 'SHIPPED',
+                                'delivered': 'DELIVERED',
+                                'cancelled': 'CANCELLED'
+                            };
+                            const backendStatus = statusMap[statusResponse.status] || statusResponse.rawStatus || normalized.order_status;
+
+                            setOrderData(prevData => ({
+                                ...prevData,
+                                order_status: backendStatus
+                            }));
+                        }
+                    } catch (error) {
+                        console.warn('[OrderDetail] Failed to get order status from API:', error);
+                        // Giữ nguyên trạng thái hiện tại nếu API fail
+                    }
+                }
             } catch (err) {
                 setError('Không thể tải thông tin đơn hàng');
                 console.error('Error loading order detail:', err);
@@ -94,6 +121,52 @@ function OrderDetail() {
 
         loadOrderDetail();
     }, [orderId]);
+
+    // Auto-refresh order status định kỳ (mỗi 30 giây)
+    useEffect(() => {
+        if (!orderData) return;
+
+        const refreshStatus = async () => {
+            try {
+                const realOrderId = orderData.id;
+                if (!realOrderId) return;
+
+                console.log('[OrderDetail] Auto-refreshing order status...');
+                const statusResponse = await getOrderStatus(realOrderId);
+
+                if (statusResponse.success && statusResponse.status) {
+                    const statusMap = {
+                        'pending': 'PENDING_PAYMENT',
+                        'confirmed': 'PROCESSING',
+                        'shipping': 'SHIPPED',
+                        'delivered': 'DELIVERED',
+                        'cancelled': 'CANCELLED'
+                    };
+                    const backendStatus = statusMap[statusResponse.status] || statusResponse.rawStatus || orderData.order_status;
+
+                    if (backendStatus !== orderData.order_status) {
+                        console.log(`[OrderDetail] Status updated: ${orderData.order_status} -> ${backendStatus}`);
+                        setOrderData(prevData => ({
+                            ...prevData,
+                            order_status: backendStatus
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.warn('[OrderDetail] Failed to refresh order status:', error);
+            }
+        };
+
+        // Refresh ngay khi orderData được load
+        if (orderData.id) {
+            refreshStatus();
+        }
+
+        // Set interval để refresh mỗi 30 giây
+        const intervalId = setInterval(refreshStatus, 30000); // 30 seconds
+
+        return () => clearInterval(intervalId);
+    }, [orderData?.id]); // Chỉ chạy khi orderId thay đổi
 
     // Hàm format trạng thái đơn hàng
     const getOrderStatusText = (status) => {

@@ -19,7 +19,7 @@ import {
     ShoppingBag
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
-import { getOrderHistory } from '../../api/orderApi';
+import { getOrderHistory, hasOrderReview, getOrderStatus } from '../../api/orderApi';
 // tui có thêm phần này
 import DisputeForm from "../../components/BuyerRaiseDispute/DisputeForm";
 import './OrderList.css';
@@ -176,6 +176,65 @@ function OrderList() {
             const reversed = list.reverse();
             if (isMounted) setOrders(reversed);
 
+            // Cập nhật trạng thái đơn hàng từ API shipping status
+            if (isMounted && reversed.length > 0) {
+                console.log('[OrderList] Updating order statuses from API...');
+                const statusUpdateTasks = reversed.map(async (order) => {
+                    try {
+                        // Lấy orderId thực từ backend (ưu tiên _raw.id, fallback id)
+                        const realOrderId = order._raw?.id ?? order.id;
+                        if (!realOrderId) {
+                            console.warn('[OrderList] No real orderId found for order:', order);
+                            return null;
+                        }
+
+                        // Gọi API để lấy trạng thái mới nhất
+                        const statusResponse = await getOrderStatus(realOrderId);
+                        if (statusResponse.success && statusResponse.status) {
+                            return {
+                                orderId: String(order.id),
+                                realOrderId: realOrderId,
+                                newStatus: statusResponse.status,
+                                rawStatus: statusResponse.rawStatus,
+                                message: statusResponse.message
+                            };
+                        }
+                        return null;
+                    } catch (error) {
+                        // Nếu lỗi 404 hoặc lỗi khác, bỏ qua và giữ nguyên trạng thái hiện tại
+                        console.warn(`[OrderList] Failed to get status for order ${order.id}:`, error);
+                        return null;
+                    }
+                });
+
+                const statusUpdates = await Promise.allSettled(statusUpdateTasks);
+                const validUpdates = statusUpdates
+                    .filter(p => p.status === 'fulfilled' && p.value !== null)
+                    .map(p => p.value);
+
+                if (validUpdates.length > 0 && isMounted) {
+                    console.log('[OrderList] Status updates:', validUpdates);
+                    // Cập nhật trạng thái cho các orders có thay đổi
+                    setOrders(prevOrders => {
+                        return prevOrders.map(order => {
+                            const update = validUpdates.find(u => String(u.orderId) === String(order.id));
+                            if (update && update.newStatus !== order.status) {
+                                console.log(`[OrderList] Updating order ${order.id} status: ${order.status} -> ${update.newStatus}`);
+                                return {
+                                    ...order,
+                                    status: update.newStatus,
+                                    _raw: {
+                                        ...order._raw,
+                                        status: update.rawStatus
+                                    }
+                                };
+                            }
+                            return order;
+                        });
+                    });
+                }
+            }
+
             // tải trạng thái đánh giá cho các đơn đã giao (check theo id thực từ BE)
             const delivered = reversed.filter(o => o.status === 'delivered');
             const tasks = delivered.map(async (o) => {
@@ -230,6 +289,66 @@ function OrderList() {
         window.addEventListener('focus', handleFocus);
         return () => window.removeEventListener('focus', handleFocus);
     }, [loadOrders]);
+
+    // Auto-refresh order statuses định kỳ (mỗi 30 giây)
+    useEffect(() => {
+        if (orders.length === 0) return;
+
+        const refreshStatuses = async () => {
+            console.log('[OrderList] Auto-refreshing order statuses...');
+            const statusUpdateTasks = orders.map(async (order) => {
+                try {
+                    const realOrderId = order._raw?.id ?? order.id;
+                    if (!realOrderId) return null;
+
+                    const statusResponse = await getOrderStatus(realOrderId);
+                    if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
+                        return {
+                            orderId: String(order.id),
+                            newStatus: statusResponse.status,
+                            rawStatus: statusResponse.rawStatus
+                        };
+                    }
+                    return null;
+                } catch {
+                    return null;
+                }
+            });
+
+            const statusUpdates = await Promise.allSettled(statusUpdateTasks);
+            const validUpdates = statusUpdates
+                .filter(p => p.status === 'fulfilled' && p.value !== null)
+                .map(p => p.value);
+
+            if (validUpdates.length > 0) {
+                setOrders(prevOrders => {
+                    return prevOrders.map(order => {
+                        const update = validUpdates.find(u => String(u.orderId) === String(order.id));
+                        if (update && update.newStatus !== order.status) {
+                            return {
+                                ...order,
+                                status: update.newStatus,
+                                _raw: {
+                                    ...order._raw,
+                                    status: update.rawStatus
+                                }
+                            };
+                        }
+                        return order;
+                    });
+                });
+            }
+        };
+
+        // Refresh ngay khi component mount với orders
+        refreshStatuses();
+
+        // Set interval để refresh mỗi 30 giây
+        const intervalId = setInterval(refreshStatuses, 30000); // 30 seconds
+
+        return () => clearInterval(intervalId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [orders.length]); // Chỉ chạy khi số lượng orders thay đổi
 
     // Lọc theo trạng thái + tìm kiếm
     const filteredOrders = orders

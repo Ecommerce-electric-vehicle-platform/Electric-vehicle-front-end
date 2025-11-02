@@ -20,7 +20,7 @@ import {
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
 import OrderStatus from '../../components/OrderStatus/OrderStatus';
 import './OrderTracking.css';
-import { getOrderHistory } from '../../api/orderApi';
+import { getOrderHistory, getOrderStatus } from '../../api/orderApi';
 
 function OrderTracking() {
     const { orderId } = useParams();
@@ -71,29 +71,23 @@ function OrderTracking() {
                 let foundOrder = orders.find(o => String(o.id) === String(orderId));
 
                 if (foundOrder) {
-                    // Giả lập cập nhật trạng thái đơn hàng theo thời gian
-                    const orderDate = new Date(foundOrder.createdAt);
-                    const now = new Date();
-                    const daysDiff = Math.floor((now - orderDate) / (1000 * 60 * 60 * 24));
-
-                    let updatedStatus = foundOrder.status;
-
-                    // Logic cập nhật trạng thái tự động
-                    if (daysDiff >= 0 && foundOrder.status === 'pending') {
-                        updatedStatus = 'confirmed';
-                    }
-                    if (daysDiff >= 1 && foundOrder.status === 'confirmed') {
-                        updatedStatus = 'shipping';
-                    }
-                    if (daysDiff >= 3 && foundOrder.status === 'shipping') {
-                        updatedStatus = 'delivered';
-                    }
-
-                    // Cập nhật trạng thái nếu có thay đổi
-                    if (updatedStatus !== foundOrder.status) {
-                        foundOrder.status = updatedStatus;
-                        const updatedOrders = orders.map(o => o.id === orderId ? foundOrder : o);
-                        localStorage.setItem('orders', JSON.stringify(updatedOrders));
+                    // Cập nhật trạng thái từ API trước
+                    const realOrderId = foundOrder.id || foundOrder.orderId;
+                    if (realOrderId) {
+                        try {
+                            const statusResponse = await getOrderStatus(realOrderId);
+                            if (statusResponse.success && statusResponse.status) {
+                                foundOrder.status = statusResponse.status;
+                                // Cập nhật localStorage nếu có thay đổi
+                                const updatedOrders = orders.map(o =>
+                                    o.id === orderId ? { ...o, status: statusResponse.status } : o
+                                );
+                                localStorage.setItem('orders', JSON.stringify(updatedOrders));
+                            }
+                        } catch (error) {
+                            console.warn('[OrderTracking] Failed to get order status from API:', error);
+                            // Giữ nguyên trạng thái hiện tại nếu API fail
+                        }
                     }
 
                     setOrder(foundOrder);
@@ -106,6 +100,20 @@ function OrderTracking() {
                         const beOrder = byId || byCode || null;
                         if (beOrder) {
                             const mapped = mapHistoryItemToTracking(beOrder);
+
+                            // Cập nhật trạng thái từ API
+                            const realOrderId = beOrder._raw?.id ?? beOrder.id;
+                            if (realOrderId) {
+                                try {
+                                    const statusResponse = await getOrderStatus(realOrderId);
+                                    if (statusResponse.success && statusResponse.status) {
+                                        mapped.status = statusResponse.status;
+                                    }
+                                } catch (error) {
+                                    console.warn('[OrderTracking] Failed to get order status from API:', error);
+                                }
+                            }
+
                             setOrder(mapped);
                         } else {
                             setOrder(null);
@@ -125,6 +133,43 @@ function OrderTracking() {
 
         loadOrder();
     }, [orderId]);
+
+    // Auto-refresh order status định kỳ (mỗi 30 giây)
+    useEffect(() => {
+        if (!order) return;
+
+        const refreshStatus = async () => {
+            try {
+                // Lấy orderId thực từ order
+                const realOrderId = order.id || order._raw?.id;
+                if (!realOrderId) return;
+
+                console.log('[OrderTracking] Auto-refreshing order status...');
+                const statusResponse = await getOrderStatus(realOrderId);
+
+                if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
+                    console.log(`[OrderTracking] Status updated: ${order.status} -> ${statusResponse.status}`);
+                    setOrder(prevOrder => ({
+                        ...prevOrder,
+                        status: statusResponse.status
+                    }));
+                }
+            } catch (error) {
+                console.warn('[OrderTracking] Failed to refresh order status:', error);
+            }
+        };
+
+        // Refresh ngay khi order được load
+        if (order.id) {
+            refreshStatus();
+        }
+
+        // Set interval để refresh mỗi 30 giây
+        const intervalId = setInterval(refreshStatus, 30000); // 30 seconds
+
+        return () => clearInterval(intervalId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [order?.id]); // Chỉ chạy khi orderId thay đổi
 
     function mapHistoryItemToTracking(item) {
         const id = item.id ?? item._raw?.orderCode ?? String(Date.now());
