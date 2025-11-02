@@ -299,7 +299,7 @@ export function Products() {
                                 key={product.id}
                                 product={product}
                                 variant="default"
-                                onViewDetails={(product) => navigate(`/product/${product.id}`)}
+                                onViewDetails={(product) => navigate(`/product/${product.postId ?? product.id}`)}
                                 showActions={true}
                                 showCondition={true}
                                 showLocation={true}

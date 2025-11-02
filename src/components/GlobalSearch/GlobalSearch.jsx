@@ -67,7 +67,7 @@ export function GlobalSearch({
         if (onProductClick) {
             onProductClick(product);
         } else {
-            navigate(`/product/${product.id}`);
+            navigate(`/product/${product.postId ?? product.id}`);
         }
         setShowSuggestionsList(false);
         setQuery('');

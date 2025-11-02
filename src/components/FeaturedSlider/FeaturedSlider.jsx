@@ -44,7 +44,7 @@ export function FeaturedSlider() {
 
   // Xử lý click xem chi tiết
   const handleViewDetails = (product) => {
-    navigate(`/product/${product.id}`)
+    navigate(`/product/${product.postId ?? product.id}`)
   }
 
   // ⚙️ Cấu hình slider
