@@ -186,16 +186,15 @@ function normalizeOrderHistoryItem(item) {
     else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') status = 'delivered';
     else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'cancelled';
 
-    // QUAN TRỌNG: Phân tích từ dữ liệu thực tế:
-    // - Place order: totalPrice = 26450000 (productPrice: 25900000 + shippingFee: 550000)
-    // - Order history từ backend: price = 26450000, shippingFee = 550000
-    // 
-    // KẾT LUẬN: Backend trả về 'price' là TOTAL PRICE (đã bao gồm shippingFee)
-    // KHÔNG PHẢI productPrice!
+    // QUAN TRỌNG: Theo thông tin từ Backend:
+    // - Backend xử lý: 'price' = giá sản phẩm riêng (KHÔNG bao gồm shippingFee)
+    // - Backend xử lý: 'shippingFee' = phí ship riêng
+    // - Frontend xử lý: 'totalPrice' = price + shippingFee (tính và hiển thị)
     // 
     // Vì vậy:
-    // - productPrice = price - shippingFee
-    // - finalPrice = price (KHÔNG cộng thêm shippingFee!)
+    // - productPrice = price (từ backend)
+    // - shippingFee = shippingFee (từ backend)
+    // - finalPrice = productPrice + shippingFee (tính trong frontend)
 
     // Lấy phí ship từ backend response
     const shippingFee = Number(
@@ -206,9 +205,9 @@ function normalizeOrderHistoryItem(item) {
         0
     );
 
-    // Lấy giá từ backend
-    // QUAN TRỌNG: Backend trả về 'price' là totalPrice (đã bao gồm shippingFee)
-    const rawPrice = Number(
+    // Lấy giá sản phẩm từ backend
+    // QUAN TRỌNG: Backend trả về 'price' là PRODUCT PRICE (chưa bao gồm shippingFee)
+    let productPrice = Number(
         item.price ??
         item.productPrice ??
         item.product_price ??
@@ -218,7 +217,7 @@ function normalizeOrderHistoryItem(item) {
     );
 
     // Lấy totalPrice/finalPrice từ backend nếu có (ưu tiên cao nhất)
-    // Nếu backend có trả về finalPrice/totalPrice riêng, dùng nó
+    // Backend có thể không trả về totalPrice (do FE tự tính)
     const backendTotalPrice = Number(
         item.finalPrice ??
         item.final_price ??
@@ -228,57 +227,34 @@ function normalizeOrderHistoryItem(item) {
         0
     );
 
-    let productPrice = 0;
     let finalPrice = 0;
 
     // Logic đơn giản và rõ ràng:
-    // 1. Nếu có backendTotalPrice (finalPrice/totalPrice từ backend) → dùng nó
-    // 2. Nếu không có, giả định rawPrice là totalPrice (theo dữ liệu thực tế)
+    // 1. Nếu có backendTotalPrice từ backend → dùng nó
+    // 2. Nếu không có → tính từ productPrice + shippingFee (theo cách FE xử lý)
 
     if (backendTotalPrice > 0) {
-        // Có finalPrice từ backend, dùng nó
+        // Backend có trả về totalPrice/finalPrice
         finalPrice = backendTotalPrice;
 
-        // Tính productPrice: Nếu rawPrice + shippingFee = backendTotalPrice thì rawPrice là productPrice
-        // Ngược lại, nếu rawPrice = backendTotalPrice thì rawPrice là totalPrice
-        const calculatedTotal = rawPrice + shippingFee;
-        const diff1 = Math.abs(calculatedTotal - backendTotalPrice);
-        const diff2 = Math.abs(rawPrice - backendTotalPrice);
+        // Verify: productPrice + shippingFee có bằng backendTotalPrice không?
+        const calculatedTotal = productPrice + shippingFee;
+        const diff = Math.abs(calculatedTotal - backendTotalPrice);
 
-        if (diff1 < diff2 && diff1 < 100) {
-            // rawPrice + shippingFee ≈ backendTotalPrice → rawPrice là productPrice
-            productPrice = rawPrice;
-        } else if (diff2 < 100) {
-            // rawPrice ≈ backendTotalPrice → rawPrice là totalPrice
-            productPrice = Math.max(0, rawPrice - shippingFee);
-        } else {
-            // Tính từ backendTotalPrice
-            productPrice = Math.max(0, backendTotalPrice - shippingFee);
+        if (diff > 100) {
+            // Có sự khác biệt, log warning
+            console.warn('[orderApi] normalizeOrderHistoryItem - Price mismatch:', {
+                productPrice: productPrice,
+                shippingFee: shippingFee,
+                calculatedTotal: calculatedTotal,
+                backendTotalPrice: backendTotalPrice,
+                difference: diff
+            });
         }
     } else {
-        // KHÔNG có backendTotalPrice
-        // Theo dữ liệu thực tế: backend LUÔN trả về 'price' là TOTAL PRICE (đã bao gồm shippingFee)
-        // Ví dụ: price = 26450000, shippingFee = 550000
-        // → productPrice = 26450000 - 550000 = 25900000
-        // → finalPrice = 26450000 (KHÔNG cộng thêm shippingFee!)
-
-        if (rawPrice > 0 && shippingFee >= 0) {
-            // Kiểm tra hợp lý: rawPrice phải lớn hơn hoặc bằng shippingFee
-            if (rawPrice >= shippingFee) {
-                // rawPrice là totalPrice (đã bao gồm shippingFee)
-                productPrice = rawPrice - shippingFee;
-                finalPrice = rawPrice; // KHÔNG cộng thêm shippingFee
-            } else {
-                // Trường hợp đặc biệt: rawPrice < shippingFee (không hợp lý, nhưng xử lý an toàn)
-                // Giả định rawPrice là productPrice
-                productPrice = rawPrice;
-                finalPrice = rawPrice + shippingFee;
-            }
-        } else {
-            // Trường hợp rawPrice = 0 hoặc không hợp lý
-            productPrice = rawPrice;
-            finalPrice = rawPrice + shippingFee;
-        }
+        // Backend KHÔNG trả về totalPrice
+        // Frontend tự tính: finalPrice = productPrice + shippingFee
+        finalPrice = productPrice + shippingFee;
     }
 
     // Đảm bảo giá không âm và hợp lý
@@ -290,23 +266,24 @@ function normalizeOrderHistoryItem(item) {
         orderCode: item.orderCode || item.order_code,
         orderId: item.id,
         raw: {
-            price: item.price,
+            price: item.price,                    // ← Backend: giá sản phẩm riêng
             productPrice: item.productPrice,
-            shippingFee: item.shippingFee,
+            shippingFee: item.shippingFee,        // ← Backend: phí ship riêng
             finalPrice: item.finalPrice,
             totalPrice: item.totalPrice
         },
         normalized: {
-            productPrice: productPrice,
-            shippingFee: shippingFee,
-            finalPrice: finalPrice
+            productPrice: productPrice,            // ← = price từ backend
+            shippingFee: shippingFee,              // ← = shippingFee từ backend
+            finalPrice: finalPrice                 // ← = productPrice + shippingFee (FE tính)
         },
         calculation: {
-            rawPrice: rawPrice,
-            backendTotalPrice: backendTotalPrice,
-            assumption: backendTotalPrice > 0 ? 'use_backendTotalPrice' : 'rawPrice_is_totalPrice',
-            productPriceCalculation: `${rawPrice} - ${shippingFee} = ${productPrice}`,
-            finalPriceCalculation: backendTotalPrice > 0 ? `backendTotalPrice: ${backendTotalPrice}` : `rawPrice (no add shipping): ${rawPrice}`
+            backendPrice: item.price,              // Giá sản phẩm từ backend
+            backendShippingFee: item.shippingFee,  // Phí ship từ backend
+            backendTotalPrice: backendTotalPrice,  // Tổng giá từ backend (nếu có)
+            calculatedFinalPrice: productPrice + shippingFee, // FE tự tính
+            usedFinalPrice: finalPrice,
+            assumption: backendTotalPrice > 0 ? 'use_backendTotalPrice' : 'calculate_from_productPrice_plus_shippingFee'
         },
         verification: {
             productPrice_plus_shippingFee: productPrice + shippingFee,
@@ -323,26 +300,25 @@ function normalizeOrderHistoryItem(item) {
             productPrice: productPrice,
             shippingFee: shippingFee,
             finalPrice: finalPrice,
-            rawPrice: rawPrice,
+            backendPrice: item.price,
             backendTotalPrice: backendTotalPrice
         });
     }
 
-    // Log ERROR nếu finalPrice không khớp với productPrice + shippingFee (nếu rawPrice là totalPrice)
-    if (backendTotalPrice === 0) {
-        const expectedFinalPrice = productPrice + shippingFee;
-        const diff = Math.abs(finalPrice - expectedFinalPrice);
-        if (diff > 100) {
-            console.error('[orderApi] normalizeOrderHistoryItem - FinalPrice MISMATCH!', {
-                orderCode: item.orderCode || item.order_code,
-                expected: expectedFinalPrice,
-                actual: finalPrice,
-                difference: diff,
-                rawPrice: rawPrice,
-                shippingFee: shippingFee,
-                productPrice: productPrice
-            });
-        }
+    // Log ERROR nếu finalPrice không khớp với productPrice + shippingFee
+    const expectedFinalPrice = productPrice + shippingFee;
+    const diff = Math.abs(finalPrice - expectedFinalPrice);
+    if (diff > 100) {
+        console.error('[orderApi] normalizeOrderHistoryItem - FinalPrice MISMATCH!', {
+            orderCode: item.orderCode || item.order_code,
+            expected: expectedFinalPrice,
+            actual: finalPrice,
+            difference: diff,
+            backendPrice: item.price,
+            productPrice: productPrice,
+            shippingFee: shippingFee,
+            backendTotalPrice: backendTotalPrice
+        });
     }
 
     // Extract thông tin từ response

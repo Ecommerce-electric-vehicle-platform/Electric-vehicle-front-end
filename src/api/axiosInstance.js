@@ -23,7 +23,7 @@ const publicEndpoints = [
   // Post product public endpoints
   //"/api/v1/post-product",
   // Seller public endpoints (view only)
-  
+
 ];
 
 // ===== INTERCEPTOR REQUEST =====
@@ -34,6 +34,25 @@ axiosInstance.interceptors.request.use(async (config) => {
     `[API] ${config.method.toUpperCase()} ${config.url} ${isPublic ? "(public)" : "(authenticated)"
     }`
   );
+
+  // Log request body cho place-order để debug shipping fee
+  if (config.url.includes('/buyer/place-order') && config.data) {
+    console.log('[API] Place Order Request Body:', {
+      postProductId: config.data.postProductId,
+      shippingFee: config.data.shippingFee,  // ← Giá từ API /shipping-fee
+      productPrice: config.data.productPrice,
+      totalPrice: config.data.totalPrice,
+      shippingPartnerId: config.data.shippingPartnerId,
+      paymentId: config.data.paymentId,
+      fullBody: config.data
+    });
+    console.log('⚠️ [IMPORTANT] Backend MUST use shippingFee from request:', {
+      shippingFee_from_request: config.data.shippingFee,
+      source: 'API /api/v1/shipping/shipping-fee',
+      warning: 'Backend should NOT recalculate. If backend recalculates, it will be DIFFERENT!',
+      expected_in_database: config.data.shippingFee
+    });
+  }
 
   if (!isPublic) {
     const authType = localStorage.getItem("authType");
