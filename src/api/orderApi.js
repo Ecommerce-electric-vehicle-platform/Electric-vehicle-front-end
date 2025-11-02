@@ -250,3 +250,33 @@ export const hasOrderReview = async (orderId) => {
         return false;
     }
 };
+// tui thêm 2 api này nha Vy !!!!!!!
+
+// Get cancel reasons
+// GET /api/v1/cancel-order-reason
+export const getCancelReasons = async () => {
+    try {
+        const response = await axiosInstance.get('/api/v1/cancel-order-reason');
+        const raw = response?.data ?? {};
+        return Array.isArray(raw.data) ? raw.data : [];
+    } catch (error) {
+        console.error('Error fetching cancel reasons:', error);
+        throw error;
+    }
+};
+
+// Cancel an order
+// POST /api/v1/order/cancel/{orderId}
+export const cancelOrder = async (orderId, cancelData = {}) => {
+    if (!orderId) throw new Error('orderId is required to cancel order');
+
+    try {
+        const response = await axiosInstance.post(`/api/v1/order/cancel/${orderId}`, cancelData);
+        return response.data;
+    } catch (error) {
+        console.error(`Error cancelling order ${orderId}:`, error);
+        throw error;
+    }
+};
+
+

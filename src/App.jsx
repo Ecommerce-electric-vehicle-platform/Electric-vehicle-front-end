@@ -37,6 +37,8 @@ import { useState, useEffect } from "react";
 import notificationService from "./services/notificationService";
 import WalletDashboard from "./pages/Wallet/WalletDashboard";
 
+import CancelOrderRequest from "./components/CancelOrderModal/CancelOrderRequest";
+
 function AppContent() {
   const location = useLocation();
   const hideChrome =
@@ -154,6 +156,17 @@ function AppContent() {
             </PageTransition>
           }
         />
+
+        <Route
+          path="/cancel-order/:orderId"
+          element={
+            <PageTransition className="fade-up">
+              <CancelOrderRequest />
+            </PageTransition>
+          }
+        />
+
+
         <Route
           path="/order/review/:orderId"
           element={
@@ -282,6 +295,9 @@ function AppContent() {
       {!hideFooter && <Footer />}
     </>
   );
+
+
+
 }
 
 export default function App() {
@@ -291,3 +307,4 @@ export default function App() {
     </Router>
   );
 }
+

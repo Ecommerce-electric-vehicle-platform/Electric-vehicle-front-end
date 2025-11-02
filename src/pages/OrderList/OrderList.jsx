@@ -218,21 +218,21 @@ function OrderList() {
     if (selectedDisputeOrderId !== null) {
         return (
             <div className="dispute-flow-wrapper">
-                <button 
-                    className="btn-back-order-list" 
+                <button
+                    className="btn-back-order-list"
                     onClick={handleCancelDispute}
                     style={{ marginBottom: '15px', padding: '8px 15px', border: '1px solid #ccc', borderRadius: '4px', background: '#f8f9fa' }}
                 >
                     <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
                 </button>
-                <DisputeForm 
-                    initialOrderId={selectedDisputeOrderId} 
+                <DisputeForm
+                    initialOrderId={selectedDisputeOrderId}
                     onCancelDispute={handleCancelDispute} // Thêm prop để form có thể tự thoát
                 />
             </div>
         );
     }
-    
+
     // 2. Nếu đang ở chế độ xem Danh sách đơn hàng
 
     const getStatusInfo = (status) => {
@@ -330,6 +330,14 @@ function OrderList() {
                         >
                             Đã giao ({orders.filter(o => o.status === 'delivered').length})
                         </button>
+
+                        <button
+                            className={`filter-tab ${filter === 'canceled' ? 'active' : ''}`}
+                            onClick={() => setFilter('canceled')}
+                        >
+                            Đã hủy ({orders.filter(o => o.status === 'canceled' || o.status === 'CANCELED').length})
+                        </button>
+
                     </div>
                 </div>
 
