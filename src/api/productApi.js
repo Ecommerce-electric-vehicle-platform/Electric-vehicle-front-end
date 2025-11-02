@@ -45,188 +45,19 @@ export async function fetchPostProducts({ page = 1, size = 12, params = {} } = {
  */
 export async function fetchPostProductById(id) {
     if (id === undefined || id === null) throw new Error("Thiếu id sản phẩm");
-    console.log('[productApi] fetchPostProductById - Received ID:', id, 'Type:', typeof id);
-
-    // Normalize ID để đảm bảo so sánh đúng
-    const normalizedId = String(id).trim();
-
     try {
-        // Thử gọi API với ID được truyền vào
-        // Backend API endpoint: /api/v1/post-product/{postId}
-        // Lưu ý: ID này có thể là postId hoặc id từ URL
-        console.log('[productApi] fetchPostProductById - Calling API with ID:', normalizedId);
-        const response = await axiosInstance.get(`/api/v1/post-product/${normalizedId}`);
-        console.log('[productApi] fetchPostProductById - Full API Response:', response);
-
-        // Backend có thể trả về {success: true, data: {...}} hoặc trực tiếp object
-        const rawData = response?.data;
-
-        // Kiểm tra nếu response có success: true nhưng data: null hoặc có error message
-        // Đây là trường hợp backend trả về lỗi nhưng vẫn status 200
-        if (rawData?.success === true && (rawData?.data === null || rawData?.data === undefined)) {
-            const errorMsg = rawData?.error || rawData?.message || 'Không tìm thấy sản phẩm';
-            console.warn('[productApi] fetchPostProductById - Backend returned success:true but data is null. Error:', errorMsg);
-            // Tạo một error object giống như axios error để trigger fallback
-            throw {
-                response: {
-                    status: 404,
-                    data: rawData
-                },
-                message: errorMsg
-            };
-        }
-
-        let item = null;
-
-        if (rawData?.data) {
-            // Format: {success: true, data: {...}} hoặc {data: {...}}
-            item = rawData.data;
-        } else if (rawData && typeof rawData === 'object' && rawData.postId) {
-            // Format: trực tiếp object với postId (là product object)
-            item = rawData;
-        } else if (rawData && typeof rawData === 'object' && !rawData.success) {
-            // Format: trực tiếp object khác (không phải response wrapper)
-            item = rawData;
-        } else if (rawData?.success === false) {
-            // Backend trả về success: false
-            const errorMsg = rawData?.error || rawData?.message || 'Không tìm thấy sản phẩm';
-            throw {
-                response: {
-                    status: 404,
-                    data: rawData
-                },
-                message: errorMsg
-            };
-        }
-
-        // Nếu không có item hợp lệ, throw error để trigger fallback
-        if (!item || (typeof item === 'object' && Object.keys(item).length === 0)) {
-            console.warn('[productApi] fetchPostProductById - No valid item extracted from response');
-            throw {
-                response: {
-                    status: 404,
-                    data: rawData
-                },
-                message: 'Không tìm thấy dữ liệu sản phẩm trong response'
-            };
-        }
-
-        console.log('[productApi] fetchPostProductById - Extracted item:', item);
-        console.log('[productApi] fetchPostProductById - Item postId/id/post_id:', {
-            postId: item?.postId,
-            id: item?.id,
-            post_id: item?.post_id
-        });
-
-        const normalized = normalizeProduct(item);
-        console.log('[productApi] fetchPostProductById - Normalized product:', {
-            id: normalized?.id,
-            postId: normalized?.postId,
-            hasPostId: !!normalized?.postId
-        });
-
-        if (!normalized) {
-            throw {
-                response: {
-                    status: 404,
-                    data: rawData
-                },
-                message: `Không thể normalize sản phẩm với ID: ${normalizedId}`
-            };
-        }
-
-        // Cảnh báo nếu normalized product không có postId (có thể là wish-list ID)
-        if (!normalized.postId || normalized.postId === normalized.id) {
-            console.warn('[productApi] fetchPostProductById - Warning: Product may not have proper postId. ID:', normalized.id, 'postId:', normalized.postId);
-        }
-
-        return normalized;
+        const response = await axiosInstance.get(`/api/v1/post-product/${id}`);
+        const item = response?.data || null;
+        return normalizeProduct(item);
     } catch (err) {
-        const statusCode = err?.response?.status;
-        const isNotFound = statusCode === 404;
-
-        console.error('[productApi] fetchPostProductById - Direct API call failed:', {
-            message: err.message,
-            statusCode,
-            isNotFound,
-            error: err
-        });
-
-        // Nếu là lỗi 404 và không phải do backend issue, không cần fallback
-        // Nhưng vì có thể backend có bug với một số ID, chúng ta vẫn thử fallback
-        console.log('[productApi] fetchPostProductById - Attempting fallback search...');
-
-        // Fallback: Tìm trong tất cả các pages
         try {
-            let found = null;
-            let currentPage = 1;
-            const maxPages = 20; // Giới hạn tối đa 20 pages để tránh loop vô hạn
-            const pageSize = 50; // Lấy nhiều items mỗi page
-
-            while (currentPage <= maxPages && !found) {
-                console.log(`[productApi] fetchPostProductById - Searching page ${currentPage}...`);
-                const { items, totalPages } = await fetchPostProducts({ page: currentPage, size: pageSize });
-
-                if (!items || items.length === 0) {
-                    console.log(`[productApi] fetchPostProductById - No items found on page ${currentPage}, stopping search`);
-                    break;
-                }
-
-                // Tìm sản phẩm với ID khớp - so sánh nhiều trường ID
-                // Cần tìm theo cả postId và id vì ID từ URL có thể là một trong hai
-                found = items.find((x) => {
-                    // Normalize các trường ID có thể có
-                    const itemPostId = String(x?.postId ?? x?.post_id ?? '').trim();
-                    const itemId = String(x?.id ?? '').trim();
-
-                    // So sánh với normalizedId (ID từ URL params)
-                    // Cần so sánh cả postId và id vì ID trong URL có thể là một trong hai
-                    const matchesPostId = itemPostId && itemPostId === normalizedId;
-                    const matchesId = itemId && itemId === normalizedId;
-
-                    if (matchesPostId || matchesId) {
-                        console.log(`[productApi] fetchPostProductById - Match found on page ${currentPage}:`, {
-                            itemPostId,
-                            itemId,
-                            normalizedId,
-                            matchType: matchesPostId ? 'postId' : 'id'
-                        });
-                        return true;
-                    }
-
-                    return false;
-                });
-
-                if (found) {
-                    console.log(`[productApi] fetchPostProductById - Found product on page ${currentPage}:`, found);
-                    break;
-                }
-
-                // Nếu đã đến trang cuối, dừng lại
-                if (currentPage >= totalPages) {
-                    console.log(`[productApi] fetchPostProductById - Reached last page (${totalPages}), stopping search`);
-                    break;
-                }
-
-                currentPage++;
-            }
-
-            if (found) {
-                const normalized = normalizeProduct(found);
-                console.log('[productApi] fetchPostProductById - Fallback normalized product:', normalized);
-
-                if (!normalized) {
-                    throw new Error(`Không thể normalize sản phẩm với ID: ${normalizedId}`);
-                }
-
-                return normalized;
-            } else {
-                console.error(`[productApi] fetchPostProductById - Product with ID ${normalizedId} not found in any page`);
-                throw new Error(`Không tìm thấy sản phẩm với ID: ${normalizedId}`);
-            }
-        } catch (fallbackErr) {
-            console.error('[productApi] fetchPostProductById - Fallback search failed:', fallbackErr);
-            throw new Error(`Không thể tải sản phẩm với ID: ${normalizedId}. ${fallbackErr.message || err.message}`);
+            const { items } = await fetchPostProducts({ page: 1, size: 50 });
+            const found = (items || []).find(
+                (x) => String(x?.id ?? x?.postId ?? x?.post_id) === String(id)
+            );
+            return normalizeProduct(found);
+        } catch {
+            throw err;
         }
     }
 }
@@ -241,19 +72,7 @@ export async function fetchSellerByPostId(postId) {
 }
 
 export function normalizeProduct(item) {
-    if (!item || typeof item !== "object") {
-        console.log('[productApi] normalizeProduct - Item is null or not object:', item);
-        return null;
-    }
-
-    console.log('[productApi] normalizeProduct - Raw item postId values:', {
-        'item.postId': item.postId,
-        'item.id': item.id,
-        'item.post_id': item.post_id,
-        'typeof postId': typeof item.postId,
-        'typeof id': typeof item.id,
-        'typeof post_id': typeof item.post_id
-    });
+    if (!item || typeof item !== "object") return null;
 
     // Ảnh chính và danh sách ảnh
     let imageUrl = "";
@@ -294,27 +113,8 @@ export function normalizeProduct(item) {
     const price = Number(item.price ?? 0);
 
     // 🧭 Chuẩn hóa key theo BE thực tế
-    // Ưu tiên postId vì đây là ID thực sự của post-product
-    // Tránh nhầm lẫn với wish-list ID hoặc các ID khác
-    const postId = item.postId ?? item.post_id ?? null;
-    const itemId = item.id ?? null;
-
-    // finalId ưu tiên postId, chỉ dùng id nếu không có postId
-    // Điều này đảm bảo API call sẽ dùng đúng post-product ID
-    const finalId = postId ?? itemId ?? String(Math.random());
-
-    console.log('[productApi] normalizeProduct - ID mapping:', {
-        originalPostId: item.postId,
-        originalId: item.id,
-        normalizedPostId: postId,
-        normalizedId: itemId,
-        finalId: finalId,
-        usingRandom: !postId && !itemId
-    });
-
     return {
-        id: finalId,
-        postId: postId ?? finalId, // Lưu postId riêng để dùng cho API calls
+        id: item.postId ?? item.id ?? item.post_id ?? String(Math.random()),
         title: item.title ?? "Sản phẩm",
         brand: item.brand ?? "",
         model: item.model ?? "",
