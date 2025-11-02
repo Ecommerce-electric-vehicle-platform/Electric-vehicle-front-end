@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { fetchPostProductById } from '../../api/productApi';
 import { NotificationModal } from '../../components/NotificationModal/NotificationModal';
+import { ConfirmationDialog } from '../../components/ConfirmationDialog/ConfirmationDialog';
 import './ProductDetail.css';
 import { Breadcrumbs } from '../../components/Breadcrumbs/Breadcrumbs';
 import sellerApi from '../../api/sellerApi';
@@ -43,6 +44,8 @@ function ProductDetail() {
     const [notificationType, setNotificationType] = useState('login'); // 'login' hoặc 'purchase'
     const [fav, setFav] = useState(false);
     const [wishlistLoading, setWishlistLoading] = useState(false);
+    const [showRemoveConfirmDialog, setShowRemoveConfirmDialog] = useState(false);
+    const [pendingRemoveWishlistId, setPendingRemoveWishlistId] = useState(null);
 
     // Helper functions
     const formatPrice = (price) => {
@@ -117,26 +120,33 @@ function ProductDetail() {
             return;
         }
 
-        try {
-            setWishlistLoading(true);
-            const postId = product.postId || product.id;
+        const postId = product.postId || product.id;
 
-            if (fav) {
-                // Remove from wishlist - cần tìm wishlistId
+        if (fav) {
+            // Remove from wishlist - hiển thị dialog xác nhận trước
+            try {
+                setWishlistLoading(true);
                 const result = await fetchWishlist({ page: 0, size: 100 });
                 const wishlistItem = (result.items || []).find(
                     item => Number(item.postId || item.id) === Number(postId)
                 );
 
                 if (wishlistItem && wishlistItem.wishlistId) {
-                    await removeFromWishlist(wishlistItem.wishlistId);
-                    setFav(false);
-                    console.log('[ProductDetail] Removed from wishlist');
+                    // Hiển thị dialog xác nhận
+                    setPendingRemoveWishlistId(wishlistItem.wishlistId);
+                    setShowRemoveConfirmDialog(true);
                 } else {
                     console.warn('[ProductDetail] Could not find wishlistId to remove');
                 }
-            } else {
-                // Add to wishlist
+            } catch (err) {
+                console.error('[ProductDetail] Error fetching wishlist:', err);
+            } finally {
+                setWishlistLoading(false);
+            }
+        } else {
+            // Add to wishlist - không cần xác nhận
+            try {
+                setWishlistLoading(true);
                 const result = await addToWishlist({
                     postId: Number(postId),
                     priority: "LOW",
@@ -147,15 +157,45 @@ function ProductDetail() {
                     console.log('[ProductDetail] Added to wishlist');
                 } else {
                     console.error('[ProductDetail] Failed to add to wishlist:', result.message);
+                    const errorMsg = result.message || "Không thể thêm vào danh sách yêu thích";
+                    alert(errorMsg);
                 }
+            } catch (err) {
+                console.error('[ProductDetail] Error adding to wishlist:', err);
+                const errorMsg = err?.response?.data?.message || err?.message || "Không thể thêm vào danh sách yêu thích";
+                alert(errorMsg);
+            } finally {
+                setWishlistLoading(false);
             }
+        }
+    };
+
+    // Xác nhận xóa khỏi wishlist
+    const handleConfirmRemoveFromWishlist = async () => {
+        if (!pendingRemoveWishlistId) return;
+
+        setShowRemoveConfirmDialog(false);
+        const wishlistId = pendingRemoveWishlistId;
+
+        try {
+            setWishlistLoading(true);
+            await removeFromWishlist(wishlistId);
+            setFav(false);
+            console.log('[ProductDetail] Removed from wishlist');
         } catch (err) {
-            console.error('[ProductDetail] Error toggling favorite:', err);
-            const errorMsg = err?.response?.data?.message || err?.message || "Không thể cập nhật danh sách yêu thích";
+            console.error('[ProductDetail] Error removing from wishlist:', err);
+            const errorMsg = err?.response?.data?.message || err?.message || "Không thể xóa khỏi danh sách yêu thích";
             alert(errorMsg);
         } finally {
             setWishlistLoading(false);
+            setPendingRemoveWishlistId(null);
         }
+    };
+
+    // Hủy xóa khỏi wishlist
+    const handleCancelRemoveFromWishlist = () => {
+        setShowRemoveConfirmDialog(false);
+        setPendingRemoveWishlistId(null);
     };
 
     // Tải sản phẩm theo ID từ BE
@@ -1412,6 +1452,18 @@ function ProductDetail() {
                 onLogin={handleGoToLogin}
                 onRegister={handleGoToRegister}
                 notificationType={notificationType}
+            />
+
+            {/* Confirmation Dialog for removing from wishlist */}
+            <ConfirmationDialog
+                isOpen={showRemoveConfirmDialog}
+                onConfirm={handleConfirmRemoveFromWishlist}
+                onCancel={handleCancelRemoveFromWishlist}
+                title="Xác nhận xóa"
+                message="Bạn có chắc muốn xóa sản phẩm này khỏi danh sách yêu thích?"
+                confirmText="Xóa"
+                cancelText="Hủy"
+                type="warning"
             />
         </div>
     );

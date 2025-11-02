@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, MessageCircle, Trash2, Loader2 } from "lucide-react";
+import { ChevronDown, MessageCircle, Trash2, Loader2, Search, CheckSquare, Square, ShoppingCart, Heart, AlertCircle } from "lucide-react";
 import "./Favorites.css";
 import { fetchWishlist, removeFromWishlist } from "../../api/wishlistApi";
+import { ConfirmationDialog } from "../../components/ConfirmationDialog/ConfirmationDialog";
 
 export function Favorites() {
     const [items, setItems] = useState([]);
@@ -12,6 +13,12 @@ export function Favorites() {
     const [displayPage, setDisplayPage] = useState(1); // Client-side pagination (1-indexed)
     const [pageSize] = useState(4); // Fixed page size for display
     const [removingId, setRemovingId] = useState(null);
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [pendingWishlistId, setPendingWishlistId] = useState(null);
+    const [pageInputValue, setPageInputValue] = useState('');
+    const [selectedItems, setSelectedItems] = useState(new Set()); // Bulk selection
+    const [searchQuery, setSearchQuery] = useState(''); // Search filter
+    const [showBulkActions, setShowBulkActions] = useState(false);
 
     // Fetch wishlist from API - lấy tất cả items vì cần sort và filter client-side
     useEffect(() => {
@@ -76,9 +83,26 @@ export function Favorites() {
         };
     }, [priorityFilter]); // Chỉ refetch khi priority filter thay đổi
 
-    // Client-side sorting (since API doesn't support sorting)
+    // Client-side sorting and filtering (since API doesn't support sorting)
     const sortedItems = useMemo(() => {
         let list = [...items];
+
+        // Search filter
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            list = list.filter((item) => {
+                const title = (item.title || "").toLowerCase();
+                const brand = (item.brand || "").toLowerCase();
+                const model = (item.model || "").toLowerCase();
+                const sellerName = (item.sellerName || "").toLowerCase();
+                return (
+                    title.includes(query) ||
+                    brand.includes(query) ||
+                    model.includes(query) ||
+                    sellerName.includes(query)
+                );
+            });
+        }
 
         // Sắp xếp
         if (sortBy === "date") {
@@ -97,7 +121,7 @@ export function Favorites() {
         }
 
         return list;
-    }, [items, sortBy]);
+    }, [items, sortBy, searchQuery]);
 
     // Client-side pagination
     const totalElements = sortedItems.length;
@@ -110,13 +134,19 @@ export function Favorites() {
         }
     }, [totalPages, displayPage]);
 
+    // Clear selections when page changes or search changes
+    useEffect(() => {
+        setSelectedItems(new Set());
+        setShowBulkActions(false);
+    }, [displayPage, searchQuery]);
+
     // Get items for current page
     const pagedItems = useMemo(() => {
         const start = (displayPage - 1) * pageSize;
         return sortedItems.slice(start, start + pageSize);
     }, [sortedItems, displayPage, pageSize]);
 
-    const handleRemove = async (wishlistId) => {
+    const handleRemoveClick = (wishlistId) => {
         // Validate wishlistId
         if (!wishlistId) {
             console.error("[Favorites] Không tìm thấy wishlistId để xóa");
@@ -132,12 +162,23 @@ export function Favorites() {
             return;
         }
 
-        // Confirm với user
-        if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này khỏi danh sách yêu thích?")) {
-            return;
+        // Hiển thị dialog xác nhận
+        setPendingWishlistId(normalizedWishId);
+        setShowConfirmDialog(true);
+    };
+
+    const handleConfirmRemove = async () => {
+        // Check if this is bulk delete
+        if (selectedItems.size > 0 && !pendingWishlistId) {
+            return handleConfirmBulkDelete();
         }
 
+        if (!pendingWishlistId) return;
+
+        const normalizedWishId = pendingWishlistId;
+        setShowConfirmDialog(false);
         setRemovingId(normalizedWishId);
+
         try {
             // Gọi API remove từ wishlist (POST /api/v1/buyer/remove-wish-list/{wishId})
             const result = await removeFromWishlist(normalizedWishId);
@@ -183,6 +224,15 @@ export function Favorites() {
             alert(errorMessage);
         } finally {
             setRemovingId(null);
+            setPendingWishlistId(null);
+        }
+    };
+
+    const handleCancelRemove = () => {
+        setShowConfirmDialog(false);
+        // Only clear pendingWishlistId if it's a single delete
+        if (selectedItems.size === 0) {
+            setPendingWishlistId(null);
         }
     };
 
@@ -242,7 +292,85 @@ export function Favorites() {
 
     const handlePageChange = (newPage) => {
         // newPage is 1-indexed
-        setDisplayPage(Math.max(1, Math.min(newPage, totalPages)));
+        const validPage = Math.max(1, Math.min(newPage, totalPages));
+        setDisplayPage(validPage);
+        setPageInputValue('');
+    };
+
+    const handlePageInputChange = (e) => {
+        const value = e.target.value;
+        if (value === '' || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= totalPages)) {
+            setPageInputValue(value);
+        }
+    };
+
+    const handlePageInputSubmit = (e) => {
+        e.preventDefault();
+        if (pageInputValue && pageInputValue !== '') {
+            const pageNum = Number(pageInputValue);
+            if (pageNum >= 1 && pageNum <= totalPages) {
+                handlePageChange(pageNum);
+            }
+        }
+    };
+
+    const handleFirstPage = () => {
+        handlePageChange(1);
+    };
+
+    const handleLastPage = () => {
+        handlePageChange(totalPages);
+    };
+
+    // Bulk selection handlers
+    const handleSelectAll = () => {
+        if (selectedItems.size === pagedItems.length) {
+            setSelectedItems(new Set());
+            setShowBulkActions(false);
+        } else {
+            const allIds = new Set(pagedItems.map(item => item.wishlistId));
+            setSelectedItems(allIds);
+            setShowBulkActions(true);
+        }
+    };
+
+    const handleSelectItem = (wishlistId) => {
+        const newSelected = new Set(selectedItems);
+        if (newSelected.has(wishlistId)) {
+            newSelected.delete(wishlistId);
+        } else {
+            newSelected.add(wishlistId);
+        }
+        setSelectedItems(newSelected);
+        setShowBulkActions(newSelected.size > 0);
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedItems.size === 0) return;
+        setShowConfirmDialog(true);
+    };
+
+    const handleConfirmBulkDelete = async () => {
+        if (selectedItems.size === 0) return;
+
+        const idsToDelete = Array.from(selectedItems);
+        setShowConfirmDialog(false);
+        setRemovingId(-1); // Special ID to indicate bulk delete in progress
+
+        // Delete all selected items
+        for (const wishId of idsToDelete) {
+            try {
+                await removeFromWishlist(Number(wishId));
+            } catch (err) {
+                console.error(`[Favorites] Error deleting ${wishId}:`, err);
+            }
+        }
+
+        // Update local state
+        setItems(prev => prev.filter(item => !idsToDelete.includes(item.wishlistId)));
+        setSelectedItems(new Set());
+        setShowBulkActions(false);
+        setRemovingId(null);
     };
 
     return (
@@ -270,11 +398,91 @@ export function Favorites() {
                     </div>
                 ) : items.length === 0 ? (
                     <div className="wishlist-empty">
-                        <p>Chưa có sản phẩm yêu thích</p>
+                        <Heart size={64} className="wishlist-empty-icon" />
+                        <h2 className="wishlist-empty-title">Danh sách yêu thích trống</h2>
+                        <p className="wishlist-empty-text">Bạn chưa có sản phẩm nào trong danh sách yêu thích</p>
+                        <button
+                            className="wishlist-empty-btn"
+                            onClick={() => window.location.href = '/products'}
+                        >
+                            Khám phá sản phẩm
+                        </button>
                     </div>
                 ) : (
                     <>
+                        {/* Search Bar */}
+                        <div className="wishlist-search">
+                            <div className="wishlist-search-container">
+                                <Search size={20} className="wishlist-search-icon" />
+                                <input
+                                    type="text"
+                                    className="wishlist-search-input"
+                                    placeholder="Tìm kiếm sản phẩm, thương hiệu, model..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                                {searchQuery && (
+                                    <button
+                                        className="wishlist-search-clear"
+                                        onClick={() => setSearchQuery('')}
+                                        aria-label="Xóa tìm kiếm"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
+                            {searchQuery && (
+                                <div className="wishlist-search-results">
+                                    Tìm thấy {sortedItems.length} sản phẩm
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Bulk Actions Bar */}
+                        {showBulkActions && selectedItems.size > 0 && (
+                            <div className="wishlist-bulk-actions">
+                                <div className="bulk-actions-info">
+                                    <CheckSquare size={20} />
+                                    <span>Đã chọn {selectedItems.size} sản phẩm</span>
+                                </div>
+                                <div className="bulk-actions-buttons">
+                                    <button
+                                        className="bulk-action-btn bulk-action-delete"
+                                        onClick={handleBulkDelete}
+                                        disabled={removingId === -1}
+                                    >
+                                        <Trash2 size={16} />
+                                        Xóa đã chọn ({selectedItems.size})
+                                    </button>
+                                    <button
+                                        className="bulk-action-btn bulk-action-cancel"
+                                        onClick={() => {
+                                            setSelectedItems(new Set());
+                                            setShowBulkActions(false);
+                                        }}
+                                    >
+                                        Hủy
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="wishlist-filters">
+                            {/* Select All Checkbox */}
+                            {sortedItems.length > 0 && (
+                                <button
+                                    className="wishlist-select-all"
+                                    onClick={handleSelectAll}
+                                    title={selectedItems.size === pagedItems.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                                >
+                                    {selectedItems.size === pagedItems.length ? (
+                                        <CheckSquare size={20} />
+                                    ) : (
+                                        <Square size={20} />
+                                    )}
+                                    <span>Chọn tất cả</span>
+                                </button>
+                            )}
                             <div className="filter-dropdown">
                                 <button
                                     className="filter-dropdown-btn"
@@ -360,8 +568,24 @@ export function Favorites() {
                                         ? productImage
                                         : "/default-avatar.png";
 
+                                    const isSelected = selectedItems.has(product.wishlistId);
                                     return (
-                                        <div key={product.wishlistId || finalProductId} className="wishlist-card">
+                                        <div key={product.wishlistId || finalProductId} className={`wishlist-card ${isSelected ? 'selected' : ''}`}>
+                                            {/* Selection Checkbox */}
+                                            <button
+                                                className="wishlist-card-select"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSelectItem(product.wishlistId);
+                                                }}
+                                                aria-label={isSelected ? "Bỏ chọn" : "Chọn"}
+                                            >
+                                                {isSelected ? (
+                                                    <CheckSquare size={18} />
+                                                ) : (
+                                                    <Square size={18} />
+                                                )}
+                                            </button>
                                             <a className="wishlist-card-image" href={`/product/${finalProductId}`}>
                                                 <img
                                                     src={displayImage}
@@ -406,8 +630,8 @@ export function Favorites() {
                                                         onClick={() => handleChatWithSeller()}
                                                         disabled={!sellerId}
                                                     >
-                                                        <MessageCircle size={16} />
-                                                        Chat với người bán
+                                                        <MessageCircle size={14} />
+                                                        Chat
                                                     </button>
                                                     <button
                                                         className="wishlist-btn-delete"
@@ -418,15 +642,15 @@ export function Favorites() {
                                                                 alert('Không tìm thấy ID sản phẩm yêu thích');
                                                                 return;
                                                             }
-                                                            handleRemove(wishId);
+                                                            handleRemoveClick(wishId);
                                                         }}
                                                         disabled={removingId === Number(product.wishlistId) || !product.wishlistId}
                                                         title={product.wishlistId ? "Xóa khỏi danh sách yêu thích" : "Không thể xóa"}
                                                     >
                                                         {removingId === Number(product.wishlistId) ? (
-                                                            <Loader2 size={16} className="spinning" />
+                                                            <Loader2 size={14} className="spinning" />
                                                         ) : (
-                                                            <Trash2 size={16} />
+                                                            <Trash2 size={14} />
                                                         )}
                                                         Xóa
                                                     </button>
@@ -439,59 +663,143 @@ export function Favorites() {
                             }
                         </div>
 
-                        {totalPages > 1 && sortedItems.length > 0 && (
-                            <div className="wishlist-pagination">
-                                <button
-                                    className="pagination-btn pagination-btn-prev"
-                                    disabled={displayPage <= 1 || loading}
-                                    onClick={() => handlePageChange(displayPage - 1)}
-                                    aria-label="Trang trước"
-                                >
-                                    ‹
-                                </button>
-
-                                <div className="pagination-numbers">
-                                    {getVisiblePages().map((pageNum, idx) => {
-                                        if (pageNum === "ellipsis") {
-                                            return (
-                                                <span key={`ellipsis-${idx}`} className="pagination-ellipsis">
-                                                    ...
-                                                </span>
-                                            );
-                                        }
-                                        return (
-                                            <button
-                                                key={pageNum}
-                                                className={`pagination-number ${pageNum === displayPage ? "active" : ""}`}
-                                                onClick={() => handlePageChange(pageNum)}
-                                                disabled={loading}
-                                                aria-label={`Trang ${pageNum}`}
-                                            >
-                                                {pageNum}
-                                            </button>
-                                        );
-                                    })}
+                        {sortedItems.length > 0 && (
+                            <>
+                                {/* Pagination Info - Always visible */}
+                                <div className="wishlist-pagination-info">
+                                    <div className="pagination-info-text">
+                                        <span className="pagination-info-label">Hiển thị</span>
+                                        <span className="pagination-info-value">{pagedItems.length}</span>
+                                        <span className="pagination-info-label">trên trang</span>
+                                        <span className="pagination-info-value">{displayPage}</span>
+                                        <span className="pagination-info-separator">/</span>
+                                        <span className="pagination-info-value">{totalPages}</span>
+                                        <span className="pagination-info-separator">•</span>
+                                        <span className="pagination-info-label">Tổng</span>
+                                        <span className="pagination-info-value">{totalElements}</span>
+                                        <span className="pagination-info-label">sản phẩm</span>
+                                    </div>
                                 </div>
 
-                                <button
-                                    className="pagination-btn pagination-btn-next"
-                                    disabled={displayPage >= totalPages || loading}
-                                    onClick={() => handlePageChange(displayPage + 1)}
-                                    aria-label="Trang sau"
-                                >
-                                    ›
-                                </button>
-                            </div>
-                        )}
+                                {/* Enhanced Pagination Controls */}
+                                {totalPages > 1 && (
+                                    <div className="wishlist-pagination">
+                                        {/* First Page Button */}
+                                        <button
+                                            className="pagination-btn pagination-btn-first"
+                                            disabled={displayPage <= 1 || loading}
+                                            onClick={handleFirstPage}
+                                            aria-label="Trang đầu"
+                                            title="Trang đầu"
+                                        >
+                                            ««
+                                        </button>
 
-                        {sortedItems.length > 0 && (
-                            <div className="wishlist-info">
-                                Hiển thị {pagedItems.length} trên trang {displayPage} / {totalPages} • Tổng {totalElements} sản phẩm
-                            </div>
+                                        {/* Previous Button */}
+                                        <button
+                                            className="pagination-btn pagination-btn-prev"
+                                            disabled={displayPage <= 1 || loading}
+                                            onClick={() => handlePageChange(displayPage - 1)}
+                                            aria-label="Trang trước"
+                                            title="Trang trước"
+                                        >
+                                            ‹
+                                        </button>
+
+                                        {/* Page Numbers */}
+                                        <div className="pagination-numbers">
+                                            {getVisiblePages().map((pageNum, idx) => {
+                                                if (pageNum === "ellipsis") {
+                                                    return (
+                                                        <span key={`ellipsis-${idx}`} className="pagination-ellipsis">
+                                                            ...
+                                                        </span>
+                                                    );
+                                                }
+                                                return (
+                                                    <button
+                                                        key={pageNum}
+                                                        className={`pagination-number ${pageNum === displayPage ? "active" : ""}`}
+                                                        onClick={() => handlePageChange(pageNum)}
+                                                        disabled={loading}
+                                                        aria-label={`Trang ${pageNum}`}
+                                                        aria-current={pageNum === displayPage ? "page" : undefined}
+                                                    >
+                                                        {pageNum}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Next Button */}
+                                        <button
+                                            className="pagination-btn pagination-btn-next"
+                                            disabled={displayPage >= totalPages || loading}
+                                            onClick={() => handlePageChange(displayPage + 1)}
+                                            aria-label="Trang sau"
+                                            title="Trang sau"
+                                        >
+                                            ›
+                                        </button>
+
+                                        {/* Last Page Button */}
+                                        <button
+                                            className="pagination-btn pagination-btn-last"
+                                            disabled={displayPage >= totalPages || loading}
+                                            onClick={handleLastPage}
+                                            aria-label="Trang cuối"
+                                            title="Trang cuối"
+                                        >
+                                            »»
+                                        </button>
+
+                                        {/* Go to Page Input */}
+                                        <div className="pagination-go-to">
+                                            <span className="pagination-go-to-label">Đến trang:</span>
+                                            <form onSubmit={handlePageInputSubmit} className="pagination-go-to-form">
+                                                <input
+                                                    type="text"
+                                                    className="pagination-go-to-input"
+                                                    value={pageInputValue}
+                                                    onChange={handlePageInputChange}
+                                                    placeholder={displayPage.toString()}
+                                                    disabled={loading || totalPages <= 1}
+                                                    min="1"
+                                                    max={totalPages}
+                                                />
+                                                <button
+                                                    type="submit"
+                                                    className="pagination-go-to-btn"
+                                                    disabled={loading || totalPages <= 1 || !pageInputValue}
+                                                    title="Chuyển đến trang"
+                                                >
+                                                    Đi
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </>
                 )}
             </div>
+
+            {/* Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={showConfirmDialog}
+                onConfirm={handleConfirmRemove}
+                onCancel={handleCancelRemove}
+                title={selectedItems.size > 0 ? "Xác nhận xóa nhiều sản phẩm" : "Xác nhận xóa"}
+                message={
+                    selectedItems.size > 0
+                        ? `Bạn có chắc muốn xóa ${selectedItems.size} sản phẩm đã chọn khỏi danh sách yêu thích?`
+                        : "Bạn có chắc muốn xóa sản phẩm này khỏi danh sách yêu thích?"
+                }
+                confirmText="Xóa"
+                cancelText="Hủy"
+                type="warning"
+            />
         </div>
     );
 }
