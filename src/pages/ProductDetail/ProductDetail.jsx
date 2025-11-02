@@ -74,26 +74,19 @@ function ProductDetail() {
     // Tải sản phẩm theo ID từ BE
     useEffect(() => {
         let mounted = true;
+        console.log('[ProductDetail] useEffect - URL parameter id:', id, 'Type:', typeof id);
         (async () => {
             try {
                 const p = await fetchPostProductById(id);
+                console.log('[ProductDetail] Received product from API:', p);
+                console.log('[ProductDetail] Product ID:', p?.id, 'Type:', typeof p?.id);
+                console.log('[ProductDetail] Product postId:', p?.postId);
                 if (!mounted) return;
                 setProduct(p);
                 if (p) setFav(isFavorite(p.id));
-                // Chỉ lấy thông tin seller qua API thật
-                if (p?.id) {
-                    try {
-                        const seller = await sellerApi.getSellerByProductId(p.id);
-                        if (!mounted) return;
-                        setSeller(seller);
-                    } catch (sellerError) {
-                        setSeller(null);
-                        console.error("Error fetching seller info:", sellerError);
-                    }
-                } else {
-                    setSeller(null);
-                }
-            } catch {
+                // Seller sẽ được fetch trong useEffect thứ hai dựa trên product.postId
+            } catch (error) {
+                console.error('[ProductDetail] Error in useEffect:', error);
                 if (!mounted) return;
                 setProduct(null);
                 setSeller(null);
@@ -103,34 +96,58 @@ function ProductDetail() {
     }, [id]);
 
     // Tải seller info khi product.postId có giá trị
+    // Ưu tiên dùng postId vì đây là ID thực sự của post-product
     useEffect(() => {
-        if (product?.id || product?.postId) {
-            const pid = product.postId || product.id;
-            setSellerLoading(true);
-            setSellerError(null);
+        if (!product) {
             setSeller(null);
-            sellerApi.getSellerByProductId(pid)
-                .then(data => {
-                    if (data) {
-                        setSeller(data);
-                        setSellerError(null);
-                    } else {
-                        setSeller(null);
-                        setSellerError("NO_SELLER");
-                    }
-                })
-                .catch(() => {
+            setSellerError(null);
+            setSellerLoading(false);
+            return;
+        }
+
+        // Ưu tiên postId, nếu không có thì mới dùng id
+        const pid = product.postId || product.id;
+
+        if (!pid) {
+            console.warn('[ProductDetail] Product has no postId or id, cannot fetch seller. Product:', product);
+            setSeller(null);
+            setSellerError("NO_SELLER");
+            setSellerLoading(false);
+            return;
+        }
+
+        console.log('[ProductDetail] Fetching seller with product ID:', pid, 'Type:', typeof pid, 'from product:', {
+            id: product.id,
+            postId: product.postId,
+            using: pid === product.postId ? 'postId' : 'id'
+        });
+
+        setSellerLoading(true);
+        setSellerError(null);
+        setSeller(null);
+
+        sellerApi.getSellerByProductId(pid)
+            .then(data => {
+                if (data) {
+                    console.log('[ProductDetail] Received seller data:', data);
+                    setSeller(data);
+                    setSellerError(null);
+                } else {
+                    console.warn('[ProductDetail] Seller API returned null/empty data');
                     setSeller(null);
                     setSellerError("NO_SELLER");
-                })
-                .finally(() => {
-                    setSellerLoading(false);
-                });
-        } else {
-            setSeller(null);
-            setSellerError(null);
-        }
-    }, [product?.id, product?.postId]);
+                }
+            })
+            .catch((error) => {
+                console.error("[ProductDetail] Error fetching seller info:", error);
+                setSeller(null);
+                setSellerError("NO_SELLER");
+            })
+            .finally(() => {
+                setSellerLoading(false);
+            });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [product?.postId, product?.id]);
 
     // Xử lý chuyển ảnh
     const nextImage = () => {

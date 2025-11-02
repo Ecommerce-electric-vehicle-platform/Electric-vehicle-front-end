@@ -224,7 +224,6 @@ function PlaceOrder() {
     }, []);
 
     // Load API data
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     const loadApiData = useCallback(async () => {
         try {
             // Load provinces for address selects
@@ -602,18 +601,18 @@ function PlaceOrder() {
 
     // Gọi API tính phí vận chuyển khi đủ dữ liệu địa chỉ + sản phẩm + phương thức thanh toán
     const refreshShippingFee = useCallback(async () => {
+        const postId = orderData.postProductId || product?.id;
+        const provinceId = (orderData.provinceId || selectedProvince) || '';
+        const districtId = (orderData.districtId || selectedDistrict) || '';
+        const wardId = (orderData.wardId || selectedWard) || '';
+        const provinceName = provinces.find(p => p.value === provinceId)?.label || '';
+        const districtName = districts.find(d => d.value === districtId)?.label || '';
+        const wardName = wards.find(w => w.value === wardId)?.label || '';
+        const paymentId = orderData.paymentId || 2;
+
+        if (!postId || !provinceName || !districtName || !wardName) return; // Chưa đủ thông tin
+
         try {
-            const postId = orderData.postProductId || product?.id;
-            const provinceId = (orderData.provinceId || selectedProvince) || '';
-            const districtId = (orderData.districtId || selectedDistrict) || '';
-            const wardId = (orderData.wardId || selectedWard) || '';
-            const provinceName = provinces.find(p => p.value === provinceId)?.label || '';
-            const districtName = districts.find(d => d.value === districtId)?.label || '';
-            const wardName = wards.find(w => w.value === wardId)?.label || '';
-            const paymentId = orderData.paymentId || 2;
-
-            if (!postId || !provinceName || !districtName || !wardName) return; // Chưa đủ thông tin
-
             const res = await getShippingFee({ postId, provinceName, districtName, wardName, provinceId, districtId, wardId, paymentId });
             // Chuẩn hóa nhiều định dạng đáp ứng từ BE
             const raw = res?.data ?? res ?? {};
@@ -730,34 +729,63 @@ function PlaceOrder() {
         setIsSubmitting(true);
 
         try {
-            // Chuẩn bị dữ liệu theo format API - chỉ 6 field cần thiết theo yêu cầu
-            // Các field khác sẽ được backend tự động tạo hoặc sử dụng fake data
+            // Tính toán giá trước khi gửi để đảm bảo tính nhất quán
+            const productPrice = Number(orderData.total_price || product?.price || 0);
+            const shippingFeeValue = Number(orderData.shippingFee || 0);
+            const totalPriceValue = productPrice + shippingFeeValue;
+
+            // Chuẩn bị dữ liệu theo format API
+            // QUAN TRỌNG: Gửi kèm giá để backend lưu đúng giá user đã thấy
             const apiOrderData = {
-                postProductId: orderData.postProductId,        // ID sản phẩm
-                username: orderData.username,
-                fullName: orderData.fullName || orderData.buyer_name, // Tên người nhận
-                street: orderData.street,
+                postProductId: orderData.postProductId || product?.postId || product?.id,        // ID sản phẩm
+                username: orderData.username || localStorage.getItem('username') || '',
+                fullName: orderData.fullName || orderData.buyer_name || '', // Tên người nhận
+                street: orderData.street || '',
                 provinceName: provinces.find(p => p.value === (orderData.provinceId || selectedProvince))?.label || '',
                 districtName: districts.find(d => d.value === (orderData.districtId || selectedDistrict))?.label || '',
                 wardName: wards.find(w => w.value === (orderData.wardId || selectedWard))?.label || '',
-                phoneNumber: orderData.phoneNumber,            // Số điện thoại
-                shippingPartnerId: orderData.shippingPartnerId, // ID đối tác vận chuyển
-                paymentId: orderData.paymentId                 // ID phương thức thanh toán
+                phoneNumber: orderData.phoneNumber || '',            // Số điện thoại
+                shippingPartnerId: Number(orderData.shippingPartnerId || 0), // ID đối tác vận chuyển
+                paymentId: Number(orderData.paymentId || 0),                 // ID phương thức thanh toán
+                // Gửi kèm giá để backend lưu chính xác (nếu backend hỗ trợ)
+                // Backend có thể ignore nếu không hỗ trợ, nhưng vẫn nên gửi
+                productPrice: productPrice,                          // Giá sản phẩm tại thời điểm đặt hàng
+                shippingFee: shippingFeeValue,                       // Phí ship đã tính và hiển thị cho user
+                totalPrice: totalPriceValue                          // Tổng giá (để backend verify)
             };
 
             console.log('🚀 Sending order data to API:', apiOrderData);
+            console.log('💰 Price breakdown:', {
+                productPrice: productPrice,
+                shippingFee: shippingFeeValue,
+                totalPrice: totalPriceValue,
+                source: {
+                    orderData_total_price: orderData.total_price,
+                    product_price: product?.price,
+                    orderData_shippingFee: orderData.shippingFee
+                }
+            });
 
             // Gọi API đặt hàng
             const response = await placeOrder(apiOrderData);
 
             console.log('📦 API Response:', response);
+            console.log('📦 API Response - Full structure:', {
+                success: response?.success,
+                message: response?.message,
+                data: response?.data,
+                orderId: response?.data?.orderId || response?.orderId,
+                orderCode: response?.data?.orderCode || response?.orderCode,
+                fullResponse: response
+            });
 
             // Backend response có thể là:
             // - response.data.orderId (nếu cấu trúc: { data: { orderId: ... } })
             // - response.orderId (nếu cấu trúc: { orderId: ... })
             // - response.success (nếu cấu trúc: { success: true, data: {...} })
 
-            const orderId = response.data?.orderId || response.orderId || null;
+            const orderId = response.data?.orderId || response.data?.id || response.orderId || response.id || null;
+            const orderCode = response.data?.orderCode || response.data?.code || response.orderCode || response.code || null;
 
             if (orderId || response.success !== false) {
                 console.log('✅ Order placed successfully:', orderId);
@@ -766,7 +794,7 @@ function PlaceOrder() {
                 refreshWalletBalance();
 
                 const newOrderId = orderId || `ORD${Date.now()}`;
-                const orderCode = response.data?.orderCode || generateOrderCode();
+                const finalOrderCode = orderCode || response.data?.orderCode || generateOrderCode();
                 const currentTime = new Date().toISOString();
 
                 setOrderId(newOrderId);
@@ -774,7 +802,7 @@ function PlaceOrder() {
                 // Cập nhật orderData với thông tin đơn hàng mới
                 setOrderData(prev => ({
                     ...prev,
-                    order_code: orderCode,
+                    order_code: finalOrderCode,
                     order_status: orderData.paymentId === 2 ? 'PAID' : 'PENDING_PAYMENT',
                     created_at: currentTime,
                     paid_at: orderData.paymentId === 2 ? currentTime : '',
@@ -785,7 +813,8 @@ function PlaceOrder() {
                 // Lưu đơn hàng vào localStorage để có thể theo dõi
                 const newOrder = {
                     id: newOrderId,
-                    order_code: orderCode,
+                    order_code: finalOrderCode,
+                    orderCode: finalOrderCode, // Lưu cả orderCode để dễ match
                     status: orderData.paymentId === 2 ? 'confirmed' : 'pending',
                     order_status: orderData.paymentId === 2 ? 'PAID' : 'PENDING_PAYMENT',
                     createdAt: currentTime,
@@ -1247,33 +1276,40 @@ function PlaceOrder() {
                                                 </div>
                                                 <div className="payment-desc">Thanh toán trực tuyến qua ví điện tử</div>
                                                 {orderData.paymentId === 2 && (
-                                                    <div className="wallet-balance">
+                                                    <div className="place-order-wallet-balance">
                                                         {walletLoading ? (
-                                                            <div className="wallet-loading">
-                                                                <div className="loading-spinner-small"></div>
-                                                                Đang tải số dư ví...
+                                                            <div className="place-order-wallet-loading">
+                                                                <div className="place-order-loading-spinner-small"></div>
+                                                                <span>Đang tải số dư ví...</span>
                                                             </div>
                                                         ) : walletError ? (
-                                                            <div className="wallet-error">
+                                                            <div className="place-order-wallet-error">
                                                                 <AlertCircle size={16} />
-                                                                {walletError}
+                                                                <span>{walletError}</span>
                                                                 <button
-                                                                    className="retry-btn"
+                                                                    className="place-order-retry-btn"
                                                                     onClick={refreshWalletBalance}
                                                                     title="Thử lại"
+                                                                    type="button"
                                                                 >
-                                                                    🔄
+                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                                                                    </svg>
                                                                 </button>
                                                             </div>
                                                         ) : (
-                                                            <div className="wallet-success">
-                                                                Số dư hiện tại: <span className="balance-amount">{formatWalletCurrency(walletBalance)}</span>
+                                                            <div className="place-order-wallet-success">
+                                                                <span className="place-order-balance-label">Số dư hiện tại:</span>
+                                                                <span className="place-order-balance-amount">{formatWalletCurrency(walletBalance)}</span>
                                                                 <button
-                                                                    className="refresh-btn"
+                                                                    className="place-order-refresh-btn"
                                                                     onClick={refreshWalletBalance}
                                                                     title="Cập nhật số dư"
+                                                                    type="button"
                                                                 >
-                                                                    🔄
+                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                                                                    </svg>
                                                                 </button>
                                                             </div>
                                                         )}

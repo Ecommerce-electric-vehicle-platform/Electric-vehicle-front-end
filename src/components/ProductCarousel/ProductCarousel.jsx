@@ -71,7 +71,7 @@ export function ProductCarousel({ title, showCategoryToggle = false }) {
 
     // Xử lý click xem chi tiết với hiệu ứng transition
     const handleViewDetails = (product) => {
-        navigateToProduct(product.id);
+        navigateToProduct(product.postId ?? product.id);
     };
 
     return (

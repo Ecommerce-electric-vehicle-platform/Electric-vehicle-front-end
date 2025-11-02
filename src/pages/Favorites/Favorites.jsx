@@ -89,11 +89,11 @@ export function Favorites() {
                 <div className="fav-grid">
                     {paged.map(p => (
                         <div key={p.id} className="fav-card">
-                            <a className="thumb" href={`/product/${p.id}`}>
+                            <a className="thumb" href={`/product/${p.postId ?? p.id}`}>
                                 <img src={p.thumbnail} alt={p.title} />
                             </a>
                             <div className="content">
-                                <a className="title" href={`/product/${p.id}`} title={p.title}>{p.title}</a>
+                                <a className="title" href={`/product/${p.postId ?? p.id}`} title={p.title}>{p.title}</a>
                                 <div className="meta-row">
                                     <span className="price">{p.price.toLocaleString('vi-VN')} đ</span>
                                     <span className="dot">•</span>
