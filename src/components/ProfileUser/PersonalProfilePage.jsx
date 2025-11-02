@@ -8,8 +8,12 @@ import UpgradeToSeller from "./UpgradeToSeller";
 import PersonalEWallet from "./PersonalEWallet";
 import SellerBuyPackage from "./SellerBuyPackage";
 // test raise dispute
-import DisputeForm from "../BuyerRaiseDispute/DisputeForm"; 
-import SellerDocumentView from "./SellerDocumentView"; 
+// ĐÃ XÓA: import DisputeForm from "../../BuyerRaiseDispute/DisputeForm";
+import SellerDocumentView from "./SellerDocumentView";
+// === THÊM IMPORT OrderList (Cần có) ===
+import OrderList from "../../pages/OrderList/OrderList.jsx";
+
+
 
 
 
@@ -18,7 +22,7 @@ export default function PersonalProfilePage() {
   const location = useLocation();
   const [activeSection, setActiveSection] = useState("Hồ sơ cá nhân");
   const [username, setUsername] = useState("");
-  // Dùng state này để buộc component re-render khi localStorage thay đổi
+  // Dùng state này để buộc component re-render khi sessionStorage thay đổi
   const [, forceUpdate] = useState({});
 
 
@@ -29,9 +33,9 @@ export default function PersonalProfilePage() {
 
 
 
-  // === LẤY USERNAME (Không đổi) ===
+  // === LẤY USERNAME (Đã sửa để đọc từ sessionStorage) ===
   useEffect(() => {
-    const storedUsername = localStorage.getItem("username");
+    const storedUsername = sessionStorage.getItem("username");
     if (storedUsername) setUsername(storedUsername);
   }, []);
 
@@ -42,7 +46,7 @@ export default function PersonalProfilePage() {
   useEffect(() => {
     const handleAuthChange = () => {
       console.log("Auth status changed, forcing re-render of PersonalProfilePage.");
-      forceUpdate({}); // Buộc component re-render để đọc lại localStorage
+      forceUpdate({}); // Buộc component re-render để đọc lại sessionStorage
     };
 
 
@@ -50,7 +54,7 @@ export default function PersonalProfilePage() {
 
     const handleRoleChange = () => {
       console.log("Role changed event received, forcing re-render of PersonalProfilePage.");
-      forceUpdate({}); // Buộc component re-render để đọc lại localStorage
+      forceUpdate({}); // Buộc component re-render để đọc lại sessionStorage
     };
 
 
@@ -91,7 +95,7 @@ export default function PersonalProfilePage() {
       case "buy-seller-package": setActiveSection("Mua gói dịch vụ"); break;
       // Thêm case cho tab quản lý giấy tờ
       case "seller-docs": setActiveSection("Quản lý giấy tờ kinh doanh"); break;
-      case "dispute": setActiveSection("Gửi khiếu nại"); break;
+      // XÓA case "dispute" (Logic xử lý Dispute giờ nằm trong OrderList)
       default: break; // Giữ nguyên nếu tab không hợp lệ
     }
   }, [location.search]); // Chạy lại khi URL search thay đổi
@@ -120,8 +124,8 @@ export default function PersonalProfilePage() {
 
 
 
-  // === ĐỌC userRole trực tiếp từ localStorage trước khi render ===
-  const currentUserRole = localStorage.getItem("userRole") || "buyer"; // Nhanh và ổn định nhất
+  // === ĐỌC userRole trực tiếp từ sessionStorage trước khi render ===
+  const currentUserRole = sessionStorage.getItem("userRole") || "buyer"; // Nhanh và ổn định nhất
   console.log(`👤 Reading userRole directly before render: '${currentUserRole}'`);
 
 
@@ -146,9 +150,9 @@ export default function PersonalProfilePage() {
           {activeSection === "Đổi mật khẩu" && <ChangePassword />}
 
 
-          {/* === TÍCH HỢP TẠM DisputeForm VÀO TAB "Đơn hàng của tôi" (Tạm thời) === */}
+          {/* === TÍCH HỢP OrderList VÀO TAB "Đơn hàng của tôi" (Đã fix cú pháp) === */}
           {activeSection === "Đơn hàng của tôi" && (
-            <DisputeForm initialOrderId={1} />
+            <OrderList />
           )}
           {/* === TÍCH HỢP SELLER DOCUMENT VIEW (Chỉ hiển thị khi chọn tab) === */}
           {activeSection === "Quản lý giấy tờ kinh doanh" && (
@@ -157,9 +161,10 @@ export default function PersonalProfilePage() {
 
 
           {activeSection === "Ví điện tử" && <PersonalEWallet />}
-          {/* Tạm thời render DisputeForm vào tab Gửi Khiếu Nại */}
+          {/* XÓA: Tạm thời render DisputeForm vào tab Gửi Khiếu Nại */}
           {activeSection === "Gửi khiếu nại" && (
-            <DisputeForm initialOrderId={1} />
+            // KHÔNG CÒN GỌI DISPUTEFORM Ở ĐÂY NỮA
+            <p>Form khiếu nại đã được tích hợp vào Lịch sử đơn hàng.</p>
           )}
 
 
