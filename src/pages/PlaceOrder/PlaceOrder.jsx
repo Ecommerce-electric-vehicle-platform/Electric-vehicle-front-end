@@ -25,6 +25,7 @@ import {
     placeOrder,
     getShippingFee
 } from '../../api/orderApi';
+import { normalizePhoneNumber, isValidVietnamPhoneNumber, formatPhoneForAPI } from '../../utils/format';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
 import profileApi from '../../api/profileApi';
 import { useAddressLoading } from '../../components/ProfileUser/hooks/useAddressLoading';
@@ -844,12 +845,25 @@ function PlaceOrder() {
             orderData.phoneNumber.trim() &&
             orderData.buyer_email.trim();
 
-        return shippingValidation && profileValidation;
+        // Validate số điện thoại
+        const phoneValidation = isValidVietnamPhoneNumber(orderData.phoneNumber || '');
+        const deliveryPhoneValidation = isValidVietnamPhoneNumber(orderData.delivery_phone || '');
+
+        return shippingValidation && profileValidation && phoneValidation && deliveryPhoneValidation;
     };
 
     // Xử lý đặt hàng
     const handlePlaceOrder = async () => {
         if (!isFormValid()) {
+            // Kiểm tra cụ thể số điện thoại không hợp lệ
+            if (!isValidVietnamPhoneNumber(orderData.phoneNumber || '')) {
+                alert('Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam hợp lệ (10 số, bắt đầu bằng 0, không được là số test như 0123456789).');
+                return;
+            }
+            if (!isValidVietnamPhoneNumber(orderData.delivery_phone || '')) {
+                alert('Số điện thoại nhận hàng không hợp lệ. Vui lòng nhập số điện thoại Việt Nam hợp lệ (10 số, bắt đầu bằng 0).');
+                return;
+            }
             alert('Vui lòng điền đầy đủ thông tin bắt buộc');
             return;
         }
@@ -1067,6 +1081,18 @@ function PlaceOrder() {
             // 1. Backend PHẢI sử dụng shippingFee từ request (không tự tính lại)
             // 2. shippingFee này đã được tính từ API /api/v1/shipping/shipping-fee
             // 3. Backend không nên tự gọi lại GHN API trong placeOrder()
+            // Normalize và validate số điện thoại trước khi gửi API
+            const normalizedPhone = normalizePhoneNumber(orderData.phoneNumber || '');
+
+            if (!isValidVietnamPhoneNumber(normalizedPhone)) {
+                alert('Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam hợp lệ (10 số, bắt đầu bằng 0).');
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Format số điện thoại cho API (có thể cần format international cho GHN)
+            const phoneForAPI = formatPhoneForAPI(normalizedPhone, 'vn'); // Hoặc 'international' nếu GHN yêu cầu
+
             const apiOrderData = {
                 postProductId: orderData.postProductId || product?.postId || product?.id,        // ID sản phẩm
                 username: orderData.username || localStorage.getItem('username') || '',
@@ -1075,7 +1101,7 @@ function PlaceOrder() {
                 provinceName: provinces.find(p => p.value === (orderData.provinceId || selectedProvince))?.label || '',
                 districtName: districts.find(d => d.value === (orderData.districtId || selectedDistrict))?.label || '',
                 wardName: wards.find(w => w.value === (orderData.wardId || selectedWard))?.label || '',
-                phoneNumber: orderData.phoneNumber || '',            // Số điện thoại
+                phoneNumber: phoneForAPI,            // Số điện thoại đã normalize và format
                 shippingPartnerId: Number(orderData.shippingPartnerId || 0), // ID đối tác vận chuyển
                 paymentId: Number(orderData.paymentId || 0),                 // ID phương thức thanh toán
                 // ✅ BẮT BUỘC: Backend phải sử dụng shippingFee này (đã tính từ API /api/v1/shipping/shipping-fee)
@@ -1138,10 +1164,15 @@ function PlaceOrder() {
             const orderId = response.data?.orderId || response.data?.id || response.orderId || response.id || null;
             const orderCode = response.data?.orderCode || response.data?.code || response.orderCode || response.code || null;
 
-            if (orderId || response.success !== false) {
+            // QUAN TRỌNG: Chỉ coi là thành công khi response.success === true VÀ có orderId hợp lệ
+            // KHÔNG dùng response.success !== false vì nó sẽ true cả khi success là undefined/null
+            const isSuccess = response.success === true && orderId !== null && orderId !== undefined;
+
+            if (isSuccess) {
                 console.log('✅ Order placed successfully:', orderId);
 
-                // Refresh số dư ví sau khi đặt hàng thành công
+                // CHỈ refresh số dư ví sau khi XÁC NHẬN order thực sự thành công
+                // Backend đã trừ tiền và tạo order thành công
                 refreshWalletBalance();
 
                 const newOrderId = orderId || `ORD${Date.now()}`;
@@ -1184,14 +1215,42 @@ function PlaceOrder() {
                     finalPrice: product.price + (orderData.shippingFee || 0)
                 };
 
-                // Lưu vào localStorage
+                // CHỈ lưu vào localStorage khi order THỰC SỰ thành công
+                // QUAN TRỌNG: Lưu username để filter theo user sau này
+                const currentUsername = localStorage.getItem('username') || '';
+                const newOrderWithUser = {
+                    ...newOrder,
+                    username: currentUsername, // Lưu username để filter theo user
+                    userId: currentUsername, // Alias cho compatibility
+                    createdBy: currentUsername // Alias cho compatibility
+                };
+
                 const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-                existingOrders.push(newOrder);
+                existingOrders.push(newOrderWithUser);
                 localStorage.setItem('orders', JSON.stringify(existingOrders));
 
                 setCurrentStep(3);
             } else {
-                throw new Error(response.message || response.data?.message || 'Có lỗi xảy ra khi đặt hàng');
+                // Xử lý trường hợp response không thành công
+                const errorMsg = response.message || response.data?.message || 'Có lỗi xảy ra khi đặt hàng';
+
+                console.error('❌ Order placement failed:', {
+                    success: response.success,
+                    message: errorMsg,
+                    orderId: orderId,
+                    response: response
+                });
+
+                // Nếu backend trả về success: false nhưng vẫn có orderId
+                // → Backend có thể đã tạo order và trừ tiền nhưng trả về lỗi
+                // → Cần kiểm tra và rollback nếu cần
+                if (orderId && response.success === false) {
+                    console.warn('⚠️ WARNING: Backend returned success: false but has orderId. Possible partial transaction:', orderId);
+                    console.warn('⚠️ Backend may have created order and deducted wallet balance but returned error.');
+                    console.warn('⚠️ User may need to contact support to verify/refund.');
+                }
+
+                throw new Error(errorMsg);
             }
         } catch (error) {
             console.error('❌ Place order error:', error);
@@ -1208,11 +1267,16 @@ function PlaceOrder() {
                 url: error.config?.url
             });
 
+            // QUAN TRỌNG: Refresh wallet để cập nhật số dư sau khi lỗi
+            // Nếu backend đã trừ tiền nhưng đặt hàng thất bại, số dư sẽ phản ánh đúng
+            // Nếu backend không trừ tiền, số dư sẽ giữ nguyên
+            refreshWalletBalance();
+
             // Hiển thị thông báo lỗi cho người dùng
             setModalConfig({
                 type: 'error',
                 title: 'Đặt hàng thất bại',
-                message: errorMessage,
+                message: errorMessage + '\n\nNếu tiền đã bị trừ nhưng đơn hàng không được tạo, vui lòng liên hệ hỗ trợ để được hoàn tiền.',
                 actions: [
                     {
                         label: 'Thử lại',

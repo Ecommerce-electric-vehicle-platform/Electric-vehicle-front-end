@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     ArrowLeft,
     Home,
@@ -20,14 +20,18 @@ import {
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
 import OrderStatus from '../../components/OrderStatus/OrderStatus';
 import './OrderTracking.css';
-import { getOrderHistory, getOrderStatus } from '../../api/orderApi';
+import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview } from '../../api/orderApi';
+import profileApi from '../../api/profileApi';
+import { AnimatedButton } from '../../components/ui/AnimatedButton';
 
 function OrderTracking() {
     const { orderId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isGuest, setIsGuest] = useState(true);
+    const [hasReview, setHasReview] = useState(false); // Trạng thái đánh giá
     const getPaymentMethodLabel = (method) => {
         if (method === 'cod') return 'Thanh toán khi nhận hàng';
         if (method === 'bank_transfer') return 'Chuyển khoản ngân hàng';
@@ -52,6 +56,31 @@ function OrderTracking() {
         }
     };
 
+    // Xử lý đánh giá đơn hàng
+    const handleRateOrder = () => {
+        const realId = order?.realId || order?.id || orderId;
+        navigate(`/order/review/${orderId}`, {
+            state: {
+                orderIdRaw: realId,
+                orderCode: order?.id || order?._raw?.orderCode || null,
+                from: location.pathname // Sử dụng đường dẫn thực tế hiện tại
+            }
+        });
+    };
+
+    // Xử lý xem đánh giá đã có
+    const handleViewReview = () => {
+        const realId = order?.realId || order?.id || orderId;
+        navigate(`/order/review/${orderId}`, {
+            state: {
+                orderIdRaw: realId,
+                orderCode: order?.id || order?._raw?.orderCode || null,
+                viewMode: true, // Đánh dấu là chế độ xem lại
+                from: location.pathname // Sử dụng đường dẫn thực tế hiện tại
+            }
+        });
+    };
+
     // Kiểm tra đăng nhập
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -63,68 +92,276 @@ function OrderTracking() {
         }
     }, [navigate]);
 
-    // Tải thông tin đơn hàng (ưu tiên localStorage, fallback Backend order history)
+    // Tải thông tin đơn hàng - ưu tiên Order Detail API, fallback order history hoặc localStorage
     useEffect(() => {
         const loadOrder = async () => {
             try {
-                const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-                let foundOrder = orders.find(o => String(o.id) === String(orderId));
+                setLoading(true);
 
-                if (foundOrder) {
-                    // Cập nhật trạng thái từ API trước
-                    const realOrderId = foundOrder.id || foundOrder.orderId;
-                    if (realOrderId) {
-                        try {
-                            const statusResponse = await getOrderStatus(realOrderId);
-                            if (statusResponse.success && statusResponse.status) {
-                                foundOrder.status = statusResponse.status;
-                                // Cập nhật localStorage nếu có thay đổi
-                                const updatedOrders = orders.map(o =>
-                                    o.id === orderId ? { ...o, status: statusResponse.status } : o
-                                );
-                                localStorage.setItem('orders', JSON.stringify(updatedOrders));
+                // Ưu tiên 1: Gọi API Order Detail trực tiếp
+                try {
+                    const orderDetailRes = await getOrderDetails(orderId);
+
+                    if (orderDetailRes.success && orderDetailRes.data) {
+                        const orderDetailData = orderDetailRes.data;
+
+                        // Lấy buyerName từ nhiều nguồn
+                        let buyerName = '';
+
+                        // Nguồn 1: Từ API order detail (_raw.buyerName hoặc data.buyerName)
+                        buyerName = orderDetailData._raw?.buyerName ||
+                            orderDetailData._raw?.buyer?.name ||
+                            orderDetailData.buyerName ||
+                            orderDetailData.buyer?.name ||
+                            '';
+
+                        // Nguồn 2: Nếu không có từ API, lấy từ profile API
+                        if (!buyerName) {
+                            try {
+                                const profileRes = await profileApi.getProfile();
+                                if (profileRes?.data?.data) {
+                                    buyerName = profileRes.data.data.fullName ||
+                                        profileRes.data.data.name ||
+                                        profileRes.data.fullName ||
+                                        '';
+                                }
+                            } catch (profileError) {
+                                console.warn('[OrderTracking] Failed to get buyerName from profile API:', profileError);
                             }
-                        } catch (error) {
-                            console.warn('[OrderTracking] Failed to get order status from API:', error);
-                            // Giữ nguyên trạng thái hiện tại nếu API fail
                         }
-                    }
 
-                    setOrder(foundOrder);
-                } else {
-                    // Fallback: gọi Backend lịch sử và tìm theo id hoặc orderCode
-                    try {
-                        const { items } = await getOrderHistory({ page: 1, size: 50 });
-                        const byId = (items || []).find(x => String(x?.id) === String(orderId));
-                        const byCode = (items || []).find(x => String(x?._raw?.orderCode) === String(orderId));
-                        const beOrder = byId || byCode || null;
-                        if (beOrder) {
-                            const mapped = mapHistoryItemToTracking(beOrder);
+                        // Nguồn 3: Fallback từ localStorage nếu có
+                        if (!buyerName) {
+                            const userEmail = localStorage.getItem('userEmail') || '';
+                            // Không có fullName trong localStorage, nhưng có thể có username
+                            const username = localStorage.getItem('username') || '';
+                            buyerName = username || userEmail || '';
+                        }
 
-                            // Cập nhật trạng thái từ API
-                            const realOrderId = beOrder._raw?.id ?? beOrder.id;
-                            if (realOrderId) {
-                                try {
-                                    const statusResponse = await getOrderStatus(realOrderId);
-                                    if (statusResponse.success && statusResponse.status) {
-                                        mapped.status = statusResponse.status;
+                        // Map từ order detail API response sang format của OrderTracking
+                        const mappedOrder = {
+                            id: orderDetailData.orderCode || String(orderDetailData.id || orderId),
+                            realId: orderDetailData.id || orderId, // Lưu id thực từ backend
+                            createdAt: orderDetailData.createdAt || new Date().toISOString(),
+                            estimatedDelivery: orderDetailData.updatedAt || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+                            status: orderDetailData.status || 'pending', // Normalized status
+                            rawStatus: orderDetailData.rawStatus || 'PROCESSING',
+
+                            // Product info
+                            product: {
+                                image: orderDetailData._raw?.productImage || '/vite.svg',
+                                title: orderDetailData._raw?.productName || `Đơn hàng ${orderDetailData.orderCode}`,
+                                price: orderDetailData.price || 0
+                            },
+                            items: [], // API không trả items array
+
+                            // Price info
+                            totalPrice: orderDetailData.price || 0,
+                            shippingFee: orderDetailData.shippingFee || 0,
+                            finalPrice: orderDetailData.finalPrice || (orderDetailData.price + orderDetailData.shippingFee),
+
+                            // Buyer & shipping info
+                            buyerName: buyerName, // Đã lấy từ nhiều nguồn ở trên
+                            buyerPhone: orderDetailData.phoneNumber || '',
+                            deliveryAddress: orderDetailData.shippingAddress || '',
+
+                            // Payment info
+                            paymentMethod: (orderDetailData._raw?.paymentMethod || 'ewallet').toLowerCase(),
+
+                            // Shipping tracking info
+                            deliveredAt: orderDetailData._raw?.deliveredAt || null,
+                            shippedAt: orderDetailData._raw?.shippedAt || null,
+                            trackingNumber: orderDetailData._raw?.trackingNumber || '',
+                            carrier: orderDetailData._raw?.carrier || orderDetailData._raw?.shippingPartner || '',
+
+                            // Invoice
+                            needInvoice: Boolean(orderDetailData._raw?.needInvoice || false),
+
+                            // Cancel info
+                            canceledAt: orderDetailData.canceledAt || null,
+                            cancelReason: orderDetailData.cancelReason || null,
+
+                            // Raw data reference
+                            _raw: orderDetailData._raw || {}
+                        };
+
+                        // Cập nhật status từ shipping API để có status mới nhất
+                        const realOrderId = orderDetailData.id || orderId;
+                        if (realOrderId) {
+                            try {
+                                const statusResponse = await getOrderStatus(realOrderId);
+                                if (statusResponse.success && statusResponse.status) {
+                                    mappedOrder.status = statusResponse.status;
+                                    mappedOrder.rawStatus = statusResponse.rawStatus || mappedOrder.rawStatus;
+
+                                    // Nếu đơn hàng đã giao, kiểm tra xem đã có đánh giá chưa
+                                    if (statusResponse.status === 'delivered') {
+                                        try {
+                                            const reviewStatus = await hasOrderReview(realOrderId);
+                                            setHasReview(reviewStatus);
+                                        } catch (reviewError) {
+                                            console.warn('[OrderTracking] Failed to check review status:', reviewError);
+                                        }
+                                    } else {
+                                        setHasReview(false);
                                     }
-                                } catch (error) {
-                                    console.warn('[OrderTracking] Failed to get order status from API:', error);
+                                }
+                            } catch (error) {
+                                console.warn('[OrderTracking] Failed to get order status from API:', error);
+                                // Nếu API fail nhưng order status từ order detail là delivered, vẫn check review
+                                if (mappedOrder.status === 'delivered') {
+                                    try {
+                                        const reviewStatus = await hasOrderReview(realOrderId);
+                                        setHasReview(reviewStatus);
+                                    } catch (reviewError) {
+                                        console.warn('[OrderTracking] Failed to check review status:', reviewError);
+                                    }
                                 }
                             }
-
-                            setOrder(mapped);
                         } else {
-                            setOrder(null);
+                            // Nếu không lấy được status từ shipping API nhưng order status từ order detail là delivered
+                            if (mappedOrder.status === 'delivered') {
+                                try {
+                                    const reviewStatus = await hasOrderReview(realOrderId);
+                                    setHasReview(reviewStatus);
+                                } catch (reviewError) {
+                                    console.warn('[OrderTracking] Failed to check review status:', reviewError);
+                                }
+                            }
                         }
-                    } catch (e) {
-                        console.error('Không lấy được order history:', e);
-                        setOrder(null);
+
+                        setOrder(mappedOrder);
+                        setLoading(false);
+                        return;
                     }
+                } catch (orderDetailError) {
+                    console.warn('[OrderTracking] Failed to load from order detail API, trying fallback:', orderDetailError);
                 }
+
+                // Fallback 1: Gọi Backend order history và tìm theo id hoặc orderCode
+                try {
+                    const { items } = await getOrderHistory({ page: 1, size: 50 });
+                    const byId = (items || []).find(x => String(x?.id) === String(orderId));
+                    const byCode = (items || []).find(x => String(x?._raw?.orderCode) === String(orderId) || String(x?.orderCode) === String(orderId));
+                    const beOrder = byId || byCode || null;
+
+                    if (beOrder) {
+                        const mapped = mapHistoryItemToTracking(beOrder);
+
+                        // Lấy buyerName từ profile API nếu không có
+                        if (!mapped.buyerName || mapped.buyerName === '') {
+                            try {
+                                const profileRes = await profileApi.getProfile();
+                                if (profileRes?.data?.data) {
+                                    mapped.buyerName = profileRes.data.data.fullName ||
+                                        profileRes.data.data.name ||
+                                        profileRes.data.fullName ||
+                                        '';
+                                }
+                            } catch (profileError) {
+                                console.warn('[OrderTracking] Failed to get buyerName from profile API:', profileError);
+                            }
+                        }
+
+                        // Cập nhật trạng thái từ API
+                        const realOrderId = beOrder._raw?.id ?? beOrder.id;
+                        if (realOrderId) {
+                            try {
+                                const statusResponse = await getOrderStatus(realOrderId);
+                                if (statusResponse.success && statusResponse.status) {
+                                    mapped.status = statusResponse.status;
+
+                                    // Nếu đơn hàng đã giao, kiểm tra xem đã có đánh giá chưa
+                                    if (statusResponse.status === 'delivered') {
+                                        try {
+                                            const reviewStatus = await hasOrderReview(realOrderId);
+                                            setHasReview(reviewStatus);
+                                        } catch (reviewError) {
+                                            console.warn('[OrderTracking] Failed to check review status:', reviewError);
+                                        }
+                                    } else {
+                                        setHasReview(false);
+                                    }
+                                }
+                            } catch (error) {
+                                console.warn('[OrderTracking] Failed to get order status from API:', error);
+                            }
+                        }
+
+                        // Nếu order đã delivered nhưng chưa check review, check ngay
+                        if (mapped.status === 'delivered') {
+                            const realIdForReview = beOrder._raw?.id ?? beOrder.id;
+                            if (realIdForReview) {
+                                hasOrderReview(realIdForReview).then(setHasReview).catch(console.warn);
+                            }
+                        }
+
+                        setOrder(mapped);
+                        setLoading(false);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('[OrderTracking] Failed to load from order history:', e);
+                }
+
+                // Fallback 2: localStorage
+                try {
+                    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+                    const foundOrder = orders.find(o => String(o.id) === String(orderId));
+
+                    if (foundOrder) {
+                        // Lấy buyerName từ localStorage order nếu có
+                        let buyerName = foundOrder.buyerName || foundOrder.buyer_name || '';
+
+                        // Nếu không có trong localStorage order, lấy từ profile API
+                        if (!buyerName) {
+                            try {
+                                const profileRes = await profileApi.getProfile();
+                                if (profileRes?.data?.data) {
+                                    buyerName = profileRes.data.data.fullName ||
+                                        profileRes.data.data.name ||
+                                        profileRes.data.fullName ||
+                                        '';
+                                }
+                            } catch (profileError) {
+                                console.warn('[OrderTracking] Failed to get buyerName from profile API:', profileError);
+                            }
+                        }
+
+                        const mapped = mapHistoryItemToTracking({
+                            id: foundOrder.id,
+                            _raw: {
+                                ...foundOrder,
+                                buyerName: buyerName || foundOrder.buyerName || ''
+                            },
+                            status: foundOrder.status || 'pending'
+                        });
+
+                        // Cập nhật buyerName nếu có
+                        if (buyerName) {
+                            mapped.buyerName = buyerName;
+                        }
+
+                        // Nếu order đã delivered, check review status
+                        if (mapped.status === 'delivered') {
+                            const realIdForReview = foundOrder._raw?.id ?? foundOrder.id ?? orderId;
+                            if (realIdForReview) {
+                                hasOrderReview(realIdForReview).then(setHasReview).catch(console.warn);
+                            }
+                        }
+
+                        setOrder(mapped);
+                        setLoading(false);
+                        return;
+                    }
+                } catch (localError) {
+                    console.warn('[OrderTracking] Failed to load from localStorage:', localError);
+                }
+
+                // Không tìm thấy đơn hàng
+                setOrder(null);
             } catch (error) {
-                console.error('Error loading order:', error);
+                console.error('[OrderTracking] Error loading order:', error);
                 setOrder(null);
             } finally {
                 setLoading(false);
@@ -134,42 +371,94 @@ function OrderTracking() {
         loadOrder();
     }, [orderId]);
 
-    // Auto-refresh order status định kỳ (mỗi 30 giây)
+    // Auto-refresh order details định kỳ (mỗi 30 giây) để luôn có dữ liệu mới nhất
     useEffect(() => {
-        if (!order) return;
+        if (!order || !orderId) return;
 
-        const refreshStatus = async () => {
+        const refreshOrder = async () => {
             try {
-                // Lấy orderId thực từ order
-                const realOrderId = order.id || order._raw?.id;
+                // Lấy orderId thực từ order (ưu tiên realId, fallback id)
+                const realOrderId = order.realId || order.id || orderId;
                 if (!realOrderId) return;
 
-                console.log('[OrderTracking] Auto-refreshing order status...');
-                const statusResponse = await getOrderStatus(realOrderId);
+                console.log('[OrderTracking] Auto-refreshing order details...');
 
-                if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
-                    console.log(`[OrderTracking] Status updated: ${order.status} -> ${statusResponse.status}`);
-                    setOrder(prevOrder => ({
-                        ...prevOrder,
-                        status: statusResponse.status
-                    }));
+                // Gọi API order detail để lấy thông tin mới nhất
+                try {
+                    const orderDetailRes = await getOrderDetails(realOrderId);
+
+                    if (orderDetailRes.success && orderDetailRes.data) {
+                        const orderDetailData = orderDetailRes.data;
+
+                        // Cập nhật order với dữ liệu mới
+                        setOrder(prevOrder => {
+                            if (!prevOrder) return prevOrder;
+
+                            const statusChanged = orderDetailData.status !== prevOrder.status;
+                            const cancelChanged = Boolean(orderDetailData.canceledAt) !== Boolean(prevOrder.canceledAt);
+
+                            // Nếu đơn hàng đã giao, luôn kiểm tra review status (ngay cả khi không có thay đổi)
+                            if (orderDetailData.status === 'delivered' || prevOrder.status === 'delivered') {
+                                hasOrderReview(realOrderId).then(setHasReview).catch(console.warn);
+                            } else {
+                                setHasReview(false);
+                            }
+
+                            if (statusChanged || cancelChanged || orderDetailData.updatedAt !== prevOrder.estimatedDelivery) {
+                                console.log(`[OrderTracking] Order updated: status=${orderDetailData.status}, canceledAt=${orderDetailData.canceledAt}`);
+
+                                return {
+                                    ...prevOrder,
+                                    status: orderDetailData.status || prevOrder.status,
+                                    rawStatus: orderDetailData.rawStatus || prevOrder.rawStatus,
+                                    canceledAt: orderDetailData.canceledAt || prevOrder.canceledAt,
+                                    cancelReason: orderDetailData.cancelReason || prevOrder.cancelReason,
+                                    estimatedDelivery: orderDetailData.updatedAt || prevOrder.estimatedDelivery,
+                                    totalPrice: orderDetailData.price ?? prevOrder.totalPrice,
+                                    shippingFee: orderDetailData.shippingFee ?? prevOrder.shippingFee,
+                                    finalPrice: orderDetailData.finalPrice ?? prevOrder.finalPrice,
+                                    deliveryAddress: orderDetailData.shippingAddress || prevOrder.deliveryAddress,
+                                    buyerPhone: orderDetailData.phoneNumber || prevOrder.buyerPhone
+                                };
+                            }
+
+                            return prevOrder;
+                        });
+                    }
+                } catch (orderDetailError) {
+                    console.warn('[OrderTracking] Failed to refresh from order detail API:', orderDetailError);
+                }
+
+                // Sau đó cập nhật status từ shipping API
+                try {
+                    const statusResponse = await getOrderStatus(realOrderId);
+                    if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
+                        console.log(`[OrderTracking] Status updated from shipping API: ${order.status} -> ${statusResponse.status}`);
+                        setOrder(prevOrder => ({
+                            ...prevOrder,
+                            status: statusResponse.status,
+                            rawStatus: statusResponse.rawStatus || prevOrder.rawStatus
+                        }));
+                    }
+                } catch (statusError) {
+                    console.warn('[OrderTracking] Failed to refresh status from shipping API:', statusError);
                 }
             } catch (error) {
-                console.warn('[OrderTracking] Failed to refresh order status:', error);
+                console.warn('[OrderTracking] Failed to refresh order:', error);
             }
         };
 
         // Refresh ngay khi order được load
-        if (order.id) {
-            refreshStatus();
+        if (order.id || order.realId) {
+            refreshOrder();
         }
 
         // Set interval để refresh mỗi 30 giây
-        const intervalId = setInterval(refreshStatus, 30000); // 30 seconds
+        const intervalId = setInterval(refreshOrder, 30000); // 30 seconds
 
         return () => clearInterval(intervalId);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [order?.id]); // Chỉ chạy khi orderId thay đổi
+    }, [order?.id, order?.realId, orderId]); // Chỉ chạy khi orderId thay đổi
 
     function mapHistoryItemToTracking(item) {
         const id = item.id ?? item._raw?.orderCode ?? String(Date.now());
@@ -342,9 +631,15 @@ function OrderTracking() {
                                 <button className="btn btn-warning" onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}>
                                     <MessageSquareWarning className="btn-icon" /> Khiếu nại
                                 </button>
-                                <button className="btn btn-success" onClick={() => alert('Đánh giá đơn hàng (sẽ triển khai)')}>
-                                    <Star className="btn-icon" /> Đánh giá
-                                </button>
+                                {hasReview ? (
+                                    <button className="btn btn-secondary" onClick={handleViewReview}>
+                                        <Star className="btn-icon" /> Xem đánh giá
+                                    </button>
+                                ) : (
+                                    <button className="btn btn-success" onClick={handleRateOrder}>
+                                        <Star className="btn-icon" /> Đánh giá
+                                    </button>
+                                )}
                                 {order.needInvoice && (
                                     <button className="btn btn-soft" onClick={() => alert('Tải hóa đơn (sẽ triển khai)')}>
                                         <FileDown className="btn-icon" /> Tải hóa đơn
@@ -529,24 +824,38 @@ function OrderTracking() {
                         <div className="order-actions">
                             {order.status === 'pending' && (
                                 <div className="action-buttons">
-                                    <button className="btn btn-primary" onClick={handleContactSeller}>
-                                        <Phone className="btn-icon" />
+                                    <AnimatedButton
+                                        variant="primary"
+                                        shimmer={true}
+                                        onClick={handleContactSeller}
+                                        className="action-btn-primary"
+                                    >
+                                        <Phone size={18} />
                                         Liên hệ người bán
-                                    </button>
-                                    <button className="btn btn-outline-danger" onClick={handleCancelOrder}>
-                                        <AlertCircle className="btn-icon" />
+                                    </AnimatedButton>
+                                    <AnimatedButton
+                                        variant="outline-danger"
+                                        onClick={handleCancelOrder}
+                                        className="action-btn-danger"
+                                    >
+                                        <AlertCircle size={18} />
                                         Hủy đơn hàng
-                                    </button>
+                                    </AnimatedButton>
                                 </div>
                             )}
 
                             {order.status === 'confirmed' && (
                                 <div className="action-buttons">
-                                    <button className="btn btn-primary" onClick={handleContactSeller}>
-                                        <Phone className="btn-icon" />
+                                    <AnimatedButton
+                                        variant="primary"
+                                        shimmer={true}
+                                        onClick={handleContactSeller}
+                                        className="action-btn-primary"
+                                    >
+                                        <Phone size={18} />
                                         Liên hệ người bán
-                                    </button>
-                                    <div className="status-note">
+                                    </AnimatedButton>
+                                    <div className="status-note status-note-animated">
                                         <Clock className="note-icon" />
                                         <span>Đơn hàng đang được chuẩn bị</span>
                                     </div>
@@ -555,11 +864,16 @@ function OrderTracking() {
 
                             {order.status === 'shipping' && (
                                 <div className="action-buttons">
-                                    <button className="btn btn-primary" onClick={handleContactSeller}>
-                                        <Phone className="btn-icon" />
+                                    <AnimatedButton
+                                        variant="primary"
+                                        shimmer={true}
+                                        onClick={handleContactSeller}
+                                        className="action-btn-primary"
+                                    >
+                                        <Phone size={18} />
                                         Liên hệ người bán
-                                    </button>
-                                    <div className="status-note">
+                                    </AnimatedButton>
+                                    <div className="status-note status-note-animated status-note-shipping">
                                         <Truck className="note-icon" />
                                         <span>Đơn hàng đang trên đường</span>
                                     </div>
@@ -568,27 +882,53 @@ function OrderTracking() {
 
                             {order.status === 'delivered' && (
                                 <div className="action-buttons">
-                                    <div className="status-note success">
+                                    <div className="status-note success status-note-animated status-note-success">
                                         <CheckCircle className="note-icon" />
                                         <span>Đơn hàng đã được giao thành công</span>
                                     </div>
-                                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                                        <button className="btn btn-warning" onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}>
+                                    <div className="delivered-action-buttons">
+                                        <AnimatedButton
+                                            variant="warning"
+                                            onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}
+                                            size="sm"
+                                        >
+                                            <MessageSquareWarning size={16} />
                                             Khiếu nại
-                                        </button>
-                                        <button className="btn btn-success" onClick={() => alert('Đánh giá đơn hàng (sẽ triển khai)')}>
-                                            Đánh giá
-                                        </button>
-                                        <button className="btn btn-secondary" onClick={() => alert('Đặt lại đơn (sẽ triển khai)')}>
+                                        </AnimatedButton>
+                                        {hasReview ? (
+                                            <AnimatedButton
+                                                variant="secondary"
+                                                onClick={handleViewReview}
+                                                size="sm"
+                                            >
+                                                <Star size={16} />
+                                                Xem đánh giá
+                                            </AnimatedButton>
+                                        ) : (
+                                            <AnimatedButton
+                                                variant="success"
+                                                shimmer={true}
+                                                onClick={handleRateOrder}
+                                                size="sm"
+                                            >
+                                                <Star size={16} />
+                                                Đánh giá
+                                            </AnimatedButton>
+                                        )}
+                                        <AnimatedButton
+                                            variant="secondary"
+                                            onClick={() => alert('Đặt lại đơn (sẽ triển khai)')}
+                                            size="sm"
+                                        >
                                             Đặt lại
-                                        </button>
+                                        </AnimatedButton>
                                     </div>
                                 </div>
                             )}
 
                             {order.status === 'cancelled' && (
                                 <div className="action-buttons">
-                                    <div className="status-note error">
+                                    <div className="status-note error status-note-animated status-note-error">
                                         <AlertCircle className="note-icon" />
                                         <span>Đơn hàng đã bị hủy</span>
                                     </div>
@@ -597,15 +937,19 @@ function OrderTracking() {
                         </div>
 
                         {/* Thông tin hỗ trợ */}
-                        <div className="support-info">
+                        <div className="support-info support-info-enhanced">
                             <h4 className="support-title">Cần hỗ trợ?</h4>
                             <p className="support-desc">
                                 Nếu bạn có bất kỳ thắc mắc nào về đơn hàng, vui lòng liên hệ với chúng tôi.
                             </p>
-                            <button className="btn btn-outline-primary">
-                                <Phone className="btn-icon" />
+                            <AnimatedButton
+                                variant="outline-primary"
+                                onClick={() => alert('Liên hệ hỗ trợ (sẽ triển khai)')}
+                                className="support-button"
+                            >
+                                <Phone size={18} />
                                 Liên hệ hỗ trợ
-                            </button>
+                            </AnimatedButton>
                         </div>
                     </div>
                 </div>

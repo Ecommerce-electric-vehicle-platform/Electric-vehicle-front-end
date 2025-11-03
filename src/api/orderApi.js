@@ -61,10 +61,94 @@ export const placeOrder = async (orderData) => {
     }
 };
 
-// Get order details
-export const getOrderDetails = async () => {
-    // BE hiện không có API chi tiết đơn → trả rỗng để UI dùng fallback, không gọi network
-    return {};
+// Get order details by orderId
+// GET /api/v1/order/{orderId}
+// Response: { success: true, message: "string", data: { id, orderCode, shippingAddress, phoneNumber, price, shippingFee, status, createdAt, updatedAt, canceledAt, cancelReason }, error: {} }
+export const getOrderDetails = async (orderId) => {
+    try {
+        if (!orderId) {
+            throw new Error('Order ID is required');
+        }
+
+        const response = await axiosInstance.get(`/api/v1/order/${orderId}`);
+        const raw = response?.data ?? {};
+
+        // Extract data from response
+        const data = raw?.data ?? raw;
+
+        if (!data || (raw?.success === false)) {
+            throw new Error(raw?.message || 'Failed to fetch order details');
+        }
+
+        // Normalize status from backend to frontend format
+        // Backend status: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
+        const rawStatus = String(data.status || '').toUpperCase();
+        let normalizedStatus = 'pending';
+
+        if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') {
+            normalizedStatus = 'pending';
+        } else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') {
+            normalizedStatus = 'confirmed';
+        } else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') {
+            normalizedStatus = 'shipping';
+        } else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') {
+            normalizedStatus = 'delivered';
+        } else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') {
+            normalizedStatus = 'cancelled';
+        }
+
+        // Normalize price fields
+        const price = Number(data.price ?? 0);
+        const shippingFee = Number(data.shippingFee ?? data.shipping_fee ?? 0);
+        const finalPrice = price + shippingFee;
+
+        // Normalize timestamps
+        const createdAt = data.createdAt || data.created_at || null;
+        const updatedAt = data.updatedAt || data.updated_at || null;
+        const canceledAt = data.canceledAt || data.canceled_at || null;
+        const cancelReason = data.cancelReason || data.cancel_reason || null;
+
+        // Build normalized response
+        const normalized = {
+            id: data.id ?? orderId,
+            orderCode: data.orderCode || data.order_code || String(orderId),
+            shippingAddress: data.shippingAddress || data.shipping_address || '',
+            phoneNumber: data.phoneNumber || data.phone_number || '',
+            price: price,
+            shippingFee: shippingFee,
+            finalPrice: finalPrice,
+            status: normalizedStatus,
+            rawStatus: rawStatus,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            canceledAt: canceledAt,
+            cancelReason: cancelReason,
+            _raw: data // Keep raw data for reference
+        };
+
+        console.log('[orderApi] getOrderDetails - Normalized response:', {
+            orderId: orderId,
+            raw: data,
+            normalized: normalized
+        });
+
+        return {
+            success: raw?.success !== false,
+            message: raw?.message || '',
+            data: normalized,
+            error: raw?.error || null
+        };
+    } catch (error) {
+        console.error('[orderApi] Error fetching order details:', error);
+
+        // Return structured error response
+        return {
+            success: false,
+            message: error?.response?.data?.message || error?.message || 'Failed to fetch order details',
+            data: null,
+            error: error?.response?.data?.error || error?.message || 'UNKNOWN_ERROR'
+        };
+    }
 };
 
 // Get user's orders
