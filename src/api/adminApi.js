@@ -84,6 +84,18 @@ export const createAdmin = async (payload) => {
   }
 };
 
+// Lấy thông tin profile của admin hiện tại
+// GET /api/v1/admin/profile
+export const getAdminProfile = async () => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/profile`);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin admin profile:", error);
+    throw error;
+  }
+};
+
 /**
  * ================================
  * SELLER APPROVAL

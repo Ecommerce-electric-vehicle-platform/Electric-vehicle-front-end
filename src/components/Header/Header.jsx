@@ -43,20 +43,32 @@ export function Header() {
   useEffect(() => {
     const checkAuthAndRole = () => {
       const token = localStorage.getItem("token");
+      const authType = localStorage.getItem("authType");
+      
+      // ✅ QUAN TRỌNG: Nếu authType là "admin", KHÔNG hiển thị user info
+      // Header user chỉ hiển thị khi user đăng nhập, không phải admin
+      if (authType === "admin") {
+        setIsAuthenticated(false);
+        setUserRole("guest");
+        setUserInfo(null);
+        console.log("[Header] Admin đang đăng nhập, không hiển thị user info");
+        return;
+      }
+
       const username = localStorage.getItem("username");
       const userEmail = localStorage.getItem("userEmail");
       // === SỬA: Đọc key "userRole" ===
       const role = localStorage.getItem("userRole") || "guest";
 
 
-      setIsAuthenticated(!!token);
+      setIsAuthenticated(!!token && !authType); // Chỉ authenticated nếu có token và không phải admin
       // === SỬA: Cập nhật state userRole ===
       setUserRole(role);
-      setUserInfo(token ? { username, email: userEmail } : null);
+      setUserInfo(token && !authType ? { username, email: userEmail } : null);
 
 
       console.log(
-        `[Header] Auth check → Authenticated: ${!!token}, Role: ${role}, Username: ${username}`
+        `[Header] Auth check → Authenticated: ${!!token && !authType}, Role: ${role}, Username: ${username}, AuthType: ${authType}`
       );
     };
 
@@ -136,22 +148,33 @@ const response = await notificationApi.getUnreadCount();
   }, [isAuthenticated]);
 
 
-  // ========== LOGOUT (ĐÃ SỬA ĐỂ XÓA ĐÚNG KEY) ==========
+  // ========== LOGOUT (ĐÃ SỬA ĐỂ XÓA ĐÚNG KEY - CHỈ XÓA USER DATA) ==========
   const handleLogout = () => {
-    console.log("Logging out...");
+    console.log("User logging out...");
+    
+    // ✅ CHỈ xóa user-specific keys, KHÔNG xóa adminProfile
+    // Vì user logout không liên quan đến admin
     [
       "token",
       "accessToken",
       "refreshToken",
       "username",
       "userEmail",
-      "buyerId", // Vẫn xóa key này nếu có thể tồn tại
-      "sellerId", // Vẫn xóa key này nếu có thể tồn tại
+      "buyerId",
+      "sellerId",
       "buyerAvatar",
-      "authType", // Xóa key cũ không dùng nữa
       "userRole", // <<< Xóa key mới
-      "activeSellerPackage" // <<< Xóa thông tin gói
+      "activeSellerPackage", // <<< Xóa thông tin gói
+      "authType" // Xóa authType nếu nó không phải "admin"
     ].forEach((key) => {
+      // Kiểm tra nếu authType là "admin" thì không xóa (nhưng trường hợp này không xảy ra vì user header không hiển thị khi admin login)
+      if (key === "authType") {
+        const authType = localStorage.getItem("authType");
+        if (authType === "admin") {
+          console.log("[Header] Giữ authType = admin khi user logout (không ảnh hưởng)");
+          return;
+        }
+      }
       console.log("Removing item:", key);
       localStorage.removeItem(key);
     });

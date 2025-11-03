@@ -75,25 +75,42 @@ export function saveAuthData(data) {
 
 /**
  *  Xóa toàn bộ thông tin khi logout hoặc refresh fail
+ *  ✅ SỬA: Chỉ xóa user data, không xóa adminProfile nếu authType = "admin"
  */
 export function clearAuthData() {
-  const keysToClear = [
-    "accessToken",
-    "refreshToken",
-    "token",
-    "username",
-    "userEmail",
-    "buyerId",
-    "buyerAvatar",
-    "authType",
-    "sellerId",
-    "adminAuthType",
-    "adminToken",
-    "adminRefreshToken",
-    "adminProfile",
-  ];
-  keysToClear.forEach((key) => localStorage.removeItem(key));
-  console.log("[AuthUtils] Cleared all auth data");
+  const authType = localStorage.getItem("authType");
+  
+  // ✅ Nếu đang là admin session, chỉ xóa token, giữ lại adminProfile
+  if (authType === "admin") {
+    const keysToClear = [
+      "accessToken",
+      "refreshToken",
+      "token",
+      "authType",
+    ];
+    keysToClear.forEach((key) => localStorage.removeItem(key));
+    console.log("[AuthUtils] Cleared admin tokens only (kept adminProfile)");
+  } else {
+    // Xóa user data bình thường
+    const keysToClear = [
+      "accessToken",
+      "refreshToken",
+      "token",
+      "username",
+      "userEmail",
+      "buyerId",
+      "buyerAvatar",
+      "authType",
+      "sellerId",
+      "userRole",
+      "adminAuthType",
+      "adminToken",
+      "adminRefreshToken",
+      // ✅ KHÔNG xóa adminProfile ở đây vì function này dùng cho user logout
+    ];
+    keysToClear.forEach((key) => localStorage.removeItem(key));
+    console.log("[AuthUtils] Cleared user auth data");
+  }
 
   window.dispatchEvent(new CustomEvent("authStatusChanged"));
 }

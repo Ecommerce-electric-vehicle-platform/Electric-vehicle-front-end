@@ -27,20 +27,26 @@ import avatar8 from "../../../assets/imgs/placeholder-logo.svg";
 const AppHeaderDropdown = () => {
   const handleLogout = (e) => {
     e.preventDefault();
+    console.log("Admin logging out...");
+    
+    // ✅ CHỈ xóa admin-specific keys, KHÔNG xóa user data
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("buyerId");
     localStorage.removeItem("authType");
     localStorage.removeItem("adminProfile");
+    
+    // KHÔNG xóa các key user như: username, userEmail, buyerId, sellerId, buyerAvatar, userRole
+    // Để giữ lại user session nếu có
+    
+    console.log("[AppHeaderDropdown] Admin logout - Chỉ xóa admin data");
     // Thông báo thay đổi auth cho app (nếu nơi khác lắng nghe)
     window.dispatchEvent(new CustomEvent("authStatusChanged"));
     window.location.href = "/admin/signin";
   };
   // Lấy thông tin admin để hiển thị tối thiểu
   let displayName = "Admin";
+  let username = ""; // Thêm username
   let avatarUrl = null;
   let email = "";
   let employeeNumber = "";
@@ -50,6 +56,7 @@ const AppHeaderDropdown = () => {
     if (raw) {
       try {
         const profile = JSON.parse(raw);
+        username = profile?.username || ""; // ✅ Lấy username từ adminProfile
         displayName =
           profile?.fullName || profile?.employeeNumber || displayName;
         avatarUrl = profile?.avatarUrl || null;
@@ -72,6 +79,7 @@ const AppHeaderDropdown = () => {
         <div className="d-flex align-items-center gap-2">
           <CAvatar src={avatarUrl || avatar8} size="md" />
           <div className="d-none d-md-flex flex-column text-start">
+            {/* ✅ Hiển thị username hoặc displayName */}
             <span
               className="fw-semibold"
               style={{
@@ -81,7 +89,7 @@ const AppHeaderDropdown = () => {
                 whiteSpace: "nowrap",
               }}
             >
-              {displayName}
+              {username || displayName}
             </span>
             {employeeNumber && (
               <small className="text-body-secondary">
@@ -93,9 +101,11 @@ const AppHeaderDropdown = () => {
         </div>
       </CDropdownToggle>
       <CDropdownMenu className="pt-0" placement="bottom-end">
+        {/* ✅ Hiển thị username hoặc displayName */}
         <CDropdownHeader className="bg-body-secondary fw-semibold mb-2">
-          {displayName}
+          {username || displayName}
         </CDropdownHeader>
+        {/* ✅ Hiển thị email */}
         {email && (
           <CDropdownItem href="#" disabled>
             <span className="text-body-secondary">{email}</span>
@@ -140,7 +150,7 @@ const AppHeaderDropdown = () => {
         <CDropdownHeader className="bg-body-secondary fw-semibold my-2">
           Settings
         </CDropdownHeader>
-        <CDropdownItem href="#">
+        <CDropdownItem href="/admin/profile">
           <CIcon icon={cilUser} className="me-2" />
           Profile
         </CDropdownItem>
