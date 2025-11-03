@@ -1,0 +1,30 @@
+/* Custom styles for ManageAdmins */
+
+/* Button tạo admin mới - style giống button làm mới ở ManageDisputes */
+.create-admin-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.3rem !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.97rem !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 6px 0 rgba(60,72,88,0.08) !important;
+  transition: background 0.15s, color 0.15s, box-shadow 0.2s !important;
+  letter-spacing: 0.01em !important;
+  min-width: 0 !important;
+  max-width: 180px !important;
+  width: auto !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  margin-top: 20px !important;
+}
+
+@media (max-width: 600px) {
+  .create-admin-btn {
+    padding: 0.27rem 0.65rem !important;
+    font-size: 0.95rem !important;
+    max-width: 120px !important;
+  }
+}
+

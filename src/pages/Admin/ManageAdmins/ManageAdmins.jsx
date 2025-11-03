@@ -15,6 +15,7 @@ import {
   CModalFooter,
 } from "@coreui/react";
 import adminAxios from "../../../api/adminAxios";
+import "./ManageAdmins.css";
 
 export default function ManageAdmins() {
   const [admins, setAdmins] = useState([]);
@@ -95,8 +96,8 @@ export default function ManageAdmins() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="fw-semibold m-0">Quản lý Quản Trị Viên</h2>
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          Tạo admin mới
+        <button className="btn btn-primary create-admin-btn" onClick={() => setShowCreate(true)}>
+        + Tạo Quản Trị Viên mới
         </button>
       </div>
 
@@ -130,7 +131,7 @@ export default function ManageAdmins() {
       {/* Modal tạo admin */}
       <CModal visible={showCreate} onClose={() => setShowCreate(false)}>
         <CModalHeader>
-          <CModalTitle>Tạo admin mới</CModalTitle>
+          <CModalTitle>Tạo Quản Trị Viên mới</CModalTitle>
         </CModalHeader>
         <CModalBody>
           {error && <div className="alert alert-danger">{error}</div>}

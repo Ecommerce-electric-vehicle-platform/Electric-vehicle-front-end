@@ -110,16 +110,17 @@ export default function SignIn() {
       }
 
       // === DỌN DẸP KEY CŨ KHÔNG DÙNG NỮA ===
-      // ✅ QUAN TRỌNG: Xóa authType và tất cả admin data khi user login
+      // QUAN TRỌNG: Xóa authType và tất cả admin data khi user login
       localStorage.removeItem("authType");
 
-      // ✅ Xóa HOÀN TOÀN dữ liệu admin khi user login
+      // Xóa HOÀN TOÀN dữ liệu admin khi user login
       // Bao gồm cả adminProfile để đảm bảo admin data không xuất hiện trong user header
       [
         "adminAuthType",
         "adminToken",
         "adminRefreshToken",
         "adminProfile", // QUAN TRỌNG: Xóa adminProfile để tránh hiển thị admin data trong user header
+        "user", // Xóa key user cũ không dùng nữa (có thể chứa role "admin" gây conflict)
       ].forEach((k) => localStorage.removeItem(k));
 
       // === BỎ HOÀN TOÀN VIỆC GỌI sellerApi.getSellerProfile ===

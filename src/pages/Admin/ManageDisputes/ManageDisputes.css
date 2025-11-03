@@ -67,6 +67,7 @@
   border-radius: 8px;
   overflow: hidden;
   background: white;
+  position: relative;
 }
 
 .evidence-item img {
@@ -74,6 +75,18 @@
   height: 150px;
   object-fit: cover;
   display: block;
+}
+
+.evidence-order {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .evidence-item a {
