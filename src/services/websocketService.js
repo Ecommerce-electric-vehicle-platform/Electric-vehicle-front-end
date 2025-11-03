@@ -108,11 +108,11 @@ class WebSocketService {
     }
 
     // Subscribe to personal queue: /queue/notifications/{buyerId}
-    const destination = `/queue/notifications/${buyerId}`;
+    const notificationDestination = `/queue/notifications/${buyerId}`;
     
-    console.log(`📡 [WebSocket] Subscribing to queue: ${destination}`);
+    console.log(`📡 [WebSocket] Subscribing to queue: ${notificationDestination}`);
 
-    this.stompClient.subscribe(destination, (message) => {
+    this.stompClient.subscribe(notificationDestination, (message) => {
       console.log('🔔 [WebSocket] 📩 New notification received from Backend!');
       
       try {
@@ -120,13 +120,48 @@ class WebSocketService {
         console.log('📋 [WebSocket] Notification data:', notification);
         
         // Notify all listeners
-        this.notifyListeners(destination, notification);
+        this.notifyListeners(notificationDestination, notification);
       } catch (error) {
         console.error('❌ [WebSocket] Error parsing notification:', error);
       }
     });
 
     console.log('✅ [WebSocket] 🎧 Successfully subscribed to notifications!');
+  }
+
+  // Subscribe to chat messages topic
+  subscribeToChatMessages() {
+    if (!this.stompClient || !this.connected) {
+      console.warn('⚠️  [WebSocket] Cannot subscribe to chat: Not connected');
+      return;
+    }
+
+    const buyerId = localStorage.getItem('buyerId');
+    if (!buyerId) {
+      console.warn('⚠️  [WebSocket] Cannot subscribe to chat: No buyerId in localStorage');
+      return;
+    }
+
+    // Subscribe to chat notifications: /chatting/notifications/{buyerId}
+    const chatDestination = `/chatting/notifications/${buyerId}`;
+    
+    console.log(`💬 [WebSocket] Subscribing to chat: ${chatDestination}`);
+
+    this.stompClient.subscribe(chatDestination, (message) => {
+      console.log('💬 [WebSocket] 📩 New chat message received from Backend!');
+      
+      try {
+        const chatMessage = JSON.parse(message.body);
+        console.log('📋 [WebSocket] Chat message data:', chatMessage);
+        
+        // Notify all listeners
+        this.notifyListeners(chatDestination, chatMessage);
+      } catch (error) {
+        console.error('❌ [WebSocket] Error parsing chat message:', error);
+      }
+    });
+
+    console.log('✅ [WebSocket] 🎧 Successfully subscribed to chat messages!');
   }
 
   // Subscribe to a topic with callback
