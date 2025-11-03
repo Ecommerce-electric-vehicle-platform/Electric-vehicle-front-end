@@ -35,8 +35,8 @@ export default function PersonalProfilePage() {
 
   // === LẤY USERNAME (Đã sửa để đọc từ sessionStorage) ===
   useEffect(() => {
-    const storedUsername = sessionStorage.getItem("username");
-    if (storedUsername) setUsername(storedUsername);
+    const storedUsername = localStorage.getItem("username");
+  if (storedUsername) setUsername(storedUsername);
   }, []);
 
 
@@ -125,7 +125,8 @@ export default function PersonalProfilePage() {
 
 
   // === ĐỌC userRole trực tiếp từ sessionStorage trước khi render ===
-  const currentUserRole = sessionStorage.getItem("userRole") || "buyer"; // Nhanh và ổn định nhất
+  //const currentUserRole = sessionStorage.getItem("userRole") || "buyer"; // Nhanh và ổn định nhất
+  const currentUserRole = localStorage.getItem("userRole") || "buyer";
   console.log(`👤 Reading userRole directly before render: '${currentUserRole}'`);
 
 
