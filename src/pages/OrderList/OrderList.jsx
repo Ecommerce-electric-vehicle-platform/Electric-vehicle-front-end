@@ -23,6 +23,7 @@ import { getOrderHistory, hasOrderReview, getOrderStatus, getOrderDetails } from
 // tui có thêm phần này
 import DisputeForm from "../../components/BuyerRaiseDispute/DisputeForm";
 import './OrderList.css';
+import CancelOrderRequest from "../../components/CancelOrderModal/CancelOrderRequest";
 
 function OrderList() {
     const navigate = useNavigate();
@@ -37,6 +38,8 @@ function OrderList() {
 
     // thêm dòng này nữa
     const [selectedDisputeOrderId, setSelectedDisputeOrderId] = useState(null);
+    const [selectedCancelOrderId, setSelectedCancelOrderId] = useState(null);
+
 
     // Kiểm tra đăng nhập (đúng key token thực tế)
     useEffect(() => {
@@ -495,9 +498,7 @@ function OrderList() {
         });
 
     // Tính số lượng đơn bị hủy
-    const cancelledCount = orders.filter(o =>
-        o.status === 'cancelled' || (o.canceledAt || o._raw?.canceledAt) != null
-    ).length;
+
 
     // Stats
     const totalOrders = orders.length;
@@ -520,36 +521,35 @@ function OrderList() {
     };
 
     // Hành động theo trạng thái
+    // Mở form hủy đơn
     const handleCancelOrder = (orderId) => {
-        const confirmMessage = 'Bạn có chắc chắn muốn hủy đơn hàng này không?';
-        if (window.confirm(confirmMessage)) {
-            // Tạm thời update localStorage để test UI
-            // Sau này sẽ gọi API để hủy đơn
-            const updatedOrders = orders.map(o => {
-                if (String(o.id) === String(orderId)) {
-                    return {
-                        ...o,
-                        status: 'cancelled',
-                        canceledAt: new Date().toISOString(),
-                        cancelReason: 'Người dùng yêu cầu hủy',
-                        _raw: {
-                            ...o._raw,
-                            canceledAt: new Date().toISOString(),
-                            cancelReason: 'Người dùng yêu cầu hủy',
-                            status: 'CANCELED'
-                        }
-                    };
-                }
-                return o;
-            });
-            setOrders(updatedOrders);
-
-            // TODO: Gọi API hủy đơn hàng khi backend có endpoint
-            // await cancelOrderAPI(orderId, 'Người dùng yêu cầu hủy');
-
-            alert('Đơn hàng đã được hủy. (Lưu ý: Hiện tại chỉ cập nhật local, cần kết nối API để lưu vào backend)');
-        }
+        setSelectedCancelOrderId(orderId);
     };
+
+    // Khi user nhấn "Quay lại" trong form hủy đơn
+    const handleCancelOrderBack = () => {
+        setSelectedCancelOrderId(null);
+    };
+
+    // Khi user gửi hủy thành công
+    const handleCancelOrderSuccess = async (orderId) => {
+        // cập nhật ngay trạng thái local để UI phản ứng tức thì
+        setOrders(prev =>
+            prev.map(o =>
+                String(o.id) === String(orderId)
+                    ? { ...o, status: 'canceled', canceledAt: new Date().toISOString() }
+                    : o
+            )
+        );
+
+        //  reload lại danh sách từ server
+        await loadOrders(true);
+
+        //  tự động chuyển sang tab “Đã hủy”
+        setFilter('canceled');
+        setSelectedCancelOrderId(null);
+    };
+
 
     const handleTrackShipment = (orderId) => {
         navigate(`/order-tracking/${orderId}`);
@@ -629,6 +629,32 @@ function OrderList() {
     // Xử lý liên hệ người bán (không dùng ở layout mới)
 
     // Lấy icon và màu sắc cho trạng thái (label theo mockup)
+    // cái này là của cancel order
+    if (selectedCancelOrderId !== null) {
+        return (
+            <div className="cancel-order-flow-wrapper">
+                <button
+                    className="btn-back-order-list"
+                    onClick={handleCancelOrderBack}
+                    style={{
+                        marginBottom: "15px",
+                        padding: "8px 15px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        background: "#f8f9fa"
+                    }}
+                >
+                    <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
+                </button>
+                <CancelOrderRequest
+                    orderId={selectedCancelOrderId}
+                    onCancelSuccess={handleCancelOrderSuccess}
+                    onBack={handleCancelOrderBack}
+                />
+            </div>
+        );
+    }
+
 
     if (selectedDisputeOrderId !== null) {
         return (
@@ -714,45 +740,45 @@ function OrderList() {
                     </div>
 
                     {/* Filter Tabs */}
-                    <div className="filter-tabs-container">
-                        <div className="filter-tabs">
-                            <button
-                                className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
-                                onClick={() => setFilter('all')}
-                            >
-                                Tất cả ({orders.length})
-                            </button>
-                            <button
-                                className={`filter-tab ${filter === 'pending' ? 'active' : ''}`}
-                                onClick={() => setFilter('pending')}
-                            >
-                                Chờ xác nhận ({orders.filter(o => o.status === 'pending').length})
-                            </button>
-                            <button
-                                className={`filter-tab ${filter === 'confirmed' ? 'active' : ''}`}
-                                onClick={() => setFilter('confirmed')}
-                            >
-                                Đã xác nhận ({orders.filter(o => o.status === 'confirmed').length})
-                            </button>
-                            <button
-                                className={`filter-tab ${filter === 'shipping' ? 'active' : ''}`}
-                                onClick={() => setFilter('shipping')}
-                            >
-                                Đang giao ({orders.filter(o => o.status === 'shipping').length})
-                            </button>
-                            <button
-                                className={`filter-tab ${filter === 'delivered' ? 'active' : ''}`}
-                                onClick={() => setFilter('delivered')}
-                            >
-                                Đã giao ({orders.filter(o => o.status === 'delivered').length})
-                            </button>
-                            <button
-                                className={`filter-tab ${filter === 'cancelled' ? 'active' : ''}`}
-                                onClick={() => setFilter('cancelled')}
-                            >
-                                Đã hủy ({cancelledCount})
-                            </button>
-                        </div>
+                    <div className="filter-tabs">
+                        <button
+                            className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
+                            onClick={() => setFilter('all')}
+                        >
+                            Tất cả ({orders.length})
+                        </button>
+                        <button
+                            className={`filter-tab ${filter === 'pending' ? 'active' : ''}`}
+                            onClick={() => setFilter('pending')}
+                        >
+                            Chờ xác nhận ({orders.filter(o => o.status === 'pending').length})
+                        </button>
+                        <button
+                            className={`filter-tab ${filter === 'confirmed' ? 'active' : ''}`}
+                            onClick={() => setFilter('confirmed')}
+                        >
+                            Đã xác nhận ({orders.filter(o => o.status === 'confirmed').length})
+                        </button>
+                        <button
+                            className={`filter-tab ${filter === 'shipping' ? 'active' : ''}`}
+                            onClick={() => setFilter('shipping')}
+                        >
+                            Đang giao ({orders.filter(o => o.status === 'shipping').length})
+                        </button>
+                        <button
+                            className={`filter-tab ${filter === 'delivered' ? 'active' : ''}`}
+                            onClick={() => setFilter('delivered')}
+                        >
+                            Đã giao ({orders.filter(o => o.status === 'delivered').length})
+                        </button>
+
+                        <button
+                            className={`filter-tab ${filter === 'canceled' ? 'active' : ''}`}
+                            onClick={() => setFilter('canceled')}
+                        >
+                            Đã hủy ({orders.filter(o => o.status === 'canceled' || o.status === 'CANCELED').length})
+                        </button>
+
                     </div>
                 </div>
 

@@ -37,6 +37,8 @@ import { useState, useEffect } from "react";
 import notificationService from "./services/notificationService";
 import WalletDashboard from "./pages/Wallet/WalletDashboard";
 
+
+
 function AppContent() {
   const location = useLocation();
   const hideChrome =
@@ -154,6 +156,9 @@ function AppContent() {
             </PageTransition>
           }
         />
+
+    
+
         <Route
           path="/order/review/:orderId"
           element={
@@ -282,6 +287,9 @@ function AppContent() {
       {!hideFooter && <Footer />}
     </>
   );
+
+
+
 }
 
 export default function App() {
@@ -291,3 +299,4 @@ export default function App() {
     </Router>
   );
 }
+
