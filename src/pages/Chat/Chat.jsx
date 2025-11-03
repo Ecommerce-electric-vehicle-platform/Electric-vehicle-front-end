@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import {
     Send,
     MoreVertical,
@@ -17,9 +18,12 @@ import {
     MessagesSquare,
     CheckCircle
 } from "lucide-react";
+import chatApi from "../../api/chatApi";
+import websocketService from "../../services/websocketService";
 import "./Chat.css";
 
 export function Chat() {
+    const location = useLocation();
     const [selectedChat, setSelectedChat] = useState(null);
     const [message, setMessage] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
@@ -88,72 +92,142 @@ export function Chat() {
         setMessage(text);
     };
 
-    // Mock data cho danh sách chat
-    const [chatList, setChatList] = useState([
-        {
-            id: 1,
-            name: "Nguyễn Văn A",
-            avatar: "/default-avatar.png",
-            lastMessage: "Xe này còn không ạ?",
-            time: "10:30",
-            unread: 2,
-            isOnline: true,
-            role: "buyer"
-        },
-        {
-            id: 2,
-            name: "Cửa hàng Xe điện ABC",
-            avatar: "/default-avatar.png",
-            lastMessage: "Cảm ơn bạn đã quan tâm!",
-            time: "09:15",
-            unread: 0,
-            isOnline: false,
-            role: "seller"
-        },
-        {
-            id: 3,
-            name: "Trần Thị B",
-            avatar: "/default-avatar.png",
-            lastMessage: "Giá có thể thương lượng không?",
-            time: "08:45",
-            unread: 1,
-            isOnline: true,
-            role: "buyer"
-        },
-        {
-            id: 4,
-            name: "Shop Xe máy điện XYZ",
-            avatar: "/default-avatar.png",
-            lastMessage: "Sản phẩm đã được bán",
-            time: "Hôm qua",
-            unread: 0,
-            isOnline: false,
-            role: "seller"
-        }
-    ]);
+    // Danh sách conversations (load từ API)
+    const [chatList, setChatList] = useState([]);
 
-    // Mock data cho tin nhắn
-    const [messages, setMessages] = useState({
-        1: [
-            { id: 1, text: "Chào bạn, tôi quan tâm đến sản phẩm này", sender: "buyer", time: "10:25" },
-            { id: 2, text: "Chào bạn! Sản phẩm vẫn còn hàng ạ", sender: "seller", time: "10:26" },
-            { id: 3, text: "Xe này còn không ạ?", sender: "buyer", time: "10:30" }
-        ],
-        2: [
-            { id: 1, text: "Cảm ơn bạn đã quan tâm!", sender: "seller", time: "09:15" }
-        ],
-        3: [
-            { id: 1, text: "Giá có thể thương lượng không?", sender: "buyer", time: "08:45" }
-        ],
-        4: [
-            { id: 1, text: "Sản phẩm đã được bán", sender: "seller", time: "Hôm qua" }
-        ]
-    });
+    // Tin nhắn theo conversation (load từ API hoặc real-time)
+    const [messages, setMessages] = useState({});
+
+    // Helper function để format time
+    const formatTime = (timestamp) => {
+        if (!timestamp) return "";
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = now - date;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (minutes < 1) return "Vừa xong";
+        if (minutes < 60) return `${minutes} phút`;
+        if (hours < 24) return `${hours} giờ`;
+        if (days === 1) return "Hôm qua";
+        if (days < 7) return `${days} ngày`;
+        return date.toLocaleDateString('vi-VN');
+    };
+
+    // Load danh sách conversations từ BE
+    const loadConversations = async () => {
+        try {
+            const response = await chatApi.getAllConversations();
+            console.log("[Chat] Raw API response:", response);
+            console.log("[Chat] Response.data:", response.data);
+            
+            // BE trả về format: { success, message, data: [...conversations], errors }
+            const rawResponse = response?.data ?? {};
+            console.log("[Chat] Raw response structure:", {
+                hasSuccess: 'success' in rawResponse,
+                hasData: 'data' in rawResponse,
+                hasMessage: 'message' in rawResponse,
+                dataType: typeof rawResponse?.data,
+                isArray: Array.isArray(rawResponse?.data)
+            });
+            
+            // Extract conversations từ data
+            const conversations = rawResponse?.data || [];
+            console.log("[Chat] Conversations extracted:", conversations);
+            
+            if (Array.isArray(conversations) && conversations.length > 0) {
+                const transformedChats = conversations.map(conv => {
+                    console.log("[Chat] Mapping conversation:", conv);
+                    return {
+                        id: conv.id || conv.conversationId,
+                        name: conv.sellerName || conv.buyerName || conv.seller?.sellerName || conv.buyer?.username || "Người dùng",
+                        avatar: conv.sellerAvatar || conv.buyerAvatar || conv.seller?.avatar || conv.buyer?.avatar || "/default-avatar.png",
+                        lastMessage: conv.lastMessage?.content || conv.lastMessage || "",
+                        time: formatTime(conv.lastMessage?.createdAt || conv.lastMessage?.sendAt),
+                        unread: conv.unreadCount || 0,
+                        isOnline: false, // TODO: Check online status
+                        role: userRole === 'buyer' ? 'seller' : 'buyer',
+                        conversationId: conv.id || conv.conversationId,
+                        postId: conv.postId,
+                        // Lưu thêm raw data để debug
+                        _raw: conv
+                    };
+                });
+                console.log("[Chat] Transformed chats:", transformedChats);
+                setChatList(transformedChats);
+            } else {
+                console.warn("[Chat] No conversations found or empty array");
+                // Keep mock data
+            }
+        } catch (error) {
+            console.error("[Chat] Error loading conversations:", error);
+            // Fallback to mock data if API fails
+        }
+    };
 
     useEffect(() => {
         // Lấy thông tin user role từ localStorage hoặc API
         const role = localStorage.getItem('userRole') || 'buyer';
         setUserRole(role);
+        
+        // Load conversations từ API
+        loadConversations();
+        
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.key]); // Reload khi navigate (tạo conversation mới)
+    
+    // Subscribe to real-time chat messages via WebSocket
+    useEffect(() => {
+        const buyerId = localStorage.getItem('buyerId');
+        if (!buyerId) {
+            console.warn('[Chat] No buyerId found, skipping WebSocket subscription');
+            return;
+        }
+        
+        const chatDestination = `/chatting/notifications/${buyerId}`;
+        console.log('[Chat] Subscribing to WebSocket chat messages:', chatDestination);
+        
+        // Subscribe to chat messages
+        const unsubscribe = websocketService.subscribe(chatDestination, (chatMessage) => {
+            console.log('[Chat] New chat message received via WebSocket:', chatMessage);
+            
+            // Add the new message to the messages state
+            if (chatMessage.conversationId || chatMessage.conversation?.id) {
+                const conversationId = chatMessage.conversationId || chatMessage.conversation.id;
+                
+                setMessages(prev => {
+                    const currentMessages = prev[conversationId] || [];
+                    const newMessage = {
+                        id: chatMessage.id || Date.now(),
+                        text: chatMessage.content || "",
+                        imageUrl: chatMessage.imageUrl || chatMessage.pictureUrl || null,
+                        sender: chatMessage.senderId === buyerId ? "buyer" : "seller",
+                        time: chatMessage.createdAt || chatMessage.sendAt || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                    };
+                    
+                    // Add to messages
+                    return {
+                        ...prev,
+                        [conversationId]: [...currentMessages, newMessage]
+                    };
+                });
+                
+                // Update last message in chat list
+                setChatList(prev => prev.map(chat => 
+                    chat.conversationId === conversationId
+                        ? { ...chat, lastMessage: chatMessage.content || "[Hình ảnh]", time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) }
+                        : chat
+                ));
+            }
+        });
+        
+        // Cleanup subscription on unmount
+        return () => {
+            console.log('[Chat] Cleaning up WebSocket subscription');
+            unsubscribe();
+        };
     }, []);
 
     useEffect(() => {
@@ -220,11 +294,31 @@ export function Chat() {
         ));
     };
 
-    const handleSendMessage = () => {
-        if (message.trim() && selectedChat) {
+    const handleSendMessage = async () => {
+        if (!message.trim() || !selectedChat) return;
+        
+        const messageText = message.trim();
+        const buyerId = localStorage.getItem('buyerId');
+        
+        if (!buyerId) {
+            alert("Không thể xác định người dùng. Vui lòng đăng nhập lại!");
+            return;
+        }
+
+        try {
+            // Gửi tin nhắn lên BE
+            await chatApi.sendMessage(
+                selectedChat.conversationId || selectedChat.id,
+                buyerId,
+                selectedChat.postId,
+                messageText,
+                null // Không có file
+            );
+
+            // Update UI optimistically
             const newMessage = {
                 id: Date.now(),
-                text: message,
+                text: messageText,
                 sender: userRole,
                 time: new Date().toLocaleTimeString('vi-VN', {
                     hour: '2-digit',
@@ -240,32 +334,14 @@ export function Chat() {
             // Cập nhật tin nhắn cuối trong danh sách chat
             setChatList(prev => prev.map(chat =>
                 chat.id === selectedChat.id
-                    ? { ...chat, lastMessage: message, time: newMessage.time }
+                    ? { ...chat, lastMessage: messageText, time: newMessage.time }
                     : chat
             ));
 
             setMessage("");
-
-            // Simulate auto-reply: if current user is buyer and chatting with seller
-            if (autoReplyEnabled && selectedChat.role === 'seller' && userRole !== 'seller') {
-                setTimeout(() => {
-                    const reply = {
-                        id: Date.now() + 1,
-                        text: autoReplyMessage,
-                        sender: 'seller',
-                        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-                    };
-                    setMessages(prev => ({
-                        ...prev,
-                        [selectedChat.id]: [...(prev[selectedChat.id] || []), reply]
-                    }));
-                    setChatList(prev => prev.map(chat =>
-                        chat.id === selectedChat.id
-                            ? { ...chat, lastMessage: autoReplyMessage, time: reply.time }
-                            : chat
-                    ));
-                }, 800);
-            }
+        } catch (error) {
+            console.error("[Chat] Error sending message:", error);
+            alert("Gửi tin nhắn thất bại. Vui lòng thử lại!");
         }
     };
 
@@ -296,32 +372,55 @@ export function Chat() {
         setSelectedImagePreviewUrl("");
     };
 
-    const handleSendImage = () => {
-        if (!selectedChat || !selectedImagePreviewUrl) return;
-        const newMessage = {
-            id: Date.now(),
-            text: "",
-            imageUrl: selectedImagePreviewUrl,
-            sender: userRole,
-            time: new Date().toLocaleTimeString('vi-VN', {
-                hour: '2-digit',
-                minute: '2-digit'
-            })
-        };
+    const handleSendImage = async () => {
+        if (!selectedChat || !selectedImagePreviewUrl || !selectedImageFile) return;
+        
+        const buyerId = localStorage.getItem('buyerId');
+        
+        if (!buyerId) {
+            alert("Không thể xác định người dùng. Vui lòng đăng nhập lại!");
+            return;
+        }
 
-        setMessages(prev => ({
-            ...prev,
-            [selectedChat.id]: [...(prev[selectedChat.id] || []), newMessage]
-        }));
+        try {
+            // Gửi ảnh lên BE
+            await chatApi.sendMessage(
+                selectedChat.conversationId || selectedChat.id,
+                buyerId,
+                selectedChat.postId,
+                "", // Không có text
+                selectedImageFile // Có file ảnh
+            );
 
-        // Cập nhật tin nhắn cuối trong danh sách chat
-        setChatList(prev => prev.map(chat =>
-            chat.id === selectedChat.id
-                ? { ...chat, lastMessage: "[Hình ảnh]", time: newMessage.time }
-                : chat
-        ));
+            // Update UI optimistically
+            const newMessage = {
+                id: Date.now(),
+                text: "",
+                imageUrl: selectedImagePreviewUrl,
+                sender: userRole,
+                time: new Date().toLocaleTimeString('vi-VN', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
+            };
 
-        handleClearSelectedImage();
+            setMessages(prev => ({
+                ...prev,
+                [selectedChat.id]: [...(prev[selectedChat.id] || []), newMessage]
+            }));
+
+            // Cập nhật tin nhắn cuối trong danh sách chat
+            setChatList(prev => prev.map(chat =>
+                chat.id === selectedChat.id
+                    ? { ...chat, lastMessage: "[Hình ảnh]", time: newMessage.time }
+                    : chat
+            ));
+
+            handleClearSelectedImage();
+        } catch (error) {
+            console.error("[Chat] Error sending image:", error);
+            alert("Gửi ảnh thất bại. Vui lòng thử lại!");
+        }
     };
 
     const handleKeyDown = (e) => {
@@ -372,7 +471,9 @@ export function Chat() {
                 createdAt: new Date().toISOString()
             };
             localStorage.setItem(key, JSON.stringify([newItem, ...saved].slice(0, 100)));
-        } catch { }
+        } catch (error) {
+            console.error("Error saving report:", error);
+        }
         setIsReportModalOpen(false);
         setReportDetails("");
         setReportImages([]);

@@ -27,6 +27,7 @@ import './ProductDetail.css';
 import { Breadcrumbs } from '../../components/Breadcrumbs/Breadcrumbs';
 import sellerApi from '../../api/sellerApi';
 import { addToWishlist, removeFromWishlist, fetchWishlist } from '../../api/wishlistApi';
+import chatApi from '../../api/chatApi';
 
 function ProductDetail() {
     const { id } = useParams();
@@ -348,6 +349,45 @@ function ProductDetail() {
             setNotificationType('purchase');
             document.body.classList.add('modal-open');
             setShowNotificationModal(true);
+        }
+    };
+
+    // Handle chat button click - create conversation if needed, then navigate to chat
+    const handleChatClick = async () => {
+        if (isGuest) {
+            handleRequireLogin();
+            return;
+        }
+
+        if (!product || !product.postId) {
+            console.error('[ProductDetail] Cannot chat: missing product or postId');
+            alert("Không thể tìm thấy thông tin sản phẩm. Vui lòng thử lại!");
+            return;
+        }
+
+        try {
+            console.log('[ProductDetail] Creating conversation for postId:', product.postId);
+            const response = await chatApi.createConversation(product.postId);
+            console.log('[ProductDetail] Conversation created:', response.data);
+            
+            if (response?.data?.success) {
+                console.log('[ProductDetail] Navigating to chat page');
+                navigate('/chat');
+            } else {
+                console.warn('[ProductDetail] Conversation creation response:', response?.data);
+                // Try to navigate anyway
+                navigate('/chat');
+            }
+        } catch (error) {
+            console.error('[ProductDetail] Error creating conversation:', error);
+            // If error is because conversation already exists, navigate anyway
+            if (error?.response?.data?.message?.includes('exist') || 
+                error?.response?.data?.error?.includes('exist')) {
+                console.log('[ProductDetail] Conversation already exists, navigating to chat');
+                navigate('/chat');
+            } else {
+                alert("Không thể tạo cuộc trò chuyện. Vui lòng thử lại!");
+            }
         }
     };
 
@@ -931,7 +971,7 @@ function ProductDetail() {
                                     </button>
 
                                     <button
-                                        onClick={isGuest ? handleRequireLogin : () => { window.location.href = '/chat'; }}
+                                        onClick={handleChatClick}
                                         style={{
                                             width: "100%",
                                             padding: "12px 16px",
