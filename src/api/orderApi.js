@@ -61,10 +61,94 @@ export const placeOrder = async (orderData) => {
     }
 };
 
-// Get order details
-export const getOrderDetails = async () => {
-    // BE hiện không có API chi tiết đơn → trả rỗng để UI dùng fallback, không gọi network
-    return {};
+// Get order details by orderId
+// GET /api/v1/order/{orderId}
+// Response: { success: true, message: "string", data: { id, orderCode, shippingAddress, phoneNumber, price, shippingFee, status, createdAt, updatedAt, canceledAt, cancelReason }, error: {} }
+export const getOrderDetails = async (orderId) => {
+    try {
+        if (!orderId) {
+            throw new Error('Order ID is required');
+        }
+
+        const response = await axiosInstance.get(`/api/v1/order/${orderId}`);
+        const raw = response?.data ?? {};
+
+        // Extract data from response
+        const data = raw?.data ?? raw;
+
+        if (!data || (raw?.success === false)) {
+            throw new Error(raw?.message || 'Failed to fetch order details');
+        }
+
+        // Normalize status from backend to frontend format
+        // Backend status: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
+        const rawStatus = String(data.status || '').toUpperCase();
+        let normalizedStatus = 'pending';
+
+        if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') {
+            normalizedStatus = 'pending';
+        } else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') {
+            normalizedStatus = 'confirmed';
+        } else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') {
+            normalizedStatus = 'shipping';
+        } else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') {
+            normalizedStatus = 'delivered';
+        } else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') {
+            normalizedStatus = 'cancelled';
+        }
+
+        // Normalize price fields
+        const price = Number(data.price ?? 0);
+        const shippingFee = Number(data.shippingFee ?? data.shipping_fee ?? 0);
+        const finalPrice = price + shippingFee;
+
+        // Normalize timestamps
+        const createdAt = data.createdAt || data.created_at || null;
+        const updatedAt = data.updatedAt || data.updated_at || null;
+        const canceledAt = data.canceledAt || data.canceled_at || null;
+        const cancelReason = data.cancelReason || data.cancel_reason || null;
+
+        // Build normalized response
+        const normalized = {
+            id: data.id ?? orderId,
+            orderCode: data.orderCode || data.order_code || String(orderId),
+            shippingAddress: data.shippingAddress || data.shipping_address || '',
+            phoneNumber: data.phoneNumber || data.phone_number || '',
+            price: price,
+            shippingFee: shippingFee,
+            finalPrice: finalPrice,
+            status: normalizedStatus,
+            rawStatus: rawStatus,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            canceledAt: canceledAt,
+            cancelReason: cancelReason,
+            _raw: data // Keep raw data for reference
+        };
+
+        console.log('[orderApi] getOrderDetails - Normalized response:', {
+            orderId: orderId,
+            raw: data,
+            normalized: normalized
+        });
+
+        return {
+            success: raw?.success !== false,
+            message: raw?.message || '',
+            data: normalized,
+            error: raw?.error || null
+        };
+    } catch (error) {
+        console.error('[orderApi] Error fetching order details:', error);
+
+        // Return structured error response
+        return {
+            success: false,
+            message: error?.response?.data?.message || error?.message || 'Failed to fetch order details',
+            data: null,
+            error: error?.response?.data?.error || error?.message || 'UNKNOWN_ERROR'
+        };
+    }
 };
 
 // Get user's orders
@@ -186,16 +270,15 @@ function normalizeOrderHistoryItem(item) {
     else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') status = 'delivered';
     else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'cancelled';
 
-    // QUAN TRỌNG: Phân tích từ dữ liệu thực tế:
-    // - Place order: totalPrice = 26450000 (productPrice: 25900000 + shippingFee: 550000)
-    // - Order history từ backend: price = 26450000, shippingFee = 550000
-    // 
-    // KẾT LUẬN: Backend trả về 'price' là TOTAL PRICE (đã bao gồm shippingFee)
-    // KHÔNG PHẢI productPrice!
+    // QUAN TRỌNG: Theo thông tin từ Backend:
+    // - Backend xử lý: 'price' = giá sản phẩm riêng (KHÔNG bao gồm shippingFee)
+    // - Backend xử lý: 'shippingFee' = phí ship riêng
+    // - Frontend xử lý: 'totalPrice' = price + shippingFee (tính và hiển thị)
     // 
     // Vì vậy:
-    // - productPrice = price - shippingFee
-    // - finalPrice = price (KHÔNG cộng thêm shippingFee!)
+    // - productPrice = price (từ backend)
+    // - shippingFee = shippingFee (từ backend)
+    // - finalPrice = productPrice + shippingFee (tính trong frontend)
 
     // Lấy phí ship từ backend response
     const shippingFee = Number(
@@ -206,9 +289,9 @@ function normalizeOrderHistoryItem(item) {
         0
     );
 
-    // Lấy giá từ backend
-    // QUAN TRỌNG: Backend trả về 'price' là totalPrice (đã bao gồm shippingFee)
-    const rawPrice = Number(
+    // Lấy giá sản phẩm từ backend
+    // QUAN TRỌNG: Backend trả về 'price' là PRODUCT PRICE (chưa bao gồm shippingFee)
+    let productPrice = Number(
         item.price ??
         item.productPrice ??
         item.product_price ??
@@ -218,7 +301,7 @@ function normalizeOrderHistoryItem(item) {
     );
 
     // Lấy totalPrice/finalPrice từ backend nếu có (ưu tiên cao nhất)
-    // Nếu backend có trả về finalPrice/totalPrice riêng, dùng nó
+    // Backend có thể không trả về totalPrice (do FE tự tính)
     const backendTotalPrice = Number(
         item.finalPrice ??
         item.final_price ??
@@ -228,57 +311,34 @@ function normalizeOrderHistoryItem(item) {
         0
     );
 
-    let productPrice = 0;
     let finalPrice = 0;
 
     // Logic đơn giản và rõ ràng:
-    // 1. Nếu có backendTotalPrice (finalPrice/totalPrice từ backend) → dùng nó
-    // 2. Nếu không có, giả định rawPrice là totalPrice (theo dữ liệu thực tế)
+    // 1. Nếu có backendTotalPrice từ backend → dùng nó
+    // 2. Nếu không có → tính từ productPrice + shippingFee (theo cách FE xử lý)
 
     if (backendTotalPrice > 0) {
-        // Có finalPrice từ backend, dùng nó
+        // Backend có trả về totalPrice/finalPrice
         finalPrice = backendTotalPrice;
 
-        // Tính productPrice: Nếu rawPrice + shippingFee = backendTotalPrice thì rawPrice là productPrice
-        // Ngược lại, nếu rawPrice = backendTotalPrice thì rawPrice là totalPrice
-        const calculatedTotal = rawPrice + shippingFee;
-        const diff1 = Math.abs(calculatedTotal - backendTotalPrice);
-        const diff2 = Math.abs(rawPrice - backendTotalPrice);
+        // Verify: productPrice + shippingFee có bằng backendTotalPrice không?
+        const calculatedTotal = productPrice + shippingFee;
+        const diff = Math.abs(calculatedTotal - backendTotalPrice);
 
-        if (diff1 < diff2 && diff1 < 100) {
-            // rawPrice + shippingFee ≈ backendTotalPrice → rawPrice là productPrice
-            productPrice = rawPrice;
-        } else if (diff2 < 100) {
-            // rawPrice ≈ backendTotalPrice → rawPrice là totalPrice
-            productPrice = Math.max(0, rawPrice - shippingFee);
-        } else {
-            // Tính từ backendTotalPrice
-            productPrice = Math.max(0, backendTotalPrice - shippingFee);
+        if (diff > 100) {
+            // Có sự khác biệt, log warning
+            console.warn('[orderApi] normalizeOrderHistoryItem - Price mismatch:', {
+                productPrice: productPrice,
+                shippingFee: shippingFee,
+                calculatedTotal: calculatedTotal,
+                backendTotalPrice: backendTotalPrice,
+                difference: diff
+            });
         }
     } else {
-        // KHÔNG có backendTotalPrice
-        // Theo dữ liệu thực tế: backend LUÔN trả về 'price' là TOTAL PRICE (đã bao gồm shippingFee)
-        // Ví dụ: price = 26450000, shippingFee = 550000
-        // → productPrice = 26450000 - 550000 = 25900000
-        // → finalPrice = 26450000 (KHÔNG cộng thêm shippingFee!)
-
-        if (rawPrice > 0 && shippingFee >= 0) {
-            // Kiểm tra hợp lý: rawPrice phải lớn hơn hoặc bằng shippingFee
-            if (rawPrice >= shippingFee) {
-                // rawPrice là totalPrice (đã bao gồm shippingFee)
-                productPrice = rawPrice - shippingFee;
-                finalPrice = rawPrice; // KHÔNG cộng thêm shippingFee
-            } else {
-                // Trường hợp đặc biệt: rawPrice < shippingFee (không hợp lý, nhưng xử lý an toàn)
-                // Giả định rawPrice là productPrice
-                productPrice = rawPrice;
-                finalPrice = rawPrice + shippingFee;
-            }
-        } else {
-            // Trường hợp rawPrice = 0 hoặc không hợp lý
-            productPrice = rawPrice;
-            finalPrice = rawPrice + shippingFee;
-        }
+        // Backend KHÔNG trả về totalPrice
+        // Frontend tự tính: finalPrice = productPrice + shippingFee
+        finalPrice = productPrice + shippingFee;
     }
 
     // Đảm bảo giá không âm và hợp lý
@@ -290,23 +350,24 @@ function normalizeOrderHistoryItem(item) {
         orderCode: item.orderCode || item.order_code,
         orderId: item.id,
         raw: {
-            price: item.price,
+            price: item.price,                    // ← Backend: giá sản phẩm riêng
             productPrice: item.productPrice,
-            shippingFee: item.shippingFee,
+            shippingFee: item.shippingFee,        // ← Backend: phí ship riêng
             finalPrice: item.finalPrice,
             totalPrice: item.totalPrice
         },
         normalized: {
-            productPrice: productPrice,
-            shippingFee: shippingFee,
-            finalPrice: finalPrice
+            productPrice: productPrice,            // ← = price từ backend
+            shippingFee: shippingFee,              // ← = shippingFee từ backend
+            finalPrice: finalPrice                 // ← = productPrice + shippingFee (FE tính)
         },
         calculation: {
-            rawPrice: rawPrice,
-            backendTotalPrice: backendTotalPrice,
-            assumption: backendTotalPrice > 0 ? 'use_backendTotalPrice' : 'rawPrice_is_totalPrice',
-            productPriceCalculation: `${rawPrice} - ${shippingFee} = ${productPrice}`,
-            finalPriceCalculation: backendTotalPrice > 0 ? `backendTotalPrice: ${backendTotalPrice}` : `rawPrice (no add shipping): ${rawPrice}`
+            backendPrice: item.price,              // Giá sản phẩm từ backend
+            backendShippingFee: item.shippingFee,  // Phí ship từ backend
+            backendTotalPrice: backendTotalPrice,  // Tổng giá từ backend (nếu có)
+            calculatedFinalPrice: productPrice + shippingFee, // FE tự tính
+            usedFinalPrice: finalPrice,
+            assumption: backendTotalPrice > 0 ? 'use_backendTotalPrice' : 'calculate_from_productPrice_plus_shippingFee'
         },
         verification: {
             productPrice_plus_shippingFee: productPrice + shippingFee,
@@ -323,26 +384,25 @@ function normalizeOrderHistoryItem(item) {
             productPrice: productPrice,
             shippingFee: shippingFee,
             finalPrice: finalPrice,
-            rawPrice: rawPrice,
+            backendPrice: item.price,
             backendTotalPrice: backendTotalPrice
         });
     }
 
-    // Log ERROR nếu finalPrice không khớp với productPrice + shippingFee (nếu rawPrice là totalPrice)
-    if (backendTotalPrice === 0) {
-        const expectedFinalPrice = productPrice + shippingFee;
-        const diff = Math.abs(finalPrice - expectedFinalPrice);
-        if (diff > 100) {
-            console.error('[orderApi] normalizeOrderHistoryItem - FinalPrice MISMATCH!', {
-                orderCode: item.orderCode || item.order_code,
-                expected: expectedFinalPrice,
-                actual: finalPrice,
-                difference: diff,
-                rawPrice: rawPrice,
-                shippingFee: shippingFee,
-                productPrice: productPrice
-            });
-        }
+    // Log ERROR nếu finalPrice không khớp với productPrice + shippingFee
+    const expectedFinalPrice = productPrice + shippingFee;
+    const diff = Math.abs(finalPrice - expectedFinalPrice);
+    if (diff > 100) {
+        console.error('[orderApi] normalizeOrderHistoryItem - FinalPrice MISMATCH!', {
+            orderCode: item.orderCode || item.order_code,
+            expected: expectedFinalPrice,
+            actual: finalPrice,
+            difference: diff,
+            backendPrice: item.price,
+            productPrice: productPrice,
+            shippingFee: shippingFee,
+            backendTotalPrice: backendTotalPrice
+        });
     }
 
     // Extract thông tin từ response
@@ -499,3 +559,64 @@ export const cancelOrder = async (orderId, cancelData = {}) => {
 };
 
 
+
+// Get order status from shipping service
+// GET /api/v1/shipping/order/{orderId}/status
+// Response: { success: true, message: "string", data: {}, error: {} }
+export const getOrderStatus = async (orderId) => {
+    try {
+        const response = await axiosInstance.get(`/api/v1/shipping/order/${orderId}/status`);
+        const raw = response?.data ?? {};
+
+        // Extract status from response
+        // The data field may contain status information
+        const data = raw?.data ?? {};
+
+        // Normalize status from backend to frontend format
+        // Backend status: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
+        // Frontend status: pending, confirmed, shipping, delivered, cancelled
+        const rawStatus = String(data?.status || raw?.status || '').toUpperCase();
+        let normalizedStatus = 'pending';
+
+        if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') {
+            normalizedStatus = 'pending';
+        } else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') {
+            normalizedStatus = 'confirmed';
+        } else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') {
+            normalizedStatus = 'shipping';
+        } else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') {
+            normalizedStatus = 'delivered';
+        } else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') {
+            normalizedStatus = 'cancelled';
+        }
+
+        return {
+            success: raw?.success !== false,
+            message: raw?.message || '',
+            status: normalizedStatus,
+            rawStatus: rawStatus,
+            data: {
+                ...data,
+                status: normalizedStatus,
+                rawStatus: rawStatus
+            },
+            error: raw?.error || null
+        };
+    } catch (error) {
+        console.error('Error fetching order status:', error);
+
+        // If 404, order might not exist in shipping service yet
+        if (error?.response?.status === 404) {
+            return {
+                success: false,
+                message: 'Order not found in shipping service',
+                status: null,
+                rawStatus: null,
+                data: null,
+                error: 'NOT_FOUND'
+            };
+        }
+
+        throw error;
+    }
+};

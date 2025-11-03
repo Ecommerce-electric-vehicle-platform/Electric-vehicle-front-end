@@ -1,0 +1,374 @@
+.confirmation-dialog-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99999 !important;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    padding: 20px;
+    overflow-y: auto;
+    /* Đảm bảo overlay luôn ở trên cùng */
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    /* Đảm bảo overlay scroll được để xem hết dialog */
+    -webkit-overflow-scrolling: touch;
+    margin: 0 !important;
+}
+
+.confirmation-dialog-overlay.show {
+    opacity: 1;
+}
+
+.confirmation-dialog {
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 50%, #ecfdf5 100%);
+    border-radius: 20px;
+    box-shadow:
+        0 20px 25px -5px rgba(16, 185, 129, 0.15),
+        0 10px 10px -5px rgba(16, 185, 129, 0.1),
+        0 0 0 1px rgba(16, 185, 129, 0.1);
+    max-width: 450px;
+    width: 100%;
+    max-height: 90vh !important;
+    min-height: auto;
+    transform: scale(0.9) translateY(-20px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative !important;
+    /* Cho phép scroll nếu nội dung quá dài */
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Đảm bảo dialog luôn hiển thị trong viewport */
+    margin: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    /* Đảm bảo dialog không bị tràn ra ngoài */
+    box-sizing: border-box;
+    /* Đảm bảo dialog căn giữa ngay cả khi scroll */
+    flex-shrink: 0;
+    /* Đảm bảo dialog không bị ảnh hưởng bởi parent */
+    align-self: center;
+}
+
+.confirmation-dialog.show {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+/* Decorative border gradient - Màu năng lượng xanh */
+.confirmation-dialog::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #10b981 0%, #059669 25%, #34d399 50%, #10b981 75%, #059669 100%);
+    background-size: 200% 100%;
+    animation: gradientShift 3s ease infinite;
+}
+
+@keyframes gradientShift {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+.confirmation-dialog-content {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 20px;
+    /* Không cần overflow ở đây vì đã có ở dialog */
+    flex: 1;
+    box-sizing: border-box;
+    /* Đảm bảo nội dung không bị cắt */
+    min-width: 0;
+    width: 100%;
+}
+
+/* Icon styles */
+.confirmation-dialog-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Icon warning - Màu vàng cam năng lượng */
+.confirmation-dialog-icon.icon-warning {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fcd34d 100%);
+    color: #f59e0b;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4),
+        0 0 20px rgba(245, 158, 11, 0.2);
+}
+
+/* Icon danger - Màu đỏ nhẹ, phù hợp với cảnh báo */
+.confirmation-dialog-icon.icon-danger {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 50%, #fca5a5 100%);
+    color: #ef4444;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4),
+        0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+/* Icon info - Màu xanh dương công nghệ */
+.confirmation-dialog-icon.icon-info {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);
+    color: #3b82f6;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4),
+        0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+/* Title - Màu xanh đậm phù hợp với chủ đề năng lượng */
+.confirmation-dialog-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: #065f46;
+    line-height: 1.4;
+    background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Message */
+.confirmation-dialog-message {
+    margin: 0;
+    font-size: 16px;
+    color: #6b7280;
+    line-height: 1.6;
+    max-width: 100%;
+}
+
+/* Buttons */
+.confirmation-dialog-buttons {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.confirmation-dialog-btn {
+    flex: 1;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    min-height: 48px;
+}
+
+.confirmation-dialog-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.4s, height 0.4s;
+}
+
+.confirmation-dialog-btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.confirmation-dialog-btn:active {
+    transform: scale(0.98);
+}
+
+/* Button Cancel - Màu xám nhẹ với viền xanh */
+.confirmation-dialog-btn-cancel {
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    color: #374151;
+    border: 1.5px solid #d1d5db;
+}
+
+.confirmation-dialog-btn-cancel:hover {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-color: #10b981;
+    color: #065f46;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+    transform: translateY(-2px);
+}
+
+.confirmation-dialog-btn-confirm {
+    color: white;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+/* Button Warning - Màu vàng cam năng lượng */
+.confirmation-dialog-btn-confirm.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #f59e0b 100%);
+    background-size: 200% 100%;
+    animation: buttonGradientShift 3s ease infinite;
+}
+
+.confirmation-dialog-btn-confirm.btn-warning:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 50%, #d97706 100%);
+    background-size: 200% 100%;
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5),
+        0 0 30px rgba(245, 158, 11, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Button Danger - Màu đỏ cho cảnh báo nghiêm trọng */
+.confirmation-dialog-btn-confirm.btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #ef4444 100%);
+    background-size: 200% 100%;
+    animation: buttonGradientShift 3s ease infinite;
+}
+
+.confirmation-dialog-btn-confirm.btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #dc2626 100%);
+    background-size: 200% 100%;
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5),
+        0 0 30px rgba(239, 68, 68, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Button Info - Màu xanh dương công nghệ */
+.confirmation-dialog-btn-confirm.btn-info {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #3b82f6 100%);
+    background-size: 200% 100%;
+    animation: buttonGradientShift 3s ease infinite;
+}
+
+.confirmation-dialog-btn-confirm.btn-info:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #2563eb 100%);
+    background-size: 200% 100%;
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5),
+        0 0 30px rgba(59, 130, 246, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Animation cho button gradient */
+@keyframes buttonGradientShift {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .confirmation-dialog-overlay {
+        padding: 10px;
+        align-items: flex-start;
+        padding-top: 10vh;
+    }
+
+    .confirmation-dialog {
+        max-width: calc(100% - 20px);
+        margin: 0 auto;
+        border-radius: 16px;
+        max-height: 80vh;
+    }
+
+    .confirmation-dialog-content {
+        padding: 24px;
+        gap: 16px;
+    }
+
+    .confirmation-dialog-icon {
+        width: 64px;
+        height: 64px;
+    }
+
+    .confirmation-dialog-icon svg {
+        width: 28px;
+        height: 28px;
+    }
+
+    .confirmation-dialog-title {
+        font-size: 20px;
+    }
+
+    .confirmation-dialog-message {
+        font-size: 15px;
+    }
+
+    .confirmation-dialog-buttons {
+        flex-direction: column;
+    }
+
+    .confirmation-dialog-btn {
+        width: 100%;
+    }
+}
+
+/* Dark mode support - Giữ màu xanh nhẹ cho chủ đề năng lượng */
+@media (prefers-color-scheme: dark) {
+    .confirmation-dialog {
+        background: linear-gradient(135deg, #1f2937 0%, #064e3b 50%, #111827 100%);
+        box-shadow:
+            0 20px 25px -5px rgba(16, 185, 129, 0.2),
+            0 10px 10px -5px rgba(16, 185, 129, 0.15),
+            0 0 0 1px rgba(16, 185, 129, 0.2);
+    }
+
+    .confirmation-dialog-title {
+        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .confirmation-dialog-message {
+        color: #d1d5db;
+    }
+
+    .confirmation-dialog-btn-cancel {
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+        color: #f9fafb;
+        border-color: #10b981;
+    }
+
+    .confirmation-dialog-btn-cancel:hover {
+        border-color: #34d399;
+        color: #34d399;
+    }
+}

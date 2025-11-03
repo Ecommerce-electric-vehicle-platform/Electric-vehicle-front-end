@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     ArrowLeft,
     Package,
@@ -17,76 +17,158 @@ import {
     Star,
     MessageSquareWarning
 } from 'lucide-react';
-import { getOrderDetails } from '../../api/orderApi';
+import { getOrderDetails, getOrderStatus, hasOrderReview } from '../../api/orderApi';
 import './OrderDetail.css';
 
 function OrderDetail() {
     const { orderId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [orderData, setOrderData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [hasReview, setHasReview] = useState(false); // Trạng thái đánh giá
 
     useEffect(() => {
         const loadOrderDetail = async () => {
             try {
                 setLoading(true);
+                setError(null);
+
+                // Gọi API order detail
                 const res = await getOrderDetails(orderId);
-                const data = res?.data || res;
 
-                // Chuẩn hóa dữ liệu chi tiết đơn
+                if (!res.success || !res.data) {
+                    throw new Error(res.message || 'Không thể tải thông tin đơn hàng');
+                }
+
+                const orderDetailData = res.data;
+
+                // Chuẩn hóa dữ liệu chi tiết đơn từ API response
                 const normalized = {
-                    id: data.id || data.orderId || orderId,
-                    order_code: data.orderCode || data.code || String(orderId),
-                    order_status: String(data.status || data.order_status || 'PROCESSING').toUpperCase(),
-                    created_at: data.createdAt || data.created_at || null,
-                    paid_at: data.paidAt || data.paid_at || null,
-                    shipped_at: data.shippedAt || data.shipped_at || data.deliveringAt || null,
-                    delivered_at: data.deliveredAt || data.delivered_at || null,
-                    cancelled_at: data.cancelledAt || data.cancelled_at || null,
-                    cancel_reason: data.cancelReason || data.cancel_reason || '',
+                    id: orderDetailData.id || orderId,
+                    order_code: orderDetailData.orderCode || String(orderId),
+                    order_status: orderDetailData.rawStatus || 'PROCESSING', // Giữ rawStatus từ backend
+                    created_at: orderDetailData.createdAt || null,
+                    updated_at: orderDetailData.updatedAt || null,
+                    cancelled_at: orderDetailData.canceledAt || null,
+                    cancel_reason: orderDetailData.cancelReason || '',
 
+                    // Map normalized status để hiển thị
+                    normalized_status: orderDetailData.status || 'pending',
+
+                    // Thông tin giá
+                    price: orderDetailData.price || 0,
+                    shipping_fee: orderDetailData.shippingFee || 0,
+                    final_price: orderDetailData.finalPrice || (orderDetailData.price + orderDetailData.shippingFee),
+
+                    // Product info - API không trả product details, dùng placeholder
                     product: {
-                        id: data.product?.id,
-                        name: data.product?.name || data.productName || 'Sản phẩm',
-                        price: Number(data.product?.price ?? data.price ?? 0),
-                        image: data.product?.image || '/vite.svg',
-                        quantity: Number(data.product?.quantity ?? data.quantity ?? 1)
+                        id: orderDetailData._raw?.productId || null,
+                        name: orderDetailData._raw?.productName || 'Sản phẩm',
+                        price: orderDetailData.price || 0,
+                        image: orderDetailData._raw?.productImage || '/vite.svg',
+                        quantity: orderDetailData._raw?.quantity || 1
                     },
 
+                    // Buyer info - API không trả buyer details, dùng placeholder
                     buyer: {
-                        name: data.buyer?.name || data.customerName || 'Người mua',
-                        email: data.buyer?.email || '',
-                        phone: data.buyer?.phone || ''
+                        name: orderDetailData._raw?.buyerName || 'Người mua',
+                        email: orderDetailData._raw?.buyerEmail || '',
+                        phone: orderDetailData.phoneNumber || ''
                     },
 
+                    // Shipping info
                     shipping: {
-                        address: data.shipping?.address || data.shippingAddress || 'Chưa cập nhật',
-                        phone: data.shipping?.phone || data.receiverPhone || '',
-                        partner: data.shipping?.partner || data.shippingPartner || 'Đối tác vận chuyển',
-                        tracking_number: data.shipping?.trackingNumber || data.trackingNumber || '-',
-                        fee: Number(data.shipping?.fee ?? data.shippingFee ?? 0),
-                        note: data.shipping?.note || data.note || ''
+                        address: orderDetailData.shippingAddress || 'Chưa cập nhật',
+                        phone: orderDetailData.phoneNumber || '',
+                        partner: orderDetailData._raw?.shippingPartner || orderDetailData._raw?.carrier || 'Đối tác vận chuyển',
+                        tracking_number: orderDetailData._raw?.trackingNumber || orderDetailData._raw?.trackingNumber || '-',
+                        fee: orderDetailData.shippingFee || 0,
+                        note: orderDetailData._raw?.note || ''
                     },
 
+                    // Payment info - API không trả payment details, dùng default
                     payment: {
-                        method: String(data.payment?.method || data.paymentMethod || 'WALLET').toUpperCase(),
-                        transaction_id: data.payment?.transactionId || data.transactionId || '-',
-                        amount: Number(data.payment?.amount ?? data.totalAmount ?? data.finalPrice ?? 0),
-                        paid_at: data.payment?.paidAt || data.paidAt || data.paid_at || null
+                        method: orderDetailData._raw?.paymentMethod || 'WALLET',
+                        transaction_id: orderDetailData._raw?.transactionId || '-',
+                        amount: orderDetailData.finalPrice || 0,
+                        paid_at: orderDetailData._raw?.paidAt || null
                     },
 
+                    // Invoice info - API không trả invoice details
                     invoice: {
-                        need_invoice: Boolean(data.invoice?.needInvoice || data.needInvoice || false),
-                        company_name: data.invoice?.companyName || '',
-                        tax_code: data.invoice?.taxCode || ''
+                        need_invoice: Boolean(orderDetailData._raw?.needInvoice || false),
+                        company_name: orderDetailData._raw?.companyName || '',
+                        tax_code: orderDetailData._raw?.taxCode || ''
                     }
                 };
 
                 setOrderData(normalized);
+
+                // Sau khi load order detail, cập nhật status từ shipping API để có status mới nhất
+                const realOrderId = normalized.id;
+                if (realOrderId) {
+                    try {
+                        const statusResponse = await getOrderStatus(realOrderId);
+                        if (statusResponse.success && statusResponse.status) {
+                            // Map frontend status back to backend status format
+                            const statusMap = {
+                                'pending': 'PENDING_PAYMENT',
+                                'confirmed': 'PROCESSING',
+                                'shipping': 'SHIPPED',
+                                'delivered': 'DELIVERED',
+                                'cancelled': 'CANCELLED'
+                            };
+                            const backendStatus = statusMap[statusResponse.status] || statusResponse.rawStatus || normalized.order_status;
+                            const currentStatus = normalized.normalized_status || (normalized.order_status && normalized.order_status.includes('DELIVERED') ? 'delivered' : null);
+
+                            setOrderData(prevData => ({
+                                ...prevData,
+                                order_status: backendStatus,
+                                normalized_status: statusResponse.status
+                            }));
+
+                            // Nếu đơn hàng đã giao, kiểm tra xem đã có đánh giá chưa
+                            if (statusResponse.status === 'delivered') {
+                                try {
+                                    const reviewStatus = await hasOrderReview(realOrderId);
+                                    setHasReview(reviewStatus);
+                                } catch (reviewError) {
+                                    console.warn('[OrderDetail] Failed to check review status:', reviewError);
+                                }
+                            } else {
+                                setHasReview(false);
+                            }
+                        } else {
+                            // Nếu không lấy được status từ shipping API nhưng order status từ order detail là DELIVERED
+                            const orderStatusUpper = String(normalized.order_status || '').toUpperCase();
+                            if (orderStatusUpper === 'DELIVERED' || normalized.normalized_status === 'delivered') {
+                                try {
+                                    const reviewStatus = await hasOrderReview(realOrderId);
+                                    setHasReview(reviewStatus);
+                                } catch (reviewError) {
+                                    console.warn('[OrderDetail] Failed to check review status:', reviewError);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('[OrderDetail] Failed to get order status from API:', error);
+                        // Nếu API fail nhưng order status là DELIVERED, vẫn check review
+                        const orderStatusUpper = String(normalized.order_status || '').toUpperCase();
+                        if (orderStatusUpper === 'DELIVERED' || normalized.normalized_status === 'delivered') {
+                            try {
+                                const reviewStatus = await hasOrderReview(realOrderId);
+                                setHasReview(reviewStatus);
+                            } catch (reviewError) {
+                                console.warn('[OrderDetail] Failed to check review status:', reviewError);
+                            }
+                        }
+                    }
+                }
             } catch (err) {
-                setError('Không thể tải thông tin đơn hàng');
-                console.error('Error loading order detail:', err);
+                setError(err.message || 'Không thể tải thông tin đơn hàng');
+                console.error('[OrderDetail] Error loading order detail:', err);
             } finally {
                 setLoading(false);
             }
@@ -94,6 +176,117 @@ function OrderDetail() {
 
         loadOrderDetail();
     }, [orderId]);
+
+    // Auto-refresh order details định kỳ (mỗi 30 giây) để luôn có dữ liệu mới nhất
+    useEffect(() => {
+        if (!orderData || !orderId) return;
+
+        const refreshOrderDetail = async () => {
+            try {
+                const realOrderId = orderData.id || orderId;
+                if (!realOrderId) return;
+
+                console.log('[OrderDetail] Auto-refreshing order details...');
+
+                // Gọi API order detail để lấy thông tin mới nhất
+                const res = await getOrderDetails(realOrderId);
+
+                if (res.success && res.data) {
+                    const orderDetailData = res.data;
+
+                    // Cập nhật các trường có thể thay đổi
+                    setOrderData(prevData => {
+                        if (!prevData) return prevData;
+
+                        // So sánh để chỉ update nếu có thay đổi
+                        const statusChanged = orderDetailData.rawStatus !== prevData.order_status;
+                        const cancelStatusChanged = Boolean(orderDetailData.canceledAt) !== Boolean(prevData.cancelled_at);
+
+                        if (statusChanged || cancelStatusChanged) {
+                            console.log(`[OrderDetail] Order data updated: status=${orderDetailData.rawStatus}, canceledAt=${orderDetailData.canceledAt}`);
+
+                            return {
+                                ...prevData,
+                                order_status: orderDetailData.rawStatus || prevData.order_status,
+                                normalized_status: orderDetailData.status || prevData.normalized_status,
+                                cancelled_at: orderDetailData.canceledAt || prevData.cancelled_at,
+                                cancel_reason: orderDetailData.cancelReason || prevData.cancel_reason,
+                                updated_at: orderDetailData.updatedAt || prevData.updated_at,
+                                price: orderDetailData.price ?? prevData.price,
+                                shipping_fee: orderDetailData.shippingFee ?? prevData.shipping_fee,
+                                final_price: orderDetailData.finalPrice ?? prevData.final_price,
+                                shipping: {
+                                    ...prevData.shipping,
+                                    address: orderDetailData.shippingAddress || prevData.shipping.address,
+                                    phone: orderDetailData.phoneNumber || prevData.shipping.phone,
+                                    fee: orderDetailData.shippingFee ?? prevData.shipping.fee
+                                }
+                            };
+                        }
+
+                        return prevData;
+                    });
+                }
+
+                // Sau đó cập nhật status từ shipping API
+                try {
+                    const statusResponse = await getOrderStatus(realOrderId);
+                    if (statusResponse.success && statusResponse.status) {
+                        const statusMap = {
+                            'pending': 'PENDING_PAYMENT',
+                            'confirmed': 'PROCESSING',
+                            'shipping': 'SHIPPED',
+                            'delivered': 'DELIVERED',
+                            'cancelled': 'CANCELLED'
+                        };
+                        const backendStatus = statusMap[statusResponse.status] || statusResponse.rawStatus;
+
+                        setOrderData(prevData => {
+                            if (!prevData || prevData.order_status === backendStatus) {
+                                // Nếu status không thay đổi nhưng là delivered, vẫn check review status
+                                if (statusResponse.status === 'delivered') {
+                                    const realId = prevData.id || orderId;
+                                    hasOrderReview(realId).then(setHasReview).catch(console.warn);
+                                }
+                                return prevData;
+                            }
+
+                            console.log(`[OrderDetail] Status updated from shipping API: ${prevData.order_status} -> ${backendStatus}`);
+                            const updatedData = {
+                                ...prevData,
+                                order_status: backendStatus,
+                                normalized_status: statusResponse.status
+                            };
+
+                            // Nếu đơn hàng đã giao, kiểm tra xem đã có đánh giá chưa
+                            if (statusResponse.status === 'delivered') {
+                                const realId = updatedData.id || orderId;
+                                hasOrderReview(realId).then(setHasReview).catch(console.warn);
+                            } else {
+                                setHasReview(false);
+                            }
+
+                            return updatedData;
+                        });
+                    }
+                } catch (statusError) {
+                    console.warn('[OrderDetail] Failed to refresh status from shipping API:', statusError);
+                }
+            } catch (error) {
+                console.warn('[OrderDetail] Failed to refresh order details:', error);
+            }
+        };
+
+        // Refresh ngay khi orderData được load
+        if (orderData.id) {
+            refreshOrderDetail();
+        }
+
+        // Set interval để refresh mỗi 30 giây
+        const intervalId = setInterval(refreshOrderDetail, 30000); // 30 seconds
+
+        return () => clearInterval(intervalId);
+    }, [orderData?.id, orderId]); // Chỉ chạy khi orderId thay đổi
 
     // Hàm format trạng thái đơn hàng
     const getOrderStatusText = (status) => {
@@ -142,6 +335,31 @@ function OrderDetail() {
             style: 'currency',
             currency: 'VND'
         }).format(amount);
+    };
+
+    // Xử lý đánh giá đơn hàng
+    const handleRateOrder = () => {
+        const realId = orderData?.id || orderId;
+        navigate(`/order/review/${orderId}`, {
+            state: {
+                orderIdRaw: realId,
+                orderCode: orderData?.order_code || null,
+                from: location.pathname // Sử dụng đường dẫn thực tế hiện tại
+            }
+        });
+    };
+
+    // Xử lý xem đánh giá đã có
+    const handleViewReview = () => {
+        const realId = orderData?.id || orderId;
+        navigate(`/order/review/${orderId}`, {
+            state: {
+                orderIdRaw: realId,
+                orderCode: orderData?.order_code || null,
+                viewMode: true, // Đánh dấu là chế độ xem lại
+                from: location.pathname // Sử dụng đường dẫn thực tế hiện tại
+            }
+        });
     };
 
     // Hàm lấy icon trạng thái
@@ -454,18 +672,29 @@ function OrderDetail() {
                             >
                                 <MessageSquareWarning style={{ marginRight: 6 }} /> Khiếu nại
                             </button>
-                            <button
-                                className="btn btn-success"
-                                onClick={() => alert('Đánh giá đơn hàng (sẽ triển khai)')}
-                            >
-                                <Star style={{ marginRight: 6 }} /> Đánh giá
-                            </button>
-                            <button
-                                className="btn btn-soft"
-                                onClick={() => alert('Tải hóa đơn PDF (sẽ triển khai)')}
-                            >
-                                <FileDown style={{ marginRight: 6 }} /> Tải hóa đơn
-                            </button>
+                            {hasReview ? (
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={handleViewReview}
+                                >
+                                    <Star style={{ marginRight: 6 }} /> Xem đánh giá
+                                </button>
+                            ) : (
+                                <button
+                                    className="btn btn-success"
+                                    onClick={handleRateOrder}
+                                >
+                                    <Star style={{ marginRight: 6 }} /> Đánh giá
+                                </button>
+                            )}
+                            {orderData?.invoice?.need_invoice && (
+                                <button
+                                    className="btn btn-soft"
+                                    onClick={() => alert('Tải hóa đơn PDF (sẽ triển khai)')}
+                                >
+                                    <FileDown style={{ marginRight: 6 }} /> Tải hóa đơn
+                                </button>
+                            )}
                         </>
                     )}
                 </div>
