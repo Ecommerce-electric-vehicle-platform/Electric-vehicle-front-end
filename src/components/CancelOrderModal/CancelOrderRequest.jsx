@@ -21,7 +21,7 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
         }));
         setReasons(mapped);
       } catch (err) {
-        console.error("❌ Lỗi khi tải lý do hủy:", err);
+        console.error(" Lỗi khi tải lý do hủy:", err);
         alert("Không thể tải danh sách lý do hủy đơn. Vui lòng thử lại sau.");
       }
     };
@@ -54,7 +54,7 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
           if (onBack) onBack();
         }
       } catch (err) {
-        console.error("❌ Lỗi khi tải dữ liệu đơn hàng:", err);
+        console.error(" Lỗi khi tải dữ liệu đơn hàng:", err);
         alert("Không thể tải dữ liệu đơn hàng. Vui lòng thử lại sau.");
       }
     };
@@ -80,17 +80,17 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
 
     try {
       setLoading(true);
-      const payload = { reasonId: selectedReason.id };
+      const payload = { cancelReasonId: selectedReason.id };
       const res = await cancelOrder(orderId, payload);
 
       if (res?.success) {
-        alert("✅ Đã gửi yêu cầu hủy đơn thành công!");
+        alert(" Đã gửi yêu cầu hủy đơn thành công!");
         if (onCancelSuccess) onCancelSuccess(orderId);
       } else {
-        alert("❌ Gửi yêu cầu thất bại. Vui lòng thử lại.");
+        alert(" Gửi yêu cầu thất bại. Vui lòng thử lại.");
       }
     } catch (err) {
-      console.error("❌ Lỗi khi gửi yêu cầu hủy đơn:", err);
+      console.error(" Lỗi khi gửi yêu cầu hủy đơn:", err);
       alert("Không thể gửi yêu cầu hủy đơn. Vui lòng thử lại sau.");
     } finally {
       setLoading(false);

@@ -36,6 +36,8 @@ export default function SellerApplicationAccepted({ data, onComplete }) {
 
     // === CẬP NHẬT ROLE TRONG LOCALSTORAGE ===
     // Backend đã cập nhật role trong DB, frontend cần sync localStorage
+    
+
     localStorage.setItem("userRole", "seller");
     console.log("Role updated in localStorage: buyer → seller");
 
