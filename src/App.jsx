@@ -23,6 +23,7 @@ import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
 import SellerDashboard from "./pages/SellerDashboard/SellerDashboard";
 import CreatePost from "./pages/Seller/CreatePost/CreatePost";
 import ManagePosts from "./pages/Seller/ManagePosts/ManagePosts";
+import EditPost from "./pages/Seller/EditPost/EditPost";
 import SellerPendingOrders from "./pages/Seller/SellerPendingOrders/SellerPendingOrders";
 import AdminRoutes from "./routes/AdminRoute";
 import AdminLogin from "./pages/Admin/Login/AdminLogin";
@@ -183,6 +184,14 @@ function AppContent() {
           element={
             <PageTransition className="fade-up">
               <ManagePosts />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/seller/edit-post/:postId"
+          element={
+            <PageTransition className="fade-up">
+              <EditPost />
             </PageTransition>
           }
         />
