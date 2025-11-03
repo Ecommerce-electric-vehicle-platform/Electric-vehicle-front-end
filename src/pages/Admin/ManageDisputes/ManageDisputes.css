@@ -124,13 +124,13 @@ input[type="number"] {
   border: 1.5px solid #3b82f680;
   background: #fff;
   min-width: 0;
-  max-width: 180px;   /* Tối đa 180px, vừa cho icon + chữ */
+  max-width: 180px;
   width: auto;
   justify-content: center;
 }
 
 .refresh-btn .ms-2 {
-  margin-left: 0.5rem !important; /* Nếu muốn sát hơn thì: 0.35rem */
+  margin-left: 0.5rem !important;
 }
 
 @media (max-width: 600px) {

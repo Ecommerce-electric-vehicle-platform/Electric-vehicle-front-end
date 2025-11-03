@@ -322,6 +322,102 @@ const sellerApi = {
       return [];
     }
   },
+
+  // Ẩn sản phẩm theo postId (dùng cho Seller/Admin)
+hidePostById: async (postId) => {
+  try {
+    const accessToken = localStorage.getItem("accessToken");
+    const response = await axiosInstance.post(
+      `/api/v1/post-product/hide/${postId}?is_hide=true`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
+    return response;
+  } catch (error) {
+    console.error("[SellerAPI] Error hiding post by id:", error);
+    throw error;
+  }
+},
+
+// Hiện lại sản phẩm theo postId (dùng cho Seller/Admin)
+unhidePostById: async (postId) => {
+  try {
+    const accessToken = localStorage.getItem("accessToken");
+    const response = await axiosInstance.post(
+      `/api/v1/post-product/hide/${postId}?is_hide=false`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
+    return response;
+  } catch (error) {
+    console.error("[SellerAPI] Error unhiding post by id:", error);
+    throw error;
+  }
+},
+
+// Cập nhật bài đăng sản phẩm bằng postId (dùng cho Seller)
+updatePostById: async (postId, productData) => {
+  try {
+    const accessToken = localStorage.getItem("accessToken");
+    
+    // Kiểm tra nếu productData đã là FormData
+    let formData;
+    if (productData instanceof FormData) {
+      formData = productData;
+      
+      // Debug: Kiểm tra xem FormData có chứa pictures không
+      console.log("[SellerAPI] FormData received, checking contents...");
+      const entries = [];
+      for (let entry of formData.entries()) {
+        entries.push({ key: entry[0], value: entry[1] instanceof File ? `[File: ${entry[1].name}]` : entry[1] });
+      }
+      console.log("[SellerAPI] FormData entries:", entries);
+      
+      // Kiểm tra xem có field "pictures" không
+      const hasPictures = entries.some(entry => entry.key === "pictures");
+      if (!hasPictures) {
+        console.warn("[SellerAPI] WARNING: FormData does not contain 'pictures' field!");
+        console.warn("[SellerAPI] This will likely cause 'MissingServletRequestPartException' on backend");
+      }
+    } else {
+      // Tạo FormData mới từ object
+      formData = new FormData();
+      Object.entries(productData).forEach(([key, value]) => {
+        if (key === "pictures" && Array.isArray(value)) {
+          value.forEach((file) => {
+            formData.append("pictures", file);
+          });
+        } else if (value !== undefined && value !== null) {
+          formData.append(key, value);
+        }
+      });
+    }
+    
+    console.log("[SellerAPI] Calling PUT /api/v1/post-product/" + postId);
+    const response = await axiosInstance.put(
+      `/api/v1/post-product/${postId}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          "Authorization": `Bearer ${accessToken}`
+        }
+      }
+    );
+    return response;
+  } catch (error) {
+    console.error("[SellerAPI] Error updating product post:", error);
+    throw error;
+  }
+},
 };
 
 export default sellerApi;

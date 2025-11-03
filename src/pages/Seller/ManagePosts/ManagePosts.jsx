@@ -71,12 +71,30 @@ export default function ManagePosts() {
     }
 
     try {
-      await sellerApi.hidePost(postId);
+      await sellerApi.hidePostById(postId);
       alert("Ẩn tin đăng thành công!");
       loadPosts(); // Reload
     } catch (error) {
       console.error("Error hiding post:", error);
       alert("Ẩn tin đăng thất bại. Vui lòng thử lại!");
+    }
+  };
+
+  const handleUnhidePost = async (postId) => {
+    if (
+      !window.confirm(
+        "Bạn có chắc muốn bỏ ẩn tin đăng này? Tin đăng sẽ trở lại và hiển thị cho người mua."
+      )
+    ) {
+      return;
+    }
+    try {
+      await sellerApi.unhidePostById(postId);
+      alert("Bỏ ẩn tin đăng thành công!");
+      loadPosts();
+    } catch (error) {
+      console.error("Error unhiding post:", error);
+      alert("Bỏ ẩn tin đăng thất bại. Vui lòng thử lại!");
     }
   };
 
@@ -245,14 +263,12 @@ export default function ManagePosts() {
                   {/* Actions */}
                   <div className="post-actions">
                     <button
-                      className="btn-edit"
-                      onClick={() =>
-                        navigate(`/seller/edit-post/${post.postId}`)
-                      }
+                      className="btn-update"
+                      onClick={() => navigate(`/seller/edit-post/${post.postId}`)}
+                      title="Chỉnh sửa bài đăng"
                     >
                       Sửa
                     </button>
-
                     <button
                       className="btn-view"
                       onClick={() =>
@@ -262,7 +278,6 @@ export default function ManagePosts() {
                     >
                       Xem trước
                     </button>
-
                     {!post.verified && (
                       <button
                         className="btn-verify"
@@ -271,14 +286,23 @@ export default function ManagePosts() {
                         Xác minh
                       </button>
                     )}
-
-                    <button
-                      className="btn-hide"
-                      onClick={() => handleHidePost(post.postId)}
-                      title="Ẩn tin đăng này khỏi danh sách công khai"
-                    >
-                      Ẩn
-                    </button>
+                    {post.active === false || post.active === 0 ? (
+                      <button
+                        className="btn-unhide"
+                        onClick={() => handleUnhidePost(post.postId)}
+                        title="Bỏ ẩn, cho phép bài đăng hiển thị lại với người mua"
+                      >
+                        Bỏ ẩn
+                      </button>
+                    ) : (
+                      <button
+                        className="btn-hide"
+                        onClick={() => handleHidePost(post.postId)}
+                        title="Ẩn tin đăng này khỏi danh sách công khai"
+                      >
+                        Ẩn
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
