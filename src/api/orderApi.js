@@ -84,6 +84,7 @@ export const getUserOrders = async (page = 1, limit = 10) => {
 
 // Order history for current user
 // GET /api/v1/order/history
+// Response: { success: true, data: { orderResponses: [...], meta: {...} } }
 export const getOrderHistory = async ({ page = 1, size = 10 } = {}) => {
     const pageIndex = Math.max(0, Number(page) - 1);
     const safeSize = Math.max(1, Number(size) || 10);
@@ -100,7 +101,44 @@ export const getOrderHistory = async ({ page = 1, size = 10 } = {}) => {
             data?.items ||
             (Array.isArray(data) ? data : []);
         const items = Array.isArray(list) ? list : [];
-        return { items: items.map(normalizeOrderHistoryItem) };
+        const meta = data?.meta || raw?.meta || null;
+
+        // Log để debug giá từ backend
+        if (items.length > 0) {
+            console.log('[orderApi] getOrderHistory - Raw response sample:', {
+                firstItem: items[0],
+                priceFields: {
+                    price: items[0]?.price,
+                    productPrice: items[0]?.productPrice,
+                    shippingFee: items[0]?.shippingFee,
+                    finalPrice: items[0]?.finalPrice,
+                    totalPrice: items[0]?.totalPrice
+                }
+            });
+        }
+
+        const normalizedItems = items.map(normalizeOrderHistoryItem);
+
+        // Log sau khi normalize để so sánh
+        if (normalizedItems.length > 0) {
+            console.log('[orderApi] getOrderHistory - Normalized sample:', {
+                firstItem: normalizedItems[0],
+                priceComparison: {
+                    raw_price: items[0]?.price,
+                    normalized_price: normalizedItems[0]?.price,
+                    raw_shippingFee: items[0]?.shippingFee,
+                    normalized_shippingFee: normalizedItems[0]?.shippingFee,
+                    raw_finalPrice: items[0]?.finalPrice || (items[0]?.price + items[0]?.shippingFee),
+                    normalized_finalPrice: normalizedItems[0]?.finalPrice
+                }
+            });
+        }
+
+        return {
+            items: normalizedItems,
+            meta: meta, // Trả về meta để có thể dùng pagination
+            success: raw?.success !== false
+        };
     } catch {
         // Retry with minimal valid params
         const res = await axiosInstance.get('/api/v1/order/history', {
@@ -115,33 +153,206 @@ export const getOrderHistory = async ({ page = 1, size = 10 } = {}) => {
             data?.items ||
             (Array.isArray(data) ? data : []);
         const items = Array.isArray(list) ? list : [];
-        return { items: items.map(normalizeOrderHistoryItem) };
+        const meta = data?.meta || raw?.meta || null;
+        return {
+            items: items.map(normalizeOrderHistoryItem),
+            meta: meta,
+            success: raw?.success !== false
+        };
     }
 };
 
 // Chuẩn hóa 1 item từ BE → UI OrderList.jsx
+// Response structure từ backend:
+// { id, orderCode, shippingAddress, phoneNumber, price, shippingFee, status, 
+//   createdAt, updatedAt, canceledAt, cancelReason }
 function normalizeOrderHistoryItem(item) {
     if (!item || typeof item !== 'object') return null;
 
     const id = item.id ?? item.orderId ?? item.order_id ?? String(Math.random());
+    const orderCode = item.orderCode || item.order_code || id; // Extract orderCode trực tiếp
     const createdAt = item.createdAt || item.created_at || item.updatedAt || new Date().toISOString();
+    const updatedAt = item.updatedAt || item.updated_at || null;
+    const canceledAt = item.canceledAt || item.canceled_at || null;
+    const cancelReason = item.cancelReason || item.cancel_reason || null;
 
     // Map status từ BE sang UI filter keys
+    // Backend có: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
     const rawStatus = String(item.status || '').toUpperCase();
     let status = 'pending';
-    if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') status = 'confirmed';
+    if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') status = 'pending';
+    else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') status = 'confirmed';
     else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') status = 'shipping';
     else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') status = 'delivered';
     else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'cancelled';
 
-    const price = Number(item.price ?? 0);
-    const shippingFee = Number(item.shippingFee ?? 0);
-    const finalPrice = price + shippingFee;
+    // QUAN TRỌNG: Phân tích từ dữ liệu thực tế:
+    // - Place order: totalPrice = 26450000 (productPrice: 25900000 + shippingFee: 550000)
+    // - Order history từ backend: price = 26450000, shippingFee = 550000
+    // 
+    // KẾT LUẬN: Backend trả về 'price' là TOTAL PRICE (đã bao gồm shippingFee)
+    // KHÔNG PHẢI productPrice!
+    // 
+    // Vì vậy:
+    // - productPrice = price - shippingFee
+    // - finalPrice = price (KHÔNG cộng thêm shippingFee!)
+
+    // Lấy phí ship từ backend response
+    const shippingFee = Number(
+        item.shippingFee ??
+        item.shipping_fee ??
+        item.deliveryFee ??
+        item.delivery_fee ??
+        0
+    );
+
+    // Lấy giá từ backend
+    // QUAN TRỌNG: Backend trả về 'price' là totalPrice (đã bao gồm shippingFee)
+    const rawPrice = Number(
+        item.price ??
+        item.productPrice ??
+        item.product_price ??
+        item.itemPrice ??
+        item.item_price ??
+        0
+    );
+
+    // Lấy totalPrice/finalPrice từ backend nếu có (ưu tiên cao nhất)
+    // Nếu backend có trả về finalPrice/totalPrice riêng, dùng nó
+    const backendTotalPrice = Number(
+        item.finalPrice ??
+        item.final_price ??
+        item.totalPrice ??
+        item.total_price ??
+        item.total ??
+        0
+    );
+
+    let productPrice = 0;
+    let finalPrice = 0;
+
+    // Logic đơn giản và rõ ràng:
+    // 1. Nếu có backendTotalPrice (finalPrice/totalPrice từ backend) → dùng nó
+    // 2. Nếu không có, giả định rawPrice là totalPrice (theo dữ liệu thực tế)
+
+    if (backendTotalPrice > 0) {
+        // Có finalPrice từ backend, dùng nó
+        finalPrice = backendTotalPrice;
+
+        // Tính productPrice: Nếu rawPrice + shippingFee = backendTotalPrice thì rawPrice là productPrice
+        // Ngược lại, nếu rawPrice = backendTotalPrice thì rawPrice là totalPrice
+        const calculatedTotal = rawPrice + shippingFee;
+        const diff1 = Math.abs(calculatedTotal - backendTotalPrice);
+        const diff2 = Math.abs(rawPrice - backendTotalPrice);
+
+        if (diff1 < diff2 && diff1 < 100) {
+            // rawPrice + shippingFee ≈ backendTotalPrice → rawPrice là productPrice
+            productPrice = rawPrice;
+        } else if (diff2 < 100) {
+            // rawPrice ≈ backendTotalPrice → rawPrice là totalPrice
+            productPrice = Math.max(0, rawPrice - shippingFee);
+        } else {
+            // Tính từ backendTotalPrice
+            productPrice = Math.max(0, backendTotalPrice - shippingFee);
+        }
+    } else {
+        // KHÔNG có backendTotalPrice
+        // Theo dữ liệu thực tế: backend LUÔN trả về 'price' là TOTAL PRICE (đã bao gồm shippingFee)
+        // Ví dụ: price = 26450000, shippingFee = 550000
+        // → productPrice = 26450000 - 550000 = 25900000
+        // → finalPrice = 26450000 (KHÔNG cộng thêm shippingFee!)
+
+        if (rawPrice > 0 && shippingFee >= 0) {
+            // Kiểm tra hợp lý: rawPrice phải lớn hơn hoặc bằng shippingFee
+            if (rawPrice >= shippingFee) {
+                // rawPrice là totalPrice (đã bao gồm shippingFee)
+                productPrice = rawPrice - shippingFee;
+                finalPrice = rawPrice; // KHÔNG cộng thêm shippingFee
+            } else {
+                // Trường hợp đặc biệt: rawPrice < shippingFee (không hợp lý, nhưng xử lý an toàn)
+                // Giả định rawPrice là productPrice
+                productPrice = rawPrice;
+                finalPrice = rawPrice + shippingFee;
+            }
+        } else {
+            // Trường hợp rawPrice = 0 hoặc không hợp lý
+            productPrice = rawPrice;
+            finalPrice = rawPrice + shippingFee;
+        }
+    }
+
+    // Đảm bảo giá không âm và hợp lý
+    productPrice = Math.max(0, productPrice);
+    finalPrice = Math.max(0, finalPrice);
+
+    // Log để debug - CHI TIẾT
+    console.log('[orderApi] normalizeOrderHistoryItem - Price normalization:', {
+        orderCode: item.orderCode || item.order_code,
+        orderId: item.id,
+        raw: {
+            price: item.price,
+            productPrice: item.productPrice,
+            shippingFee: item.shippingFee,
+            finalPrice: item.finalPrice,
+            totalPrice: item.totalPrice
+        },
+        normalized: {
+            productPrice: productPrice,
+            shippingFee: shippingFee,
+            finalPrice: finalPrice
+        },
+        calculation: {
+            rawPrice: rawPrice,
+            backendTotalPrice: backendTotalPrice,
+            assumption: backendTotalPrice > 0 ? 'use_backendTotalPrice' : 'rawPrice_is_totalPrice',
+            productPriceCalculation: `${rawPrice} - ${shippingFee} = ${productPrice}`,
+            finalPriceCalculation: backendTotalPrice > 0 ? `backendTotalPrice: ${backendTotalPrice}` : `rawPrice (no add shipping): ${rawPrice}`
+        },
+        verification: {
+            productPrice_plus_shippingFee: productPrice + shippingFee,
+            finalPrice: finalPrice,
+            match: Math.abs((productPrice + shippingFee) - finalPrice) < 100 ? '✅ MATCH' : '⚠️ MISMATCH'
+        }
+    });
+
+    // Log warning nếu có vấn đề
+    if (productPrice === 0 || finalPrice <= 0) {
+        console.warn('[orderApi] normalizeOrderHistoryItem - Price validation issue:', {
+            id: item.id,
+            orderCode: item.orderCode || item.order_code,
+            productPrice: productPrice,
+            shippingFee: shippingFee,
+            finalPrice: finalPrice,
+            rawPrice: rawPrice,
+            backendTotalPrice: backendTotalPrice
+        });
+    }
+
+    // Log ERROR nếu finalPrice không khớp với productPrice + shippingFee (nếu rawPrice là totalPrice)
+    if (backendTotalPrice === 0) {
+        const expectedFinalPrice = productPrice + shippingFee;
+        const diff = Math.abs(finalPrice - expectedFinalPrice);
+        if (diff > 100) {
+            console.error('[orderApi] normalizeOrderHistoryItem - FinalPrice MISMATCH!', {
+                orderCode: item.orderCode || item.order_code,
+                expected: expectedFinalPrice,
+                actual: finalPrice,
+                difference: diff,
+                rawPrice: rawPrice,
+                shippingFee: shippingFee,
+                productPrice: productPrice
+            });
+        }
+    }
+
+    // Extract thông tin từ response
+    const shippingAddress = item.shippingAddress || item.shipping_address || '';
+    const phoneNumber = item.phoneNumber || item.phone_number || '';
 
     // Giao diện cần có product info; dùng placeholder nếu BE không trả
     const product = {
         image: '/vite.svg',
-        title: `Đơn hàng ${item.orderCode || id}`,
+        title: `Đơn hàng ${orderCode}`,
         brand: '',
         model: '',
         conditionLevel: ''
@@ -149,12 +360,20 @@ function normalizeOrderHistoryItem(item) {
 
     return {
         id,
+        orderCode, // Thêm orderCode vào normalized object
         status,
         createdAt,
-        finalPrice,
+        updatedAt,
+        canceledAt,
+        cancelReason,
+        price: productPrice,  // Lưu productPrice vào field 'price' để backward compatibility
+        productPrice: productPrice,  // Lưu riêng productPrice
         shippingFee,
+        finalPrice,
+        shippingAddress, // Thêm shippingAddress
+        phoneNumber, // Thêm phoneNumber
         product,
-        _raw: item,
+        _raw: item, // Giữ nguyên _raw để backward compatibility
     };
 }
 

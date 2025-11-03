@@ -37,7 +37,7 @@ import { useState, useEffect } from "react";
 import notificationService from "./services/notificationService";
 import WalletDashboard from "./pages/Wallet/WalletDashboard";
 
-import CancelOrderRequest from "./components/CancelOrderModal/CancelOrderRequest";
+
 
 function AppContent() {
   const location = useLocation();
@@ -157,15 +157,7 @@ function AppContent() {
           }
         />
 
-        <Route
-          path="/cancel-order/:orderId"
-          element={
-            <PageTransition className="fade-up">
-              <CancelOrderRequest />
-            </PageTransition>
-          }
-        />
-
+    
 
         <Route
           path="/order/review/:orderId"
