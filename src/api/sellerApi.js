@@ -273,46 +273,23 @@ const sellerApi = {
   // Lấy seller theo postId
   getSellerByProductId: async (postId) => {
     if (!postId) {
-      console.warn('[sellerApi] getSellerByProductId - postId is empty/null:', postId);
-      return null;
-    }
-    console.log('[sellerApi] getSellerByProductId - Received postId:', postId, 'Type:', typeof postId);
-
-    // Convert postId to integer - backend expects Long (integer)
-    const normalizedPostId = Math.floor(Number(postId));
-
-    // Check if postId is valid (not from Math.random() and is a positive integer)
-    if (isNaN(normalizedPostId) || normalizedPostId <= 0) {
-      console.warn('[sellerApi] getSellerByProductId - Invalid postId (likely from Math.random):', {
-        original: postId,
-        normalized: normalizedPostId,
-        isNaN: isNaN(normalizedPostId),
-        isZeroOrNegative: normalizedPostId <= 0
-      });
+      console.warn('[sellerApi] getSellerByProductId called with null/undefined postId');
       return null;
     }
 
-    // Check if original postId was a decimal (from Math.random())
-    if (String(postId).includes('.') && Number(postId) < 1) {
-      console.warn('[sellerApi] getSellerByProductId - postId appears to be from Math.random(), rejecting:', postId);
+    // Validate postId - phải là số nguyên dương hoặc string hợp lệ
+    const pidStr = String(postId).trim();
+    const pidNum = Number(pidStr);
+
+    if (isNaN(pidNum) || pidNum <= 0 || !Number.isInteger(pidNum)) {
+      console.error('[sellerApi] Invalid postId format:', postId, 'Type:', typeof postId);
       return null;
     }
 
-    console.log('[sellerApi] getSellerByProductId - Normalized postId:', normalizedPostId, '(from:', postId, ')');
     try {
-      console.log('[sellerApi] getSellerByProductId - Calling API: /api/v1/post-product/' + normalizedPostId + '/seller');
-      const response = await axiosInstance.get(`/api/v1/post-product/${normalizedPostId}/seller`);
-      console.log('[sellerApi] getSellerByProductId - API Response:', response?.data);
-      if (!response?.data?.success || !response.data?.data) {
-        console.warn('[sellerApi] getSellerByProductId - Response missing data:', {
-          hasSuccess: !!response?.data?.success,
-          hasData: !!response.data?.data,
-          response: response?.data
-        });
-        return null;
-      }
+      const response = await axiosInstance.get(`/api/v1/post-product/${pidNum}/seller`);
+      if (!response?.data?.success || !response.data?.data) return null;
       const raw = response.data.data;
-      console.log('[sellerApi] getSellerByProductId - Extracted seller data:', raw);
       return {
         sellerId: raw.sellerId,
         storeName: raw.storeName,
@@ -322,17 +299,11 @@ const sellerApi = {
         nationality: raw.nationality
       };
     } catch (error) {
-      console.error('[sellerApi] getSellerByProductId - Error details:', {
-        postId: postId,
-        error: error.message,
-        status: error?.response?.status,
-        responseData: error?.response?.data,
-        fullError: error
-      });
       if ([401, 403, 404].includes(error?.response?.status)) {
-        console.warn('[sellerApi] getSellerByProductId - seller not found or permission:', error?.response?.status);
+        console.warn('[sellerApi] seller not found or permission:', error?.response?.status);
         return null;
       }
+      console.error('[sellerApi] Error in getSellerByProductId', error);
       return null;
     }
   },

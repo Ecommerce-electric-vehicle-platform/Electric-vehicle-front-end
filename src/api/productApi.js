@@ -45,189 +45,96 @@ export async function fetchPostProducts({ page = 1, size = 12, params = {} } = {
  */
 export async function fetchPostProductById(id) {
     if (id === undefined || id === null) throw new Error("Thiếu id sản phẩm");
-    console.log('[productApi] fetchPostProductById - Received ID:', id, 'Type:', typeof id);
-
-    // Normalize ID để đảm bảo so sánh đúng
-    const normalizedId = String(id).trim();
-
     try {
-        // Thử gọi API với ID được truyền vào
-        // Backend API endpoint: /api/v1/post-product/{postId}
-        // Lưu ý: ID này có thể là postId hoặc id từ URL
-        console.log('[productApi] fetchPostProductById - Calling API with ID:', normalizedId);
-        const response = await axiosInstance.get(`/api/v1/post-product/${normalizedId}`);
-        console.log('[productApi] fetchPostProductById - Full API Response:', response);
+        const response = await axiosInstance.get(`/api/v1/post-product/${id}`);
 
-        // Backend có thể trả về {success: true, data: {...}} hoặc trực tiếp object
-        const rawData = response?.data;
+        console.log(`[fetchPostProductById] API Response for ID ${id}:`, response?.data);
 
-        // Kiểm tra nếu response có success: true nhưng data: null hoặc có error message
-        // Đây là trường hợp backend trả về lỗi nhưng vẫn status 200
-        if (rawData?.success === true && (rawData?.data === null || rawData?.data === undefined)) {
-            const errorMsg = rawData?.error || rawData?.message || 'Không tìm thấy sản phẩm';
-            console.warn('[productApi] fetchPostProductById - Backend returned success:true but data is null. Error:', errorMsg);
-            // Tạo một error object giống như axios error để trigger fallback
-            throw {
-                response: {
-                    status: 404,
-                    data: rawData
-                },
-                message: errorMsg
-            };
+        // Backend response có thể có nhiều cấu trúc:
+        // 1. {success, message, data: {...product...}, error}
+        // 2. {...product...} trực tiếp
+        // 3. {success: true, data: null, error: "..."} - product không tồn tại
+        const rawResponse = response?.data ?? {};
+
+        console.log(`[fetchPostProductById] Raw response for ID ${id}:`, rawResponse);
+        console.log(`[fetchPostProductById] Response structure check:`, {
+            hasSuccess: 'success' in rawResponse,
+            hasData: 'data' in rawResponse,
+            hasError: 'error' in rawResponse,
+            dataIsNull: rawResponse?.data === null,
+            dataType: typeof rawResponse?.data
+        });
+
+        // Kiểm tra nếu response có error và data là null (product không tồn tại)
+        if (rawResponse?.error && rawResponse?.data === null) {
+            const errorMsg = rawResponse?.error || rawResponse?.message || `Không tìm thấy sản phẩm với ID: ${id}`;
+            console.error(`[fetchPostProductById] Error in response for ID ${id}:`, errorMsg);
+            throw new Error(errorMsg);
         }
 
+        // Extract item - thử nhiều cách:
+        // 1. rawResponse.data (nếu có wrapper)
+        // 2. rawResponse (nếu là product trực tiếp)
+        // 3. rawResponse.content (một số API dùng content)
+        // 4. rawResponse.product (một số API dùng product)
         let item = null;
 
-        if (rawData?.data) {
-            // Format: {success: true, data: {...}} hoặc {data: {...}}
-            item = rawData.data;
-        } else if (rawData && typeof rawData === 'object' && rawData.postId) {
-            // Format: trực tiếp object với postId (là product object)
-            item = rawData;
-        } else if (rawData && typeof rawData === 'object' && !rawData.success) {
-            // Format: trực tiếp object khác (không phải response wrapper)
-            item = rawData;
-        } else if (rawData?.success === false) {
-            // Backend trả về success: false
-            const errorMsg = rawData?.error || rawData?.message || 'Không tìm thấy sản phẩm';
-            throw {
-                response: {
-                    status: 404,
-                    data: rawData
-                },
-                message: errorMsg
-            };
+        if (rawResponse?.data !== null && rawResponse?.data !== undefined) {
+            item = rawResponse.data;
+            console.log(`[fetchPostProductById] Using rawResponse.data for ID ${id}`);
+        } else if (rawResponse?.content) {
+            item = rawResponse.content;
+            console.log(`[fetchPostProductById] Using rawResponse.content for ID ${id}`);
+        } else if (rawResponse?.product) {
+            item = rawResponse.product;
+            console.log(`[fetchPostProductById] Using rawResponse.product for ID ${id}`);
+        } else if (!('success' in rawResponse) && !('error' in rawResponse)) {
+            // Nếu không phải response wrapper, có thể rawResponse chính là product
+            item = rawResponse;
+            console.log(`[fetchPostProductById] Using rawResponse directly for ID ${id}`);
         }
 
-        // Nếu không có item hợp lệ, throw error để trigger fallback
+        console.log(`[fetchPostProductById] Extracted item for ID ${id}:`, item);
+
+        // Kiểm tra item có hợp lệ không
         if (!item || (typeof item === 'object' && Object.keys(item).length === 0)) {
-            console.warn('[productApi] fetchPostProductById - No valid item extracted from response');
-            throw {
-                response: {
-                    status: 404,
-                    data: rawData
-                },
-                message: 'Không tìm thấy dữ liệu sản phẩm trong response'
-            };
+            console.warn(`[fetchPostProductById] Empty or null item for ID ${id}`, {
+                rawResponse,
+                item,
+                hasPostId: item?.postId,
+                hasId: item?.id
+            });
+            throw new Error(`Không tìm thấy dữ liệu sản phẩm với ID: ${id}`);
         }
-
-        console.log('[productApi] fetchPostProductById - Extracted item:', item);
-        console.log('[productApi] fetchPostProductById - Item postId/id/post_id:', {
-            postId: item?.postId,
-            id: item?.id,
-            post_id: item?.post_id
-        });
 
         const normalized = normalizeProduct(item);
-        console.log('[productApi] fetchPostProductById - Normalized product:', {
-            id: normalized?.id,
-            postId: normalized?.postId,
-            hasPostId: !!normalized?.postId
-        });
+        console.log(`[fetchPostProductById] Normalized product for ID ${id}:`, normalized);
 
         if (!normalized) {
-            throw {
-                response: {
-                    status: 404,
-                    data: rawData
-                },
-                message: `Không thể normalize sản phẩm với ID: ${normalizedId}`
-            };
-        }
-
-        // Cảnh báo nếu normalized product không có postId (có thể là wish-list ID)
-        if (!normalized.postId || normalized.postId === normalized.id) {
-            console.warn('[productApi] fetchPostProductById - Warning: Product may not have proper postId. ID:', normalized.id, 'postId:', normalized.postId);
+            console.error(`[fetchPostProductById] normalizeProduct returned null for ID ${id}, item was:`, item);
+            throw new Error(`Không thể xử lý dữ liệu sản phẩm với ID: ${id}`);
         }
 
         return normalized;
     } catch (err) {
-        const statusCode = err?.response?.status;
-        const isNotFound = statusCode === 404;
+        console.error(`[fetchPostProductById] Error fetching product ID ${id}:`, err);
 
-        console.error('[productApi] fetchPostProductById - Direct API call failed:', {
-            message: err.message,
-            statusCode,
-            isNotFound,
-            error: err
-        });
-
-        // Nếu là lỗi 404 và không phải do backend issue, không cần fallback
-        // Nhưng vì có thể backend có bug với một số ID, chúng ta vẫn thử fallback
-        console.log('[productApi] fetchPostProductById - Attempting fallback search...');
-
-        // Fallback: Tìm trong tất cả các pages
+        // Fallback: tìm trong danh sách tất cả products
         try {
-            let found = null;
-            let currentPage = 1;
-            const maxPages = 20; // Giới hạn tối đa 20 pages để tránh loop vô hạn
-            const pageSize = 50; // Lấy nhiều items mỗi page
-
-            while (currentPage <= maxPages && !found) {
-                console.log(`[productApi] fetchPostProductById - Searching page ${currentPage}...`);
-                const { items, totalPages } = await fetchPostProducts({ page: currentPage, size: pageSize });
-
-                if (!items || items.length === 0) {
-                    console.log(`[productApi] fetchPostProductById - No items found on page ${currentPage}, stopping search`);
-                    break;
-                }
-
-                // Tìm sản phẩm với ID khớp - so sánh nhiều trường ID
-                // Cần tìm theo cả postId và id vì ID từ URL có thể là một trong hai
-                found = items.find((x) => {
-                    // Normalize các trường ID có thể có
-                    const itemPostId = String(x?.postId ?? x?.post_id ?? '').trim();
-                    const itemId = String(x?.id ?? '').trim();
-
-                    // So sánh với normalizedId (ID từ URL params)
-                    // Cần so sánh cả postId và id vì ID trong URL có thể là một trong hai
-                    const matchesPostId = itemPostId && itemPostId === normalizedId;
-                    const matchesId = itemId && itemId === normalizedId;
-
-                    if (matchesPostId || matchesId) {
-                        console.log(`[productApi] fetchPostProductById - Match found on page ${currentPage}:`, {
-                            itemPostId,
-                            itemId,
-                            normalizedId,
-                            matchType: matchesPostId ? 'postId' : 'id'
-                        });
-                        return true;
-                    }
-
-                    return false;
-                });
-
-                if (found) {
-                    console.log(`[productApi] fetchPostProductById - Found product on page ${currentPage}:`, found);
-                    break;
-                }
-
-                // Nếu đã đến trang cuối, dừng lại
-                if (currentPage >= totalPages) {
-                    console.log(`[productApi] fetchPostProductById - Reached last page (${totalPages}), stopping search`);
-                    break;
-                }
-
-                currentPage++;
-            }
-
+            console.log(`[fetchPostProductById] Trying fallback search for ID ${id}`);
+            const { items } = await fetchPostProducts({ page: 1, size: 100 });
+            const found = (items || []).find(
+                (x) => String(x?.id ?? x?.postId ?? x?.post_id) === String(id)
+            );
             if (found) {
-                const normalized = normalizeProduct(found);
-                console.log('[productApi] fetchPostProductById - Fallback normalized product:', normalized);
-
-                if (!normalized) {
-                    throw new Error(`Không thể normalize sản phẩm với ID: ${normalizedId}`);
-                }
-
-                return normalized;
-            } else {
-                console.error(`[productApi] fetchPostProductById - Product with ID ${normalizedId} not found in any page`);
-                throw new Error(`Không tìm thấy sản phẩm với ID: ${normalizedId}`);
+                console.log(`[fetchPostProductById] Found in fallback for ID ${id}:`, found);
+                return normalizeProduct(found);
             }
         } catch (fallbackErr) {
-            console.error('[productApi] fetchPostProductById - Fallback search failed:', fallbackErr);
-            throw new Error(`Không thể tải sản phẩm với ID: ${normalizedId}. ${fallbackErr.message || err.message}`);
+            console.error(`[fetchPostProductById] Fallback also failed for ID ${id}:`, fallbackErr);
         }
+
+        throw err;
     }
 }
 
@@ -240,115 +147,162 @@ export async function fetchSellerByPostId(postId) {
     return response.data?.data || response.data;
 }
 
+/**
+ * Helper function to validate and normalize product ID
+ * @param {any} id - The ID to validate
+ * @returns {number|null} - Valid integer ID or null
+ */
+function validateProductId(id) {
+    if (id == null) return null;
+
+    if (typeof id === 'number') {
+        return (id > 0 && Number.isInteger(id)) ? id : null;
+    }
+
+    if (typeof id === 'string') {
+        const trimmed = id.trim();
+        if (trimmed === '') return null;
+        const num = Number(trimmed);
+        return (!isNaN(num) && num > 0 && Number.isInteger(num)) ? num : null;
+    }
+
+    return null;
+}
+
 export function normalizeProduct(item) {
     if (!item || typeof item !== "object") {
-        console.log('[productApi] normalizeProduct - Item is null or not object:', item);
+        console.warn('[normalizeProduct] Item is null or not an object:', item);
         return null;
     }
 
-    console.log('[productApi] normalizeProduct - Raw item postId values:', {
-        'item.postId': item.postId,
-        'item.id': item.id,
-        'item.post_id': item.post_id,
-        'typeof postId': typeof item.postId,
-        'typeof id': typeof item.id,
-        'typeof post_id': typeof item.post_id
-    });
+    // Xử lý trường hợp item có thể là response wrapper
+    // Nếu item có cấu trúc {success, message, data: {...}, error}, extract data
+    let productData = item;
+    if (item.data && typeof item.data === 'object' && !Array.isArray(item.data)) {
+        // Có thể là wrapper, nhưng cũng có thể data là một object product
+        // Chỉ unwrap nếu có các field của response wrapper
+        if ('success' in item || 'message' in item || 'error' in item) {
+            productData = item.data;
+            // Nếu data là null, có thể product không tồn tại
+            if (!productData) {
+                console.warn('[normalizeProduct] Response wrapper has null data:', item);
+                return null;
+            }
+        }
+    }
 
     // Ảnh chính và danh sách ảnh
     let imageUrl = "";
     let images = [];
 
     // Xử lý trường hợp BE trả về images là mảng object với imgUrl
-    if (Array.isArray(item.images) && item.images.length > 0) {
+    if (Array.isArray(productData.images) && productData.images.length > 0) {
         // Sắp xếp theo order nếu có
-        const sortedImages = [...item.images].sort((a, b) =>
+        const sortedImages = [...productData.images].sort((a, b) =>
             (a.order || 0) - (b.order || 0)
         );
 
-        // Lấy mảng các URL từ imgUrl
-        images = sortedImages.map(img => img.imgUrl || img.url || img).filter(Boolean);
+        // Lấy mảng các URL từ imgUrl, filter out empty strings và null
+        images = sortedImages
+            .map(img => {
+                if (typeof img === 'string') return img;
+                if (typeof img === 'object' && img !== null) {
+                    return img.imgUrl || img.url || img.image || null;
+                }
+                return null;
+            })
+            .filter(url => url && typeof url === 'string' && url.trim() !== '');
 
-        // Ảnh chính là ảnh đầu tiên
+        // Ảnh chính là ảnh đầu tiên hợp lệ
         imageUrl = images[0] || "";
     }
     // Fallback cho các format cũ
-    else if (Array.isArray(item.imageUrls)) {
-        images = item.imageUrls;
+    else if (Array.isArray(productData.imageUrls) && productData.imageUrls.length > 0) {
+        images = productData.imageUrls.filter(url => url && typeof url === 'string' && url.trim() !== '');
         imageUrl = images[0] || "";
     }
-    else if (typeof item.imageUrls === "string") {
-        images = [item.imageUrls];
-        imageUrl = item.imageUrls;
+    else if (typeof productData.imageUrls === "string" && productData.imageUrls.trim() !== "") {
+        images = [productData.imageUrls];
+        imageUrl = productData.imageUrls;
     }
-    else {
-        // Thử các trường khác
-        const fallbackImg = item.thumbnail || item.image || item.coverUrl || "";
-        if (fallbackImg) {
+
+    // Thử các trường khác nếu chưa có ảnh
+    if (!imageUrl) {
+        const fallbackImg = productData.thumbnail || productData.image || productData.coverUrl || "";
+        if (fallbackImg && typeof fallbackImg === 'string' && fallbackImg.trim() !== '') {
             images = [fallbackImg];
             imageUrl = fallbackImg;
         }
     }
 
     // 💰 Giá
-    const price = Number(item.price ?? 0);
+    const price = Number(productData.price ?? 0);
 
     // 🧭 Chuẩn hóa key theo BE thực tế
-    // Ưu tiên postId vì đây là ID thực sự của post-product
-    // Tránh nhầm lẫn với wish-list ID hoặc các ID khác
-    const postId = item.postId ?? item.post_id ?? null;
-    const itemId = item.id ?? null;
+    // Lấy postId - đây là ID thực sự của post-product
+    // Thử nhiều field names để tìm ID
+    const postId = productData.postId ??
+        productData.id ??
+        productData.post_id ??
+        productData.postProductId ??
+        productData.productId;
 
-    // finalId ưu tiên postId, chỉ dùng id nếu không có postId
-    // Điều này đảm bảo API call sẽ dùng đúng post-product ID
-    const finalId = postId ?? itemId ?? String(Math.random());
+    // Validate postId sử dụng helper function
+    const normalizedPostId = validateProductId(postId);
 
-    console.log('[productApi] normalizeProduct - ID mapping:', {
-        originalPostId: item.postId,
-        originalId: item.id,
-        normalizedPostId: postId,
-        normalizedId: itemId,
-        finalId: finalId,
-        usingRandom: !postId && !itemId
-    });
+    // Nếu không có postId hợp lệ, không thể normalize product này
+    // Return null để caller biết bỏ qua item này
+    if (!normalizedPostId) {
+        // Chỉ log warning nếu có postId nhưng không hợp lệ (không log nếu null/undefined)
+        if (postId != null) {
+            console.warn('[normalizeProduct] Cannot normalize product - invalid postId:', {
+                postId,
+                postIdType: typeof postId,
+                title: productData.title,
+            });
+        }
+        return null;
+    }
 
+    // Chỉ trả về product nếu có postId hợp lệ
     return {
-        id: finalId,
-        postId: postId ?? finalId, // Lưu postId riêng để dùng cho API calls
-        title: item.title ?? "Sản phẩm",
-        brand: item.brand ?? "",
-        model: item.model ?? "",
-        manufactureYear: item.manufactureYear ?? item.manufacture_year,
-        usedDuration: item.usedDuration ?? item.used_duration,
-        condition: item.conditionLevel ?? item.condition_level ?? item.condition,
+        // Luôn dùng normalizedPostId (đã validate) làm id chính
+        id: String(normalizedPostId),
+        postId: normalizedPostId, // Số nguyên hợp lệ
+        title: productData.title ?? "Sản phẩm",
+        brand: productData.brand ?? "",
+        model: productData.model ?? "",
+        manufactureYear: productData.manufactureYear ?? productData.manufacture_year,
+        usedDuration: productData.usedDuration ?? productData.used_duration,
+        condition: productData.conditionLevel ?? productData.condition_level ?? productData.condition,
         price,
-        description: item.description ?? "",
-        locationTrading: item.locationTrading ?? item.location_trading ?? "Toàn quốc",
+        description: productData.description ?? "",
+        locationTrading: productData.locationTrading ?? productData.location_trading ?? "Toàn quốc",
         // Verified: chỉ true khi đã được admin duyệt (APPROVED) và verified === true
         verified: Boolean(
-            item.verified &&
-            item.verifiedDecisionStatus === "APPROVED"
+            productData.verified &&
+            productData.verifiedDecisionStatus === "APPROVED"
         ),
-        verifiedDecisionStatus: item.verifiedDecisionStatus,
-        createdAt: item.createdAt || item.created_at || new Date().toISOString(),
-        updatedAt: item.updatedAt || item.updated_at || item.created_at || item.createdAt || new Date().toISOString(),
-        isSold: Boolean(item.is_sold),
+        verifiedDecisionStatus: productData.verifiedDecisionStatus,
+        createdAt: productData.createdAt || productData.created_at || new Date().toISOString(),
+        updatedAt: productData.updatedAt || productData.updated_at || productData.created_at || productData.createdAt || new Date().toISOString(),
+        isSold: Boolean(productData.is_sold),
 
         // 🖼️ Ảnh
         image: imageUrl,
         images,
 
         // 🔋 Thông tin pin và tầm xa
-        batteryType: item.batteryType ?? item.battery_type,
-        range: item.range ?? item.maxRange ?? item.max_range,
+        batteryType: productData.batteryType ?? productData.battery_type,
+        range: productData.range ?? productData.maxRange ?? productData.max_range,
 
         // 📊 Thông tin bổ sung
-        sellerId: item.sellerId ?? item.seller_id,
-        sellerName: item.sellerName ?? item.seller_name,
-        category: item.category ?? item.categoryId ?? item.category_id,
-        status: item.status ?? "active",
+        sellerId: productData.sellerId ?? productData.seller_id,
+        sellerName: productData.sellerName ?? productData.seller_name,
+        category: productData.category ?? productData.categoryId ?? productData.category_id,
+        status: productData.status ?? "active",
 
-        // Debug
-        _raw: item,
+        // Debug - giữ nguyên raw để debug
+        _raw: productData,
     };
 }
