@@ -1,36 +1,48 @@
+// src/components/BuyerRaiseDispute/DisputeForm.jsx
+"use client"
+
+
 import { useState, useEffect } from "react"
-import profileApi from "../../api/profileApi"
-import "./DisputeForm.css"
+import profileApi from "../../api/profileApi" // Đã sửa đường dẫn
+import "./DisputeForm.css" // CSS đã cung cấp
 
 
-// thật ra là không giới hạn
+// Số lượng ảnh tối đa cho phép
 const MAX_PICTURES = 5
 
 
-// SỬA: Chấp nhận orderId thông qua props. Nếu không có, sẽ dùng giá trị mặc định là 1.
-export default function DisputeForm({ initialOrderId }) {
+// SỬA: Chấp nhận orderId thông qua props. Nếu không có, sẽ dùng giá trị mặc định là null.
+export default function DisputeForm({ initialOrderId, onCancelDispute }) {
   // === State Dữ liệu Form ===
   const [formData, setFormData] = useState({
-    // THÊM: Sử dụng initialOrderId từ props, nếu không có thì mặc định là 1 (số)
-    orderId: initialOrderId || 1,
-    description: "", // Dùng description cho nội dung khiếu nại
+    orderId: initialOrderId || null, // Lấy giá trị từ props hoặc null
+    description: "",
     disputeCategoryId: "",
     pictures: [], // Lưu File objects
   })
 
 
   // === State Logic UI ===
-  const [disputeCategories, setDisputeCategories] = useState([]) // Danh sách category từ API
-  // SỬA: LUÔN MỞ CATEGORY
-  //const [expandedCategory, setExpandedCategory] = useState(true)
-  const [previewUrls, setPreviewUrls] = useState([]) // Lưu Data URLs cho preview
+  const [disputeCategories, setDisputeCategories] = useState([])
+  const [previewUrls, setPreviewUrls] = useState([])
   const [isLoading, setIsLoading] = useState(false)
-  const [statusMessage, setStatusMessage] = useState({ type: "", message: "" }) // {type: 'success' | 'error', message: '...'}
+  const [statusMessage, setStatusMessage] = useState({ type: "", message: "" })
 
 
 
 
-  // === useEffect: Load Dispute Categories ===
+  // Custom helper để lấy message lỗi từ Axios/response
+  const getAxiosErrorMessage = (error) => {
+    const errorData = error.response?.data?.error;
+    if (errorData?.message) return errorData.message;
+    if (error.response?.data?.message) return error.response.data.message;
+    return error.message || 'Không thể hoàn tất đăng ký.';
+  };
+
+
+
+
+  // === useEffect: Load Dispute Categories (API GET) ===
   useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -49,6 +61,8 @@ export default function DisputeForm({ initialOrderId }) {
   }, [])
 
 
+
+
   // === Handlers chung ===
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -57,7 +71,7 @@ export default function DisputeForm({ initialOrderId }) {
   }
 
 
-  // === Xử lý Upload ảnh ===
+  // === Xử lý Upload ảnh (Giữ nguyên) ===
   const handleImageUpload = (e, index) => {
     const file = e.target.files[0]
     if (!file) return
@@ -69,7 +83,6 @@ export default function DisputeForm({ initialOrderId }) {
     const reader = new FileReader()
     reader.onloadend = () => {
       const newPictures = [...formData.pictures]
-      // Đảm bảo rằng files được chèn đúng vị trí để FormData gửi đúng
       newPictures[index] = file
       setFormData({ ...formData, pictures: newPictures })
 
@@ -83,7 +96,6 @@ export default function DisputeForm({ initialOrderId }) {
 
 
   const handleRemoveImage = (index) => {
-    // Để giữ vị trí (slot) ảnh, ta set null vào vị trí đó (thay vì filter)
     const newPictures = [...formData.pictures]
     newPictures[index] = null
     const newPreviewUrls = [...previewUrls]
@@ -100,15 +112,19 @@ export default function DisputeForm({ initialOrderId }) {
   }
 
 
-  // === Xử lý Submit Form (Gửi FormData) ===
+  // === Xử lý Submit Form (API POST) ===
   const handleSubmit = async (e) => {
     e.preventDefault()
 
 
-    // Validation cơ bản
+    // Validation cơ bản: BẮT BUỘC phải có orderId hợp lệ
     if (!formData.disputeCategoryId || !formData.description) {
       setStatusMessage({ type: "error", message: "Vui lòng chọn loại và điền nội dung khiếu nại." })
       return
+    }
+    if (!formData.orderId) {
+       setStatusMessage({ type: "error", message: "Không tìm thấy Mã đơn hàng liên quan. Vui lòng quay lại." });
+       return;
     }
 
 
@@ -120,17 +136,15 @@ export default function DisputeForm({ initialOrderId }) {
       const formBody = new FormData()
 
 
-      // 1. Dữ liệu form
+      // 1. Dữ liệu form (text fields)
       formBody.append("disputeCategoryId", formData.disputeCategoryId)
-      formBody.append("orderId", formData.orderId)
+      formBody.append("orderId", formData.orderId) // GỬI ID ĐÃ ĐƯỢC TRUYỀN VÀO
       formBody.append("description", formData.description)
 
 
-      // 2. THÊM FILE: GỬI TẤT CẢ FILE VỚI MỘT KEY DUY NHẤT LÀ 'pictures'
-      // Đây là cách chuẩn để gửi nhiều file cùng một lúc dưới một tên trường.
+      // 2. Thêm file (backend yêu cầu key là 'pictures' dạng mảng)
       formData.pictures.forEach((file) => {
         if (file) {
-          // Bắt buộc phải là 'pictures' (có 's') và không có index
           formBody.append(`pictures`, file, file.name)
         }
       })
@@ -142,8 +156,16 @@ export default function DisputeForm({ initialOrderId }) {
 
       if (responseData?.success) {
         // Reset form khi thành công
-        // SỬA: Khi reset, giữ lại orderId hardcode/từ props
-        setFormData({ orderId: initialOrderId || 1, description: "", disputeCategoryId: "", pictures: [] })
+        // DÙNG onCancelDispute để tự động quay lại OrderList
+        if (onCancelDispute) {
+            alert(responseData.message || "Gửi đơn khiếu nại thành công.");
+            onCancelDispute();
+            return;
+        }
+
+
+        // Nếu không có callback (rất hiếm), reset form tại chỗ
+        setFormData({ orderId: initialOrderId || null, description: "", disputeCategoryId: "", pictures: [] })
         setPreviewUrls([])
         setStatusMessage({ type: "success", message: responseData.message || "Gửi đơn khiếu nại thành công." })
       } else {
@@ -166,23 +188,17 @@ export default function DisputeForm({ initialOrderId }) {
 
   // Sửa handleCancel
   const handleCancel = () => {
-    // SỬA: Khi cancel, giữ lại orderId hardcode/từ props
-    setFormData({ orderId: initialOrderId || 1, description: "", disputeCategoryId: "", pictures: [] })
+    // Nếu có callback, dùng callback để thoát form
+    if (onCancelDispute) {
+        onCancelDispute();
+        return;
+    }
+    // Ngược lại, chỉ reset form
+    setFormData({ orderId: initialOrderId || null, description: "", disputeCategoryId: "", pictures: [] })
     setPreviewUrls([])
     setStatusMessage({ type: "", message: "" })
   }
  
-  // Custom helper để lấy message lỗi từ Axios/response (đã định nghĩa ở ngoài)
-  const getAxiosErrorMessage = (error) => {
-    const errorData = error.response?.data?.error;
-    if (errorData?.message) return errorData.message;
-    if (error.response?.data?.message) return error.response.data.message;
-    return error.message || 'Lỗi không xác định.';
-  };
-
-
-
-
   return (
     <div className="dispute-form-container">
       <div className="dispute-form-header">
@@ -202,14 +218,20 @@ export default function DisputeForm({ initialOrderId }) {
           </div>
         )}
        
-        {/* THÊM: Hiển thị Order ID hardcode/từ props (Chỉ để hiển thị) */}
+        {/* HIỂN THỊ ORDER ID */}
         <div className="form-section read-only-info">
           <label className="form-label">
-            Mã đơn hàng liên quan: <strong>#{formData.orderId} (Tạm thời)</strong>
+            Mã đơn hàng liên quan: <strong>#{formData.orderId || 'Không có'}</strong>
           </label>
-          <p className="note">
-            Thông tin này sẽ được gắn tự động khi bạn gửi khiếu nại từ trang Chi tiết đơn hàng.
-          </p>
+          {formData.orderId ? (
+              <p className="note">
+                Vui lòng đảm bảo thông tin khiếu nại khớp với đơn hàng này.
+              </p>
+          ) : (
+             <p className="error-message">
+                Không thể gửi khiếu nại. Mã đơn hàng không hợp lệ.
+            </p>
+          )}
         </div>
 
 
@@ -217,7 +239,6 @@ export default function DisputeForm({ initialOrderId }) {
 
         {/* Category Section */}
         <div className="form-section">
-          {/* BỎ NÚT category-toggle */}
           {/* BỎ ĐIỀU KIỆN expandedCategory && để luôn hiển thị */}
           <div className="category-content" style={{ paddingTop: 0 }}>
             <label htmlFor="disputeCategoryId" className="form-label">
@@ -230,6 +251,7 @@ export default function DisputeForm({ initialOrderId }) {
               onChange={handleChange}
               className="form-select"
               required
+              disabled={isLoading}
             >
               <option value="">-- Chọn loại khiếu nại --</option>
               {disputeCategories.map((category) => (
@@ -255,6 +277,7 @@ export default function DisputeForm({ initialOrderId }) {
             placeholder="Mô tả chi tiết vấn đề bạn gặp phải."
             rows="4"
             required
+            disabled={isLoading}
           />
         </div>
 
@@ -273,7 +296,7 @@ export default function DisputeForm({ initialOrderId }) {
                     <img src={previewUrls[index]} alt={`Preview ${index}`}
                         onError={(e) => { e.target.onerror = null; e.target.src = "/placeholder.svg"; }}
                     />
-                    <button type="button" className="remove-image-btn" onClick={() => handleRemoveImage(index)}>
+                    <button type="button" className="remove-image-btn" onClick={() => handleRemoveImage(index)} disabled={isLoading}>
                       ×
                     </button>
                   </div>
@@ -284,7 +307,7 @@ export default function DisputeForm({ initialOrderId }) {
                       accept="image/*"
                       onChange={(e) => handleImageUpload(e, index)}
                       style={{ display: "none" }}
-                      disabled={formData.pictures.length >= MAX_PICTURES}
+                      disabled={formData.pictures.length >= MAX_PICTURES || isLoading}
                     />
                     <span className="plus-icon">+</span>
                   </label>
@@ -297,7 +320,7 @@ export default function DisputeForm({ initialOrderId }) {
 
         {/* Form Actions */}
         <div className="form-actions">
-          <button type="submit" className="btn btn-submit" disabled={isLoading}>
+          <button type="submit" className="btn btn-submit" disabled={isLoading || !formData.orderId}>
             {isLoading ? "Đang gửi..." : "Gửi đơn"}
           </button>
           <button type="button" className="btn btn-cancel" onClick={handleCancel} disabled={isLoading}>
