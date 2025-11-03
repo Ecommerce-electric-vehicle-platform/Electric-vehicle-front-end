@@ -71,9 +71,10 @@ export default function AdminLogin() {
       localStorage.removeItem("buyerId");
       localStorage.removeItem("sellerId");
       localStorage.removeItem("buyerAvatar");
+      localStorage.removeItem("userRole");
       console.log("⚠️  [Admin Login] Cleared user-specific data");
 
-      // Lưu admin tokens
+      // Lưu admin tokens - dùng chung accessToken với user nhưng đánh dấu bằng authType
       if (resData?.accessToken) {
         localStorage.setItem("accessToken", resData.accessToken);
         localStorage.setItem("token", resData.accessToken);
@@ -81,25 +82,24 @@ export default function AdminLogin() {
       if (resData?.refreshToken) {
         localStorage.setItem("refreshToken", resData.refreshToken);
       }
-      if (resData?.username) {
-        localStorage.setItem("username", resData.username);
-      }
-      if (resData?.email) {
-        localStorage.setItem("userEmail", resData.email);
-      }
+      
+      // ✅ QUAN TRỌNG: Lưu username và email vào adminProfile thay vì localStorage chung
+      // để tránh conflict với user data
+      // KHÔNG lưu username/userEmail vào localStorage chung khi admin login
 
-      // Lưu hồ sơ admin
+      // Lưu hồ sơ admin (bao gồm cả username, email, phoneNumber)
       const adminProfile = {
         avatarUrl:
           resData?.avatarUrl || resData?.avatar_url || resData?.avatarURL,
         employeeNumber: resData?.employeeNumber || resData?.employee_number,
         fullName: resData?.fullName || resData?.full_name,
         phoneNumber: resData?.phoneNumber || resData?.phone_number,
+        username: resData?.username, // Lưu username trong adminProfile
+        email: resData?.email, // Lưu email trong adminProfile
         isSuperAdmin:
           typeof resData?.isSuperAdmin !== "undefined"
             ? resData?.isSuperAdmin
             : resData?.is_super_admin,
-        email: resData?.email,
         status: resData?.status,
         gender: resData?.gender,
         createdAt: resData?.createdAt || resData?.created_at,

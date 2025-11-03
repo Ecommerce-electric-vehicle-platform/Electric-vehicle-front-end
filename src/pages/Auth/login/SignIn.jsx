@@ -110,14 +110,16 @@ export default function SignIn() {
       }
 
       // === DỌN DẸP KEY CŨ KHÔNG DÙNG NỮA ===
+      // ✅ QUAN TRỌNG: Xóa authType và tất cả admin data khi user login
       localStorage.removeItem("authType");
 
-      // Xóa dữ liệu admin nếu có (Giữ nguyên)
+      // ✅ Xóa HOÀN TOÀN dữ liệu admin khi user login
+      // Bao gồm cả adminProfile để đảm bảo admin data không xuất hiện trong user header
       [
         "adminAuthType",
         "adminToken",
         "adminRefreshToken",
-        "adminProfile",
+        "adminProfile", // QUAN TRỌNG: Xóa adminProfile để tránh hiển thị admin data trong user header
       ].forEach((k) => localStorage.removeItem(k));
 
       // === BỎ HOÀN TOÀN VIỆC GỌI sellerApi.getSellerProfile ===
@@ -247,7 +249,16 @@ export default function SignIn() {
       }
 
       // === DỌN DẸP KEY CŨ ===
+      // ✅ QUAN TRỌNG: Xóa authType và tất cả admin data khi Google login
       localStorage.removeItem("authType");
+
+      // ✅ Xóa HOÀN TOÀN dữ liệu admin khi Google login
+      [
+        "adminAuthType",
+        "adminToken",
+        "adminRefreshToken",
+        "adminProfile", // QUAN TRỌNG: Xóa adminProfile để tránh hiển thị admin data trong user header
+      ].forEach((k) => localStorage.removeItem(k));
 
       // === LẤY AVATAR ===
       try {

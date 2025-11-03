@@ -94,7 +94,7 @@ export default function ManageAdmins() {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-semibold m-0">Quản lý Admin</h2>
+        <h2 className="fw-semibold m-0">Quản lý Quản Trị Viên</h2>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
           Tạo admin mới
         </button>

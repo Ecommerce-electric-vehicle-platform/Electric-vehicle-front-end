@@ -43,6 +43,7 @@ const CoreAdminLayout = () => {
         const profile = JSON.parse(raw);
         return {
           displayName: profile?.fullName || profile?.employeeNumber || "Admin",
+          username: profile?.username || "", //Lấy username từ adminProfile
           email: profile?.email || "",
           employeeNumber: profile?.employeeNumber || "",
           isSuperAdmin: !!profile?.isSuperAdmin,
@@ -50,6 +51,7 @@ const CoreAdminLayout = () => {
       } catch {
         return {
           displayName: "Admin",
+          username: "",
           email: "",
           employeeNumber: "",
           isSuperAdmin: false,
@@ -58,6 +60,7 @@ const CoreAdminLayout = () => {
     }
     return {
       displayName: "Admin",
+      username: "",
       email: "",
       employeeNumber: "",
       isSuperAdmin: false,
@@ -66,16 +69,22 @@ const CoreAdminLayout = () => {
 
   const adminInfo = getAdminInfo();
 
-  // Handle logout
+  // Handle logout - CHỈ XÓA ADMIN DATA
   const handleLogout = () => {
+    console.log("Admin logging out...");
+    
+    // ✅ CHỈ xóa admin-specific keys, KHÔNG xóa user data
+    // Vì admin logout không liên quan đến user session
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("buyerId");
     localStorage.removeItem("authType");
     localStorage.removeItem("adminProfile");
+    
+    // ✅ KHÔNG xóa các key user như: username, userEmail, buyerId, sellerId, buyerAvatar, userRole
+    // Để giữ lại user session nếu có
+    
+    console.log("[Admin Logout] Chỉ xóa admin data, giữ lại user data");
     window.dispatchEvent(new CustomEvent("authStatusChanged"));
     navigate("/admin/signin");
   };
@@ -543,6 +552,7 @@ const CoreAdminLayout = () => {
                       background: "#f9fafb",
                     }}
                   >
+                    {/* Hiển thị username hoặc displayName */}
                     <div
                       style={{
                         fontWeight: "600",
@@ -550,8 +560,9 @@ const CoreAdminLayout = () => {
                         color: "#111827",
                       }}
                     >
-                      {adminInfo.displayName}
+                      {adminInfo.username || adminInfo.displayName}
                     </div>
+                    {/* Hiển thị email */}
                     {adminInfo.email && (
                       <div
                         style={{
@@ -563,6 +574,7 @@ const CoreAdminLayout = () => {
                         {adminInfo.email}
                       </div>
                     )}
+                    {/* Hiển thị employeeNumber nếu có */}
                     {adminInfo.employeeNumber && (
                       <div
                         style={{
@@ -582,7 +594,7 @@ const CoreAdminLayout = () => {
                     <button
                       onClick={() => {
                         setShowUserDropdown(false);
-                        // Navigate to profile if needed
+                        navigate("/admin/profile");
                       }}
                       style={{
                         width: "100%",
