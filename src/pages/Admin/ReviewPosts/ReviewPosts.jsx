@@ -15,12 +15,32 @@ import {
   CModalTitle,
   CModalBody,
   CModalFooter,
+  CButton,
 } from "@coreui/react";
+import {
+  Eye,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import {
   getReviewPostSellerList,
   getPostProductDetail,
   decidePostProduct,
 } from "../../../api/adminApi";
+import "./ReviewPosts.css";
+
+// Helper function để map status sang tiếng Việt
+const mapStatusToVietnamese = (status) => {
+  if (!status) return "N/A";
+  const statusMap = {
+    PENDING: "Đang chờ duyệt",
+    ACCEPTED: "Đã chấp nhận",
+    REJECTED: "Đã từ chối",
+    APPROVED: "Đã phê duyệt",
+    REJECT: "Đã từ chối",
+  };
+  return statusMap[status.toUpperCase()] || status;
+};
 
 export default function ReviewPosts() {
   const [posts, setPosts] = useState([]);
@@ -47,6 +67,7 @@ export default function ReviewPosts() {
   useEffect(() => {
     loadPosts();
   }, []);
+
 
   /** Xem chi tiết bài đăng */
   const handleViewDetail = async (postId) => {
@@ -144,29 +165,38 @@ export default function ReviewPosts() {
                       </CTableDataCell>
                       <CTableDataCell>
                         <CBadge color="warning">
-                          {post.verifiedDecisionStatus}
+                          {mapStatusToVietnamese(post.verifiedDecisionStatus)}
                         </CBadge>
                       </CTableDataCell>
                       <CTableDataCell>
                         <div className="d-flex gap-2">
-                          <button
-                            className="btn btn-success btn-sm"
+                          <CButton
+                            size="sm"
+                            color="success"
+                            variant="outline"
                             onClick={() => handleApprove(post.postId)}
                           >
+                            <CheckCircle size={14} className="me-1" />
                             Phê duyệt
-                          </button>
-                          <button
-                            className="btn btn-danger btn-sm"
+                          </CButton>
+                          <CButton
+                            size="sm"
+                            color="danger"
+                            variant="outline"
                             onClick={() => handleReject(post.postId)}
                           >
+                            <XCircle size={14} className="me-1" />
                             Từ chối
-                          </button>
-                          <button
-                            className="btn btn-info btn-sm"
+                          </CButton>
+                          <CButton
+                            size="sm"
+                            color="info"
+                            variant="outline"
                             onClick={() => handleViewDetail(post.postId)}
                           >
+                            <Eye size={14} className="me-1" />
                             Chi tiết
-                          </button>
+                          </CButton>
                         </div>
                       </CTableDataCell>
                     </CTableRow>
@@ -193,52 +223,254 @@ export default function ReviewPosts() {
         onClose={() => setShowModal(false)}
         alignment="center"
         size="lg"
+        scrollable
+        backdrop={true}
+        keyboard={true}
       >
         <CModalHeader>
-          <CModalTitle>Chi tiết bài đăng</CModalTitle>
+          <CModalTitle className="fw-bold">Chi tiết bài đăng</CModalTitle>
         </CModalHeader>
         <CModalBody>
           {selectedPost ? (
             <div>
-              <h5 className="fw-bold">{selectedPost.title}</h5>
-              <p>
-                <strong>Người bán:</strong> {selectedPost.sellerStoreName}
-              </p>
-              <p>
-                <strong>Hãng:</strong> {selectedPost.brand}
-              </p>
-              <p>
-                <strong>Model:</strong> {selectedPost.model}
-              </p>
-              <p>
-                <strong>Năm SX:</strong> {selectedPost.manufactureYear}
-              </p>
-              <p>
-                <strong>Thời gian sử dụng:</strong> {selectedPost.usedDuration}
-              </p>
-              <p>
-                <strong>Tình trạng:</strong> {selectedPost.conditionLevel}
-              </p>
-              <p>
-                <strong>Giá:</strong>{" "}
-                {selectedPost.price?.toLocaleString("vi-VN")} ₫
-              </p>
-              <p>
-                <strong>Địa điểm:</strong> {selectedPost.locationTrading}
-              </p>
-              <p>
-                <strong>Danh mục:</strong> {selectedPost.categoryName}
-              </p>
-              <p>
-                <strong>Trạng thái duyệt:</strong>{" "}
-                {selectedPost.verifiedDecisionStatus}
-              </p>
+              {/* Hình ảnh sản phẩm */}
+              {selectedPost.images && selectedPost.images.length > 0 && (
+                <div className="mb-4">
+                  <h6 className="fw-semibold mb-3">Hình ảnh sản phẩm</h6>
+                  <div className="row g-2">
+                    {selectedPost.images
+                      .sort((a, b) => (a.order || 0) - (b.order || 0))
+                      .map((image, idx) => (
+                        <div key={image.id || idx} className="col-md-4 col-6">
+                          <div className="position-relative">
+                            <img
+                              src={image.imgUrl}
+                              alt={`Hình ${idx + 1}`}
+                              className="img-fluid rounded border"
+                              style={{
+                                width: "100%",
+                                height: "200px",
+                                objectFit: "cover",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => window.open(image.imgUrl, "_blank")}
+                              onError={(e) => {
+                                e.target.src =
+                                  "https://via.placeholder.com/400x300?text=No+Image";
+                              }}
+                            />
+                            <small className="text-muted d-block text-center mt-1">
+                              Hình {image.order || idx + 1}
+                            </small>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Thông tin cơ bản */}
+              <div className="mb-4">
+                <h6 className="fw-semibold mb-3">Thông tin cơ bản</h6>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Tiêu đề</small>
+                      <strong className="d-block">{selectedPost.title || "N/A"}</strong>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Mã bài đăng</small>
+                      <strong className="d-block">#{selectedPost.postId || "N/A"}</strong>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Người bán (Store Name)</small>
+                      <strong className="d-block">
+                        {selectedPost.sellerStoreName || "N/A"}
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Seller ID</small>
+                      <strong className="d-block">#{selectedPost.sellerId || "N/A"}</strong>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Danh mục</small>
+                      <strong className="d-block">
+                        {selectedPost.categoryName || "N/A"}
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Giá bán</small>
+                      <strong className="d-block text-success">
+                        {selectedPost.price
+                          ? `${selectedPost.price.toLocaleString("vi-VN")} ₫`
+                          : "N/A"}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Thông tin sản phẩm */}
+              <div className="mb-4">
+                <h6 className="fw-semibold mb-3">Thông tin sản phẩm</h6>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Hãng</small>
+                      <strong className="d-block">{selectedPost.brand || "N/A"}</strong>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Model</small>
+                      <strong className="d-block">{selectedPost.model || "N/A"}</strong>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Năm sản xuất</small>
+                      <strong className="d-block">
+                        {selectedPost.manufactureYear || "N/A"}
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Thời gian sử dụng</small>
+                      <strong className="d-block">
+                        {selectedPost.usedDuration || "N/A"}
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Tình trạng</small>
+                      <CBadge
+                        color={
+                          selectedPost.conditionLevel === "Excellent"
+                            ? "success"
+                            : selectedPost.conditionLevel === "Good"
+                            ? "info"
+                            : selectedPost.conditionLevel === "Fair"
+                            ? "warning"
+                            : "secondary"
+                        }
+                      >
+                        {selectedPost.conditionLevel || "N/A"}
+                      </CBadge>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Địa điểm giao dịch</small>
+                      <strong className="d-block">
+                        {selectedPost.locationTrading || "N/A"}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trạng thái và xác minh */}
+              <div className="mb-4">
+                <h6 className="fw-semibold mb-3">Trạng thái</h6>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Trạng thái duyệt</small>
+                      <CBadge
+                        color={
+                          selectedPost.verifiedDecisionStatus === "APPROVED"
+                            ? "success"
+                            : selectedPost.verifiedDecisionStatus === "REJECTED"
+                            ? "danger"
+                            : "warning"
+                        }
+                      >
+                        {mapStatusToVietnamese(selectedPost.verifiedDecisionStatus) || "N/A"}
+                      </CBadge>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Đã xác minh</small>
+                      <CBadge color={selectedPost.verified ? "success" : "secondary"}>
+                        {selectedPost.verified ? "Đã xác minh" : "Chưa xác minh"}
+                      </CBadge>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="border-bottom pb-2">
+                      <small className="text-muted d-block">Trạng thái hoạt động</small>
+                      <CBadge color={selectedPost.active ? "success" : "danger"}>
+                        {selectedPost.active ? "Đang hoạt động" : "Không hoạt động"}
+                      </CBadge>
+                    </div>
+                  </div>
+                  {selectedPost.rejectedReason && (
+                    <div className="col-12">
+                      <div className="border-bottom pb-2">
+                        <small className="text-muted d-block">Lý do từ chối</small>
+                        <div className="alert alert-danger mb-0 mt-2 py-2">
+                          {selectedPost.rejectedReason}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Thống kê hình ảnh */}
+              {selectedPost.images && selectedPost.images.length > 0 && (
+                <div className="mb-3">
+                  <small className="text-muted">
+                    Tổng số hình ảnh: <strong>{selectedPost.images.length}</strong>
+                  </small>
+                </div>
+              )}
             </div>
           ) : (
-            <p>Không có dữ liệu chi tiết.</p>
+            <div className="text-center py-4">
+              <CSpinner color="primary" />
+              <p className="text-muted mt-2">Đang tải dữ liệu...</p>
+            </div>
           )}
         </CModalBody>
         <CModalFooter>
+          {selectedPost && (
+            <>
+              <button
+                className="btn btn-success"
+                onClick={() => {
+                  setShowModal(false);
+                  handleApprove(selectedPost.postId);
+                }}
+                disabled={loading}
+              >
+                Phê duyệt
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => {
+                  setShowModal(false);
+                  handleReject(selectedPost.postId);
+                }}
+                disabled={loading}
+              >
+                Từ chối
+              </button>
+            </>
+          )}
           <button
             className="btn btn-secondary"
             onClick={() => setShowModal(false)}

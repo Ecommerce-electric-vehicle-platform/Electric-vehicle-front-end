@@ -13,14 +13,34 @@ import {
   CModalTitle,
   CModalBody,
   CModalFooter,
+  CButton,
 } from "@coreui/react";
+import {
+  Eye,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+} from "lucide-react";
 import { getPendingSellers, approveSeller } from "../../../api/adminApi";
+import "./ApproveSeller.css";
+
+// Helper function để map status sang tiếng Việt
+const mapStatusToVietnamese = (status) => {
+  if (!status) return "N/A";
+  const statusMap = {
+    PENDING: "Đang chờ duyệt",
+    ACCEPTED: "Đã chấp nhận",
+    REJECTED: "Đã từ chối",
+    APPROVED: "Đã phê duyệt",
+    REJECT: "Đã từ chối",
+  };
+  return statusMap[status.toUpperCase()] || status;
+};
 
 export default function ApproveSeller() {
   const [pendingSellers, setPendingSellers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submittingId, setSubmittingId] = useState(null);
-  const [manualSellerId, setManualSellerId] = useState("");
   const [error, setError] = useState("");
 
   // Modal từ chối
@@ -132,49 +152,22 @@ export default function ApproveSeller() {
         Phê duyệt yêu cầu nâng cấp thành Người bán
       </h2>
 
-      {/* Ô nhập thủ công Seller ID */}
-      <div className="d-flex align-items-end gap-2 mb-3">
-        <div>
-          <label className="form-label">Nhập Seller ID</label>
-          <input
-            className="form-control"
-            type="number"
-            value={manualSellerId}
-            onChange={(e) => setManualSellerId(e.target.value)}
-            placeholder="VD: 123"
-          />
-        </div>
-        <div className="d-flex gap-2">
-          <button
-            className="btn btn-success"
-            disabled={!manualSellerId}
-            onClick={() =>
-              handleDecision(
-                Number(manualSellerId),
-                "APPROVED",
-                "Phê duyệt thành công"
-              )
-            }
-          >
-            Phê duyệt
-          </button>
-          <button
-            className="btn btn-danger"
-            disabled={!manualSellerId}
-            onClick={() => onRejectClick({ sellerId: Number(manualSellerId) })}
-          >
-            Từ chối
-          </button>
-          <button
-            className="btn btn-outline-secondary"
-            onClick={() => {
-              setPage(0);
-              loadPendingSellers(false);
-            }}
-          >
-            Làm mới danh sách
-          </button>
-        </div>
+      {/* Button làm mới danh sách */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div></div>
+        <CButton
+          className="refresh-btn"
+          color="primary"
+          variant="outline"
+          onClick={() => {
+            setPage(0);
+            loadPendingSellers(false);
+          }}
+          disabled={loading}
+        >
+          <RefreshCw size={16} className={loading ? "spinning" : ""} />
+          <span className="ms-2">Làm mới danh sách</span>
+        </CButton>
       </div>
 
       <CCard className="shadow-sm">
@@ -219,31 +212,40 @@ export default function ApproveSeller() {
                     </CTableDataCell>
                     <CTableDataCell>
                       <span className="badge bg-warning text-dark">
-                        {r.status}
+                        {mapStatusToVietnamese(r.status)}
                       </span>
                     </CTableDataCell>
                     <CTableDataCell>
                       <div className="d-flex gap-2">
-                        <button
-                          className="btn btn-success btn-sm"
+                        <CButton
+                          size="sm"
+                          color="success"
+                          variant="outline"
                           disabled={submittingId === r.sellerId}
                           onClick={() => onApprove(r)}
                         >
+                          <CheckCircle size={14} className="me-1" />
                           Phê duyệt
-                        </button>
-                        <button
-                          className="btn btn-danger btn-sm"
+                        </CButton>
+                        <CButton
+                          size="sm"
+                          color="danger"
+                          variant="outline"
                           disabled={submittingId === r.sellerId}
                           onClick={() => onRejectClick(r)}
                         >
+                          <XCircle size={14} className="me-1" />
                           Từ chối
-                        </button>
-                        <button
-                          className="btn btn-info btn-sm"
+                        </CButton>
+                        <CButton
+                          size="sm"
+                          color="info"
+                          variant="outline"
                           onClick={() => onViewDetail(r)}
                         >
+                          <Eye size={14} className="me-1" />
                           Chi tiết
-                        </button>
+                        </CButton>
                       </div>
                     </CTableDataCell>
                   </CTableRow>
@@ -305,7 +307,7 @@ export default function ApproveSeller() {
         size="lg"
       >
         <CModalHeader>
-          <CModalTitle>Chi tiết Seller</CModalTitle>
+          <CModalTitle>Chi tiết Người bán</CModalTitle>
         </CModalHeader>
         <CModalBody>
           {detailSeller ? (
@@ -315,14 +317,14 @@ export default function ApproveSeller() {
               <div className="row g-3">
                 <div className="col-md-6">
                   <p className="mb-2">
-                    <strong>Seller ID:</strong> {detailSeller.sellerId}
+                    <strong>ID Người bán:</strong> {detailSeller.sellerId}
                   </p>
                 </div>
                 <div className="col-md-6">
                   <p className="mb-2">
                     <strong>Trạng thái:</strong>{" "}
                     <span className="badge bg-warning text-dark">
-                      {detailSeller.status}
+                      {mapStatusToVietnamese(detailSeller.status)}
                     </span>
                   </p>
                 </div>

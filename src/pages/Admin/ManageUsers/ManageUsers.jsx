@@ -9,8 +9,14 @@ import {
   CTableBody,
   CTableDataCell,
   CBadge,
+  CButton,
 } from "@coreui/react";
+import {
+  Power,
+  PowerOff,
+} from "lucide-react";
 import { getAllUserAccounts, toggleUserActive } from "../../../api/adminApi";
+import "./ManageUsers.css";
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -19,7 +25,7 @@ export default function ManageUsers() {
   const [filterRole, setFilterRole] = useState(""); // "BUYER" | "SELLER"
   const [refresh, setRefresh] = useState(false);
 
-  // ✅ Load danh sách Buyer & Seller
+  // Load danh sách Buyer & Seller
   const loadUsers = async () => {
     setLoading(true);
     setError("");
@@ -37,6 +43,7 @@ export default function ManageUsers() {
 
   useEffect(() => {
     loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterRole, refresh]);
 
   // ✅ Bật / tắt trạng thái người dùng
@@ -58,7 +65,7 @@ export default function ManageUsers() {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2 className="fw-semibold m-0">Quản lý Buyer & Seller</h2>
+        <h2 className="fw-semibold m-0">Quản lý người dùng</h2>
         <select
           className="form-select w-auto"
           value={filterRole}
@@ -126,12 +133,24 @@ export default function ManageUsers() {
                     </CTableDataCell>
                     <CTableDataCell>
                       <div className="d-flex gap-2">
-                        <button
-                          className="btn btn-sm btn-outline-danger"
+                        <CButton
+                          size="sm"
+                          color={user.active ? "danger" : "success"}
+                          variant="outline"
                           onClick={() => handleToggleActive(user)}
                         >
-                          {user.active ? "Vô hiệu hóa" : "Kích hoạt lại"}
-                        </button>
+                          {user.active ? (
+                            <>
+                              <PowerOff size={14} className="me-1" />
+                              Vô hiệu hóa
+                            </>
+                          ) : (
+                            <>
+                              <Power size={14} className="me-1" />
+                              Kích hoạt lại
+                            </>
+                          )}
+                        </CButton>
                       </div>
                     </CTableDataCell>
                   </CTableRow>

@@ -223,7 +223,6 @@ export default function ManageDisputes() {
     <div className="manage-disputes-container">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="fw-semibold m-0">
-          <FileText size={24} className="me-2" />
           Quản lý tranh chấp
         </h2>
         <CButton
@@ -234,7 +233,7 @@ export default function ManageDisputes() {
           disabled={loading}
         >
           <RefreshCw size={16} className={loading ? "spinning" : ""} />
-          <span className="ms-2">Làm mới</span>
+          <span className="ms-2">Làm mới danh sách</span>
         </CButton>
       </div>
 
@@ -422,17 +421,36 @@ export default function ManageDisputes() {
               <div className="detail-section">
                 <h5 className="section-title">
                   <MessageSquare size={18} className="me-2" />
-                  Lý do tranh chấp
+                  Thông tin tranh chấp
                 </h5>
                 <div className="detail-info">
-                  <p>
-                    {disputeDetail.disputeCategoryName ||
-                      disputeDetail.reason ||
-                      disputeDetail.disputeReason ||
-                      "N/A"}
-                  </p>
-                  {disputeDetail.description && (
-                    <p className="text-muted">{disputeDetail.description}</p>
+                  <div className="info-row">
+                    <span className="label">Danh mục:</span>
+                    <span className="value">
+                      {disputeDetail.disputeCategoryName ||
+                        disputeDetail.reason ||
+                        disputeDetail.disputeReason ||
+                        "N/A"}
+                    </span>
+                  </div>
+                  {disputeDetail.disputeCategoryId && (
+                    <div className="info-row">
+                      <span className="label">Mã danh mục:</span>
+                      <span className="value">
+                        {disputeDetail.disputeCategoryId}
+                      </span>
+                    </div>
+                  )}
+                  {disputeDetail.description ? (
+                    <div className="info-row">
+                      <span className="label">Mô tả:</span>
+                      <span className="value">{disputeDetail.description}</span>
+                    </div>
+                  ) : (
+                    <div className="info-row">
+                      <span className="label">Mô tả:</span>
+                      <span className="value text-muted">Không có mô tả</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -442,27 +460,29 @@ export default function ManageDisputes() {
                   <div className="detail-section">
                     <h5 className="section-title">Bằng chứng</h5>
                     <div className="evidence-grid">
-                      {disputeDetail.evidences.map((ev, idx) => (
-                        <div key={idx} className="evidence-item">
-                          {typeof ev === "string" ? (
-                            <img src={ev} alt={`Evidence ${idx + 1}`} />
-                          ) : ev.type?.startsWith("image") ||
-                            ev.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                      {disputeDetail.evidences
+                        .sort((a, b) => (a.order || 0) - (b.order || 0))
+                        .map((ev, idx) => (
+                          <div key={ev.id || idx} className="evidence-item">
                             <img
-                              src={ev.url || ev}
-                              alt={`Evidence ${idx + 1}`}
+                              src={
+                                ev.imageUrl ||
+                                ev.url ||
+                                (typeof ev === "string" ? ev : "")
+                              }
+                              alt={`Bằng chứng ${ev.order || idx + 1}`}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "https://via.placeholder.com/200?text=Không+tải+được";
+                              }}
                             />
-                          ) : (
-                            <a
-                              href={ev.url || ev}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              Xem tệp đính kèm {idx + 1}
-                            </a>
-                          )}
-                        </div>
-                      ))}
+                            {ev.order && (
+                              <div className="evidence-order">
+                                Hình {ev.order}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
@@ -506,6 +526,24 @@ export default function ManageDisputes() {
                       {getStatusText(disputeDetail.status)}
                     </CBadge>
                   </div>
+                  <div className="info-row">
+                    <span className="label">Quyết định:</span>
+                    <span className="value">
+                      {disputeDetail.decision === "NOT_HAVE_YET"
+                        ? "Chưa có quyết định"
+                        : disputeDetail.decision === "ACCEPTED"
+                        ? "Chấp nhận"
+                        : disputeDetail.decision === "REJECTED"
+                        ? "Từ chối"
+                        : disputeDetail.decision || "N/A"}
+                    </span>
+                  </div>
+                  {disputeDetail.resolution && (
+                    <div className="info-row">
+                      <span className="label">Giải quyết:</span>
+                      <span className="value">{disputeDetail.resolution}</span>
+                    </div>
+                  )}
                   <div className="info-row">
                     <span className="label">Ngày tạo:</span>
                     <span className="value">
