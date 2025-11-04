@@ -38,7 +38,8 @@ export function VehicleShowcase() {
       (itemsRaw || [])
         .map(normalizeProduct)
         .filter(Boolean)
-        .filter((p) => !(p?.isSold || String(p?.status).toLowerCase() === "sold")),
+        .filter((p) => !(p?.isSold || String(p?.status).toLowerCase() === "sold"))
+        .filter((p) => p?.verifiedDecisionStatus !== "REJECTED"),
     [itemsRaw]
   )
   const allLocations = ["Tất cả khu vực", ...new Set(items.map((i) => i.locationTrading))]
