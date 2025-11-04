@@ -261,25 +261,48 @@ function OrderList() {
                                     };
                                 }
                             }
+                            // Nếu getOrderDetails trả về lỗi (404, 500, etc.), bỏ qua im lặng
+                            // Vì đơn hàng có thể không tồn tại hoặc đã bị xóa
                         } catch (orderDetailError) {
-                            console.warn(`[OrderList] Failed to get order detail for ${order.id}:`, orderDetailError);
+                            // Chỉ log warning cho các lỗi không phải 404/500 (network errors, etc.)
+                            if (orderDetailError?.response?.status !== 404 && orderDetailError?.response?.status !== 500) {
+                                console.warn(`[OrderList] Failed to get order detail for ${order.id}:`, orderDetailError);
+                            }
                         }
 
-                        // Fallback: Gọi API shipping status để lấy trạng thái
+                        // Fallback: chỉ gọi API shipping status nếu order đang ở trạng thái có thể thay đổi bởi đơn vị vận chuyển
+                        // Giảm lỗi 500 từ BE shipping khi order đã ở trạng thái terminal
                         try {
-                            const statusResponse = await getOrderStatus(realOrderId);
-                            if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
-                                return {
-                                    orderId: String(order.id),
-                                    realOrderId: realOrderId,
-                                    newStatus: statusResponse.status,
-                                    rawStatus: statusResponse.rawStatus,
-                                    message: statusResponse.message,
-                                    source: 'orderStatus'
-                                };
+                            // Chỉ gọi shipping status nếu:
+                            // 1. Order đang ở trạng thái shipping hoặc confirmed
+                            // 2. Order chưa bị hủy (không có canceledAt)
+                            // 3. Order chưa delivered
+                            const isTerminalStatus = order.status === 'delivered' || order.status === 'cancelled' || order.status === 'canceled';
+                            const hasCanceledAt = (order.canceledAt || order._raw?.canceledAt) != null;
+                            const shouldQueryShipping = (order.status === 'shipping' || order.status === 'confirmed')
+                                && !isTerminalStatus
+                                && !hasCanceledAt;
+
+                            if (shouldQueryShipping) {
+                                const statusResponse = await getOrderStatus(realOrderId);
+                                if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
+                                    return {
+                                        orderId: String(order.id),
+                                        realOrderId: realOrderId,
+                                        newStatus: statusResponse.status,
+                                        rawStatus: statusResponse.rawStatus,
+                                        message: statusResponse.message,
+                                        source: 'orderStatus'
+                                    };
+                                }
                             }
                         } catch (statusError) {
-                            console.warn(`[OrderList] Failed to get status for order ${order.id}:`, statusError);
+                            // Xử lý lỗi 500 một cách silent - chỉ log khi không phải lỗi 500
+                            // Vì backend shipping service có thể chưa có đơn hàng này
+                            if (statusError?.response?.status !== 500) {
+                                console.warn(`[OrderList] Failed to get shipping status for order ${order.id}:`, statusError);
+                            }
+                            // Lỗi 500 từ shipping service là bình thường, không cần log
                         }
 
                         return null;
@@ -410,23 +433,45 @@ function OrderList() {
                                 };
                             }
                         }
+                        // Nếu getOrderDetails trả về lỗi (404, 500, etc.), bỏ qua im lặng
+                        // Vì đơn hàng có thể không tồn tại hoặc đã bị xóa
                     } catch (orderDetailError) {
-                        console.warn(`[OrderList] Failed to refresh order detail for ${order.id}:`, orderDetailError);
+                        // Chỉ log warning cho các lỗi không phải 404/500 (network errors, etc.)
+                        if (orderDetailError?.response?.status !== 404 && orderDetailError?.response?.status !== 500) {
+                            console.warn(`[OrderList] Failed to refresh order detail for ${order.id}:`, orderDetailError);
+                        }
                     }
 
-                    // Fallback: Gọi shipping status API
+                    // Fallback: chỉ gọi shipping status nếu order đang ở trạng thái có thể thay đổi
                     try {
-                        const statusResponse = await getOrderStatus(realOrderId);
-                        if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
-                            return {
-                                orderId: String(order.id),
-                                newStatus: statusResponse.status,
-                                rawStatus: statusResponse.rawStatus,
-                                source: 'orderStatus'
-                            };
+                        // Chỉ gọi shipping status nếu:
+                        // 1. Order đang ở trạng thái shipping hoặc confirmed
+                        // 2. Order chưa bị hủy (không có canceledAt)
+                        // 3. Order chưa delivered
+                        const isTerminalStatus = order.status === 'delivered' || order.status === 'cancelled' || order.status === 'canceled';
+                        const hasCanceledAt = (order.canceledAt || order._raw?.canceledAt) != null;
+                        const shouldQueryShipping = (order.status === 'shipping' || order.status === 'confirmed')
+                            && !isTerminalStatus
+                            && !hasCanceledAt;
+
+                        if (shouldQueryShipping) {
+                            const statusResponse = await getOrderStatus(realOrderId);
+                            if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
+                                return {
+                                    orderId: String(order.id),
+                                    newStatus: statusResponse.status,
+                                    rawStatus: statusResponse.rawStatus,
+                                    source: 'orderStatus'
+                                };
+                            }
                         }
                     } catch (statusError) {
-                        console.warn(`[OrderList] Failed to refresh status for ${order.id}:`, statusError);
+                        // Xử lý lỗi 500 một cách silent - chỉ log khi không phải lỗi 500
+                        // Vì backend shipping service có thể chưa có đơn hàng này
+                        if (statusError?.response?.status !== 500) {
+                            console.warn(`[OrderList] Failed to refresh shipping status for order ${order.id}:`, statusError);
+                        }
+                        // Lỗi 500 từ shipping service là bình thường, không cần log
                     }
 
                     return null;
@@ -477,14 +522,21 @@ function OrderList() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [orders.length]); // Chỉ chạy khi số lượng orders thay đổi
 
+    // Helper function để kiểm tra đơn có bị hủy không (khớp với logic lọc)
+    const isOrderCancelled = (order) => {
+        return order.status === 'cancelled' ||
+            order.status === 'canceled' ||
+            order.status === 'CANCELED' ||
+            (order.canceledAt || order._raw?.canceledAt) != null;
+    };
+
     // Lọc theo trạng thái + tìm kiếm
     const filteredOrders = orders
         .filter(order => {
             if (filter === 'all') return true;
-            if (filter === 'cancelled') {
-                // Logic: Đơn bị hủy nếu có canceledAt hoặc status là cancelled
-                return order.status === 'cancelled' ||
-                    (order.canceledAt || order._raw?.canceledAt) != null;
+            if (filter === 'cancelled' || filter === 'canceled') {
+                // Logic: Đơn bị hủy nếu có canceledAt hoặc status là cancelled/canceled
+                return isOrderCancelled(order);
             }
             return order.status === filter;
         })
@@ -776,7 +828,7 @@ function OrderList() {
                             className={`filter-tab ${filter === 'canceled' ? 'active' : ''}`}
                             onClick={() => setFilter('canceled')}
                         >
-                            Đã hủy ({orders.filter(o => o.status === 'canceled' || o.status === 'CANCELED').length})
+                            Đã hủy ({orders.filter(isOrderCancelled).length})
                         </button>
 
                     </div>
