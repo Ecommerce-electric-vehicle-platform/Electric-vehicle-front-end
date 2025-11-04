@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import "./CancelOrderRequest.css";
-import { getCancelReasons, cancelOrder, getOrderHistory } from "../../api/orderApi";
+import { getCancelReasons, cancelOrder, getOrderHistory, getOrderPayment } from "../../api/orderApi";
 
 const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
   const [selectedReason, setSelectedReason] = useState(null);
@@ -60,6 +60,25 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
     };
     fetchOrder();
   }, [orderId]);
+
+  // phần này để lấy phương thức COD hay VNPay
+  useEffect(() => {
+    if (!orderId) return;
+    const fetchPayment = async () => {
+      try {
+        const res = await getOrderPayment(orderId);
+        const gateway = res?.data?.gatewayName || "COD";
+        setOrderData((prev) => ({
+          ...prev,
+          paymentMethod: gateway,
+        }));
+      } catch (err) {
+        console.error("Lỗi khi lấy phương thức thanh toán:", err);
+      }
+    };
+    fetchPayment();
+  }, [orderId]);
+
 
   // --- Chọn lý do ---
   const handleReasonSelect = (reason) => {
@@ -210,26 +229,31 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
         )}
       </div>
 
+      {/* --- Hiển thị thông tin hoàn tiền --- */}
       <div className="refund-section">
         <h3 className="refund-title">Số tiền hoàn lại</h3>
 
-        {(!orderData.paymentMethod || orderData.paymentMethod === "COD") ? (
+        {orderData.paymentMethod === "VNPay" ? (
+          <div className="refund-info">
+            <p className="refund-amount">
+              {formatCurrency(orderData.totalAmount)}
+            </p>
+            <p className="refund-note">
+              Bạn đã thanh toán qua VNPay. Số tiền sẽ được hoàn lại theo quy định của cổng thanh toán.
+            </p>
+          </div>
+        ) : (
           <div className="refund-info">
             <p className="refund-amount">Không hoàn tiền</p>
             <p className="refund-note">
               Bạn đã chọn phương thức thanh toán khi nhận hàng (COD)
             </p>
           </div>
-        ) : (
-          <div className="refund-info">
-            <p className="refund-amount">
-              {formatCurrency(orderData.totalAmount)}
-            </p>
-          </div>
         )}
       </div>
 
-      {(!orderData.paymentMethod || orderData.paymentMethod === "COD") && (
+  
+      {orderData.paymentMethod === "COD" && (
         <div className="info-note">
           <p>
             Sau khi "Xác nhận", GreenTrade sẽ liên hệ đơn vị vận chuyển để dừng
