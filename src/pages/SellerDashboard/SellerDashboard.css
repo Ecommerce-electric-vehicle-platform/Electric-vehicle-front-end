@@ -699,6 +699,11 @@
     }
 }
 
+/* Spinner for icons */
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .dashboard-content {

@@ -270,6 +270,71 @@ const sellerApi = {
     }
   },
 
+
+  //===============MOCK API===============
+  // Lấy doanh thu theo tháng (7 ngày gần nhất)
+  getMonthlyRevenue: async () => {
+    try {
+      const response = await axiosInstance.get('/api/v1/seller/revenue/monthly');
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching monthly revenue:", error);
+      throw error;
+    }
+  },
+
+  // Lấy top sản phẩm bán chạy
+  getTopProducts: async (limit = 5) => {
+    try {
+      const response = await axiosInstance.get('/api/v1/seller/products/top', {
+        params: { limit }
+      });
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching top products:", error);
+      throw error;
+    }
+  },
+
+  // Lấy doanh thu analytics theo thời gian (day/week/month)
+  getRevenueAnalytics: async (timeFilter = 'month') => {
+    try {
+      const response = await axiosInstance.get('/api/v1/seller/revenue/analytics', {
+        params: { period: timeFilter }
+      });
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching revenue analytics:", error);
+      throw error;
+    }
+  },
+
+  // Lấy báo cáo theo danh mục
+  getReportsByCategory: async () => {
+    try {
+      const response = await axiosInstance.get('/api/v1/seller/reports/category');
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching reports by category:", error);
+      throw error;
+    }
+  },
+
+  // Lấy báo cáo theo khu vực
+  getReportsByRegion: async () => {
+    try {
+      const response = await axiosInstance.get('/api/v1/seller/reports/region');
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching reports by region:", error);
+      throw error;
+    }
+  },
+  //=============== KẾT THÚC MOCK API===============
+
+
+
+  //==============POST PRODUCT API==============
   // Lấy seller theo postId
   getSellerByProductId: async (postId) => {
     if (!postId) {
