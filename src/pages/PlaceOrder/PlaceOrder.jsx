@@ -1096,22 +1096,43 @@ function PlaceOrder() {
             // Format số điện thoại cho API (có thể cần format international cho GHN)
             const phoneForAPI = formatPhoneForAPI(normalizedPhone, 'vn'); // Hoặc 'international' nếu GHN yêu cầu
 
+            const resolvedProvinceId = orderData.provinceId || selectedProvince;
+            const resolvedDistrictId = orderData.districtId || selectedDistrict;
+            const resolvedWardId = orderData.wardId || selectedWard;
+            const resolvedProvinceName = provinces.find(p => p.value === resolvedProvinceId)?.label || '';
+            const resolvedDistrictName = districts.find(d => d.value === resolvedDistrictId)?.label || '';
+            const resolvedWardName = wards.find(w => w.value === resolvedWardId)?.label || '';
+            const resolvedPaymentId = (orderData.paymentId === 1 || orderData.paymentId === 2) ? orderData.paymentId : 1; // 1: COD, 2: WALLET
+            const resolvedShippingPartnerId = Number(orderData.shippingPartnerId || 1);
+
+            const shippingAddressCombined = [
+                (orderData.street || '').trim(),
+                resolvedWardName,
+                resolvedDistrictName,
+                resolvedProvinceName
+            ].filter(Boolean).join(', ');
+
             const apiOrderData = {
-                postProductId: orderData.postProductId || product?.postId || product?.id,        // ID sản phẩm
+                postProductId: orderData.postProductId || product?.postId || product?.id,
                 username: orderData.username || localStorage.getItem('username') || '',
-                fullName: orderData.fullName || orderData.buyer_name || '', // Tên người nhận
+                fullName: orderData.fullName || orderData.buyer_name || '',
                 street: orderData.street || '',
-                provinceName: provinces.find(p => p.value === (orderData.provinceId || selectedProvince))?.label || '',
-                districtName: districts.find(d => d.value === (orderData.districtId || selectedDistrict))?.label || '',
-                wardName: wards.find(w => w.value === (orderData.wardId || selectedWard))?.label || '',
-                phoneNumber: phoneForAPI,            // Số điện thoại đã normalize và format
-                shippingPartnerId: Number(orderData.shippingPartnerId || 0), // ID đối tác vận chuyển
-                paymentId: Number(orderData.paymentId || 0),                 // ID phương thức thanh toán
+                shippingAddress: shippingAddressCombined,
+                provinceId: Number(resolvedProvinceId || 0),
+                districtId: Number(resolvedDistrictId || 0),
+                wardId: Number(resolvedWardId || 0),
+                provinceName: resolvedProvinceName,
+                districtName: resolvedDistrictName,
+                wardName: resolvedWardName,
+                phoneNumber: phoneForAPI,
+                shippingPartnerId: resolvedShippingPartnerId,
+                paymentId: Number(resolvedPaymentId),
+                paymentMethod: resolvedPaymentId === 2 ? 'WALLET' : 'COD',
                 // ✅ BẮT BUỘC: Backend phải sử dụng shippingFee này (đã tính từ API /api/v1/shipping/shipping-fee)
                 // ⚠️ Backend KHÔNG nên tự tính lại từ GHN API trong placeOrder()
-                shippingFee: shippingFeeValue,                       // Phí ship đã tính từ API và hiển thị cho user
-                productPrice: productPrice,                          // Giá sản phẩm tại thời điểm đặt hàng (optional)
-                totalPrice: totalPriceValue                          // Tổng giá (optional, để backend verify)
+                shippingFee: shippingFeeValue,
+                productPrice: productPrice,
+                totalPrice: totalPriceValue
             };
 
             console.log('🚀 Sending order data to API:', apiOrderData);
@@ -1145,6 +1166,23 @@ function PlaceOrder() {
                     warning: 'Backend place-order KHÔNG nên tự tính lại. Phải dùng giá này!'
                 }
             });
+
+            // Validate các field quan trọng để tránh gửi payload không hợp lệ (gây 500 từ BE)
+            if (!apiOrderData.postProductId || !apiOrderData.username || !apiOrderData.fullName) {
+                throw new Error('Thiếu thông tin bắt buộc (sản phẩm, tài khoản hoặc tên người nhận).');
+            }
+            if (!apiOrderData.provinceId || !apiOrderData.districtId || !apiOrderData.wardId) {
+                throw new Error('Thiếu thông tin địa chỉ (tỉnh/huyện/xã).');
+            }
+            if (!apiOrderData.phoneNumber) {
+                throw new Error('Thiếu số điện thoại người nhận.');
+            }
+            if (!apiOrderData.shippingPartnerId) {
+                throw new Error('Thiếu đối tác vận chuyển.');
+            }
+            if (!(apiOrderData.paymentId === 1 || apiOrderData.paymentId === 2)) {
+                throw new Error('Phương thức thanh toán không hợp lệ.');
+            }
 
             // Gọi API đặt hàng
             const response = await placeOrder(apiOrderData);

@@ -139,7 +139,32 @@ export const getOrderDetails = async (orderId) => {
             error: raw?.error || null
         };
     } catch (error) {
-        console.error('[orderApi] Error fetching order details:', error);
+        // Xử lý lỗi 404 - đơn hàng không tồn tại
+        if (error?.response?.status === 404) {
+            // Silent - không log vì đây có thể là trường hợp bình thường
+            return {
+                success: false,
+                message: 'Order not found',
+                data: null,
+                error: 'NOT_FOUND'
+            };
+        }
+
+        // Xử lý lỗi 5xx - server error
+        if (error?.response?.status >= 500) {
+            // Chỉ log debug, không log error vì đây có thể là trường hợp bình thường
+            // (đơn hàng có thể đã bị xóa hoặc không tồn tại trong hệ thống)
+            console.debug(`[orderApi] Server error when fetching order details for order ${orderId}:`, error?.response?.status);
+            return {
+                success: false,
+                message: error?.response?.data?.message || 'Internal Server Error',
+                data: null,
+                error: 'SERVER_ERROR'
+            };
+        }
+
+        // Log error cho các lỗi khác (400, 401, 403, etc.)
+        console.error(`[orderApi] Error fetching order details for order ${orderId}:`, error);
 
         // Return structured error response
         return {
@@ -603,10 +628,9 @@ export const getOrderStatus = async (orderId) => {
             error: raw?.error || null
         };
     } catch (error) {
-        console.error('Error fetching order status:', error);
-
         // If 404, order might not exist in shipping service yet
         if (error?.response?.status === 404) {
+            // Silent - không log vì đây là trường hợp bình thường
             return {
                 success: false,
                 message: 'Order not found in shipping service',
@@ -617,6 +641,23 @@ export const getOrderStatus = async (orderId) => {
             };
         }
 
+        // Gracefully handle 5xx errors from shipping service by returning a structured failure
+        if (error?.response?.status >= 500) {
+            // Chỉ log warning, không log error vì đây có thể là trường hợp bình thường
+            // (shipping service chưa có đơn hàng này hoặc đơn hàng đã ở trạng thái terminal)
+            console.debug(`[orderApi] Shipping service returned 5xx for order ${orderId}:`, error?.response?.status);
+            return {
+                success: false,
+                message: error?.response?.data?.message || 'Shipping service error',
+                status: null,
+                rawStatus: null,
+                data: null,
+                error: 'SERVER_ERROR'
+            };
+        }
+
+        // Log error cho các lỗi khác (400, 401, 403, etc.)
+        console.error(`[orderApi] Error fetching order status for order ${orderId}:`, error);
         throw error;
     }
 };
