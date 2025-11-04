@@ -95,7 +95,7 @@ export function UserDropdown({ userInfo, onLogout }) {
         navigate("/seller/create-post");
         break;
       case "pending-orders":
-        navigate("/seller/pending-orders");
+        navigate("/seller-dashboard");
         break;
       default:
         console.log(`Clicked: ${item.label}`);
