@@ -10,7 +10,7 @@ export default function ManagePosts() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filterStatus, setFilterStatus] = useState("all"); // all, verified, pending, rejected, hidden
+  const [filterStatus, setFilterStatus] = useState("all"); // all, displaying, approved, pending, rejected, hidden
 
   useEffect(() => {
     loadPosts();
@@ -107,6 +107,15 @@ export default function ManagePosts() {
       // Kiểm tra trạng thái active - nếu active === false thì đã bị ẩn
       return post.active === false || post.active === 0;
     }
+    if (filterStatus === "displaying") {
+      // Đang hiển thị: active, chưa bán, và không bị từ chối
+      // Bao gồm: APPROVED (đã duyệt - có tem xác minh), PENDING (chờ duyệt - vẫn hiển thị), null/undefined
+      // Loại trừ: REJECTED (bị từ chối - không hiển thị)
+      const isActive = post.active !== false && post.active !== 0;
+      const isNotSold = !post.isSold && post.status?.toLowerCase() !== "sold";
+      const isNotRejected = post.verifiedDecisionStatus !== "REJECTED";
+      return isActive && isNotSold && isNotRejected;
+    }
     // Đối với các filter khác (approved, pending, rejected), chỉ hiển thị tin chưa bị ẩn
     const isHidden = post.active === false || post.active === 0;
     if (isHidden) return false;
@@ -189,6 +198,19 @@ export default function ManagePosts() {
               onClick={() => setFilterStatus("all")}
             >
               Tất cả ({posts.length})
+            </button>
+            <button
+              className={filterStatus === "displaying" ? "active" : ""}
+              onClick={() => setFilterStatus("displaying")}
+            >
+              Đang hiển thị (
+              {posts.filter((p) => {
+                const isActive = p.active !== false && p.active !== 0;
+                const isNotSold = !p.isSold && p.status?.toLowerCase() !== "sold";
+                const isNotRejected = p.verifiedDecisionStatus !== "REJECTED";
+                return isActive && isNotSold && isNotRejected;
+              }).length}
+              )
             </button>
             <button
               className={filterStatus === "approved" ? "active" : ""}

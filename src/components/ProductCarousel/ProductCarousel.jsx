@@ -62,7 +62,8 @@ export function ProductCarousel({ title, showCategoryToggle = false }) {
         const mapped = (productsRaw || [])
             .map(normalizeProduct)
             .filter(Boolean)
-            .filter((p) => !(p?.isSold || String(p?.status).toLowerCase() === "sold"));
+            .filter((p) => !(p?.isSold || String(p?.status).toLowerCase() === "sold"))
+            .filter((p) => p?.verifiedDecisionStatus !== "REJECTED");
         // Nếu có phân loại, ở đây chỉ demo filter client theo brand/model chứa từ khoá
         if (activeCategory === "vehicles") return mapped;
         if (activeCategory === "batteries") return mapped;

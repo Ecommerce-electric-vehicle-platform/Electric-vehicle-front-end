@@ -96,10 +96,16 @@ export function Products() {
     }, [searchParams]);
 
     const combined = useMemo(() => {
+        let result = [];
         if (isSearchMode) {
-            return (searchResults || []).map(normalizeProduct).filter(Boolean);
+            result = (searchResults || []).map(normalizeProduct).filter(Boolean);
+        } else {
+            result = (items || []).map(normalizeProduct).filter(Boolean);
         }
-        return (items || []).map(normalizeProduct).filter(Boolean);
+        // Filter out sold items and rejected posts
+        return result
+            .filter((p) => !(p?.isSold || String(p?.status).toLowerCase() === "sold"))
+            .filter((p) => p?.verifiedDecisionStatus !== "REJECTED");
     }, [items, searchResults, isSearchMode]);
 
     const allLocations = useMemo(() => {
