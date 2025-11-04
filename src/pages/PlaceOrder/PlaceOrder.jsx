@@ -169,7 +169,8 @@ function PlaceOrder() {
     };
 
     // Load user profile (không bắt buộc)
-    const loadUserProfile = useCallback(async () => {
+    // Chỉ fill dữ liệu khi field chưa có giá trị (không ghi đè dữ liệu người dùng đã nhập)
+    const loadUserProfile = useCallback(async (forceReload = false) => {
         setLoadingProfile(true);
         try {
             // Lấy thông tin profile (nếu có)
@@ -184,7 +185,7 @@ function PlaceOrder() {
 
                 console.log('🔍 Profile loaded (validation disabled):', profileData);
 
-                // Tự động fill thông tin nếu có
+                // Tự động fill thông tin nếu có - CHỈ fill khi field chưa có giá trị hoặc forceReload = true
                 if (profileData.fullName) {
                     // Tạo địa chỉ đầy đủ từ các trường địa chỉ
                     const fullAddress = [
@@ -194,32 +195,61 @@ function PlaceOrder() {
                         profileData.provinceName
                     ].filter(Boolean).join(', ');
 
-                    console.log('🔍 Setting order data:', {
+                    console.log('🔍 Setting order data (only if empty):', {
                         fullName: profileData.fullName,
                         phoneNumber: profileData.phoneNumber,
                         email: profileData.email,
-                        fullAddress
+                        fullAddress,
+                        forceReload
                     });
 
-                    setOrderData(prev => ({
-                        ...prev,
-                        username: localStorage.getItem('username') || 'user123',
-                        buyer_name: profileData.fullName,
-                        fullName: profileData.fullName,
-                        buyer_email: profileData.email || '',
-                        phoneNumber: profileData.phoneNumber || '',
-                        shippingAddress: fullAddress || '',
-                        street: profileData.street || '',
-                        provinceId: profileData.provinceId || '',
-                        districtId: profileData.districtId || '',
-                        wardId: profileData.wardId || '',
-                        delivery_phone: profileData.phoneNumber || ''
-                    }));
+                    setOrderData(prev => {
+                        // Chỉ fill khi field chưa có giá trị hoặc forceReload = true
+                        const shouldFillName = forceReload || !prev.buyer_name || !prev.buyer_name.trim();
+                        const shouldFillEmail = forceReload || !prev.buyer_email || !prev.buyer_email.trim();
+                        const shouldFillPhone = forceReload || !prev.phoneNumber || !prev.phoneNumber.trim();
+                        const shouldFillDeliveryPhone = forceReload || !prev.delivery_phone || !prev.delivery_phone.trim();
+                        const shouldFillStreet = forceReload || !prev.street || !prev.street.trim();
+                        const shouldFillProvince = forceReload || !prev.provinceId || !prev.provinceId.trim();
+                        const shouldFillDistrict = forceReload || !prev.districtId || !prev.districtId.trim();
+                        const shouldFillWard = forceReload || !prev.wardId || !prev.wardId.trim();
+                        const shouldFillAddress = forceReload || !prev.shippingAddress || !prev.shippingAddress.trim();
 
-                    // Sync dropdowns
-                    setSelectedProvince(profileData.provinceId || '');
-                    setSelectedDistrict(profileData.districtId || '');
-                    setSelectedWard(profileData.wardId || '');
+                        return {
+                            ...prev,
+                            username: localStorage.getItem('username') || prev.username || 'user123',
+                            buyer_name: shouldFillName ? (profileData.fullName || prev.buyer_name) : prev.buyer_name,
+                            fullName: shouldFillName ? (profileData.fullName || prev.fullName) : prev.fullName,
+                            buyer_email: shouldFillEmail ? (profileData.email || prev.buyer_email || '') : prev.buyer_email,
+                            phoneNumber: shouldFillPhone ? (profileData.phoneNumber || prev.phoneNumber || '') : prev.phoneNumber,
+                            shippingAddress: shouldFillAddress ? (fullAddress || prev.shippingAddress || '') : prev.shippingAddress,
+                            street: shouldFillStreet ? (profileData.street || prev.street || '') : prev.street,
+                            provinceId: shouldFillProvince ? (profileData.provinceId || prev.provinceId || '') : prev.provinceId,
+                            districtId: shouldFillDistrict ? (profileData.districtId || prev.districtId || '') : prev.districtId,
+                            wardId: shouldFillWard ? (profileData.wardId || prev.wardId || '') : prev.wardId,
+                            delivery_phone: shouldFillDeliveryPhone ? (profileData.phoneNumber || prev.delivery_phone || '') : prev.delivery_phone
+                        };
+                    });
+
+                    // Sync dropdowns - chỉ khi chưa có giá trị hoặc forceReload = true
+                    setSelectedProvince(prev => {
+                        if (forceReload || !prev) {
+                            return profileData.provinceId || '';
+                        }
+                        return prev;
+                    });
+                    setSelectedDistrict(prev => {
+                        if (forceReload || !prev) {
+                            return profileData.districtId || '';
+                        }
+                        return prev;
+                    });
+                    setSelectedWard(prev => {
+                        if (forceReload || !prev) {
+                            return profileData.wardId || '';
+                        }
+                        return prev;
+                    });
                 }
             }
         } catch (error) {
@@ -246,12 +276,27 @@ function PlaceOrder() {
             const shippingData = await getShippingPartners();
             console.log('🚚 Shipping partners from API:', shippingData);
 
+            // Normalize list from API → [{ id, name, description, ... }]
+            const rawList = Array.isArray(shippingData?.data)
+                ? shippingData.data
+                : (Array.isArray(shippingData) ? shippingData : []);
+
+            const normalizedList = rawList.map((item, idx) => {
+                const id = item.id ?? item.partnerId ?? item.partner_id ?? (idx + 1);
+                // Some APIs may return a nested object for name; pick a readable string
+                const candidateName = item.name ?? item.partnerName ?? item.partner_name ?? item.partner?.partnerName;
+                const name = typeof candidateName === 'string' ? candidateName : (candidateName?.toString?.() || 'Đối tác vận chuyển');
+                const descSource = item.description ?? item.hotLine ?? item.address ?? item.websiteUrl ?? item.email;
+                const description = typeof descSource === 'string' ? descSource : (descSource ? JSON.stringify(descSource) : '');
+                return { ...item, id, name, description };
+            });
+
             // Show all shipping partners from API
-            if (shippingData && shippingData.length > 0) {
-                setShippingPartners(shippingData);
+            if (normalizedList && normalizedList.length > 0) {
+                setShippingPartners(normalizedList);
 
                 // Auto-select first fast delivery option
-                const fastDeliveryPartner = shippingData.find(partner =>
+                const fastDeliveryPartner = normalizedList.find(partner =>
                     partner.name?.toLowerCase().includes('nhanh') ||
                     partner.name?.toLowerCase().includes('fast') ||
                     partner.description?.toLowerCase().includes('nhanh') ||
@@ -315,22 +360,9 @@ function PlaceOrder() {
         loadApiData();
     }, [navigate, loadUserProfile, loadApiData]);
 
-    // Reload profile khi user quay lại từ trang profile
-    useEffect(() => {
-        const handleFocus = () => {
-            if (document.visibilityState === 'visible') {
-                loadUserProfile();
-            }
-        };
-
-        window.addEventListener('focus', handleFocus);
-        document.addEventListener('visibilitychange', handleFocus);
-
-        return () => {
-            window.removeEventListener('focus', handleFocus);
-            document.removeEventListener('visibilitychange', handleFocus);
-        };
-    }, [loadUserProfile]);
+    // BỎ useEffect visibilitychange để tránh reload profile mỗi lần quay lại tab
+    // Điều này gây ra việc mất dữ liệu người dùng đã nhập khi chuyển tab và quay lại
+    // Profile chỉ được load một lần khi component mount (trong useEffect ở dòng 327)
 
     // Tìm sản phẩm
     useEffect(() => {
@@ -720,6 +752,10 @@ function PlaceOrder() {
             const deliverRemoteFee = Number(data?.deliver_remote_areas_fee ?? 0);
             const calculatedTotal = serviceFee + codFee + insuranceFee + pickRemoteFee + deliverRemoteFee;
 
+            // Chỉ sử dụng service_fee làm shippingFee hiển thị
+            fee = serviceFee;
+            extractedFrom = 'data.service_fee (forced)';
+
             console.log('💰 Extracted shipping fee:', {
                 fee: fee,
                 extractedFrom: extractedFrom,
@@ -732,16 +768,10 @@ function PlaceOrder() {
                     insurance_fee: insuranceFee,
                     pick_remote_areas_fee: pickRemoteFee,
                     deliver_remote_areas_fee: deliverRemoteFee,
-                    calculatedTotal: calculatedTotal,
-                    matchesTotal: Math.abs(calculatedTotal - fee) < 100 ? '✅ MATCH' : '⚠️ MISMATCH',
-                    difference: Math.abs(calculatedTotal - fee)
+                    calculatedTotal: calculatedTotal
                 },
                 verification: {
-                    extractedFee: fee,
-                    calculatedFromBreakdown: calculatedTotal,
-                    match: Math.abs(calculatedTotal - fee) < 100,
-                    postmanValue: '561000',  // Giá trị từ Postman để so sánh
-                    matchesPostman: fee === 561000 ? '✅' : '⚠️'
+                    extractedFee: fee
                 }
             });
 
@@ -795,17 +825,23 @@ function PlaceOrder() {
         setSelectedProvince(provId);
         setSelectedDistrict('');
         setSelectedWard('');
+        // Đảm bảo sync vào orderData để validation và refreshShippingFee hoạt động đúng
+        setOrderData(prev => ({ ...prev, provinceId: provId, districtId: '', wardId: '' }));
         recomputeShippingAddress({ provinceId: provId, districtId: '', wardId: '' });
     };
 
     const handleDistrictChange = (distId) => {
         setSelectedDistrict(distId);
         setSelectedWard('');
+        // Đảm bảo sync vào orderData để validation và refreshShippingFee hoạt động đúng
+        setOrderData(prev => ({ ...prev, districtId: distId, wardId: '' }));
         recomputeShippingAddress({ districtId: distId, wardId: '' });
     };
 
     const handleWardChange = (wardId) => {
         setSelectedWard(wardId);
+        // Đảm bảo sync vào orderData để validation và refreshShippingFee hoạt động đúng
+        setOrderData(prev => ({ ...prev, wardId }));
         recomputeShippingAddress({ wardId });
     };
 
@@ -881,6 +917,9 @@ function PlaceOrder() {
         }
 
         setIsSubmitting(true);
+
+        // Khai báo apiOrderData ở scope cao hơn để có thể truy cập trong catch block
+        let apiOrderData = null;
 
         try {
             // QUAN TRỌNG: Gọi lại API getShippingFee ngay trước khi place order
@@ -1003,6 +1042,10 @@ function PlaceOrder() {
                     const deliverRemoteFee = Number(data?.deliver_remote_areas_fee ?? 0);
                     const calculatedTotal = serviceFee + codFee + insuranceFee + pickRemoteFee + deliverRemoteFee;
 
+                    // Chỉ sử dụng service_fee làm shippingFee hiển thị
+                    latestFee = serviceFee;
+                    extractedFrom = 'data.service_fee (forced)';
+
                     console.log('💰 Latest shipping fee extracted:', {
                         fee: latestFee,
                         extractedFrom: extractedFrom,
@@ -1015,17 +1058,10 @@ function PlaceOrder() {
                             insurance_fee: insuranceFee,
                             pick_remote_areas_fee: pickRemoteFee,
                             deliver_remote_areas_fee: deliverRemoteFee,
-                            calculatedTotal: calculatedTotal,
-                            matchesTotal: Math.abs(calculatedTotal - latestFee) < 100 ? '✅ MATCH' : '⚠️ MISMATCH',
-                            difference: Math.abs(calculatedTotal - latestFee)
+                            calculatedTotal: calculatedTotal
                         },
                         verification: {
-                            extractedFee: latestFee,
-                            calculatedFromBreakdown: calculatedTotal,
-                            match: Math.abs(calculatedTotal - latestFee) < 100,
-                            previousFee: finalShippingFee,
-                            changed: latestFee !== finalShippingFee,
-                            difference: latestFee - finalShippingFee
+                            extractedFee: latestFee
                         }
                     });
 
@@ -1096,12 +1132,33 @@ function PlaceOrder() {
             // Format số điện thoại cho API (có thể cần format international cho GHN)
             const phoneForAPI = formatPhoneForAPI(normalizedPhone, 'vn'); // Hoặc 'international' nếu GHN yêu cầu
 
-            const resolvedProvinceId = orderData.provinceId || selectedProvince;
-            const resolvedDistrictId = orderData.districtId || selectedDistrict;
-            const resolvedWardId = orderData.wardId || selectedWard;
-            const resolvedProvinceName = provinces.find(p => p.value === resolvedProvinceId)?.label || '';
-            const resolvedDistrictName = districts.find(d => d.value === resolvedDistrictId)?.label || '';
-            const resolvedWardName = wards.find(w => w.value === resolvedWardId)?.label || '';
+            // Resolve ID từ orderData hoặc selected state, đảm bảo convert sang number đúng cách
+            const resolvedProvinceId = orderData.provinceId || selectedProvince || '';
+            const resolvedDistrictId = orderData.districtId || selectedDistrict || '';
+            const resolvedWardId = orderData.wardId || selectedWard || '';
+
+            // Convert sang number, nếu là string rỗng hoặc invalid thì sẽ thành NaN, cần check
+            const provinceIdNum = resolvedProvinceId ? Number(resolvedProvinceId) : 0;
+            const districtIdNum = resolvedDistrictId ? Number(resolvedDistrictId) : 0;
+            const wardIdNum = resolvedWardId ? Number(resolvedWardId) : 0;
+
+            // Validate số ID hợp lệ (không phải NaN và > 0)
+            if (isNaN(provinceIdNum) || provinceIdNum <= 0) {
+                console.error('❌ Invalid provinceId:', resolvedProvinceId, '→', provinceIdNum);
+                throw new Error('Thông tin tỉnh/thành phố không hợp lệ. Vui lòng chọn lại.');
+            }
+            if (isNaN(districtIdNum) || districtIdNum <= 0) {
+                console.error('❌ Invalid districtId:', resolvedDistrictId, '→', districtIdNum);
+                throw new Error('Thông tin quận/huyện không hợp lệ. Vui lòng chọn lại.');
+            }
+            if (isNaN(wardIdNum) || wardIdNum <= 0) {
+                console.error('❌ Invalid wardId:', resolvedWardId, '→', wardIdNum);
+                throw new Error('Thông tin phường/xã không hợp lệ. Vui lòng chọn lại.');
+            }
+
+            const resolvedProvinceName = provinces.find(p => p.value === resolvedProvinceId || p.value === String(resolvedProvinceId))?.label || '';
+            const resolvedDistrictName = districts.find(d => d.value === resolvedDistrictId || d.value === String(resolvedDistrictId))?.label || '';
+            const resolvedWardName = wards.find(w => w.value === resolvedWardId || w.value === String(resolvedWardId))?.label || '';
             const resolvedPaymentId = (orderData.paymentId === 1 || orderData.paymentId === 2) ? orderData.paymentId : 1; // 1: COD, 2: WALLET
             const resolvedShippingPartnerId = Number(orderData.shippingPartnerId || 1);
 
@@ -1118,9 +1175,9 @@ function PlaceOrder() {
                 fullName: orderData.fullName || orderData.buyer_name || '',
                 street: orderData.street || '',
                 shippingAddress: shippingAddressCombined,
-                provinceId: Number(resolvedProvinceId || 0),
-                districtId: Number(resolvedDistrictId || 0),
-                wardId: Number(resolvedWardId || 0),
+                provinceId: provinceIdNum,
+                districtId: districtIdNum,
+                wardId: wardIdNum,
                 provinceName: resolvedProvinceName,
                 districtName: resolvedDistrictName,
                 wardName: resolvedWardName,
@@ -1168,21 +1225,68 @@ function PlaceOrder() {
             });
 
             // Validate các field quan trọng để tránh gửi payload không hợp lệ (gây 500 từ BE)
-            if (!apiOrderData.postProductId || !apiOrderData.username || !apiOrderData.fullName) {
-                throw new Error('Thiếu thông tin bắt buộc (sản phẩm, tài khoản hoặc tên người nhận).');
+            console.log('🔍 Validating order data before sending:', {
+                postProductId: apiOrderData.postProductId,
+                username: apiOrderData.username,
+                fullName: apiOrderData.fullName,
+                provinceId: apiOrderData.provinceId,
+                districtId: apiOrderData.districtId,
+                wardId: apiOrderData.wardId,
+                phoneNumber: apiOrderData.phoneNumber,
+                shippingPartnerId: apiOrderData.shippingPartnerId,
+                paymentId: apiOrderData.paymentId,
+                shippingFee: apiOrderData.shippingFee,
+                productPrice: apiOrderData.productPrice,
+                totalPrice: apiOrderData.totalPrice,
+                street: apiOrderData.street,
+                shippingAddress: apiOrderData.shippingAddress
+            });
+
+            // Validate từng field chi tiết
+            if (!apiOrderData.postProductId) {
+                console.error('❌ Validation failed: postProductId is missing');
+                throw new Error('Thiếu thông tin sản phẩm (postProductId).');
             }
-            if (!apiOrderData.provinceId || !apiOrderData.districtId || !apiOrderData.wardId) {
-                throw new Error('Thiếu thông tin địa chỉ (tỉnh/huyện/xã).');
+            if (!apiOrderData.username || !apiOrderData.username.trim()) {
+                console.error('❌ Validation failed: username is missing or empty');
+                throw new Error('Thiếu thông tin tài khoản (username).');
             }
-            if (!apiOrderData.phoneNumber) {
+            if (!apiOrderData.fullName || !apiOrderData.fullName.trim()) {
+                console.error('❌ Validation failed: fullName is missing or empty');
+                throw new Error('Thiếu thông tin tên người nhận (fullName).');
+            }
+            if (!apiOrderData.provinceId || Number(apiOrderData.provinceId) === 0) {
+                console.error('❌ Validation failed: provinceId is missing or invalid:', apiOrderData.provinceId);
+                throw new Error('Thiếu hoặc thông tin tỉnh/thành phố không hợp lệ (provinceId).');
+            }
+            if (!apiOrderData.districtId || Number(apiOrderData.districtId) === 0) {
+                console.error('❌ Validation failed: districtId is missing or invalid:', apiOrderData.districtId);
+                throw new Error('Thiếu hoặc thông tin quận/huyện không hợp lệ (districtId).');
+            }
+            if (!apiOrderData.wardId || Number(apiOrderData.wardId) === 0) {
+                console.error('❌ Validation failed: wardId is missing or invalid:', apiOrderData.wardId);
+                throw new Error('Thiếu hoặc thông tin phường/xã không hợp lệ (wardId).');
+            }
+            if (!apiOrderData.phoneNumber || !apiOrderData.phoneNumber.trim()) {
+                console.error('❌ Validation failed: phoneNumber is missing or empty');
                 throw new Error('Thiếu số điện thoại người nhận.');
             }
-            if (!apiOrderData.shippingPartnerId) {
+            if (!apiOrderData.shippingPartnerId || Number(apiOrderData.shippingPartnerId) === 0) {
+                console.error('❌ Validation failed: shippingPartnerId is missing or invalid:', apiOrderData.shippingPartnerId);
                 throw new Error('Thiếu đối tác vận chuyển.');
             }
             if (!(apiOrderData.paymentId === 1 || apiOrderData.paymentId === 2)) {
-                throw new Error('Phương thức thanh toán không hợp lệ.');
+                console.error('❌ Validation failed: paymentId is invalid:', apiOrderData.paymentId);
+                throw new Error('Phương thức thanh toán không hợp lệ (phải là 1 hoặc 2).');
             }
+            if (!apiOrderData.street || !apiOrderData.street.trim()) {
+                console.warn('⚠️ Warning: street is empty, but continuing...');
+            }
+            if (!apiOrderData.shippingAddress || !apiOrderData.shippingAddress.trim()) {
+                console.warn('⚠️ Warning: shippingAddress is empty, but continuing...');
+            }
+
+            console.log('✅ All validations passed, sending order to API...');
 
             // Gọi API đặt hàng
             const response = await placeOrder(apiOrderData);
@@ -1340,15 +1444,48 @@ function PlaceOrder() {
 
             // Hiển thị lỗi chi tiết cho người dùng
             const errorMessage = error.response?.data?.message ||
+                error.response?.data?.error?.message ||
                 error.message ||
                 'Không thể đặt hàng. Vui lòng thử lại sau.';
 
+            // Log chi tiết để debug lỗi 500
             console.error('🔍 Error details:', {
                 message: errorMessage,
                 status: error.response?.status,
+                statusText: error.response?.statusText,
                 data: error.response?.data,
-                url: error.config?.url
+                error: error.response?.data?.error,
+                url: error.config?.url,
+                method: error.config?.method,
+                payload: error.config?.data ? (typeof error.config.data === 'string' ? JSON.parse(error.config.data) : error.config.data) : null,
+                headers: error.config?.headers
             });
+
+            // Nếu là lỗi 500, log thêm thông tin payload để debug
+            if (error.response?.status === 500 && apiOrderData) {
+                console.error('🚨 500 Internal Server Error - Payload sent:', JSON.stringify(apiOrderData, null, 2));
+                console.error('🚨 500 Internal Server Error - Backend error details:', error.response?.data);
+
+                // Hiển thị thông tin debug cho developer
+                console.error('🚨 Debug info for 500 error:', {
+                    requestPayload: apiOrderData,
+                    backendResponse: error.response?.data,
+                    validationChecks: {
+                        postProductId: !!apiOrderData.postProductId,
+                        username: !!apiOrderData.username,
+                        fullName: !!apiOrderData.fullName,
+                        provinceId: apiOrderData.provinceId,
+                        districtId: apiOrderData.districtId,
+                        wardId: apiOrderData.wardId,
+                        phoneNumber: apiOrderData.phoneNumber,
+                        shippingPartnerId: apiOrderData.shippingPartnerId,
+                        paymentId: apiOrderData.paymentId,
+                        shippingFee: apiOrderData.shippingFee,
+                        productPrice: apiOrderData.productPrice,
+                        totalPrice: apiOrderData.totalPrice
+                    }
+                });
+            }
 
             // QUAN TRỌNG: Refresh wallet để cập nhật số dư sau khi lỗi
             // Nếu backend đã trừ tiền nhưng đặt hàng thất bại, số dư sẽ phản ánh đúng
@@ -2099,11 +2236,12 @@ function PlaceOrder() {
                                             <div className="text-right">
                                                 {currentStep === 3 && orderDetailsFromAPI ? (
                                                     // Sau khi đặt hàng thành công, ưu tiên dùng shipping fee từ API
-                                                    orderDetailsFromAPI.shippingFee > 0 ? (
-                                                        <span className="font-medium text-foreground">{formatCurrency(orderDetailsFromAPI.shippingFee)}</span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">Miễn phí</span>
-                                                    )
+                                                    (orderDetailsFromAPI.shippingFee > 0
+                                                        ? <span className="font-medium text-foreground">{formatCurrency(orderDetailsFromAPI.shippingFee)}</span>
+                                                        : (orderData.shippingFee > 0
+                                                            ? <span className="font-medium text-foreground">{formatCurrency(orderData.shippingFee)}</span>
+                                                            : <span className="text-muted-foreground">Miễn phí</span>
+                                                        ))
                                                 ) : shippingFeeLoading ? (
                                                     <span className="text-muted-foreground">Đang tính...</span>
                                                 ) : shippingFeeFromAPI && orderData.shippingFee > 0 ? (
@@ -2120,8 +2258,13 @@ function PlaceOrder() {
                                             <span className="font-semibold text-foreground">Tổng cộng</span>
                                             <span className="text-2xl font-bold text-foreground">
                                                 {currentStep === 3 && orderDetailsFromAPI ? (
-                                                    // Sau khi đặt hàng thành công, ưu tiên dùng finalPrice từ API
-                                                    formatCurrency(orderDetailsFromAPI.finalPrice || orderDetailsFromAPI.price + orderDetailsFromAPI.shippingFee)
+                                                    // Sau khi đặt hàng thành công, ưu tiên dùng finalPrice từ API; nếu thiếu, fallback từ FE
+                                                    (() => {
+                                                        const p = Number(orderDetailsFromAPI.price || orderData.total_price || 0);
+                                                        const s = Number((orderDetailsFromAPI.shippingFee && orderDetailsFromAPI.shippingFee > 0) ? orderDetailsFromAPI.shippingFee : (orderData.shippingFee || 0));
+                                                        const total = Number(orderDetailsFromAPI.finalPrice || (p + s) || orderData.final_price || 0);
+                                                        return formatCurrency(total);
+                                                    })()
                                                 ) : (
                                                     formatCurrency(orderData.final_price)
                                                 )}
