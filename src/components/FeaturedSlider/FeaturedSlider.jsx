@@ -38,6 +38,7 @@ export function FeaturedSlider() {
         .map(normalizeProduct)
         .filter(Boolean)
         .filter((p) => !(p?.isSold || String(p?.status).toLowerCase() === "sold"))
+        .filter((p) => p?.verifiedDecisionStatus !== "REJECTED")
         .slice(0, 5),
     [items]
   )
