@@ -103,7 +103,7 @@ class WebSocketService {
 
     const buyerId = localStorage.getItem('buyerId');
     if (!buyerId) {
-      console.warn('⚠️  [WebSocket] Cannot subscribe: No buyerId in localStorage');
+      console.warn('[WebSocket] Cannot subscribe: No buyerId in localStorage');
       return;
     }
 
