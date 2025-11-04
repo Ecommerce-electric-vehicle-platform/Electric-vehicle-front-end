@@ -94,7 +94,7 @@ export const getOrderDetails = async (orderId) => {
         } else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') {
             normalizedStatus = 'delivered';
         } else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') {
-            normalizedStatus = 'cancelled';
+            normalizedStatus = 'canceled';  // CHỈNH ĐÂY LUN
         }
 
         // Normalize price fields
@@ -293,7 +293,7 @@ function normalizeOrderHistoryItem(item) {
     else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') status = 'confirmed';
     else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') status = 'shipping';
     else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') status = 'delivered';
-    else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'cancelled';
+    else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'canceled';    // CHONH23 CÁI NÀY CHO ĐỒNG NHẤT BACKEND
 
     // QUAN TRỌNG: Theo thông tin từ Backend:
     // - Backend xử lý: 'price' = giá sản phẩm riêng (KHÔNG bao gồm shippingFee)
@@ -643,7 +643,7 @@ export const getOrderStatus = async (orderId) => {
         } else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') {
             normalizedStatus = 'delivered';
         } else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') {
-            normalizedStatus = 'cancelled';
+            normalizedStatus = 'canceled';   // CHỈNH NÀY LUN NHE
         }
 
         return {
