@@ -24,6 +24,8 @@ import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview } from
 import profileApi from '../../api/profileApi';
 import { AnimatedButton } from '../../components/ui/AnimatedButton';
 
+
+
 function OrderTracking() {
     const { orderId } = useParams();
     const navigate = useNavigate();
@@ -32,6 +34,9 @@ function OrderTracking() {
     const [loading, setLoading] = useState(true);
     const [isGuest, setIsGuest] = useState(true);
     const [hasReview, setHasReview] = useState(false); // Trạng thái đánh giá
+
+   
+
     const getPaymentMethodLabel = (method) => {
         if (method === 'cod') return 'Thanh toán khi nhận hàng';
         if (method === 'bank_transfer') return 'Chuyển khoản ngân hàng';

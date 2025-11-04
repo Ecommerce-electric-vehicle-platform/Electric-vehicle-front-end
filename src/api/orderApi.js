@@ -584,6 +584,37 @@ export const cancelOrder = async (orderId, cancelData = {}) => {
 };
 
 
+    // thêm cái này để lấy phương thức thanh toán 
+    // Get payment method for an order
+// GET /api/v1/order/payment/{orderId}
+// Response example: { success: true, message: "OK", data: { gatewayName: "VNPay" } }
+export const getOrderPayment = async (orderId) => {
+    if (!orderId) throw new Error('orderId is required to get payment method');
+    try {
+        const response = await axiosInstance.get(`/api/v1/order/payment/${orderId}`);
+        const raw = response?.data ?? {};
+        const data = raw?.data ?? raw;
+
+        return {
+            success: raw?.success !== false,
+            message: raw?.message || '',
+            data: {
+                gatewayName: data?.gatewayName || data?.paymentMethod || data?.method || 'COD'
+            },
+            error: raw?.error || null
+        };
+    } catch (error) {
+        console.error(`Error fetching payment method for order ${orderId}:`, error);
+        return {
+            success: false,
+            message: error?.response?.data?.message || 'Failed to fetch payment info',
+            data: { gatewayName: 'COD' },
+            error: error?.response?.data?.error || 'UNKNOWN_ERROR'
+        };
+    }
+};
+
+
 
 // Get order status from shipping service
 // GET /api/v1/shipping/order/{orderId}/status
