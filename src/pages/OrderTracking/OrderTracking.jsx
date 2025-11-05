@@ -177,7 +177,15 @@ function OrderTracking() {
                             deliveredAt: orderDetailData._raw?.deliveredAt || null,
                             shippedAt: orderDetailData._raw?.shippedAt || null,
                             trackingNumber: orderDetailData._raw?.trackingNumber || '',
-                            carrier: orderDetailData._raw?.carrier || orderDetailData._raw?.shippingPartner || '',
+                            // Normalize carrier: BE may return an object; UI needs a string
+                            carrier: (() => {
+                                const rawCarrier = orderDetailData._raw?.carrier || orderDetailData._raw?.shippingPartner || '';
+                                if (typeof rawCarrier === 'string') return rawCarrier;
+                                if (!rawCarrier || typeof rawCarrier !== 'object') return '';
+                                const nameCandidate = rawCarrier.partnerName || rawCarrier.name || rawCarrier.title || rawCarrier.providerName;
+                                if (typeof nameCandidate === 'string' && nameCandidate.trim()) return nameCandidate;
+                                try { return JSON.stringify(rawCarrier); } catch { return ''; }
+                            })(),
 
                             // Invoice
                             needInvoice: Boolean(orderDetailData._raw?.needInvoice || false),

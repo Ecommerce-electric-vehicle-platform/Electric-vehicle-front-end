@@ -53,7 +53,9 @@ export const getWalletBalance = async () => {
 // Place order
 export const placeOrder = async (orderData) => {
     try {
+        console.log("🧾 [BEFORE PLACE ORDER] orderData being sent:", orderData);
         const response = await axiosInstance.post('/api/v1/buyer/place-order', orderData);
+        console.log("✅ [AFTER PLACE ORDER] backend response:", response.data);
         return response.data;
     } catch (error) {
         console.error('Error placing order:', error);
@@ -97,23 +99,60 @@ export const getOrderDetails = async (orderId) => {
             normalizedStatus = 'cancelled';
         }
 
-        // Normalize price fields
-        const price = Number(data.price ?? 0);
-        const shippingFee = Number(data.shippingFee ?? data.shipping_fee ?? 0);
-        const finalPrice = price + shippingFee;
+        // Normalize price fields (support nested structures from BE)
+        const price = Number(
+            data.price ??
+            data.productPrice ??
+            data.product_price ??
+            data.product?.price ??
+            data.order?.productPrice ??
+            data.order?.product_price ??
+            data.order?.price ??
+            0
+        );
+
+        // Prefer service_fee consistently across FE/BE to match placement time
+        const serviceFeePreferred = Number(
+            data.service_fee ??
+            data.order?.service_fee ??
+            data.breakdown?.service_fee ??
+            data.shipping?.service_fee ??
+            0
+        );
+
+        const shippingFee = serviceFeePreferred > 0 ? serviceFeePreferred : Number(
+            data.shippingFee ??
+            data.shipping_fee ??
+            data.order?.shippingFee ??
+            data.order?.shipping_fee ??
+            data.fee ??
+            0
+        );
+
+        const finalPrice = Number(
+            data.finalPrice ??
+            data.final_price ??
+            data.totalPrice ??
+            data.total_price ??
+            data.order?.finalPrice ??
+            data.order?.final_price ??
+            data.order?.totalPrice ??
+            data.order?.total_price ??
+            (price + shippingFee)
+        );
 
         // Normalize timestamps
-        const createdAt = data.createdAt || data.created_at || null;
-        const updatedAt = data.updatedAt || data.updated_at || null;
-        const canceledAt = data.canceledAt || data.canceled_at || null;
-        const cancelReason = data.cancelReason || data.cancel_reason || null;
+        const createdAt = data.createdAt || data.created_at || data.order?.createdAt || data.order?.created_at || null;
+        const updatedAt = data.updatedAt || data.updated_at || data.order?.updatedAt || data.order?.updated_at || null;
+        const canceledAt = data.canceledAt || data.canceled_at || data.order?.canceledAt || data.order?.canceled_at || null;
+        const cancelReason = data.cancelReason || data.cancel_reason || data.order?.cancelReason || data.order?.cancel_reason || null;
 
         // Build normalized response
         const normalized = {
-            id: data.id ?? orderId,
-            orderCode: data.orderCode || data.order_code || String(orderId),
-            shippingAddress: data.shippingAddress || data.shipping_address || '',
-            phoneNumber: data.phoneNumber || data.phone_number || '',
+            id: data.id ?? data.order?.id ?? orderId,
+            orderCode: data.orderCode || data.order_code || data.order?.orderCode || data.order?.order_code || String(orderId),
+            shippingAddress: data.shippingAddress || data.shipping_address || data.order?.shippingAddress || data.order?.shipping_address || '',
+            phoneNumber: data.phoneNumber || data.phone_number || data.order?.phoneNumber || data.order?.phone_number || '',
             price: price,
             shippingFee: shippingFee,
             finalPrice: finalPrice,
@@ -306,7 +345,15 @@ function normalizeOrderHistoryItem(item) {
     // - finalPrice = productPrice + shippingFee (tính trong frontend)
 
     // Lấy phí ship từ backend response
-    const shippingFee = Number(
+    // Prefer service_fee if provided by BE
+    const serviceFeePreferred = Number(
+        item.service_fee ??
+        item.breakdown?.service_fee ??
+        item.shipping?.service_fee ??
+        0
+    );
+
+    const shippingFee = serviceFeePreferred > 0 ? serviceFeePreferred : Number(
         item.shippingFee ??
         item.shipping_fee ??
         item.deliveryFee ??

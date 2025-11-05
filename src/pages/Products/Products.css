@@ -227,67 +227,361 @@
     background: #eafff3;
 }
 
-/* Pagination */
-.pagination {
+/* Pagination Info - Always visible */
+.products-pagination-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 32px;
+    padding: 16px 0;
+    border-top: 1px solid #e5e7eb;
+}
+
+.pagination-info-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: #6b7280;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.pagination-info-label {
+    color: #6b7280;
+    font-weight: 400;
+}
+
+.pagination-info-value {
+    color: #1f2937;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
+.pagination-info-separator {
+    color: #9ca3af;
+    margin: 0 2px;
+}
+
+/* Enhanced Pagination */
+.products-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 24px;
+    padding: 20px;
+    flex-wrap: wrap;
+    background-color: #fafafa;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.pagination-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 12px;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    color: #374151;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background-color: #f9fafb;
+    border-color: #3b82f6;
+    color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.pagination-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background-color: #f3f4f6;
+}
+
+.pagination-btn-first,
+.pagination-btn-last {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.pagination-numbers {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pagination-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 8px;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    color: #374151;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.pagination-number:hover:not(.active):not(:disabled) {
+    background-color: #f9fafb;
+    border-color: #3b82f6;
+    color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.pagination-number.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-color: #3b82f6;
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.pagination-number:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-ellipsis {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    color: #9ca3af;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Go to Page Input */
+.pagination-go-to {
     display: flex;
     align-items: center;
     gap: 8px;
-    justify-content: center;
-    margin: 16px 0;
-    flex-wrap: wrap;
+    margin-left: 16px;
+    padding-left: 16px;
+    border-left: 1px solid #e5e7eb;
 }
 
-.page-btn {
-    padding: 8px 12px;
-    background: #fff;
-    border: 1.5px solid #e5e7eb;
-    color: #0f172a;
-    border-radius: 10px;
-    font-weight: 600;
+.pagination-go-to-label {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.pagination-go-to-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pagination-go-to-input {
+    width: 60px;
+    height: 40px;
+    padding: 0 8px;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    color: #1f2937;
     font-size: 14px;
-    cursor: pointer;
+    font-weight: 500;
+    text-align: center;
     transition: all 0.2s ease;
-    min-width: 40px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
-.page-btn:hover:not(:disabled) {
-    border-color: #10b981;
-    color: #047857;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+.pagination-go-to-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.page-btn.active {
-    background: linear-gradient(135deg, #16a34a, #22c55e);
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
-}
-
-.page-btn:disabled {
+.pagination-go-to-input:disabled {
+    background-color: #f3f4f6;
     opacity: 0.6;
     cursor: not-allowed;
 }
 
-.pagination-info {
-    margin-left: 8px;
-    color: #64748b;
+.pagination-go-to-btn {
+    height: 40px;
+    padding: 0 16px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
     font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    white-space: nowrap;
+}
+
+.pagination-go-to-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.pagination-go-to-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.pagination-go-to-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #9ca3af;
 }
 
 /* Subtle animation on paging */
 .is-paging {
-    animation: gridFade 180ms ease-in;
+    animation: gridFade 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes gridFade {
     from {
-        opacity: 0.7;
-        transform: translateY(4px);
+        opacity: 0.6;
+        transform: translateY(8px);
     }
 
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .products-pagination-info {
+        padding: 12px 0;
+    }
+
+    .pagination-info-text {
+        font-size: 13px;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .products-pagination {
+        margin-top: 24px;
+        padding: 16px;
+        gap: 6px;
+    }
+
+    .pagination-go-to {
+        margin-left: 12px;
+        padding-left: 12px;
+        flex-wrap: wrap;
+    }
+
+    .pagination-go-to-label {
+        font-size: 12px;
+    }
+
+    .pagination-go-to-input {
+        width: 50px;
+        height: 36px;
+        font-size: 13px;
+    }
+
+    .pagination-go-to-btn {
+        height: 36px;
+        padding: 0 12px;
+        font-size: 12px;
+    }
+
+    .pagination-number {
+        min-width: 36px;
+        height: 36px;
+        font-size: 13px;
+    }
+
+    .pagination-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .pagination-ellipsis {
+        width: 36px;
+        height: 36px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .products-pagination-info {
+        padding: 12px 0;
+    }
+
+    .pagination-info-text {
+        font-size: 13px;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .products-pagination {
+        padding: 12px;
+        gap: 4px;
+    }
+
+    .pagination-numbers {
+        gap: 2px;
+    }
+
+    .pagination-number {
+        min-width: 32px;
+        height: 32px;
+        font-size: 12px;
+        padding: 0 4px;
+    }
+
+    .pagination-btn {
+        min-width: 32px;
+        height: 32px;
+        font-size: 13px;
+        padding: 0 8px;
+    }
+
+    .pagination-go-to {
+        margin-left: 8px;
+        padding-left: 8px;
+        border-left: none;
+        width: 100%;
+        justify-content: center;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .pagination-go-to-form {
+        width: 100%;
+        justify-content: center;
     }
 }
 
@@ -312,6 +606,254 @@
     .grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Quick Filters Section */
+.quick-filters-section {
+    margin: 24px 0;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.quick-filters-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.quick-filters-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.quick-filters-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.quick-filter-btn {
+    padding: 10px 20px;
+    background: #ffffff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    white-space: nowrap;
+}
+
+.quick-filter-btn:hover {
+    background: #f9fafb;
+    border-color: #3b82f6;
+    color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.quick-filter-btn.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-color: #3b82f6;
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.quick-sort-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.quick-sort-btn {
+    padding: 8px 16px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.quick-sort-btn:hover {
+    background: #f9fafb;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.quick-sort-btn.active {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #2563eb;
+    font-weight: 600;
+}
+
+/* Active Filters Section */
+.active-filters-section {
+    margin: 20px 0;
+    padding: 16px 20px;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 12px;
+}
+
+.active-filters-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.active-filters-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #065f46;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.clear-all-filters-btn {
+    padding: 6px 12px;
+    background: #ffffff;
+    border: 1px solid #dc2626;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #dc2626;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.clear-all-filters-btn:hover {
+    background: #fee2e2;
+    transform: translateY(-1px);
+}
+
+.active-filters-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #ffffff;
+    border: 1px solid #10b981;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #065f46;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.filter-chip-label {
+    line-height: 1;
+}
+
+.filter-chip-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: #f0fdf4;
+    border: none;
+    border-radius: 50%;
+    color: #065f46;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.filter-chip-remove:hover {
+    background: #dc2626;
+    color: #ffffff;
+    transform: scale(1.1);
+}
+
+/* View Toggle */
+.view-toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    margin-left: 16px;
+}
+
+.view-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.view-toggle-btn:hover {
+    background: #ffffff;
+    color: #3b82f6;
+}
+
+.view-toggle-btn.active {
+    background: #ffffff;
+    color: #3b82f6;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* List View */
+.showcase-grid.list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.showcase-grid.list-view .product-card {
+    display: flex;
+    flex-direction: row;
+    max-width: 100%;
+}
+
+.showcase-grid.list-view .product-card__image-container {
+    width: 300px;
+    min-width: 300px;
+    height: 200px;
+    flex-shrink: 0;
+}
+
+.showcase-grid.list-view .product-card__content {
+    flex: 1;
+    padding: 20px;
 }
 
 /* Global Search in Products */
@@ -597,5 +1139,99 @@
         font-size: 14px;
         width: 100%;
         justify-content: center;
+    }
+}
+
+/* Responsive Quick Filters */
+@media (max-width: 768px) {
+    .quick-filters-section {
+        padding: 16px;
+        margin: 20px 0;
+    }
+
+    .quick-filters-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .quick-filters-buttons {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .quick-filter-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+
+    .quick-sort-buttons {
+        width: 100%;
+    }
+
+    .quick-sort-btn {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .active-filters-section {
+        padding: 12px 16px;
+    }
+
+    .active-filters-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .clear-all-filters-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .view-toggle-container {
+        margin-left: 0;
+        margin-top: 12px;
+    }
+
+    .filter-bar {
+        flex-direction: column;
+    }
+
+    .filter-controls {
+        width: 100%;
+    }
+
+    .showcase-grid.list-view .product-card {
+        flex-direction: column;
+    }
+
+    .showcase-grid.list-view .product-card__image-container {
+        width: 100%;
+        min-width: 100%;
+        height: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    .quick-filter-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .quick-sort-btn {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+
+    .filter-chip {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    .showcase-grid.list-view .product-card__image-container {
+        height: 200px;
     }
 }
