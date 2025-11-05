@@ -99,23 +99,31 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
 
     try {
       setLoading(true);
-      
+
       // CHỈ GỬI cancelReasonId THEO YÊU CẦU CỦA BACKEND
       const payload = { cancelReasonId: selectedReason.id }; // <-- ĐÃ SỬA: Chỉ giữ ID
-      
+
       const res = await cancelOrder(orderId, payload);
 
-      if (res?.success) {
-        alert(" Đã gửi yêu cầu hủy đơn thành công!");
-        
-        // TRUYỀN THÊM LÝ DO VỀ COMPONENT CHA ĐỂ CẬP NHẬT TRẠNG THÁI TỨC THÌ TRONG OrderList.jsx
-        if (onCancelSuccess) onCancelSuccess(orderId, selectedReason.text); // <-- ĐÃ THÊM: Truyền lý do
-        
+
+
+
+
+      if (res?.success === true) {
+        const reasonText = res?.data?.cancelOrderReasonResponse?.cancelOrderReasonName || selectedReason.text;
+
+        alert(` Đã gửi yêu cầu hủy đơn thành công!\nLý do: ${reasonText}`);
+
+        //  Refresh danh sách đơn hàng để cập nhật trạng thái mới
+        await getOrderHistory();
+
+        //  Cập nhật lên component cha để đổi trạng thái UI ngay lập tức
+        if (onCancelSuccess) onCancelSuccess(orderId, reasonText);
       } else {
-        // Xử lý lỗi trả về từ BE
         const errorMessage = res?.message || "Gửi yêu cầu thất bại. Vui lòng thử lại.";
-        alert(`Gửi yêu cầu thất bại: ${errorMessage}`);
+        alert(` Gửi yêu cầu thất bại: ${errorMessage}`);
       }
+
     } catch (err) {
       console.error(" Lỗi khi gửi yêu cầu hủy đơn:", err);
       // Xử lý lỗi Axios/Network/etc.
@@ -124,7 +132,7 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
     } finally {
       setLoading(false);
     }
-};
+  };
 
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("vi-VN", {
@@ -262,7 +270,7 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
         )}
       </div>
 
-  
+
       {orderData.paymentMethod === "COD" && (
         <div className="info-note">
           <p>
@@ -286,9 +294,9 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
 
 
 CancelOrderRequest.propTypes = {
- orderId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
- onCancelSuccess: PropTypes.func.isRequired, // Cần hàm này, nên set là isRequired
- onBack: PropTypes.func,
+  orderId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  onCancelSuccess: PropTypes.func.isRequired, // Cần hàm này, nên set là isRequired
+  onBack: PropTypes.func,
 };
 
 export default CancelOrderRequest;
