@@ -210,6 +210,9 @@
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
+  z-index: 2;
+  white-space: nowrap;
+  max-width: fit-content;
 }
 
 .status-approved {
@@ -235,9 +238,14 @@
 .status-hidden {
   background: rgba(220, 26, 26, 0.9);
   color: white;
-  top: auto;
+  top: auto !important;
   bottom: 0.75rem;
   right: 0.75rem;
+  left: auto;
+  z-index: 1;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  max-width: fit-content;
 }
 
 /* Post Info */
