@@ -35,7 +35,7 @@ function OrderTracking() {
     const [isGuest, setIsGuest] = useState(true);
     const [hasReview, setHasReview] = useState(false); // Trạng thái đánh giá
 
-   
+
 
     const getPaymentMethodLabel = (method) => {
         if (method === 'cod') return 'Thanh toán khi nhận hàng';
@@ -517,12 +517,6 @@ function OrderTracking() {
             needInvoice,
         };
     }
-
-    // Xử lý quay lại
-    const handleGoBack = () => {
-        navigate(-1);
-    };
-
     // Xử lý về trang chủ
     const handleGoHome = () => {
         navigate('/');
@@ -578,20 +572,6 @@ function OrderTracking() {
             <div className="order-tracking-container">
                 {/* Header */}
                 <div className="order-tracking-header">
-                    <div className="breadcrumb-nav">
-                        <button className="breadcrumb-btn" onClick={handleGoHome}>
-                            <Home size={16} />
-                            <span>Trang chủ</span>
-                        </button>
-                        <span className="breadcrumb-separator">/</span>
-                        <button className="breadcrumb-btn" onClick={handleGoBack}>
-                            <ArrowLeft size={16} />
-                            <span>Quay lại</span>
-                        </button>
-                        <span className="breadcrumb-separator">/</span>
-                        <span className="breadcrumb-current">Theo dõi đơn hàng</span>
-                    </div>
-
                     <h1 className="page-title">Theo dõi đơn hàng</h1>
                     <div className="page-meta">
                         <div className="meta-left">
@@ -611,10 +591,10 @@ function OrderTracking() {
                                 <CreditCard size={14} />
                                 {getPaymentMethodLabel(order.paymentMethod)}
                             </span>
+                            <span className={`status-badge ${order.status}`}>
+                                {getStatusLabel(order.status)}
+                            </span>
                         </div>
-                        <span className={`status-badge ${order.status}`}>
-                            {getStatusLabel(order.status)}
-                        </span>
                     </div>
                 </div>
 
@@ -822,7 +802,7 @@ function OrderTracking() {
                                     Tải hóa đơn
                                 </button>
                             )}
-                            <button className="btn btn-outline-primary" onClick={() => navigate('/')}>
+                            <button className="btn btn-primary continue-shopping-btn" onClick={() => navigate('/products')}>
                                 <Home className="btn-icon" />
                                 Tiếp tục mua sắm
                             </button>
