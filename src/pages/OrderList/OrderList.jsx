@@ -69,6 +69,7 @@ function OrderList() {
             // Và fetch trang 0 (mới nhất) thay vì trang 1
             const { items, meta } = await getOrderHistory({ page: 1, size: 10 });
 
+
             console.log('[OrderList] Order history meta:', meta);
             console.log('[OrderList] Total items from backend:', items.length);
 
@@ -489,23 +490,29 @@ function OrderList() {
                 setOrders(prevOrders => {
                     return prevOrders.map(order => {
                         const update = validUpdates.find(u => String(u.orderId) === String(order.id));
-                        if (update && update.newStatus !== order.status) {
-                            console.log(`[OrderList] Auto-refresh: Order ${order.id} status: ${order.status} -> ${update.newStatus} (from ${update.source})`);
-                            return {
-                                ...order,
-                                status: update.newStatus,
-                                canceledAt: update.canceledAt || order.canceledAt,
-                                cancelReason: update.cancelReason || order.cancelReason,
-                                updatedAt: update.updatedAt || order.updatedAt,
-                                _raw: {
-                                    ...order._raw,
-                                    status: update.rawStatus,
-                                    canceledAt: update.canceledAt || order._raw?.canceledAt,
-                                    cancelReason: update.cancelReason || order._raw?.cancelReason,
-                                    updatedAt: update.updatedAt || order._raw?.updatedAt
-                                }
-                            };
+                        if (update) {
+                            const isCanceled = order.status === 'canceled';
+                            const isTryingToRevertCancel = update.newStatus === 'pending';
+
+                            if (!isCanceled && !isTryingToRevertCancel && update.newStatus !== order.status) {
+                                console.log(`[OrderList] Updating order ${order.id} status: ${order.status} -> ${update.newStatus} (from ${update.source})`);
+                                return {
+                                    ...order,
+                                    status: update.newStatus,
+                                    canceledAt: update.canceledAt || order.canceledAt,
+                                    cancelReason: update.cancelReason || order.cancelReason,
+                                    updatedAt: update.updatedAt || order.updatedAt,
+                                    _raw: {
+                                        ...order._raw,
+                                        status: update.rawStatus,
+                                        canceledAt: update.canceledAt || order._raw?.canceledAt,
+                                        cancelReason: update.cancelReason || order._raw?.cancelReason,
+                                        updatedAt: update.updatedAt || order._raw?.updatedAt,
+                                    },
+                                };
+                            }
                         }
+
                         return order;
                     });
                 });
@@ -523,12 +530,22 @@ function OrderList() {
     }, [orders.length]); // Chỉ chạy khi số lượng orders thay đổi
 
     // Helper function để kiểm tra đơn có bị hủy không (khớp với logic lọc)
+
+    // OrderList.jsx
+
+    // Helper function để kiểm tra đơn có bị hủy không (khớp với logic lọc)
+    // OrderList.jsx (Trong component OrderList)
     const isOrderCancelled = (order) => {
-        return order.status === 'cancelled' ||
-            order.status === 'canceled' ||
-            order.status === 'CANCELED' ||
-            (order.canceledAt || order._raw?.canceledAt) != null;
+        const feStatus = (order.status || '').toLowerCase();
+        const rawStatus = (order._raw?.status || '').toUpperCase();
+        return (
+            feStatus === 'canceled' ||
+            rawStatus === 'CANCELED' ||
+            rawStatus === 'CANCELLED' ||
+            rawStatus === 'FAILED'
+        );
     };
+
 
     // Lọc theo trạng thái + tìm kiếm
     const filteredOrders = orders
@@ -584,22 +601,32 @@ function OrderList() {
     };
 
     // Khi user gửi hủy thành công
-    const handleCancelOrderSuccess = async (orderId) => {
-        // cập nhật ngay trạng thái local để UI phản ứng tức thì
+    // Trong OrderList.jsx
+
+    // Sửa hàm để nhận thêm lý do hủy (reasonName)
+    const handleCancelOrderSuccess = async (orderId, reasonName) => { // <-- CHÚ Ý CHỖ NÀY
+        // 1. Cập nhật ngay trạng thái local để UI phản ứng tức thì
         setOrders(prev =>
             prev.map(o =>
                 String(o.id) === String(orderId)
-                    ? { ...o, status: 'canceled', canceledAt: new Date().toISOString() }
+                    ? {
+                        ...o,
+                        status: 'canceled', // status chuẩn FE để khớp với filter
+                        canceledAt: new Date().toISOString(), // Set tạm để đảm bảo đồng bộ
+                        cancelReason: reasonName // Cập nhật lý do để hiển thị và xác nhận hủy
+                    }
                     : o
             )
         );
 
-        //  reload lại danh sách từ server
-        await loadOrders(true);
-
-        //  tự động chuyển sang tab “Đã hủy”
+        // 2. Tự động chuyển sang tab “Đã hủy”
         setFilter('canceled');
         setSelectedCancelOrderId(null);
+
+        // 3. Chờ 500ms rồi tải lại toàn bộ danh sách từ server (loadOrders)
+        setTimeout(() => {
+            loadOrders(true);
+        }, 500);
     };
 
 
@@ -728,13 +755,17 @@ function OrderList() {
 
     // 2. Nếu đang ở chế độ xem Danh sách đơn hàng
 
+    // OrderList.jsx (Trong component OrderList)
     const getStatusInfo = (status) => {
         const statusConfig = {
             pending: { icon: Clock, color: '#ffc107', label: 'Chờ xử lý' },
             confirmed: { icon: CheckCircle, color: '#0d6efd', label: 'Đã xác nhận' },
             shipping: { icon: Truck, color: '#0d6efd', label: 'Đang giao' },
             delivered: { icon: Package, color: '#28a745', label: 'Đã giao' },
-            cancelled: { icon: AlertCircle, color: '#dc3545', label: 'Đã hủy' }
+            // Đã sửa thành 'canceled'
+
+            canceled: { icon: AlertCircle, color: '#dc3545', label: 'Đã hủy' } // <-- SỬA TẠI ĐÂY
+
         };
         return statusConfig[status] || statusConfig.pending;
     };
@@ -751,6 +782,16 @@ function OrderList() {
             </div>
         );
     }
+
+    //debug
+    //     console.table(
+    //     orders.map(o => ({
+    //         id: o.id,
+    //         status: o.status,
+    //         rawStatus: o._raw?.status,
+    //         canceledAt: o.canceledAt,
+    //     }))
+    // );
 
     return (
         <div className="order-list-page">
@@ -831,6 +872,8 @@ function OrderList() {
                             Đã hủy ({orders.filter(isOrderCancelled).length})
                         </button>
 
+
+
                     </div>
                 </div>
 
@@ -864,7 +907,7 @@ function OrderList() {
                                 const isCancelled = order.status === 'cancelled' || canceledAt != null;
 
                                 // Xác định status để hiển thị (ưu tiên cancelled nếu đơn đã bị hủy)
-                                const displayStatus = isCancelled ? 'cancelled' : order.status;
+                                const displayStatus = isCancelled ? 'canceled' : order.status; // <-- ĐÃ SỬA: Dùng 'canceled'
                                 const displayStatusInfo = getStatusInfo(displayStatus);
                                 const DisplayStatusIcon = displayStatusInfo.icon;
 
@@ -960,7 +1003,7 @@ function OrderList() {
                                                 {/* Actions cho đơn chưa hủy */}
                                                 {!isCancelled && (
                                                     <>
-                                                        {(order.status === 'pending' || order.status === 'confirmed') && (
+                                                        {(order.status === 'pending' || order.status === 'confirmed') && !isOrderCancelled(order) && (
                                                             <button
                                                                 className="btn btn-danger btn-sm btn-animate"
                                                                 onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id); }}
@@ -968,6 +1011,7 @@ function OrderList() {
                                                                 Hủy đơn
                                                             </button>
                                                         )}
+
                                                         {order.status === 'delivered' && (
                                                             <>
                                                                 {reviewedMap[order.id]?.hasReview ? (

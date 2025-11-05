@@ -1452,6 +1452,8 @@ function PlaceOrder() {
 
             console.log('✅ All validations passed, sending order to API...');
 
+            console.log('✅ All validations passed, sending order to API...');
+
             // Gọi API đặt hàng
             const response = await placeOrder(apiOrderData);
 
