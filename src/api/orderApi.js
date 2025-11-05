@@ -87,10 +87,10 @@ export const getOrderDetails = async (orderId) => {
         const rawStatus = String(data.status || '').toUpperCase();
         let normalizedStatus = 'pending';
 
-       // Nếu backend không trả status hoặc rỗng => giữ nguyên hoặc bỏ qua
+       // Nếu backend không trả status hoặc rỗng => coi như đơn mới tạo (pending)
 
 if (!rawStatus || rawStatus.trim() === '') {
-  normalizedStatus = 'canceled'; // fallback an toàn
+  normalizedStatus = 'pending';
 } else if (['PENDING_PAYMENT', 'PENDING'].includes(rawStatus)) {
   normalizedStatus = 'pending';
 } else if (['PAID', 'PROCESSING', 'CONFIRMED'].includes(rawStatus)) {
