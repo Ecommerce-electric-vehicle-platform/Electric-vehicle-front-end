@@ -17,18 +17,21 @@ export function Seller() {
     const [soldPostIds, setSoldPostIds] = useState([]); // Danh sách postId đã bán (từ đơn hàng COMPLETED)
     
     // Kiểm tra xem seller có đang xem chính profile của mình không
-    // Lấy sellerId từ nhiều nguồn để đảm bảo chính xác
-    // Lưu ý: sellerId có thể bằng buyerId vì seller được nâng cấp từ buyer
+    // QUAN TRỌNG: Chỉ hiển thị button seller khi user thực sự là seller
     const currentSellerIdFromStorage = localStorage.getItem("sellerId");
-    const currentBuyerIdFromStorage = localStorage.getItem("buyerId");
-    const currentSellerIdFromData = seller?.sellerId || seller?.id || seller?.buyerId;
+    const currentSellerIdFromData = seller?.sellerId || seller?.id;
+    const userRole = localStorage.getItem("userRole"); // "buyer" hoặc "seller"
     
-    // Ưu tiên: sellerId từ storage > sellerId từ data > buyerId từ storage
-    // (vì buyerId = sellerId khi seller được nâng cấp từ buyer)
-    const currentSellerId = currentSellerIdFromStorage || currentSellerIdFromData || currentBuyerIdFromStorage;
+    // Chỉ lấy sellerId từ storage hoặc data (KHÔNG dùng buyerId làm fallback)
+    // Vì buyer không nên thấy button seller ngay cả khi buyerId trùng với sellerId
+    const currentSellerId = currentSellerIdFromStorage || currentSellerIdFromData;
     
-    // So sánh sellerId từ URL với sellerId/buyerId hiện tại
-    const isViewingOwnProfile = currentSellerId && sellerId && (
+    // Kiểm tra user có phải seller không
+    const isCurrentUserSeller = userRole === "seller" || !!currentSellerIdFromStorage;
+    
+    // So sánh sellerId từ URL với sellerId hiện tại
+    // VÀ chỉ true khi user thực sự là seller
+    const isViewingOwnProfile = isCurrentUserSeller && currentSellerId && sellerId && (
         String(sellerId) === String(currentSellerId) || 
         Number(sellerId) === Number(currentSellerId) ||
         sellerId === currentSellerId
@@ -39,13 +42,14 @@ export function Seller() {
         console.log("[Seller Profile] Debug:", {
             sellerIdFromURL: sellerId,
             currentSellerIdFromStorage: currentSellerIdFromStorage,
-            currentBuyerIdFromStorage: currentBuyerIdFromStorage,
             currentSellerIdFromData: currentSellerIdFromData,
             currentSellerId: currentSellerId,
+            userRole: userRole,
+            isCurrentUserSeller: isCurrentUserSeller,
             isViewingOwnProfile: isViewingOwnProfile,
             sellerData: seller
         });
-    }, [sellerId, currentSellerIdFromStorage, currentBuyerIdFromStorage, currentSellerIdFromData, currentSellerId, isViewingOwnProfile, seller]);
+    }, [sellerId, currentSellerIdFromStorage, currentSellerIdFromData, currentSellerId, userRole, isCurrentUserSeller, isViewingOwnProfile, seller]);
 
     // Bước 1: Lấy sản phẩm của seller
     useEffect(() => {
