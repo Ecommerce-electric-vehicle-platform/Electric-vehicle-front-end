@@ -4,6 +4,8 @@ import "./auth.css";
 import authApi from "../../../api/authApi";
 import profileApi from "../../../api/profileApi";
 import { GoogleLogin } from "@react-oauth/google";
+import SignUpPolicyModal from "../../../components/SignUpPolicy/SignUpPolicyModal";
+
 
 // Helper function để convert backend role sang frontend role
 const mapRole = (backendRole) => {
@@ -30,6 +32,9 @@ export default function SignUp() {
   const [loadingMessage, setLoadingMessage] = useState("");
   const [validationTimeout, setValidationTimeout] = useState(null);
   const [focusedFields, setFocusedFields] = useState({});
+
+  // thêm phần này cho hiện policy
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -559,7 +564,7 @@ export default function SignUp() {
         status === 401
           ? "Token Google không hợp lệ hoặc đã hết hạn."
           : error.response?.data?.message ||
-            "Đăng nhập/Đăng ký Google thất bại. Vui lòng thử lại.";
+          "Đăng nhập/Đăng ký Google thất bại. Vui lòng thử lại.";
       setBackendError(message);
       // Clear authType nếu signup/login thất bại
       localStorage.removeItem("authType");
@@ -705,8 +710,18 @@ export default function SignUp() {
                   />
                   <span className="checkmark"></span>
                   <span className="label-text">
-                    Tôi đồng ý với <a href="#">Điều khoản & Chính sách</a>
+                    Tôi đồng ý với{" "}
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setShowPolicyModal(true);
+                      }}
+                    >
+                      Điều khoản & Chính sách
+                    </a>
                   </span>
+
                 </label>
                 {showAgreeError && (
                   <div className="agree-error">
@@ -815,6 +830,9 @@ export default function SignUp() {
               <div className="spinner"></div>
             </div>
           </div>
+        )}
+        {showPolicyModal && (
+          <SignUpPolicyModal onClose={() => setShowPolicyModal(false)} />
         )}
       </form>
     </div>
