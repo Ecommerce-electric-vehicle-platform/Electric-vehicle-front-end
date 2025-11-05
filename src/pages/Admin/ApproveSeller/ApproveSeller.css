@@ -90,3 +90,34 @@
     transform: rotate(360deg);
   }
 }
+
+/* Badge status "ĐANG CHỜ DUYỆT" - Force màu vàng với chữ trắng */
+/* Bỏ class bg-warning để tránh conflict với CoreUI, chỉ dùng class custom */
+/* QUAN TRỌNG: Bỏ background-image (linear-gradient) để background-color có hiệu lực */
+.status-pending-badge,
+.badge.status-pending-badge,
+span.badge.status-pending-badge,
+table td .badge.status-pending-badge,
+table td span.badge.status-pending-badge,
+.CTableBody td .badge.status-pending-badge,
+.CTableBody td span.badge.status-pending-badge,
+td .badge.status-pending-badge,
+td span.badge.status-pending-badge {
+  background-color: #f59e0b !important; /* Màu vàng (amber-500) */
+  background-image: none !important; /* Bỏ linear-gradient */
+  color: #ffffff !important; /* Chữ trắng */
+  border: none !important;
+  padding: 0.35em 0.65em !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
+  border-radius: 0.375rem !important;
+  display: inline-block !important;
+}
+
+.status-pending-badge:hover,
+.badge.status-pending-badge:hover,
+span.badge.status-pending-badge:hover,
+table td span.badge.status-pending-badge:hover {
+  background-color: #d97706 !important; /* Màu vàng đậm hơn khi hover */
+  color: #ffffff !important;
+}

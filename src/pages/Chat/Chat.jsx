@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import chatApi from "../../api/chatApi";
 import websocketService from "../../services/websocketService";
+import sellerApi from "../../api/sellerApi";
+import { fetchPostProductById } from "../../api/productApi";
 import "./Chat.css";
 
 export function Chat() {
@@ -87,6 +89,8 @@ export function Chat() {
     const [reportImages, setReportImages] = useState([]);
     const reportFileRef = useRef(null);
 
+    // Thông tin seller (để hiển thị trong chat header)
+    const [sellerInfo, setSellerInfo] = useState(null);
 
     const handleInsertQuickReply = (text) => {
         setMessage(text);
@@ -116,6 +120,28 @@ export function Chat() {
         return date.toLocaleDateString('vi-VN');
     };
 
+    // Lấy thông tin seller từ postId
+    const loadSellerInfo = async (postId) => {
+        if (!postId) {
+            setSellerInfo(null);
+            return;
+        }
+        
+        try {
+            const sellerData = await sellerApi.getSellerByProductId(postId);
+            if (sellerData?.data?.data) {
+                setSellerInfo(sellerData.data.data);
+            } else if (sellerData?.data) {
+                setSellerInfo(sellerData.data);
+            } else {
+                setSellerInfo(sellerData);
+            }
+        } catch (error) {
+            console.error("[Chat] Error loading seller info:", error);
+            setSellerInfo(null);
+        }
+    };
+
     // Load danh sách conversations từ BE
     const loadConversations = async () => {
         try {
@@ -138,9 +164,10 @@ export function Chat() {
             console.log("[Chat] Conversations extracted:", conversations);
             
             if (Array.isArray(conversations) && conversations.length > 0) {
-                const transformedChats = conversations.map(conv => {
+                // Transform conversations và fetch seller info cho mỗi conversation
+                const transformedChatsPromises = conversations.map(async (conv) => {
                     console.log("[Chat] Mapping conversation:", conv);
-                    return {
+                    const chatItem = {
                         id: conv.id || conv.conversationId,
                         name: conv.sellerName || conv.buyerName || conv.seller?.sellerName || conv.buyer?.username || "Người dùng",
                         avatar: conv.sellerAvatar || conv.buyerAvatar || conv.seller?.avatar || conv.buyer?.avatar || "/default-avatar.png",
@@ -151,12 +178,85 @@ export function Chat() {
                         role: userRole === 'buyer' ? 'seller' : 'buyer',
                         conversationId: conv.id || conv.conversationId,
                         postId: conv.postId,
+                        sellerInfo: null, // Sẽ được fill sau
+                        productInfo: null, // Thông tin sản phẩm để phân biệt conversations
                         // Lưu thêm raw data để debug
                         _raw: conv
                     };
+                    
+                    // Nếu có postId, fetch product info và seller info
+                    if (conv.postId) {
+                        // Fetch product info để hiển thị tên và hình ảnh sản phẩm
+                        try {
+                            const productData = await fetchPostProductById(conv.postId);
+                            if (productData) {
+                                chatItem.productInfo = {
+                                    title: productData.title || productData.name || "Sản phẩm",
+                                    image: productData.images?.[0] || productData.image || productData.imageUrl || null,
+                                    price: productData.price || null
+                                };
+                            }
+                        } catch (error) {
+                            console.error("[Chat] Error loading product info for conversation:", conv.id, error);
+                        }
+                        
+                        // Nếu là buyer và có postId, fetch seller info
+                        if (userRole === 'buyer') {
+                            try {
+                                const sellerData = await sellerApi.getSellerByProductId(conv.postId);
+                                if (sellerData?.data?.data) {
+                                    chatItem.sellerInfo = sellerData.data.data;
+                                    // Update name và avatar từ seller info
+                                    chatItem.name = sellerData.data.data.storeName || sellerData.data.data.sellerName || chatItem.name;
+                                    chatItem.avatar = sellerData.data.data.avatar || chatItem.avatar;
+                                } else if (sellerData?.data) {
+                                    chatItem.sellerInfo = sellerData.data;
+                                    chatItem.name = sellerData.data.storeName || sellerData.data.sellerName || chatItem.name;
+                                    chatItem.avatar = sellerData.data.avatar || chatItem.avatar;
+                                } else if (sellerData) {
+                                    chatItem.sellerInfo = sellerData;
+                                    chatItem.name = sellerData.storeName || sellerData.sellerName || chatItem.name;
+                                    chatItem.avatar = sellerData.avatar || chatItem.avatar;
+                                }
+                            } catch (error) {
+                                console.error("[Chat] Error loading seller info for conversation:", conv.id, error);
+                            }
+                        }
+                    }
+                    
+                    return chatItem;
                 });
-                console.log("[Chat] Transformed chats:", transformedChats);
-                setChatList(transformedChats);
+                
+                const transformedChats = await Promise.all(transformedChatsPromises);
+                console.log("[Chat] Transformed chats with seller info:", transformedChats);
+                
+                // Loại bỏ duplicate conversations dựa trên conversationId
+                // Nếu có nhiều conversations với cùng conversationId, chỉ giữ lại conversation đầu tiên
+                const uniqueChats = [];
+                const seenConversationIds = new Set();
+                
+                for (const chat of transformedChats) {
+                    const conversationId = chat.id || chat.conversationId;
+                    
+                    // Nếu có conversationId, check duplicate
+                    if (conversationId) {
+                        if (!seenConversationIds.has(conversationId)) {
+                            seenConversationIds.add(conversationId);
+                            uniqueChats.push(chat);
+                        } else {
+                            console.warn("[Chat] Duplicate conversation found, skipping:", conversationId);
+                        }
+                    } 
+                    // Nếu không có conversationId, vẫn add (có thể là conversation mới chưa có ID)
+                    else {
+                        uniqueChats.push(chat);
+                    }
+                }
+                
+                console.log("[Chat] Unique chats after deduplication:", uniqueChats);
+                console.log("[Chat] Total conversations before deduplication:", transformedChats.length);
+                console.log("[Chat] Total conversations after deduplication:", uniqueChats.length);
+                setChatList(uniqueChats);
             } else {
                 console.warn("[Chat] No conversations found or empty array");
                 // Keep mock data
@@ -172,7 +272,8 @@ export function Chat() {
         const role = localStorage.getItem('userRole') || 'buyer';
         setUserRole(role);
         
-        // Load conversations từ API
+        // Load conversations từ API chỉ khi component mount hoặc location.key thay đổi (tạo conversation mới)
+        // KHÔNG reload mỗi lần click vào chat
         loadConversations();
         
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -287,11 +388,29 @@ export function Chat() {
 
 
     const handleChatSelect = (chat) => {
+        // Chỉ set selectedChat nếu chat hợp lệ và có conversationId hoặc postId
+        if (!chat || (!chat.id && !chat.conversationId && !chat.postId)) {
+            console.warn("[Chat] Invalid chat selected:", chat);
+            return;
+        }
+        
+        console.log("[Chat] Selecting chat:", chat);
         setSelectedChat(chat);
+        
         // Đánh dấu tin nhắn đã đọc
         setChatList(prev => prev.map(c =>
-            c.id === chat.id ? { ...c, unread: 0 } : c
+            (c.id === chat.id || c.conversationId === chat.conversationId) ? { ...c, unread: 0 } : c
         ));
+        
+        // Nếu chat đã có sellerInfo, dùng luôn, không cần fetch lại
+        if (chat.sellerInfo) {
+            setSellerInfo(chat.sellerInfo);
+        } else if (userRole === 'buyer' && chat.postId) {
+            // Chỉ fetch nếu chưa có sellerInfo
+            loadSellerInfo(chat.postId);
+        } else {
+            setSellerInfo(null);
+        }
     };
 
     const handleSendMessage = async () => {
@@ -543,7 +662,7 @@ export function Chat() {
                             <Search size={16} className="search-icon" />
                             <input
                                 type="text"
-                                placeholder="Tìm kiếm cuộc trò chuyện..."
+                                placeholder=" Tìm kiếm cuộc trò chuyện..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="search-input"
@@ -589,6 +708,18 @@ export function Chat() {
                                             <h4 className="chat-name">{chat.name}</h4>
                                             <span className="chat-time">{chat.time}</span>
                                         </div>
+                                        {chat.productInfo && (
+                                            <div className="chat-product-info">
+                                                {chat.productInfo.image && (
+                                                    <img 
+                                                        src={chat.productInfo.image} 
+                                                        alt={chat.productInfo.title} 
+                                                        className="chat-product-image"
+                                                    />
+                                                )}
+                                                <span className="chat-product-title">{chat.productInfo.title}</span>
+                                            </div>
+                                        )}
                                         <div className="chat-last-message-row">
                                             <p className="chat-last-message">{chat.lastMessage}</p>
                                             {chat.unread > 0 && (
@@ -622,10 +753,33 @@ export function Chat() {
                                             {selectedChat.isOnline && <div className="online-indicator"></div>}
                                         </div>
                                         <div className="chat-header-details">
-                                            <h3>{selectedChat.name}</h3>
-                                            <p className="chat-status">
-                                                {selectedChat.isOnline ? 'Đang hoạt động' : 'Không hoạt động'}
-                                            </p>
+                                            <div className="chat-header-name-row">
+                                                <h3>
+                                                    {sellerInfo?.storeName || sellerInfo?.sellerName || selectedChat.name}
+                                                </h3>
+                                                {sellerInfo?.status === 'ACCEPTED' && (
+                                                    <span className="chat-status-verified">Đã xác thực</span>
+                                                )}
+                                            </div>
+                                            {selectedChat.productInfo && (
+                                                <div className="chat-header-product">
+                                                    {selectedChat.productInfo.image && (
+                                                        <img 
+                                                            src={selectedChat.productInfo.image} 
+                                                            alt={selectedChat.productInfo.title} 
+                                                            className="chat-header-product-image"
+                                                        />
+                                                    )}
+                                                    <span className="chat-header-product-title">{selectedChat.productInfo.title}</span>
+                                                </div>
+                                            )}
+                                            {sellerInfo?.status !== 'ACCEPTED' && (
+                                                <p className="chat-status">
+                                                    {sellerInfo?.status === 'PENDING' ? 'Đang chờ duyệt' :
+                                                     sellerInfo ? 'Người bán' : 
+                                                     selectedChat.isOnline ? 'Đang hoạt động' : 'Không hoạt động'}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="chat-header-actions">
@@ -639,7 +793,9 @@ export function Chat() {
                                                         <img src={selectedChat.avatar} alt={selectedChat.name} />
                                                     </div>
                                                     <div className="profile-info">
-                                                        <div className="profile-name">{selectedChat.name}</div>
+                                                        <div className="profile-name">
+                                                            {sellerInfo?.storeName || sellerInfo?.sellerName || selectedChat.name}
+                                                        </div>
                                                         <button className="view-page-btn" onClick={() => { window.location.href = `/seller/${selectedChat.id}`; }}>
                                                             <ExternalLink size={14} />
                                                             <span>Xem Trang</span>

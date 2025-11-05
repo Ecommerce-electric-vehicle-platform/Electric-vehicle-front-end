@@ -1,1 +1,51 @@
-/* Custom styles for ReviewPosts - Empty for now */
+/* Custom styles for ReviewPosts */
+
+/* Badge status - Force màu đúng với chữ trắng */
+/* QUAN TRỌNG: Bỏ background-image (linear-gradient) để background-color có hiệu lực */
+.status-pending-badge,
+.badge.status-pending-badge,
+span.badge.status-pending-badge,
+table td .badge.status-pending-badge,
+table td span.badge.status-pending-badge,
+.CTableBody td .badge.status-pending-badge,
+.CTableBody td span.badge.status-pending-badge,
+td .badge.status-pending-badge,
+td span.badge.status-pending-badge {
+  background-color: #f59e0b !important; /* Màu vàng (amber-500) */
+  background-image: none !important; /* Bỏ linear-gradient */
+  color: #ffffff !important; /* Chữ trắng */
+  border: none !important;
+  padding: 0.35em 0.65em !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
+  border-radius: 0.375rem !important;
+  display: inline-block !important;
+}
+
+.status-approved-badge,
+.badge.status-approved-badge,
+span.badge.status-approved-badge {
+  background-color: #22c55e !important; /* Màu xanh lá (success) */
+  background-image: none !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0.35em 0.65em !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
+  border-radius: 0.375rem !important;
+  display: inline-block !important;
+}
+
+.status-rejected-badge,
+.badge.status-rejected-badge,
+span.badge.status-rejected-badge {
+  background-color: #ef4444 !important; /* Màu đỏ (danger) */
+  background-image: none !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0.35em 0.65em !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
+  border-radius: 0.375rem !important;
+  display: inline-block !important;
+}

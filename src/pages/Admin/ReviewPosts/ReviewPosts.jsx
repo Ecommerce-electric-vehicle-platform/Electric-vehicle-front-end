@@ -164,9 +164,21 @@ export default function ReviewPosts() {
                         {post.price?.toLocaleString("vi-VN")} ₫
                       </CTableDataCell>
                       <CTableDataCell>
-                        <CBadge color="warning">
+                        <span 
+                          className="badge status-pending-badge"
+                          style={{
+                            backgroundColor: '#f59e0b',
+                            backgroundImage: 'none',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '0.35em 0.65em',
+                            fontSize: '0.875em',
+                            fontWeight: 600,
+                            borderRadius: '0.375rem'
+                          }}
+                        >
                           {mapStatusToVietnamese(post.verifiedDecisionStatus)}
-                        </CBadge>
+                        </span>
                       </CTableDataCell>
                       <CTableDataCell>
                         <div className="d-flex gap-2">
@@ -388,17 +400,31 @@ export default function ReviewPosts() {
                   <div className="col-md-6">
                     <div className="border-bottom pb-2">
                       <small className="text-muted d-block">Trạng thái duyệt</small>
-                      <CBadge
-                        color={
+                      <span 
+                        className={`badge ${
                           selectedPost.verifiedDecisionStatus === "APPROVED"
-                            ? "success"
+                            ? "status-approved-badge"
                             : selectedPost.verifiedDecisionStatus === "REJECTED"
-                            ? "danger"
-                            : "warning"
-                        }
+                            ? "status-rejected-badge"
+                            : "status-pending-badge"
+                        }`}
+                        style={{
+                          backgroundColor: selectedPost.verifiedDecisionStatus === "APPROVED"
+                            ? '#22c55e'
+                            : selectedPost.verifiedDecisionStatus === "REJECTED"
+                            ? '#ef4444'
+                            : '#f59e0b',
+                          backgroundImage: 'none',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '0.35em 0.65em',
+                          fontSize: '0.875em',
+                          fontWeight: 600,
+                          borderRadius: '0.375rem'
+                        }}
                       >
                         {mapStatusToVietnamese(selectedPost.verifiedDecisionStatus) || "N/A"}
-                      </CBadge>
+                      </span>
                     </div>
                   </div>
                   <div className="col-md-6">
