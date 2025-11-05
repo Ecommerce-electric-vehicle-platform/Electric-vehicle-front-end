@@ -523,13 +523,19 @@ function OrderList() {
     }, [orders.length]); // Chỉ chạy khi số lượng orders thay đổi
 
     // Helper function để kiểm tra đơn có bị hủy không (khớp với logic lọc)
+    // const isOrderCancelled = (order) => {
+    //     return order.status === 'cancelled' ||
+    //         order.status === 'canceled' ||
+    //         order.status === 'CANCELED' ||
+    //         (order.canceledAt || order._raw?.canceledAt) != null;
+    // };  
     const isOrderCancelled = (order) => {
-        return order.status === 'cancelled' ||
-            order.status === 'canceled' ||
-            order.status === 'CANCELED' ||
-            (order.canceledAt || order._raw?.canceledAt) != null;
-    };
+        // Lấy status và chuyển sang UPPER CASE để so sánh an toàn
+        const s = (order.status || '').toUpperCase();
 
+        // Đơn bị hủy nếu status là CANCELED, CANCELLED, FAILED, HOẶC có mốc thời gian hủy
+        return s === 'CANCELED' || s === 'CANCELLED' || s === 'FAILED' || (order.canceledAt || order._raw?.canceledAt) != null;
+    };
     // Lọc theo trạng thái + tìm kiếm
     const filteredOrders = orders
         .filter(order => {
@@ -584,12 +590,38 @@ function OrderList() {
     };
 
     // Khi user gửi hủy thành công
+    // const handleCancelOrderSuccess = async (orderId) => {
+    //     // cập nhật ngay trạng thái local để UI phản ứng tức thì
+    //     setOrders(prev =>
+    //         prev.map(o =>
+    //             String(o.id) === String(orderId)
+    //                 ? { ...o, status: 'canceled', canceledAt: new Date().toISOString() }
+    //                 : o
+    //         )
+    //     );
+
+    //     //  reload lại danh sách từ server
+    //     await loadOrders(true);
+
+    //     //  tự động chuyển sang tab “Đã hủy”
+    //     setFilter('canceled');
+    //     setSelectedCancelOrderId(null);
+    // };
+
+    // Khi user gửi hủy thành công @@@@@@@@@@@@@@@@@@
+    
     const handleCancelOrderSuccess = async (orderId) => {
         // cập nhật ngay trạng thái local để UI phản ứng tức thì
         setOrders(prev =>
             prev.map(o =>
                 String(o.id) === String(orderId)
-                    ? { ...o, status: 'canceled', canceledAt: new Date().toISOString() }
+                    // Cập nhật status thành 'canceled' (hoặc 'CANCELED') và set thời gian hủy
+                    ? {
+                        ...o,
+                        status: 'canceled', // Dùng format chuẩn FE
+                        rawStatus: 'CANCELED', // Giữ raw status đúng như BE
+                        canceledAt: new Date().toISOString()
+                    }
                     : o
             )
         );
@@ -598,7 +630,7 @@ function OrderList() {
         await loadOrders(true);
 
         //  tự động chuyển sang tab “Đã hủy”
-        setFilter('canceled');
+        setFilter('canceled'); // Dùng filter 'canceled' (đã thống nhất)
         setSelectedCancelOrderId(null);
     };
 
@@ -830,6 +862,8 @@ function OrderList() {
                         >
                             Đã hủy ({orders.filter(isOrderCancelled).length})
                         </button>
+
+
 
                     </div>
                 </div>
