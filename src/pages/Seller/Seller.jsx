@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "./Seller.css";
 import sellerApi from '../../api/sellerApi';
-import { Package, Plus, BarChart3, Star, MapPin, Calendar, CheckCircle, Clock, MessageCircle, Users, Heart } from "lucide-react";
+import { Package, Plus, BarChart3, Star, MapPin, Calendar, Clock, MessageCircle, Users, Heart, Shield } from "lucide-react";
 
 export function Seller() {
     const { id: sellerId } = useParams();
@@ -14,6 +14,7 @@ export function Seller() {
     const [productsLoading, setProductsLoading] = useState(false);
     const [productsError, setProductsError] = useState(null);
     const [postFilter, setPostFilter] = useState("displaying"); // displaying | sold
+    const [soldPostIds, setSoldPostIds] = useState([]); // Danh sách postId đã bán (từ đơn hàng COMPLETED)
     
     // Kiểm tra xem seller có đang xem chính profile của mình không
     // Lấy sellerId từ nhiều nguồn để đảm bảo chính xác
@@ -55,6 +56,16 @@ export function Seller() {
                 .then(items => {
                     if (!mounted) return;
                     const list = Array.isArray(items) ? items : [];
+                    // Debug: Log để kiểm tra dữ liệu ngày đăng
+                    if (list.length > 0) {
+                        console.log('[Seller] Sample product data:', {
+                            createdAt: list[0].createdAt,
+                            created_at: list[0].created_at,
+                            postDate: list[0].postDate,
+                            post_date: list[0].post_date,
+                            allKeys: Object.keys(list[0])
+                        });
+                    }
                     setProducts(list);
                     setProductsError(null);
                 })
@@ -71,7 +82,139 @@ export function Seller() {
         return () => { mounted = false; };
     }, [sellerId]);
 
-    // Bước 2: Khi có post đầu tiên: lấy info seller từ postId đó
+    // Bước 2: Lấy danh sách đơn hàng COMPLETED để xác định sản phẩm đã bán
+    // Theo DB: Chỉ COMPLETED được coi là "đã bán"
+    // Các trạng thái khác: CANCELED, CONFIRMED, DELIVERED, IN_TRANSIT, PAID, PENDING, PROCESSING, REFUNDED, RETURN_REQUESTED, SHIPPED, VERIFIED
+    useEffect(() => {
+        let mounted = true;
+        if (sellerId) {
+            // Chỉ lấy đơn hàng có status COMPLETED (trạng thái chính cho "đã bán")
+            sellerApi.getSellerOrders(0, 100, 'COMPLETED')
+                .then(response => {
+                    if (!mounted) return;
+                    
+                    console.log('[Seller] Raw API response for COMPLETED orders:', {
+                        fullResponse: response,
+                        responseData: response?.data,
+                        responseDataData: response?.data?.data,
+                        responseStructure: {
+                            hasData: !!response?.data,
+                            hasDataData: !!response?.data?.data,
+                            hasContent: !!response?.data?.data?.content,
+                            isArray: Array.isArray(response?.data?.data)
+                        }
+                    });
+                    
+                    // Lấy danh sách đơn hàng từ response - thử nhiều cách
+                    const orders = response?.data?.data?.content || 
+                                  response?.data?.data?.items ||
+                                  response?.data?.data?.list ||
+                                  response?.data?.data ||
+                                  response?.data?.content ||
+                                  response?.data?.items ||
+                                  response?.data ||
+                                  (Array.isArray(response?.data) ? response?.data : []);
+                    
+                    console.log('[Seller] Extracted orders from response:', {
+                        ordersCount: orders.length,
+                        orders: orders,
+                        allOrdersStatus: orders.map(o => ({
+                            id: o.id || o.orderId,
+                            status: o.status,
+                            postId: o.postId || o.postProductId,
+                            allKeys: Object.keys(o)
+                        }))
+                    });
+                    
+                    // Lọc lại để chỉ lấy đơn hàng có status COMPLETED (case-insensitive)
+                    // (vì API có thể trả về tất cả orders nếu không filter đúng)
+                    const completedOrders = orders.filter(o => {
+                        const status = String(o.status || '').toUpperCase();
+                        const isCompleted = status === 'COMPLETED';
+                        if (!isCompleted) {
+                            console.log('[Seller] Order filtered out (not COMPLETED):', {
+                                orderId: o.id || o.orderId,
+                                status: o.status,
+                                statusUpper: status
+                            });
+                        }
+                        return isCompleted;
+                    });
+                    
+                    console.log('[Seller] Filtered COMPLETED orders:', {
+                        completedCount: completedOrders.length,
+                        completedOrders: completedOrders.map(o => ({
+                            id: o.id || o.orderId,
+                            status: o.status,
+                            postId: o.postId || o.postProductId,
+                            allKeys: Object.keys(o)
+                        }))
+                    });
+                    
+                    // Lấy danh sách postId từ các đơn hàng đã completed
+                    const soldPostIdsSet = new Set();
+                    completedOrders.forEach(order => {
+                        // Thử nhiều field names để tìm postId
+                        const postId = order.postId || 
+                                     order.postProductId || 
+                                     order.post_product_id || 
+                                     order.postProductId || 
+                                     order.postProduct?.postId || 
+                                     order.postProduct?.id ||
+                                     order.productId ||
+                                     order.product_id;
+                        
+                        console.log('[Seller] Processing order for postId:', {
+                            orderId: order.id || order.orderId,
+                            status: order.status,
+                            foundPostId: postId,
+                            orderKeys: Object.keys(order),
+                            orderPostProduct: order.postProduct
+                        });
+                        
+                        if (postId) {
+                            soldPostIdsSet.add(String(postId));
+                        } else {
+                            console.warn('[Seller] Order has no postId:', {
+                                orderId: order.id || order.orderId,
+                                status: order.status,
+                                allKeys: Object.keys(order)
+                            });
+                        }
+                    });
+                    
+                    const soldPostIdsArray = Array.from(soldPostIdsSet);
+                    setSoldPostIds(soldPostIdsArray);
+                    
+                    console.log('[Seller] Final result - Loaded sold products from COMPLETED orders:', {
+                        totalOrdersFromAPI: orders.length,
+                        filteredCompletedOrders: completedOrders.length,
+                        soldPostIds: soldPostIdsArray,
+                        sampleOrder: completedOrders[0] ? {
+                            orderId: completedOrders[0].id || completedOrders[0].orderId,
+                            postId: completedOrders[0].postId || completedOrders[0].postProductId,
+                            status: completedOrders[0].status,
+                            allKeys: Object.keys(completedOrders[0]),
+                            fullOrder: completedOrders[0]
+                        } : null
+                    });
+                })
+                .catch(error => {
+                    if (!mounted) return;
+                    console.error('[Seller] Error loading COMPLETED orders:', error);
+                    console.error('[Seller] Error details:', {
+                        message: error?.message,
+                        response: error?.response?.data,
+                        status: error?.response?.status,
+                        statusText: error?.response?.statusText
+                    });
+                    setSoldPostIds([]);
+                });
+        }
+        return () => { mounted = false; };
+    }, [sellerId]);
+
+    // Bước 3: Khi có post đầu tiên: lấy info seller từ postId đó
     useEffect(() => {
         let mounted = true;
         if (Array.isArray(products) && products.length > 0) {
@@ -108,9 +251,20 @@ export function Seller() {
     // Filter theo loại sản phẩm (luôn hiển thị tất cả)
     const typeFiltered = products;
     
+    // Xác định sản phẩm đã bán: kiểm tra postId có trong danh sách đơn hàng COMPLETED
+    const getIsSold = (product) => {
+        const postId = String(product.postId || product.id || '');
+        // Kiểm tra trong danh sách đơn hàng COMPLETED
+        if (soldPostIds.includes(postId)) {
+            return true;
+        }
+        // Fallback: kiểm tra field isSold hoặc status (nếu backend set)
+        return product.isSold || product.is_sold || product.status?.toLowerCase() === 'sold';
+    };
+    
     // Filter theo trạng thái (đang hiển thị / đã bán)
     const filtered = typeFiltered.filter(p => {
-        const isSold = p.isSold || p.status?.toLowerCase() === 'sold';
+        const isSold = getIsSold(p);
         if (postFilter === 'sold') {
             return isSold;
         } else {
@@ -124,7 +278,7 @@ export function Seller() {
     
     // Đếm số lượng
     const displayingCount = typeFiltered.filter(p => {
-        const isSold = p.isSold || p.status?.toLowerCase() === 'sold';
+        const isSold = getIsSold(p);
         const isActive = p.active !== false && p.active !== 0;
         const isNotSold = !isSold;
         const isNotRejected = p.verifiedDecisionStatus !== "REJECTED";
@@ -132,23 +286,42 @@ export function Seller() {
     }).length;
     
     const soldCount = typeFiltered.filter(p => {
-        return p.isSold || p.status?.toLowerCase() === 'sold';
+        return getIsSold(p);
     }).length;
 
-    // Format date
+    // Format date - giống ProductCard trên homepage
     const formatDate = (dateString) => {
-        if (!dateString) return "";
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffTime = Math.abs(now - date);
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 0) return "Hôm nay";
-        if (diffDays === 1) return "Hôm qua";
-        if (diffDays < 7) return `${diffDays} ngày trước`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} tuần trước`;
-        if (diffDays < 365) return `${Math.floor(diffDays / 30)} tháng trước`;
-        return `${Math.floor(diffDays / 365)} năm trước`;
+        if (!dateString) {
+            // Fallback: sử dụng ngày hiện tại nếu không có date
+            return new Date().toLocaleDateString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                // Invalid date, fallback to current date
+                return new Date().toLocaleDateString('vi-VN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+            }
+            return date.toLocaleDateString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        } catch {
+            // Fallback to current date on error
+            return new Date().toLocaleDateString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
     };
 
     return (
@@ -170,7 +343,9 @@ export function Seller() {
                             <div className="profile-name-section">
                                 <h2 className="profile-name">{seller.storeName || seller.sellerName || 'Seller'}</h2>
                                 {seller.status && (
-                                    <span className="status-badge-large">{seller.status}</span>
+                                    <span className="status-badge-large">
+                                        {seller.status === 'ACCEPTED' ? 'Đã xác thực' : seller.status}
+                                    </span>
                                 )}
                             </div>
                             
@@ -214,17 +389,6 @@ export function Seller() {
                             <div className="profile-info-item">
                                 <Calendar size={16} />
                                 <span>Đã tham gia: <strong>6 năm 6 tháng</strong></span>
-                            </div>
-
-                            {/* Verification */}
-                            <div className="profile-info-item">
-                                <CheckCircle size={16} />
-                                <span>Đã xác thực:</span>
-                                <div className="verification-icons">
-                                    <CheckCircle size={14} fill="#10b981" color="#10b981" />
-                                    <CheckCircle size={14} fill="#10b981" color="#10b981" />
-                                    <CheckCircle size={14} fill="#10b981" color="#10b981" />
-                                </div>
                             </div>
 
                             {/* Address */}
@@ -290,14 +454,40 @@ export function Seller() {
                     ) : (
                         <div className="product-grid">
                             {filtered && filtered.length > 0 ? filtered.map(p => {
-                                const isSold = p.isSold || p.status?.toLowerCase() === 'sold';
+                                const isSold = getIsSold(p);
                                 const isVerified = p.verifiedDecisionStatus === 'APPROVED';
                                 
-                                // Ưu tiên: thumbnail > image > imageUrls[0] > fallback
-                                let imageUrl = p.thumbnail || p.image || (Array.isArray(p.imageUrls) && p.imageUrls.length > 0 ? p.imageUrls[0] : null);
+                                // Ưu tiên: images (mảng) > image > imageUrls (mảng) > thumbnail > fallback
+                                // Giống logic trong ProductDetail.jsx
+                                let imageUrl = null;
+                                
+                                // Kiểm tra images (mảng) - có thể là mảng string hoặc mảng object
+                                if (Array.isArray(p.images) && p.images.length > 0) {
+                                    const firstImage = p.images[0];
+                                    if (typeof firstImage === 'string') {
+                                        imageUrl = firstImage;
+                                    } else if (typeof firstImage === 'object' && firstImage !== null) {
+                                        imageUrl = firstImage.imgUrl || firstImage.url || firstImage.image || null;
+                                    }
+                                }
+                                
+                                // Fallback sang image (string)
+                                if (!imageUrl && p.image && typeof p.image === 'string') {
+                                    imageUrl = p.image;
+                                }
+                                
+                                // Fallback sang imageUrls (mảng)
+                                if (!imageUrl && Array.isArray(p.imageUrls) && p.imageUrls.length > 0) {
+                                    imageUrl = p.imageUrls[0];
+                                }
+                                
+                                // Fallback sang thumbnail
+                                if (!imageUrl && p.thumbnail && typeof p.thumbnail === 'string') {
+                                    imageUrl = p.thumbnail;
+                                }
                                 
                                 // Nếu không có ảnh, dùng placeholder đẹp hơn
-                                const hasImage = imageUrl && imageUrl !== "/default-avatar.png" && !imageUrl.includes("default");
+                                const hasImage = imageUrl && imageUrl.trim() !== "" && imageUrl !== "/default-avatar.png" && !imageUrl.includes("default");
                                 
                                 return (
                                     <a 
@@ -324,6 +514,13 @@ export function Seller() {
                                                     </svg>
                                                     <span>Chưa có ảnh</span>
                                                 </div>
+                                                {/* Badge "Đã xác minh" - góc trên bên trái, đồng bộ với homepage */}
+                                                {isVerified && (
+                                                    <div className="verified-badge">
+                                                        <Shield size={12} />
+                                                        <span>Đã xác minh</span>
+                                                    </div>
+                                                )}
                                                 {isSold && <div className="sold-overlay">
                                                     <span className="sold-badge">Đã bán</span>
                                                 </div>}
@@ -331,14 +528,6 @@ export function Seller() {
                                                     <Heart size={18} fill="transparent" stroke="#fff" />
                                                 </button>
                                             </div>
-                                            {isVerified && (
-                                                <div className="verified-badge">
-                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M8 0L10.1632 5.52786L16 6.09017L12 10.1632L12.9443 16L8 13.5279L3.05573 16L4 10.1632L0 6.09017L5.83679 5.52786L8 0Z" fill="#10b981"/>
-                                                    </svg>
-                                                    <span>Đã xác minh</span>
-                                                </div>
-                                            )}
                                         </div>
                                         <div className="product-card-body">
                                             <div className="title" title={p.title}>{p.title}</div>
@@ -351,7 +540,7 @@ export function Seller() {
                                             <div className="product-meta-footer">
                                                 <div className="post-time-location">
                                                     <Clock size={12} />
-                                                    <span>{formatDate(p.createdAt || p.postDate)}</span>
+                                                    <span>{formatDate(p.createdAt || p.created_at || p.postDate || p.post_date || p.dateCreated || p.date_created || p.updatedAt || p.updated_at)}</span>
                                                     {p.location && (
                                                         <>
                                                             <span className="separator">-</span>
