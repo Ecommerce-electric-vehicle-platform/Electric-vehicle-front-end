@@ -338,9 +338,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.35);
   z-index: 999;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: backdrop-filter 0.3s ease, background 0.3s ease;
+  /* Blur nhẹ và overlay sáng hơn */
+  will-change: backdrop-filter, background;
 }
 
 .hamburger-sidebar {
@@ -419,6 +423,35 @@
 /* Ngăn scroll khi menu mở */
 body.hamburger-menu-open {
   overflow: hidden;
+  /* Thêm blur cho toàn bộ body khi hamburger menu mở */
+  position: relative;
+}
+
+/* Đảm bảo overlay và sidebar không bị blur - backdrop-filter sẽ blur mọi thứ phía sau */
+body.hamburger-menu-open .hamburger-overlay,
+body.hamburger-menu-open .hamburger-sidebar {
+  filter: none !important;
+  pointer-events: auto;
+}
+
+/* Disable pointer events cho toàn bộ trang khi menu mở (trừ overlay và sidebar) */
+/* Backdrop-filter của overlay sẽ tự động blur mọi thứ phía sau, kể cả header */
+body.hamburger-menu-open main,
+body.hamburger-menu-open section,
+body.hamburger-menu-open .vehicle-showcase-section,
+body.hamburger-menu-open .products-section,
+body.hamburger-menu-open article,
+body.hamburger-menu-open footer,
+body.hamburger-menu-open .navbar {
+  pointer-events: none;
+  /* Không dùng filter blur riêng, để backdrop-filter của overlay xử lý */
+}
+
+/* Tắt backdrop-filter của navbar khi menu mở để blur đồng nhất từ overlay */
+body.hamburger-menu-open .navbar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
 }
 
 /* Responsive Design */

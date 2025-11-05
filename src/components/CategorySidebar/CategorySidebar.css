@@ -219,6 +219,11 @@
     font-weight: 500;
     color: #059669;
     transition: all 0.3s ease;
+    cursor: default;
+}
+
+.brand-tag.clickable,
+.type-tag.clickable {
     cursor: pointer;
 }
 
@@ -227,6 +232,28 @@
     background: rgba(0, 255, 128, 0.2);
     border-color: rgba(0, 255, 128, 0.4);
     transform: translateY(-1px);
+}
+
+.brand-tag.clickable:hover,
+.type-tag.clickable:hover {
+    background: rgba(0, 255, 128, 0.25);
+    border-color: rgba(0, 255, 128, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 255, 128, 0.2);
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
 }
 
 .category-footer {

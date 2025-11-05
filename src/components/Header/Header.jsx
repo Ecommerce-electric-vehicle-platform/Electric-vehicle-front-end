@@ -44,7 +44,7 @@ export function Header() {
     const checkAuthAndRole = () => {
       const token = localStorage.getItem("token");
       const authType = localStorage.getItem("authType");
-      
+
       // ✅ QUAN TRỌNG: Nếu authType là "admin", KHÔNG hiển thị user info
       // Header user chỉ hiển thị khi user đăng nhập, không phải admin
       if (authType === "admin") {
@@ -91,7 +91,7 @@ export function Header() {
 
   // ========== LOAD NOTIFICATIONS (Giữ nguyên) ==========
   useEffect(() => {
-     if (!isAuthenticated) {
+    if (!isAuthenticated) {
       setNotificationCount(0);
       return;
     }
@@ -99,7 +99,7 @@ export function Header() {
 
     const loadNotificationCount = async () => {
       try {
-const response = await notificationApi.getUnreadCount();
+        const response = await notificationApi.getUnreadCount();
         setNotificationCount(response?.data?.unreadCount || 0);
       } catch {
         console.warn("Cannot load notification count");
@@ -112,7 +112,7 @@ const response = await notificationApi.getUnreadCount();
 
   // ========== SUBSCRIBE REALTIME NOTIFICATION (Giữ nguyên) ==========
   useEffect(() => {
-     if (!isAuthenticated) return;
+    if (!isAuthenticated) return;
 
 
     notificationService.init();
@@ -151,7 +151,7 @@ const response = await notificationApi.getUnreadCount();
   // ========== LOGOUT (ĐÃ SỬA ĐỂ XÓA ĐÚNG KEY - CHỈ XÓA USER DATA) ==========
   const handleLogout = () => {
     console.log("User logging out...");
-    
+
     // ✅ CHỈ xóa user-specific keys, KHÔNG xóa adminProfile
     // Vì user logout không liên quan đến admin
     [
@@ -209,7 +209,7 @@ const response = await notificationApi.getUnreadCount();
   };
   const handleSmartNavigation = (sectionId) => {
     if (location.pathname === "/") scrollToSection(sectionId);
-else navigate(`/#${sectionId}`);
+    else navigate(`/#${sectionId}`);
   };
 
 
@@ -255,7 +255,7 @@ else navigate(`/#${sectionId}`);
 
   // ========== ICON HANDLERS (Giữ nguyên) ==========
   const handleIconClick = (type) => {
-     if (!isAuthenticated) {
+    if (!isAuthenticated) {
       navigate("/signin");
       return;
     }
@@ -281,7 +281,7 @@ else navigate(`/#${sectionId}`);
 
 
   const handleNotificationPopupClick = (notification) => {
-     setNotificationPopups((prev) =>
+    setNotificationPopups((prev) =>
       prev.filter((n) => n.notificationId !== notification.notificationId)
     );
 
@@ -299,7 +299,7 @@ else navigate(`/#${sectionId}`);
 
 
   const handleNotificationPopupClose = (notificationId) => {
-     setNotificationPopups((prev) =>
+    setNotificationPopups((prev) =>
       prev.filter((n) => n.notificationId !== notificationId)
     );
   };
@@ -317,7 +317,7 @@ else navigate(`/#${sectionId}`);
             aria-label="Mở menu danh mục"
           >
             {hamburgerMenuOpen ? <X /> : <Menu />}
-</button>
+          </button>
 
 
           {/* Logo */}
@@ -408,9 +408,9 @@ else navigate(`/#${sectionId}`);
 
                   {showNotificationDropdown && (
                     <NotificationList
-                        isOpen={showNotificationDropdown}
-onClose={() => setShowNotificationDropdown(false)}
-                        onNotificationClick={handleNotificationPopupClick} // Reuse handler
+                      isOpen={showNotificationDropdown}
+                      onClose={() => setShowNotificationDropdown(false)}
+                      onNotificationClick={handleNotificationPopupClick} // Reuse handler
                     />
                   )}
                 </div>
@@ -459,7 +459,13 @@ onClose={() => setShowNotificationDropdown(false)}
       {hamburgerMenuOpen && (
         <div className="hamburger-overlay" onClick={closeHamburgerMenu}></div>
       )}
-      <div className={`hamburger-sidebar ${hamburgerMenuOpen ? "open" : ""}`}>
+      <div
+        className={`hamburger-sidebar ${hamburgerMenuOpen ? "open" : ""}`}
+        onClick={(e) => {
+          // Ngăn click trong sidebar đóng sidebar
+          e.stopPropagation();
+        }}
+      >
         <div className="hamburger-header">
           <h3>Danh mục sản phẩm</h3>
           <button className="close-btn" onClick={closeHamburgerMenu}>
@@ -467,7 +473,10 @@ onClose={() => setShowNotificationDropdown(false)}
           </button>
         </div>
         <div className="hamburger-content">
-          <CategorySidebar />
+          <CategorySidebar
+            onClose={closeHamburgerMenu}
+            isOpen={hamburgerMenuOpen}
+          />
         </div>
       </div>
 
