@@ -67,157 +67,100 @@ export const placeOrder = async (orderData) => {
 // GET /api/v1/order/{orderId}
 // Response: { success: true, message: "string", data: { id, orderCode, shippingAddress, phoneNumber, price, shippingFee, status, createdAt, updatedAt, canceledAt, cancelReason }, error: {} }
 export const getOrderDetails = async (orderId) => {
-    try {
-        if (!orderId) {
-            throw new Error('Order ID is required');
-        }
+  try {
+    const res = await axiosInstance.get(`/api/v1/order/${orderId}`);
+    const raw = res.data?.data;
 
-        const response = await axiosInstance.get(`/api/v1/order/${orderId}`);
-        const raw = response?.data ?? {};
-
-        // Extract data from response
-        const data = raw?.data ?? raw;
-
-        if (!data || (raw?.success === false)) {
-            throw new Error(raw?.message || 'Failed to fetch order details');
-        }
-
-        // Normalize status from backend to frontend format
-        // Backend status: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
-        const rawStatus = String(data.status || '').toUpperCase();
-        let normalizedStatus = 'pending';
-
-       // Nếu backend không trả status hoặc rỗng => coi như đơn mới tạo (pending)
-
-if (!rawStatus || rawStatus.trim() === '') {
-  normalizedStatus = 'pending';
-} else if (['PENDING_PAYMENT', 'PENDING'].includes(rawStatus)) {
-  normalizedStatus = 'pending';
-} else if (['PAID', 'PROCESSING', 'CONFIRMED'].includes(rawStatus)) {
-  normalizedStatus = 'confirmed';
-} else if (['SHIPPED', 'DELIVERING'].includes(rawStatus)) {
-  normalizedStatus = 'shipping';
-} else if (['DELIVERED', 'COMPLETED', 'SUCCESS'].includes(rawStatus)) {
-  normalizedStatus = 'delivered';
-} else if (['CANCELLED', 'CANCELED', 'FAILED'].includes(rawStatus)) {
-  normalizedStatus = 'canceled';
-}
-
-        // Normalize price fields (support nested structures from BE)
-        const price = Number(
-            data.price ??
-            data.productPrice ??
-            data.product_price ??
-            data.product?.price ??
-            data.order?.productPrice ??
-            data.order?.product_price ??
-            data.order?.price ??
-            0
-        );
-
-        // Prefer service_fee consistently across FE/BE to match placement time
-        const serviceFeePreferred = Number(
-            data.service_fee ??
-            data.order?.service_fee ??
-            data.breakdown?.service_fee ??
-            data.shipping?.service_fee ??
-            0
-        );
-
-        const shippingFee = serviceFeePreferred > 0 ? serviceFeePreferred : Number(
-            data.shippingFee ??
-            data.shipping_fee ??
-            data.order?.shippingFee ??
-            data.order?.shipping_fee ??
-            data.fee ??
-            0
-        );
-
-        const finalPrice = Number(
-            data.finalPrice ??
-            data.final_price ??
-            data.totalPrice ??
-            data.total_price ??
-            data.order?.finalPrice ??
-            data.order?.final_price ??
-            data.order?.totalPrice ??
-            data.order?.total_price ??
-            (price + shippingFee)
-        );
-
-        // Normalize timestamps
-        const createdAt = data.createdAt || data.created_at || data.order?.createdAt || data.order?.created_at || null;
-        const updatedAt = data.updatedAt || data.updated_at || data.order?.updatedAt || data.order?.updated_at || null;
-        const canceledAt = data.canceledAt || data.canceled_at || data.order?.canceledAt || data.order?.canceled_at || null;
-        const cancelReason = data.cancelReason || data.cancel_reason || data.order?.cancelReason || data.order?.cancel_reason || null;
-
-        // Build normalized response
-        const normalized = {
-            id: data.id ?? data.order?.id ?? orderId,
-            orderCode: data.orderCode || data.order_code || data.order?.orderCode || data.order?.order_code || String(orderId),
-            shippingAddress: data.shippingAddress || data.shipping_address || data.order?.shippingAddress || data.order?.shipping_address || '',
-            phoneNumber: data.phoneNumber || data.phone_number || data.order?.phoneNumber || data.order?.phone_number || '',
-            price: price,
-            shippingFee: shippingFee,
-            finalPrice: finalPrice,
-            status: normalizedStatus,
-            rawStatus: rawStatus,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            canceledAt: canceledAt,
-            cancelReason: cancelReason,
-            _raw: data // Keep raw data for reference
-        };
-
-        console.log('[orderApi] getOrderDetails - Normalized response:', {
-            orderId: orderId,
-            raw: data,
-            normalized: normalized
-        });
-
-        return {
-            success: raw?.success !== false,
-            message: raw?.message || '',
-            data: normalized,
-            error: raw?.error || null
-        };
-    } catch (error) {
-        // Xử lý lỗi 404 - đơn hàng không tồn tại
-        if (error?.response?.status === 404) {
-            // Silent - không log vì đây có thể là trường hợp bình thường
-            return {
-                success: false,
-                message: 'Order not found',
-                data: null,
-                error: 'NOT_FOUND'
-            };
-        }
-
-        // Xử lý lỗi 5xx - server error
-        if (error?.response?.status >= 500) {
-            // Chỉ log debug, không log error vì đây có thể là trường hợp bình thường
-            // (đơn hàng có thể đã bị xóa hoặc không tồn tại trong hệ thống)
-            console.debug(`[orderApi] Server error when fetching order details for order ${orderId}:`, error?.response?.status);
-            return {
-                success: false,
-                message: error?.response?.data?.message || 'Internal Server Error',
-                data: null,
-                error: 'SERVER_ERROR'
-            };
-        }
-
-        // Log error cho các lỗi khác (400, 401, 403, etc.)
-        console.error(`[orderApi] Error fetching order details for order ${orderId}:`, error);
-
-        // Return structured error response
-        return {
-            success: false,
-            message: error?.response?.data?.message || error?.message || 'Failed to fetch order details',
-            data: null,
-            error: error?.response?.data?.error || error?.message || 'UNKNOWN_ERROR'
-        };
+    if (!raw) {
+      return { success: false, data: null };
     }
+
+    // 1 Xác định rawStatus & backendStatus
+    let rawStatus = '';
+    let backendStatus = undefined;
+
+    if (raw?.status) {
+      rawStatus = String(raw.status).trim().toUpperCase();
+      backendStatus = raw.status;
+    } else if (raw?.order?.status) {
+      rawStatus = String(raw.order.status).trim().toUpperCase();
+      backendStatus = raw.order.status;
+    } else if (raw?.shippingStatus) {
+      rawStatus = String(raw.shippingStatus).trim().toUpperCase();
+      backendStatus = raw.shippingStatus;   // CÁI NÀY LỖI ESLINT LÀ DO TUI COMMENT CÁI SỐ 3 THUI, KHUM SAO NHA
+    }
+
+    // 2 Map sang FE status
+    let status;
+    switch (rawStatus) {
+      case 'CANCELED':
+      case 'CANCELLED':
+      case 'FAILED':
+        status = 'canceled';
+        break;
+      case 'DELIVERED':
+      case 'COMPLETED':
+      case 'SUCCESS':
+        status = 'delivered';
+        break;
+      case 'SHIPPED':
+      case 'DELIVERING':
+        status = 'shipping';
+        break;
+      case 'PAID':
+      case 'PROCESSING':
+      case 'CONFIRMED':
+        case 'VERIFIED':  
+        status = 'confirmed';
+        break;
+      case 'PENDING':
+      case 'PENDING_PAYMENT':
+      default:
+        status = 'pending';
+    }
+
+    // 3 Log mapping 
+    //SAU CÓ MUỐN CHECK THÌ MỞ COMMENT ĐỄ BIẾT STATUS SET LẠI CHƯA KHOK
+    // console.log(`[TEST orderApi] getOrderDetails - Debug status mapping for order ${orderId}:`, {
+    //   backendStatus,
+    //   mappedStatus: status,
+    //   rawStatus,
+    // });
+
+    // 4 Build normalized sau khi có status
+    const normalized = {
+      id: raw.id,
+      orderCode: raw.orderCode,
+      status, //  FE status
+      rawStatus, //  backend status
+      price: raw.price || 0,
+      shippingFee: raw.shippingFee || 0,
+      finalPrice: (raw.price || 0) + (raw.shippingFee || 0),
+      shippingAddress: raw.shippingAddress || '',
+      phoneNumber: raw.phoneNumber || '',
+      canceledAt: raw.canceledAt || null,
+      cancelReason: raw.cancelOrderReasonResponse?.cancelOrderReasonName || null,
+      createdAt: raw.createdAt || null,
+      updatedAt: raw.updatedAt || null,
+      _raw: raw
+    };
+
+    // 5 Log kết quả chuẩn hóa
+    // console.log('[orderApi] getOrderDetails - Normalized response:', {
+    //   orderId,
+    //   raw,
+    //   normalized
+    // });
+
+    return { success: true, data: normalized };
+
+  } catch (error) {
+    console.error(`[orderApi] getOrderDetails error for order ${orderId}:`, error);
+    return { success: false, data: null };
+  }
 };
+
+
 
 // Get user's orders
 export const getUserOrders = async (page = 1, limit = 10) => {
@@ -240,83 +183,69 @@ export const getUserOrders = async (page = 1, limit = 10) => {
 
 
 export const getOrderHistory = async ({ page = 1, size = 10 } = {}) => {
-    const pageIndex = Math.max(0, Number(page) - 1);
-    const safeSize = Math.max(1, Number(size) || 10);
+  const pageIndex = Math.max(0, Number(page) - 1);
+  const safeSize = Math.max(1, Number(size) || 10);
+
+  try {
+    const res = await axiosInstance.get('/api/v1/order/history', {
+      params: { page: pageIndex, size: safeSize }
+    });
+    const raw = res?.data ?? {};
+    const data = raw?.data ?? raw;
+
+    // 🧩 Fix: thêm orderHistoryResponses vào danh sách field có thể đọc
+    const list =
+      data?.orderHistoryResponses ||
+      data?.orderResponses ||
+      data?.orders ||
+      data?.content ||
+      data?.items ||
+      (Array.isArray(data) ? data : []);
     
-    try {
-        const res = await axiosInstance.get('/api/v1/order/history', {
-            params: { page: pageIndex, size: safeSize }
-        });
-        const raw = res?.data ?? {};
-        const data = raw?.data ?? raw;
-      
-        const list =
-            data?.orderResponses ||
-            data?.orders ||
-            data?.content ||
-            data?.items ||
-            (Array.isArray(data) ? data : []);
-        const items = Array.isArray(list) ? list : [];
-        const meta = data?.meta || raw?.meta || null;
+    const items = Array.isArray(list) ? list : [];
+    const meta = data?.meta || raw?.meta || null;
 
-        // Log để debug giá từ backend
-        if (items.length > 0) {
-            console.log('[orderApi] getOrderHistory - Raw response sample:', {
-                firstItem: items[0],
-                priceFields: {
-                    price: items[0]?.price,
-                    productPrice: items[0]?.productPrice,
-                    shippingFee: items[0]?.shippingFee,
-                    finalPrice: items[0]?.finalPrice,
-                    totalPrice: items[0]?.totalPrice
-                }
-            });
-        }
+    console.log("[orderApi] getOrderHistory - Raw response sample:", {
+      totalItems: items.length,
+      firstItem: items[0]
+    });
 
-        const normalizedItems = items.map(normalizeOrderHistoryItem);
+    // Nếu phần tử có cấu trúc { orderResponse, postProduct }, 
+    // ta normalize đúng phần orderResponse
+    const normalizedItems = items.map((item) =>
+      normalizeOrderHistoryItem(item.orderResponse || item)
+    );
 
-        // Log sau khi normalize để so sánh
-        if (normalizedItems.length > 0) {
-            console.log('[orderApi] getOrderHistory - Normalized sample:', {
-                firstItem: normalizedItems[0],
-                priceComparison: {
-                    raw_price: items[0]?.price,
-                    normalized_price: normalizedItems[0]?.price,
-                    raw_shippingFee: items[0]?.shippingFee,
-                    normalized_shippingFee: normalizedItems[0]?.shippingFee,
-                    raw_finalPrice: items[0]?.finalPrice || (items[0]?.price + items[0]?.shippingFee),
-                    normalized_finalPrice: normalizedItems[0]?.finalPrice
-                }
-            });
-        }
-
-        return {
-            items: normalizedItems,
-            meta: meta, // Trả về meta để có thể dùng pagination
-            success: raw?.success !== false
-        };
-    } catch {
-        // Retry with minimal valid params
-        const res = await axiosInstance.get('/api/v1/order/history', {
-            params: { page: 0, size: safeSize }
-        });
-        const raw = res?.data ?? {};
-        const data = raw?.data ?? raw;
-        const list =
-            data?.orderResponses ||
-            data?.orders ||
-            data?.content ||
-            data?.items ||
-            (Array.isArray(data) ? data : []);
-        const items = Array.isArray(list) ? list : [];
-        const meta = data?.meta || raw?.meta || null;
-        return {
-            items: items.map(normalizeOrderHistoryItem),
-            meta: meta,
-            success: raw?.success !== false
-        };
-    }
+    return {
+      items: normalizedItems,
+      meta: meta,
+      success: raw?.success !== false
+    };
+  } catch {
+    const res = await axiosInstance.get('/api/v1/order/history', {
+      params: { page: 0, size: safeSize }
+    });
+    const raw = res?.data ?? {};
+    const data = raw?.data ?? raw;
+    const list =
+      data?.orderHistoryResponses ||
+      data?.orderResponses ||
+      data?.orders ||
+      data?.content ||
+      data?.items ||
+      (Array.isArray(data) ? data : []);
+    const items = Array.isArray(list) ? list : [];
+    const meta = data?.meta || raw?.meta || null;
+    return {
+      items: items.map((item) =>
+        normalizeOrderHistoryItem(item.orderResponse || item)
+      ),
+      meta: meta,
+      success: raw?.success !== false
+    };
+  }
 };
+
 
 // Chuẩn hóa 1 item từ BE → UI OrderList.jsx
 // Response structure từ backend:
@@ -334,13 +263,48 @@ function normalizeOrderHistoryItem(item) {
 
     // Map status từ BE sang UI filter keys
     // Backend có: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
-    const rawStatus = String(item.status || '').toUpperCase();
-    let status = 'pending';
-    if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') status = 'pending';
-    else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') status = 'confirmed';
-    else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') status = 'shipping';
-    else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') status = 'delivered';
-    else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'canceled';
+    // const rawStatus = String(item.status || '').toUpperCase();
+    // let status = 'pending';
+    // if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') status = 'pending';
+    // else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') status = 'confirmed';
+    // else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') status = 'shipping';
+    // else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') status = 'delivered';
+    // else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'canceled';
+
+    //  Normalize status cực kỳ chặt chẽ
+const rawStatus = String(item.status || '').trim().toUpperCase();
+let status;
+
+switch (rawStatus) {
+  case 'PENDING_PAYMENT':
+  case 'PENDING':
+    status = 'pending';
+    break;
+  case 'PAID':
+  case 'PROCESSING':
+  case 'CONFIRMED':
+    status = 'confirmed';
+    break;
+  case 'SHIPPED':
+  case 'DELIVERING':
+    status = 'shipping';
+    break;
+  case 'DELIVERED':
+  case 'COMPLETED':
+  case 'SUCCESS':
+    status = 'delivered';
+    break;
+  case 'CANCELLED':
+  case 'CANCELED':
+  case 'FAILED':
+    status = 'canceled';
+    break;
+  default:
+    //  Nếu không khớp bất kỳ case nào, giữ nguyên rawStatus (đỡ bị reset thành pending)
+    status = rawStatus || 'pending';
+}
+
+
 
     // QUAN TRỌNG: Theo thông tin từ Backend:
     // - Backend xử lý: 'price' = giá sản phẩm riêng (KHÔNG bao gồm shippingFee)
@@ -633,17 +597,22 @@ export const getCancelReasons = async () => {
 
 // Cancel an order
 // POST /api/v1/order/cancel/{orderId}
-export const cancelOrder = async (orderId, cancelData = {}) => {
-    if (!orderId) throw new Error('orderId is required to cancel order');
-
-    try {
-        const response = await axiosInstance.post(`/api/v1/order/cancel/${orderId}`, cancelData);
-        return response.data;
-    } catch (error) {
-        console.error(`Error cancelling order ${orderId}:`, error);
-        throw error;
-    }
+export const cancelOrder = async (orderId, payload) => {
+  try {
+    const res = await axiosInstance.post(`/api/v1/order/cancel/${orderId}`, payload);
+    return res.data; // chỉ trả phần data mà backend gửi ra
+  } catch (error) {
+    console.error('[API Error]', error);
+    return {
+      success: false,
+      message:
+        error?.response?.data?.message ||
+        error.message ||
+        "Không thể gửi yêu cầu hủy đơn.",
+    };
+  }
 };
+
 
 
     // thêm cái này để lấy phương thức thanh toán 
