@@ -87,17 +87,21 @@ export const getOrderDetails = async (orderId) => {
         const rawStatus = String(data.status || '').toUpperCase();
         let normalizedStatus = 'pending';
 
-        if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') {
-            normalizedStatus = 'pending';
-        } else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') {
-            normalizedStatus = 'confirmed';
-        } else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') {
-            normalizedStatus = 'shipping';
-        } else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') {
-            normalizedStatus = 'delivered';
-        } else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') {
-            normalizedStatus = 'canceled';  // CHỈNH ĐÂY LUN
-        }
+       // Nếu backend không trả status hoặc rỗng => giữ nguyên hoặc bỏ qua
+
+if (!rawStatus || rawStatus.trim() === '') {
+  normalizedStatus = 'canceled'; // fallback an toàn
+} else if (['PENDING_PAYMENT', 'PENDING'].includes(rawStatus)) {
+  normalizedStatus = 'pending';
+} else if (['PAID', 'PROCESSING', 'CONFIRMED'].includes(rawStatus)) {
+  normalizedStatus = 'confirmed';
+} else if (['SHIPPED', 'DELIVERING'].includes(rawStatus)) {
+  normalizedStatus = 'shipping';
+} else if (['DELIVERED', 'COMPLETED', 'SUCCESS'].includes(rawStatus)) {
+  normalizedStatus = 'delivered';
+} else if (['CANCELLED', 'CANCELED', 'FAILED'].includes(rawStatus)) {
+  normalizedStatus = 'canceled';
+}
 
         // Normalize price fields (support nested structures from BE)
         const price = Number(
@@ -233,15 +237,19 @@ export const getUserOrders = async (page = 1, limit = 10) => {
 // Order history for current user
 // GET /api/v1/order/history
 // Response: { success: true, data: { orderResponses: [...], meta: {...} } }
+
+
 export const getOrderHistory = async ({ page = 1, size = 10 } = {}) => {
     const pageIndex = Math.max(0, Number(page) - 1);
     const safeSize = Math.max(1, Number(size) || 10);
+    
     try {
         const res = await axiosInstance.get('/api/v1/order/history', {
             params: { page: pageIndex, size: safeSize }
         });
         const raw = res?.data ?? {};
         const data = raw?.data ?? raw;
+      
         const list =
             data?.orderResponses ||
             data?.orders ||
@@ -322,7 +330,7 @@ function normalizeOrderHistoryItem(item) {
     const createdAt = item.createdAt || item.created_at || item.updatedAt || new Date().toISOString();
     const updatedAt = item.updatedAt || item.updated_at || null;
     const canceledAt = item.canceledAt || item.canceled_at || null;
-    const cancelReason = item.cancelReason || item.cancel_reason || null;
+    //const cancelReason = item.cancelReason || item.cancel_reason || null;
 
     // Map status từ BE sang UI filter keys
     // Backend có: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
@@ -332,7 +340,7 @@ function normalizeOrderHistoryItem(item) {
     else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') status = 'confirmed';
     else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') status = 'shipping';
     else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') status = 'delivered';
-    else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'canceled';    // CHONH23 CÁI NÀY CHO ĐỒNG NHẤT BACKEND
+    else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'canceled';
 
     // QUAN TRỌNG: Theo thông tin từ Backend:
     // - Backend xử lý: 'price' = giá sản phẩm riêng (KHÔNG bao gồm shippingFee)
@@ -344,6 +352,11 @@ function normalizeOrderHistoryItem(item) {
     // - shippingFee = shippingFee (từ backend)
     // - finalPrice = productPrice + shippingFee (tính trong frontend)
 
+    const cancelReason =
+    item.cancelReason ||
+    item.cancel_reason ||
+    item.cancelOrderReasonResponse?.cancelOrderReasonName ||
+    null;
     // Lấy phí ship từ backend response
     // Prefer service_fee if provided by BE
     const serviceFeePreferred = Number(
@@ -508,6 +521,8 @@ function normalizeOrderHistoryItem(item) {
         _raw: item, // Giữ nguyên _raw để backward compatibility
     };
 }
+
+
 
 // Create product review for an order (rating/feedback with optional images)
 // POST /api/v1/order/review
@@ -690,7 +705,7 @@ export const getOrderStatus = async (orderId) => {
         } else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') {
             normalizedStatus = 'delivered';
         } else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') {
-            normalizedStatus = 'canceled';   // CHỈNH NÀY LUN NHE
+            normalizedStatus = 'canceled';
         }
 
         return {
