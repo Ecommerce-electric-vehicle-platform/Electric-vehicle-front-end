@@ -211,7 +211,19 @@ export default function ApproveSeller() {
                         : "--"}
                     </CTableDataCell>
                     <CTableDataCell>
-                      <span className="badge bg-warning text-dark">
+                      <span 
+                        className="badge status-pending-badge"
+                        style={{
+                          backgroundColor: '#f59e0b',
+                          backgroundImage: 'none',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '0.35em 0.65em',
+                          fontSize: '0.875em',
+                          fontWeight: 600,
+                          borderRadius: '0.375rem'
+                        }}
+                      >
                         {mapStatusToVietnamese(r.status)}
                       </span>
                     </CTableDataCell>
@@ -323,7 +335,19 @@ export default function ApproveSeller() {
                 <div className="col-md-6">
                   <p className="mb-2">
                     <strong>Trạng thái:</strong>{" "}
-                    <span className="badge bg-warning text-dark">
+                    <span 
+                      className="badge status-pending-badge"
+                      style={{
+                        backgroundColor: '#f59e0b',
+                        backgroundImage: 'none',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '0.35em 0.65em',
+                        fontSize: '0.875em',
+                        fontWeight: 600,
+                        borderRadius: '0.375rem'
+                      }}
+                    >
                       {mapStatusToVietnamese(detailSeller.status)}
                     </span>
                   </p>

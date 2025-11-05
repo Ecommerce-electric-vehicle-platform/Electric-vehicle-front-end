@@ -303,9 +303,24 @@ export default function ManageDisputes() {
                         </small>
                       </CTableDataCell>
                       <CTableDataCell>
-                        <CBadge color={getStatusColor(dispute.status)}>
+                        <span 
+                          className={`badge status-${getStatusColor(dispute.status)}-badge`}
+                          style={{
+                            backgroundColor: getStatusColor(dispute.status) === "warning" ? '#f59e0b' :
+                                           getStatusColor(dispute.status) === "info" ? '#3b82f6' :
+                                           getStatusColor(dispute.status) === "success" ? '#22c55e' :
+                                           getStatusColor(dispute.status) === "danger" ? '#ef4444' : '#6b7280',
+                            backgroundImage: 'none',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '0.35em 0.65em',
+                            fontSize: '0.875em',
+                            fontWeight: 600,
+                            borderRadius: '0.375rem'
+                          }}
+                        >
                           {getStatusText(dispute.status)}
-                        </CBadge>
+                        </span>
                       </CTableDataCell>
                       <CTableDataCell>
                         <div className="d-flex gap-2">
@@ -522,9 +537,24 @@ export default function ManageDisputes() {
                 <div className="detail-info">
                   <div className="info-row">
                     <span className="label">Trạng thái:</span>
-                    <CBadge color={getStatusColor(disputeDetail.status)}>
+                    <span 
+                      className={`badge status-${getStatusColor(disputeDetail.status)}-badge`}
+                      style={{
+                        backgroundColor: getStatusColor(disputeDetail.status) === "warning" ? '#f59e0b' :
+                                       getStatusColor(disputeDetail.status) === "info" ? '#3b82f6' :
+                                       getStatusColor(disputeDetail.status) === "success" ? '#22c55e' :
+                                       getStatusColor(disputeDetail.status) === "danger" ? '#ef4444' : '#6b7280',
+                        backgroundImage: 'none',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '0.35em 0.65em',
+                        fontSize: '0.875em',
+                        fontWeight: 600,
+                        borderRadius: '0.375rem'
+                      }}
+                    >
                       {getStatusText(disputeDetail.status)}
-                    </CBadge>
+                    </span>
                   </div>
                   <div className="info-row">
                     <span className="label">Quyết định:</span>

@@ -197,3 +197,77 @@ input[type="number"] {
     grid-template-columns: 1fr;
   }
 }
+
+/* Badge status - Force màu đúng với chữ trắng */
+/* QUAN TRỌNG: Bỏ background-image (linear-gradient) để background-color có hiệu lực */
+.status-warning-badge,
+.badge.status-warning-badge,
+span.badge.status-warning-badge,
+table td .badge.status-warning-badge,
+table td span.badge.status-warning-badge {
+  background-color: #f59e0b !important; /* Màu vàng (amber-500) */
+  background-image: none !important; /* Bỏ linear-gradient */
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0.35em 0.65em !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
+  border-radius: 0.375rem !important;
+  display: inline-block !important;
+}
+
+.status-info-badge,
+.badge.status-info-badge,
+span.badge.status-info-badge {
+  background-color: #3b82f6 !important; /* Màu xanh dương (info) */
+  background-image: none !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0.35em 0.65em !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
+  border-radius: 0.375rem !important;
+  display: inline-block !important;
+}
+
+.status-success-badge,
+.badge.status-success-badge,
+span.badge.status-success-badge {
+  background-color: #22c55e !important; /* Màu xanh lá (success) */
+  background-image: none !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0.35em 0.65em !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
+  border-radius: 0.375rem !important;
+  display: inline-block !important;
+}
+
+.status-danger-badge,
+.badge.status-danger-badge,
+span.badge.status-danger-badge {
+  background-color: #ef4444 !important; /* Màu đỏ (danger) */
+  background-image: none !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0.35em 0.65em !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
+  border-radius: 0.375rem !important;
+  display: inline-block !important;
+}
+
+.status-secondary-badge,
+.badge.status-secondary-badge,
+span.badge.status-secondary-badge {
+  background-color: #6b7280 !important; /* Màu xám (secondary) */
+  background-image: none !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0.35em 0.65em !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
+  border-radius: 0.375rem !important;
+  display: inline-block !important;
+}
