@@ -15,12 +15,23 @@ export function Products() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
-    // Get search term from URL
+    // Get filters from URL query params
     const urlSearchTerm = searchParams.get('search') || '';
+    const urlBrand = searchParams.get('brand') || '';
+    const urlModel = searchParams.get('model') || '';
+    const urlCategory = searchParams.get('category') || '';
+    const urlBatteryType = searchParams.get('batteryType') || '';
+    const urlCondition = searchParams.get('condition') || '';
+    const urlLocation = searchParams.get('location') || '';
 
     // State management
     const [searchTerm, setSearchTerm] = useState(urlSearchTerm);
-    const [selectedLocation, setSelectedLocation] = useState("Tất cả khu vực");
+    const [selectedBrand, setSelectedBrand] = useState(urlBrand);
+    const [selectedModel, setSelectedModel] = useState(urlModel);
+    const [selectedCategory, setSelectedCategory] = useState(urlCategory);
+    const [selectedBatteryType, setSelectedBatteryType] = useState(urlBatteryType);
+    const [selectedCondition, setSelectedCondition] = useState(urlCondition);
+    const [selectedLocation, setSelectedLocation] = useState(urlLocation || "Tất cả khu vực");
     const [sortDate, setSortDate] = useState("newest");
     const [sortPrice, setSortPrice] = useState("none");
     const [page, setPage] = useState(1);
@@ -94,12 +105,25 @@ export function Products() {
         };
     }, [page, pageSize, searchTerm, isSearchMode]);
 
-    // Update search mode when URL changes
+    // Update filters when URL changes
     useEffect(() => {
         const newSearchTerm = searchParams.get('search') || '';
+        const newBrand = searchParams.get('brand') || '';
+        const newModel = searchParams.get('model') || '';
+        const newCategory = searchParams.get('category') || '';
+        const newBatteryType = searchParams.get('batteryType') || '';
+        const newCondition = searchParams.get('condition') || '';
+        const newLocation = searchParams.get('location') || '';
+
         setSearchTerm(newSearchTerm);
+        setSelectedBrand(newBrand);
+        setSelectedModel(newModel);
+        setSelectedCategory(newCategory);
+        setSelectedBatteryType(newBatteryType);
+        setSelectedCondition(newCondition);
+        setSelectedLocation(newLocation || "Tất cả khu vực");
         setIsSearchMode(!!newSearchTerm);
-        setPage(1); // Reset to first page when search changes
+        setPage(1); // Reset to first page when filters change
     }, [searchParams]);
 
     const combined = useMemo(() => {
@@ -126,25 +150,96 @@ export function Products() {
                 const searchMatch = searchTerm.trim()
                     ? searchInProduct(item, searchTerm, ['title', 'brand', 'model', 'description', 'locationTrading', 'condition', 'manufactureYear'])
                     : true;
+
+                // Location filter
                 const locationMatch = selectedLocation === "Tất cả khu vực" || item.locationTrading === selectedLocation;
 
                 // Price range filter
                 const priceMatch = !priceRange || (item.price >= priceRange.min && item.price <= priceRange.max);
 
-                // Debug logging cho từ khóa "Katali"
-                if (searchTerm.trim() === "Katali" && searchMatch) {
-                    console.log("🔍 Found match for 'Katali':", {
-                        title: item.title,
-                        brand: item.brand,
-                        model: item.model,
-                        description: item.description?.substring(0, 100) + "...",
-                        locationTrading: item.locationTrading,
-                        condition: item.condition,
-                        manufactureYear: item.manufactureYear
-                    });
-                }
+                // Brand filter - match chính xác hoặc partial match
+                const brandMatch = !selectedBrand || (() => {
+                    if (!selectedBrand) return true;
+                    if (!item.brand) return false; // Nếu có filter brand nhưng item không có brand thì false
+                    const itemBrand = item.brand.trim().toLowerCase();
+                    const filterBrand = selectedBrand.trim().toLowerCase();
+                    // Match chính xác hoặc item brand chứa filter brand hoặc ngược lại
+                    return itemBrand === filterBrand ||
+                        itemBrand.includes(filterBrand) ||
+                        filterBrand.includes(itemBrand);
+                })();
 
-                return searchMatch && locationMatch && priceMatch;
+                // Model filter - match chính xác hoặc partial match
+                const modelMatch = !selectedModel || (() => {
+                    if (!selectedModel) return true;
+                    if (!item.model) return false; // Nếu có filter model nhưng item không có model thì false
+                    const itemModel = item.model.trim().toLowerCase();
+                    const filterModel = selectedModel.trim().toLowerCase();
+                    // Match chính xác hoặc item model chứa filter model hoặc ngược lại
+                    return itemModel === filterModel ||
+                        itemModel.includes(filterModel) ||
+                        filterModel.includes(itemModel);
+                })();
+
+                // Category filter - match với category ID từ sidebar (electric-motorcycles, electric-bikes, batteries)
+                const categoryMatch = !selectedCategory || (() => {
+                    if (!selectedCategory) return true;
+
+                    const title = (item.title || '').toLowerCase();
+                    const description = (item.description || '').toLowerCase();
+                    const category = String(item.category || '').toLowerCase();
+                    const brand = (item.brand || '').toLowerCase();
+
+                    // Match với category IDs từ CategorySidebar
+                    if (selectedCategory === 'electric-motorcycles') {
+                        return title.includes('xe máy') ||
+                            title.includes('motorcycle') ||
+                            title.includes('scooter') ||
+                            description.includes('xe máy điện') ||
+                            description.includes('motorcycle') ||
+                            category.includes('motorcycle') ||
+                            category.includes('xe máy') ||
+                            ['honda', 'yamaha', 'vinfast', 'pega', 'detech', 'gogoro'].some(b => brand.includes(b));
+                    }
+
+                    if (selectedCategory === 'electric-bikes') {
+                        return title.includes('xe đạp') ||
+                            title.includes('bicycle') ||
+                            title.includes('bike') ||
+                            description.includes('xe đạp điện') ||
+                            description.includes('bicycle') ||
+                            category.includes('bicycle') ||
+                            category.includes('xe đạp') ||
+                            ['giant', 'trek', 'specialized', 'cannondale', 'merida', 'scott'].some(b => brand.includes(b));
+                    }
+
+                    if (selectedCategory === 'batteries') {
+                        return title.includes('pin') ||
+                            title.includes('battery') ||
+                            title.includes('ắc quy') ||
+                            description.includes('pin') ||
+                            description.includes('battery') ||
+                            category.includes('battery') ||
+                            category.includes('pin');
+                    }
+
+                    // Fallback: match với category string hoặc object
+                    return (item.category && String(item.category).toLowerCase() === selectedCategory.toLowerCase()) ||
+                        (item.category && typeof item.category === 'object' && item.category.name &&
+                            item.category.name.toLowerCase().includes(selectedCategory.toLowerCase()));
+                })();
+
+                // Battery type filter
+                const batteryMatch = !selectedBatteryType ||
+                    (item.batteryType && item.batteryType.toLowerCase().includes(selectedBatteryType.toLowerCase()));
+
+                // Condition filter
+                const conditionMatch = !selectedCondition ||
+                    (item.condition && item.condition.toLowerCase().includes(selectedCondition.toLowerCase())) ||
+                    (item.conditionLevel && item.conditionLevel.toLowerCase().includes(selectedCondition.toLowerCase()));
+
+                return searchMatch && locationMatch && priceMatch && brandMatch && modelMatch &&
+                    categoryMatch && batteryMatch && conditionMatch;
             })
             .sort((a, b) => {
                 // Sắp xếp theo độ phù hợp với search term trước
@@ -254,6 +349,30 @@ export function Products() {
     // Active filters helper
     const activeFilters = useMemo(() => {
         const filters = [];
+        if (selectedBrand) {
+            filters.push({ key: 'brand', label: `Hãng: ${selectedBrand}`, type: 'brand' });
+        }
+        if (selectedModel) {
+            filters.push({ key: 'model', label: `Dòng: ${selectedModel}`, type: 'model' });
+        }
+        if (selectedCategory) {
+            const categoryNames = {
+                'electric-motorcycles': 'Xe máy điện',
+                'electric-bikes': 'Xe đạp điện',
+                'batteries': 'Pin đã qua sử dụng'
+            };
+            filters.push({
+                key: 'category',
+                label: `Danh mục: ${categoryNames[selectedCategory] || selectedCategory}`,
+                type: 'category'
+            });
+        }
+        if (selectedBatteryType) {
+            filters.push({ key: 'batteryType', label: `Pin: ${selectedBatteryType}`, type: 'batteryType' });
+        }
+        if (selectedCondition) {
+            filters.push({ key: 'condition', label: `Tình trạng: ${selectedCondition}`, type: 'condition' });
+        }
         if (selectedLocation !== "Tất cả khu vực") {
             filters.push({ key: 'location', label: selectedLocation, type: 'location' });
         }
@@ -275,10 +394,37 @@ export function Products() {
             });
         }
         return filters;
-    }, [selectedLocation, priceRange, sortDate, sortPrice]);
+    }, [selectedBrand, selectedModel, selectedCategory, selectedBatteryType, selectedCondition, selectedLocation, priceRange, sortDate, sortPrice]);
 
     const removeFilter = (filterType) => {
         switch (filterType) {
+            case 'brand':
+                setSelectedBrand('');
+                navigate(`/products?${new URLSearchParams({
+                    ...Object.fromEntries(searchParams.entries()),
+                    brand: ''
+                }).toString().replace(/&?brand=/, '')}`);
+                break;
+            case 'model':
+                setSelectedModel('');
+                navigate(`/products?${new URLSearchParams({
+                    ...Object.fromEntries(searchParams.entries()),
+                    model: ''
+                }).toString().replace(/&?model=/, '')}`);
+                break;
+            case 'category':
+                setSelectedCategory('');
+                navigate(`/products?${new URLSearchParams({
+                    ...Object.fromEntries(searchParams.entries()),
+                    category: ''
+                }).toString().replace(/&?category=/, '')}`);
+                break;
+            case 'batteryType':
+                setSelectedBatteryType('');
+                break;
+            case 'condition':
+                setSelectedCondition('');
+                break;
             case 'location':
                 setSelectedLocation("Tất cả khu vực");
                 break;
@@ -295,6 +441,11 @@ export function Products() {
     };
 
     const clearAllFilters = () => {
+        setSelectedBrand('');
+        setSelectedModel('');
+        setSelectedCategory('');
+        setSelectedBatteryType('');
+        setSelectedCondition('');
         setSelectedLocation("Tất cả khu vực");
         setPriceRange(null);
         setSortDate("newest");

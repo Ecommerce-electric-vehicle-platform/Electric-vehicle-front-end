@@ -4,8 +4,6 @@ import {
     Heart,
     MapPin,
     Clock,
-    Share2,
-    MoreHorizontal,
     ChevronLeft,
     ChevronRight,
     MessageCircle,
@@ -331,14 +329,6 @@ function ProductDetail() {
         }
     };
 
-
-    // Xử lý quay lại
-    const handleGoBack = () => {
-        navigate(-1); // Quay lại trang trước đó
-    };
-
-
-
     // Xử lý mở modal thông báo
     const handleRequireLogin = () => {
         if (isGuest) {
@@ -369,7 +359,7 @@ function ProductDetail() {
             console.log('[ProductDetail] Creating conversation for postId:', product.postId);
             const response = await chatApi.createConversation(product.postId);
             console.log('[ProductDetail] Conversation created:', response.data);
-            
+
             if (response?.data?.success) {
                 console.log('[ProductDetail] Navigating to chat page');
                 navigate('/chat');
@@ -381,7 +371,7 @@ function ProductDetail() {
         } catch (error) {
             console.error('[ProductDetail] Error creating conversation:', error);
             // If error is because conversation already exists, navigate anyway
-            if (error?.response?.data?.message?.includes('exist') || 
+            if (error?.response?.data?.message?.includes('exist') ||
                 error?.response?.data?.error?.includes('exist')) {
                 console.log('[ProductDetail] Conversation already exists, navigating to chat');
                 navigate('/chat');
@@ -436,79 +426,7 @@ function ProductDetail() {
 
     return (
         <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
-            {/* Header */}
-            <header
-                style={{
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 50,
-                    borderBottom: "1px solid #e5e7eb",
-                    backgroundColor: "rgba(255, 255, 255, 0.95)",
-                    backdropFilter: "blur(8px)",
-                }}
-            >
-                <div
-                    style={{
-                        maxWidth: "1280px",
-                        margin: "0 auto",
-                        display: "flex",
-                        height: "64px",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "0 16px",
-                    }}
-                >
-                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                        <button
-                            onClick={handleGoBack}
-                            style={{
-                                padding: "8px",
-                                border: "none",
-                                background: "transparent",
-                                cursor: "pointer",
-                                borderRadius: "6px",
-                            }}
-                        >
-                            <ChevronLeft />
-                        </button>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <Zap />
-                            <span style={{ fontSize: "18px", fontWeight: 600 }}>GREENTRADE</span>
-                        </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <button
-                            onClick={() => {
-                                handleToggleFavorite();
-                            }}
-                            disabled={wishlistLoading}
-                            style={{
-                                padding: "8px",
-                                border: "none",
-                                background: "transparent",
-                                cursor: wishlistLoading ? "wait" : "pointer",
-                                color: fav ? "#ef4444" : "#6b7280",
-                                opacity: wishlistLoading ? 0.6 : 1,
-                            }}
-                            title={wishlistLoading ? "Đang xử lý..." : (fav ? "Xóa khỏi yêu thích" : "Thêm vào yêu thích")}
-                        >
-                            {wishlistLoading ? (
-                                <span style={{ fontSize: "16px" }}>⏳</span>
-                            ) : (
-                                <Heart fill={fav ? "#ef4444" : "none"} />
-                            )}
-                        </button>
-                        <button style={{ padding: "8px", border: "none", background: "transparent", cursor: "pointer" }}>
-                            <Share2 />
-                        </button>
-                        <button style={{ padding: "8px", border: "none", background: "transparent", cursor: "pointer" }}>
-                            <MoreHorizontal />
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 16px" }}>
+            <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 16px", paddingTop: "calc(4rem + 32px)" }}>
                 {/* Breadcrumb */}
                 <Breadcrumbs labelMap={{ products: 'Sản phẩm', product: 'Chi tiết' }} />
 
@@ -863,21 +781,27 @@ function ProductDetail() {
 
                                     {/* Market Price */}
                                     <div
-                                        style={{ marginBottom: "16px", borderRadius: "8px", backgroundColor: "#f9fafb", padding: "16px" }}
+                                        style={{
+                                            marginBottom: "16px",
+                                            borderRadius: "10px",
+                                            backgroundColor: "#f9fafb",
+                                            padding: "18px",
+                                            border: "1px solid #e5e7eb"
+                                        }}
                                     >
                                         <div
                                             style={{
-                                                marginBottom: "8px",
+                                                marginBottom: "10px",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "space-between",
                                                 fontSize: "14px",
                                             }}
                                         >
-                                            <span style={{ fontWeight: 500 }}>Giá xe mới trên thị trường</span>
-                                            <Info size={16} />
+                                            <span style={{ fontWeight: 600, color: "#1f2937" }}>Giá xe mới trên thị trường</span>
+                                            <Info size={16} color="#6b7280" />
                                         </div>
-                                        <p style={{ marginBottom: "12px", fontSize: "12px", color: "#6b7280" }}>
+                                        <p style={{ marginBottom: "16px", fontSize: "13px", color: "#6b7280", lineHeight: "1.5" }}>
                                             Giá thực tế của loại xe này trên thị trường
                                         </p>
                                         <div
@@ -889,12 +813,16 @@ function ProductDetail() {
                                             }}
                                         >
                                             <div>
-                                                <p style={{ fontSize: "12px", color: "#6b7280" }}>Giá thấp nhất</p>
-                                                <p style={{ fontWeight: 600 }}>{(marketPriceData.lowest / 1000000).toFixed(1)} tr</p>
+                                                <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Giá thấp nhất</p>
+                                                <p style={{ fontWeight: 600, fontSize: "16px", color: "#1f2937" }}>
+                                                    {(marketPriceData.lowest / 1000000).toFixed(1)} triệu VNĐ
+                                                </p>
                                             </div>
                                             <div style={{ textAlign: "right" }}>
-                                                <p style={{ fontSize: "12px", color: "#6b7280" }}>Giá cao nhất</p>
-                                                <p style={{ fontWeight: 600 }}>{(marketPriceData.highest / 1000000).toFixed(1)} tr</p>
+                                                <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Giá cao nhất</p>
+                                                <p style={{ fontWeight: 600, fontSize: "16px", color: "#1f2937" }}>
+                                                    {(marketPriceData.highest / 1000000).toFixed(1)} triệu VNĐ
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -910,18 +838,19 @@ function ProductDetail() {
                                                 fontSize: "14px",
                                             }}
                                         >
-                                            <span style={{ fontWeight: 500 }}>Giá hiện tại</span>
+                                            <span style={{ fontWeight: 500, color: "#374151" }}>Giá hiện tại</span>
                                             <span
                                                 style={{
-                                                    padding: "2px 8px",
-                                                    borderRadius: "4px",
-                                                    backgroundColor: "rgba(16, 185, 129, 0.1)",
-                                                    color: "#10b981",
+                                                    padding: "4px 10px",
+                                                    borderRadius: "6px",
+                                                    backgroundColor: "rgba(16, 185, 129, 0.15)",
+                                                    color: "#059669",
                                                     fontSize: "12px",
                                                     fontWeight: 600,
+                                                    border: "1px solid rgba(16, 185, 129, 0.2)",
                                                 }}
                                             >
-                                                Giá kiến {marketPriceData.currentDiscount}%
+                                                Tiết kiệm {marketPriceData.currentDiscount}%
                                             </span>
                                         </div>
                                         <div
