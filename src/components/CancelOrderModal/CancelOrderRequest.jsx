@@ -99,22 +99,32 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
 
     try {
       setLoading(true);
-      const payload = { cancelReasonId: selectedReason.id };
+      
+      // CHỈ GỬI cancelReasonId THEO YÊU CẦU CỦA BACKEND
+      const payload = { cancelReasonId: selectedReason.id }; // <-- ĐÃ SỬA: Chỉ giữ ID
+      
       const res = await cancelOrder(orderId, payload);
 
       if (res?.success) {
         alert(" Đã gửi yêu cầu hủy đơn thành công!");
-        if (onCancelSuccess) onCancelSuccess(orderId);
+        
+        // TRUYỀN THÊM LÝ DO VỀ COMPONENT CHA ĐỂ CẬP NHẬT TRẠNG THÁI TỨC THÌ TRONG OrderList.jsx
+        if (onCancelSuccess) onCancelSuccess(orderId, selectedReason.text); // <-- ĐÃ THÊM: Truyền lý do
+        
       } else {
-        alert(" Gửi yêu cầu thất bại. Vui lòng thử lại.");
+        // Xử lý lỗi trả về từ BE
+        const errorMessage = res?.message || "Gửi yêu cầu thất bại. Vui lòng thử lại.";
+        alert(`Gửi yêu cầu thất bại: ${errorMessage}`);
       }
     } catch (err) {
       console.error(" Lỗi khi gửi yêu cầu hủy đơn:", err);
-      alert("Không thể gửi yêu cầu hủy đơn. Vui lòng thử lại sau.");
+      // Xử lý lỗi Axios/Network/etc.
+      const errorMsg = err?.response?.data?.message || err.message || "Không thể gửi yêu cầu hủy đơn.";
+      alert(`Không thể gửi yêu cầu hủy đơn: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
-  };
+};
 
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("vi-VN", {
@@ -273,10 +283,12 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
   );
 };
 
+
+
 CancelOrderRequest.propTypes = {
-  orderId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-  onCancelSuccess: PropTypes.func,
-  onBack: PropTypes.func,
+ orderId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+ onCancelSuccess: PropTypes.func.isRequired, // Cần hàm này, nên set là isRequired
+ onBack: PropTypes.func,
 };
 
 export default CancelOrderRequest;
