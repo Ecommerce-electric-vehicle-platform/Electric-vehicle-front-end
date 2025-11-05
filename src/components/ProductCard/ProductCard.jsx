@@ -13,7 +13,8 @@ export function ProductCard({
     showCondition = true,
     showLocation = true,
     showDate = true,
-    showVerified = true
+    showVerified = true,
+    showManufactureInfo = false
 }) {
     if (!product) return null;
 
@@ -154,18 +155,18 @@ export function ProductCard({
                     )}
                 </div>
 
-                {/* Additional Info */}
-                {(product.manufactureYear || product.usedDuration) && (
+                {/* Additional Info - hidden by default on listings */}
+                {showManufactureInfo && (product.manufactureYear || product.usedDuration) && (
                     <div className="product-card__additional">
                         {product.manufactureYear && (
                             <div className="product-card__info-item">
-                                <span className="product-card__info-label">Năm SX:</span>
+                                <span className="product-card__info-label">Năm sản xuất:</span>
                                 <span className="product-card__info-value">{product.manufactureYear}</span>
                             </div>
                         )}
                         {product.usedDuration && (
                             <div className="product-card__info-item">
-                                <span className="product-card__info-label">Đã sử dụng:</span>
+                                <span className="product-card__info-label">Thời gian sử dụng:</span>
                                 <span className="product-card__info-value">{product.usedDuration}</span>
                             </div>
                         )}

@@ -53,9 +53,9 @@ export const getWalletBalance = async () => {
 // Place order
 export const placeOrder = async (orderData) => {
     try {
-        console.log("🧾 [BEFORE PLACE ORDER] orderData being sent:", orderData);
+        console.log("[BEFORE PLACE ORDER] orderData being sent:", orderData);
         const response = await axiosInstance.post('/api/v1/buyer/place-order', orderData);
-        console.log("✅ [AFTER PLACE ORDER] backend response:", response.data);
+        console.log("[AFTER PLACE ORDER] backend response:", response.data);
         return response.data;
     } catch (error) {
         console.error('Error placing order:', error);

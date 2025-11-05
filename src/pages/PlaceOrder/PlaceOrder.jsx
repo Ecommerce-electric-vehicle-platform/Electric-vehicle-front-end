@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     ArrowLeft,
+    ArrowRight,
     MapPin,
     Phone,
     User,
@@ -17,7 +18,9 @@ import {
     ShoppingCart,
     Settings,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 import { vehicleProducts, batteryProducts, formatCurrency } from '../../test-mock-data/data/productsData';
 import {
@@ -55,12 +58,17 @@ function PlaceOrder() {
     // API data states
     const [shippingPartners, setShippingPartners] = useState([]);
     const [showShippingOptions, setShowShippingOptions] = useState(false);
+    // Ref để track shipping partners container cho click outside
+    const shippingPartnersRef = useRef(null);
+    const walletBalanceRef = useRef(null);
     // State để track shipping fee đã được fetch từ API hay chưa
     const [shippingFeeFromAPI, setShippingFeeFromAPI] = useState(false);
     const [shippingFeeLoading, setShippingFeeLoading] = useState(false);
 
     // Sử dụng custom hook để quản lý số dư ví
     const { balance: walletBalance, loading: walletLoading, error: walletError, refreshBalance: refreshWalletBalance, formatCurrency: formatWalletCurrency } = useWalletBalance();
+    const [showWalletBalance, setShowWalletBalance] = useState(false); // State để toggle hiển thị số dư
+    const [isWalletBalanceExpanded, setIsWalletBalanceExpanded] = useState(false); // State để toggle dropdown
     const [loadingProfile, setLoadingProfile] = useState(true);
 
     const [orderData, setOrderData] = useState({
@@ -150,6 +158,27 @@ function PlaceOrder() {
             'MOMO': 'Ví MoMo'
         };
         return methodMap[method] || method;
+    };
+
+    // Hàm lấy logo cho đối tác vận chuyển
+    const getShippingPartnerLogo = (partnerName) => {
+        if (!partnerName) return null;
+
+        const name = partnerName.toLowerCase();
+
+        if (name.includes('ghn') || name.includes('giao hàng nhanh')) {
+            return '/ghn-logo.jpeg';
+        } else if (name.includes('ghtk') || name.includes('giaohangtietkiem') || name.includes('giao hàng tiết kiệm') || name.includes('tiet kiem')) {
+            return '/ghtk-logo.jpeg';
+        } else if (name.includes('j&t') || name.includes('j and t') || name.includes('jandt')) {
+            return '/jandtexpress-logo.jpeg';
+        } else if (name.includes('viettelpost') || name.includes('viettel post')) {
+            return '/vittelpost-logo.jpeg';
+        } else if (name.includes('bee') || name.includes('beelogistics') || name.includes('b logistics')) {
+            return '/blogistics-logo.png';
+        }
+
+        return null;
     };
 
     // GHN: phí vận chuyển lấy hoàn toàn từ BE → không tính mock ở FE
@@ -355,10 +384,58 @@ function PlaceOrder() {
             return;
         }
 
+        // Kiểm tra xem đã có order thành công cho product này chưa
+        const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const currentProductId = parseInt(id);
+        const currentUsername = localStorage.getItem('username') || '';
+
+        // Tìm order đã thành công cho product này của user hiện tại
+        const existingOrder = existingOrders.find(order =>
+            order.product?.id === currentProductId &&
+            order.username === currentUsername &&
+            (order.order_status === 'PAID' || order.order_status === 'PENDING_PAYMENT' || order.status === 'confirmed' || order.status === 'pending')
+        );
+
+        if (existingOrder) {
+            console.log('⚠️ Order already exists for this product:', existingOrder);
+            // Hiển thị thông báo và redirect
+            const orderId = existingOrder.id || existingOrder.order_code || existingOrder.orderId;
+            setModalConfig({
+                type: 'warning',
+                title: 'Đơn hàng đã tồn tại',
+                message: `Bạn đã đặt hàng cho sản phẩm này với mã đơn hàng: ${existingOrder.order_code || existingOrder.id}. Vui lòng kiểm tra đơn hàng của bạn.`,
+                actions: [
+                    {
+                        label: 'Xem đơn hàng',
+                        type: 'primary',
+                        onClick: () => {
+                            setShowModal(false);
+                            // Điều hướng đến trang order tracking của đơn hàng cụ thể
+                            if (orderId) {
+                                navigate(`/order-tracking/${orderId}`);
+                            } else {
+                                navigate('/orders');
+                            }
+                        }
+                    },
+                    {
+                        label: 'Về trang chủ',
+                        type: 'secondary',
+                        onClick: () => {
+                            setShowModal(false);
+                            navigate('/');
+                        }
+                    }
+                ]
+            });
+            setShowModal(true);
+            return;
+        }
+
         // Load user profile và API data
         loadUserProfile();
         loadApiData();
-    }, [navigate, loadUserProfile, loadApiData]);
+    }, [navigate, loadUserProfile, loadApiData, id]);
 
     // BỎ useEffect visibilitychange để tránh reload profile mỗi lần quay lại tab
     // Điều này gây ra việc mất dữ liệu người dùng đã nhập khi chuyển tab và quay lại
@@ -815,11 +892,71 @@ function PlaceOrder() {
         }
     }, [orderData.postProductId, orderData.paymentId, orderData.provinceId, orderData.districtId, orderData.wardId, selectedProvince, selectedDistrict, selectedWard, product?.id, provinces, districts, wards]);
 
+    // Tự động scroll về đầu trang khi chuyển bước
+    useEffect(() => {
+        // Scroll về đầu trang khi currentStep thay đổi
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: 'smooth' // Smooth scroll để UX tốt hơn
+        });
+    }, [currentStep]);
+
     // Tự động tính lại phí vận chuyển khi địa chỉ hoặc phương thức thanh toán thay đổi
     useEffect(() => {
         refreshShippingFee();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [orderData.postProductId, orderData.paymentId, orderData.provinceId, orderData.districtId, orderData.wardId, selectedProvince, selectedDistrict, selectedWard]);
+
+    // Handle click outside để đóng dropdown shipping partners
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                showShippingOptions &&
+                shippingPartnersRef.current &&
+                !shippingPartnersRef.current.contains(event.target)
+            ) {
+                setShowShippingOptions(false);
+            }
+        };
+
+        // Thêm event listener khi dropdown đang mở
+        if (showShippingOptions) {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }
+
+        // Cleanup
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [showShippingOptions]);
+
+    // Handle click outside để đóng dropdown wallet balance
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                isWalletBalanceExpanded &&
+                walletBalanceRef.current &&
+                !walletBalanceRef.current.contains(event.target)
+            ) {
+                setIsWalletBalanceExpanded(false);
+            }
+        };
+
+        // Thêm event listener khi dropdown đang mở
+        if (isWalletBalanceExpanded) {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }
+
+        // Cleanup
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [isWalletBalanceExpanded]);
 
     const handleProvinceChange = (provId) => {
         setSelectedProvince(provId);
@@ -852,6 +989,11 @@ function PlaceOrder() {
             paymentId,
             payment_method: paymentId === 2 ? 'WALLET' : 'COD'
         }));
+        // Đóng dropdown và reset về trạng thái ẩn số dư khi chọn COD
+        if (paymentId !== 2) {
+            setIsWalletBalanceExpanded(false);
+            setShowWalletBalance(false); // Reset về trạng thái ẩn số dư
+        }
     };
 
     // Xử lý thay đổi đối tác vận chuyển
@@ -1242,6 +1384,28 @@ function PlaceOrder() {
                 shippingAddress: apiOrderData.shippingAddress
             });
 
+            // QUAN TRỌNG: Kiểm tra xem đã có order thành công cho product này chưa
+            const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const currentProductId = apiOrderData.postProductId;
+            const currentUsername = apiOrderData.username || localStorage.getItem('username') || '';
+
+            const existingOrder = existingOrders.find(order =>
+                (order.product?.id === currentProductId || order.postProductId === currentProductId) &&
+                order.username === currentUsername &&
+                (order.order_status === 'PAID' || order.order_status === 'PENDING_PAYMENT' || order.status === 'confirmed' || order.status === 'pending')
+            );
+
+            if (existingOrder) {
+                console.error('❌ Order already exists for this product:', existingOrder);
+                throw new Error(`Bạn đã đặt hàng cho sản phẩm này với mã đơn hàng: ${existingOrder.order_code || existingOrder.id}. Vui lòng kiểm tra đơn hàng của bạn.`);
+            }
+
+            // Kiểm tra xem sản phẩm còn available không
+            if (!product) {
+                console.error('❌ Product not found');
+                throw new Error('Sản phẩm không tồn tại hoặc đã bị xóa.');
+            }
+
             // Validate từng field chi tiết
             if (!apiOrderData.postProductId) {
                 console.error('❌ Validation failed: postProductId is missing');
@@ -1288,6 +1452,8 @@ function PlaceOrder() {
 
             console.log('✅ All validations passed, sending order to API...');
 
+            console.log('✅ All validations passed, sending order to API...');
+
             // Gọi API đặt hàng
             const response = await placeOrder(apiOrderData);
 
@@ -1308,6 +1474,19 @@ function PlaceOrder() {
 
             const orderId = response.data?.orderId || response.data?.id || response.orderId || response.id || null;
             const orderCode = response.data?.orderCode || response.data?.code || response.orderCode || response.code || null;
+
+            // QUAN TRỌNG: Kiểm tra xem response có thông báo soldout không
+            const responseMessage = response.message || response.data?.message || '';
+            const isSoldOutResponse = responseMessage.toLowerCase().includes('soldout') ||
+                responseMessage.toLowerCase().includes('hết hàng') ||
+                responseMessage.toLowerCase().includes('không còn hàng') ||
+                response.data?.error?.message?.toLowerCase().includes('soldout');
+
+            // Nếu response báo soldout, throw error ngay lập tức để không lưu vào database
+            if (isSoldOutResponse) {
+                console.error('❌ Product is soldout from backend response:', responseMessage);
+                throw new Error('Sản phẩm đã hết hàng hoặc không còn khả dụng. Vui lòng chọn sản phẩm khác.');
+            }
 
             // QUAN TRỌNG: Chỉ coi là thành công khi response.success === true VÀ có orderId hợp lệ
             // KHÔNG dùng response.success !== false vì nó sẽ true cả khi success là undefined/null
@@ -1428,6 +1607,17 @@ function PlaceOrder() {
                     response: response
                 });
 
+                // Kiểm tra xem có phải lỗi soldout không (từ response)
+                const isSoldOutFromResponse = errorMsg.toLowerCase().includes('soldout') ||
+                    errorMsg.toLowerCase().includes('hết hàng') ||
+                    errorMsg.toLowerCase().includes('không còn hàng') ||
+                    response.data?.error?.message?.toLowerCase().includes('soldout');
+
+                // Nếu là lỗi soldout, throw error đặc biệt để xử lý riêng
+                if (isSoldOutFromResponse) {
+                    throw new Error('Sản phẩm đã hết hàng hoặc không còn khả dụng. Vui lòng chọn sản phẩm khác.');
+                }
+
                 // Nếu backend trả về success: false nhưng vẫn có orderId
                 // → Backend có thể đã tạo order và trừ tiền nhưng trả về lỗi
                 // → Cần kiểm tra và rollback nếu cần
@@ -1443,10 +1633,21 @@ function PlaceOrder() {
             console.error('❌ Place order error:', error);
 
             // Hiển thị lỗi chi tiết cho người dùng
-            const errorMessage = error.response?.data?.message ||
+            let errorMessage = error.response?.data?.message ||
                 error.response?.data?.error?.message ||
                 error.message ||
                 'Không thể đặt hàng. Vui lòng thử lại sau.';
+
+            // Kiểm tra xem có phải lỗi soldout không
+            const isSoldOut = errorMessage.toLowerCase().includes('soldout') ||
+                errorMessage.toLowerCase().includes('hết hàng') ||
+                errorMessage.toLowerCase().includes('không còn hàng') ||
+                error.response?.data?.error?.message?.toLowerCase().includes('soldout');
+
+            // Kiểm tra xem có phải lỗi đã đặt hàng không
+            const isAlreadyOrdered = errorMessage.includes('đã đặt hàng') ||
+                errorMessage.includes('already exists') ||
+                errorMessage.includes('order already');
 
             // Log chi tiết để debug lỗi 500
             console.error('🔍 Error details:', {
@@ -1492,6 +1693,82 @@ function PlaceOrder() {
             // Nếu backend không trừ tiền, số dư sẽ giữ nguyên
             refreshWalletBalance();
 
+            // Xử lý các trường hợp lỗi đặc biệt
+            if (isAlreadyOrdered) {
+                // Đã đặt hàng rồi - redirect về trang đơn hàng
+                // Lấy orderId từ localStorage để điều hướng đến trang order tracking cụ thể
+                const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                const currentProductId = product?.id;
+                const currentUsername = localStorage.getItem('username') || '';
+                const existingOrder = existingOrders.find(order =>
+                    (order.product?.id === currentProductId || order.postProductId === currentProductId) &&
+                    order.username === currentUsername &&
+                    (order.order_status === 'PAID' || order.order_status === 'PENDING_PAYMENT' || order.status === 'confirmed' || order.status === 'pending')
+                );
+
+                const orderId = existingOrder ? (existingOrder.id || existingOrder.order_code || existingOrder.orderId) : null;
+
+                setModalConfig({
+                    type: 'warning',
+                    title: 'Đơn hàng đã tồn tại',
+                    message: errorMessage,
+                    actions: [
+                        {
+                            label: 'Xem đơn hàng',
+                            type: 'primary',
+                            onClick: () => {
+                                setShowModal(false);
+                                // Điều hướng đến trang order tracking của đơn hàng cụ thể
+                                if (orderId) {
+                                    navigate(`/order-tracking/${orderId}`);
+                                } else {
+                                    navigate('/orders');
+                                }
+                            }
+                        },
+                        {
+                            label: 'Về trang chủ',
+                            type: 'secondary',
+                            onClick: () => {
+                                setShowModal(false);
+                                navigate('/');
+                            }
+                        }
+                    ]
+                });
+                setShowModal(true);
+                return;
+            }
+
+            if (isSoldOut) {
+                // Sản phẩm đã hết hàng - redirect về trang sản phẩm hoặc trang chủ
+                setModalConfig({
+                    type: 'error',
+                    title: 'Sản phẩm đã hết hàng',
+                    message: 'Sản phẩm này đã được bán hoặc không còn hàng. Vui lòng chọn sản phẩm khác.',
+                    actions: [
+                        {
+                            label: 'Xem sản phẩm khác',
+                            type: 'primary',
+                            onClick: () => {
+                                setShowModal(false);
+                                navigate('/products');
+                            }
+                        },
+                        {
+                            label: 'Về trang chủ',
+                            type: 'secondary',
+                            onClick: () => {
+                                setShowModal(false);
+                                navigate('/');
+                            }
+                        }
+                    ]
+                });
+                setShowModal(true);
+                return;
+            }
+
             // Hiển thị thông báo lỗi cho người dùng
             setModalConfig({
                 type: 'error',
@@ -1523,20 +1800,13 @@ function PlaceOrder() {
     };
 
     // Navigation handlers
-    const handleGoBack = () => {
-        if (currentStep > 1) {
-            setCurrentStep(currentStep - 1);
-        } else {
-            navigate(-1);
-        }
-    };
-
     const handleGoHome = () => {
         navigate('/');
     };
 
     const handleViewOrder = () => {
-        navigate(`/order-tracking/${orderId}`);
+        // Điều hướng đến trang order history (OrderList) để xem tất cả đơn hàng
+        navigate('/orders');
     };
 
 
@@ -1632,35 +1902,30 @@ function PlaceOrder() {
             <div className="place-order-container">
                 {/* Header */}
                 <div className="place-order-header">
-                    <div className="breadcrumb-nav">
-                        <button className="breadcrumb-btn" onClick={handleGoHome}>
-                            <Home size={16} />
-                            <span>Trang chủ</span>
-                        </button>
-                        <span className="breadcrumb-separator">/</span>
-                        <button className="breadcrumb-btn" onClick={handleGoBack}>
-                            <ArrowLeft size={16} />
-                            <span>Quay lại</span>
-                        </button>
-                        <span className="breadcrumb-separator">/</span>
-                        <span className="breadcrumb-current">Đặt hàng</span>
+                    {/* Main Heading */}
+                    <div className="place-order-header-content">
+                        <h1 className="page-title-main">Thông tin Giao hàng & Thanh toán</h1>
+                        <p className="page-subtitle">Vui lòng cung cấp chi tiết giao hàng và thanh toán của bạn để tiếp tục.</p>
                     </div>
-
-                    <h1 className="page-title">Đặt hàng</h1>
-
 
                     {/* Progress Steps */}
                     <div className="progress-steps">
-                        <div className={`step ${currentStep >= 1 ? 'active' : ''}`}>
-                            <div className="step-number">1</div>
+                        <div className={`step ${currentStep === 1 ? 'active' : ''}`}>
+                            <div className="step-circle">
+                                <span className="step-number">1</span>
+                            </div>
                             <div className="step-label">Thông tin</div>
                         </div>
-                        <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>
-                            <div className="step-number">2</div>
+                        <div className={`step ${currentStep === 2 ? 'active' : ''}`}>
+                            <div className="step-circle">
+                                <span className="step-number">2</span>
+                            </div>
                             <div className="step-label">Xác nhận</div>
                         </div>
-                        <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>
-                            <div className="step-number">3</div>
+                        <div className={`step ${currentStep === 3 ? 'active' : ''}`}>
+                            <div className="step-circle">
+                                <span className="step-number">3</span>
+                            </div>
                             <div className="step-label">Hoàn thành</div>
                         </div>
                     </div>
@@ -1679,9 +1944,8 @@ function PlaceOrder() {
                                             Thông tin người mua
                                         </h3>
                                         <button
-                                            className="btn btn-outline-primary"
+                                            className="btn btn-update-info"
                                             onClick={handleFillProfile}
-                                            style={{ fontSize: '14px', padding: '8px 16px' }}
                                         >
                                             <User size={16} />
                                             Cập nhật thông tin
@@ -1817,14 +2081,30 @@ function PlaceOrder() {
                                     </h3>
                                     <div className="form-group">
                                         <label className="form-label">Chọn đối tác vận chuyển *</label>
-                                        <div className="shipping-partners-container">
+                                        <div className="shipping-partners-container" ref={shippingPartnersRef}>
                                             <div
                                                 className="shipping-partner-selected"
                                                 onClick={() => setShowShippingOptions(!showShippingOptions)}
                                             >
                                                 <div className="shipping-partner-info">
                                                     <div className="shipping-partner-name">
-                                                        {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.name || 'Giao hàng nhanh'}
+                                                        {(() => {
+                                                            const selectedPartner = shippingPartners.find(p => p.id === orderData.shippingPartnerId);
+                                                            const partnerName = selectedPartner?.name || 'Giao hàng nhanh';
+                                                            const logoPath = getShippingPartnerLogo(partnerName);
+                                                            return (
+                                                                <>
+                                                                    {logoPath && (
+                                                                        <img
+                                                                            src={logoPath}
+                                                                            alt={partnerName}
+                                                                            className="shipping-partner-logo"
+                                                                        />
+                                                                    )}
+                                                                    {partnerName}
+                                                                </>
+                                                            );
+                                                        })()}
                                                     </div>
                                                     <div className="shipping-partner-desc">
                                                         {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.description || 'Giao hàng nhanh trong 24h'}
@@ -1835,36 +2115,54 @@ function PlaceOrder() {
 
                                             {showShippingOptions && (
                                                 <div className="shipping-partners-list">
-                                                    {shippingPartners.map((partner) => {
-                                                        const isFastDelivery = partner.name?.toLowerCase().includes('nhanh') ||
-                                                            partner.name?.toLowerCase().includes('fast') ||
-                                                            partner.description?.toLowerCase().includes('nhanh') ||
-                                                            partner.description?.toLowerCase().includes('fast');
-                                                        const isSelected = orderData.shippingPartnerId === partner.id;
-                                                        const isDisabled = !isFastDelivery;
+                                                    {shippingPartners
+                                                        .filter((partner) => partner.id !== orderData.shippingPartnerId)
+                                                        .map((partner) => {
+                                                            const isFastDelivery = partner.name?.toLowerCase().includes('nhanh') ||
+                                                                partner.name?.toLowerCase().includes('fast') ||
+                                                                partner.description?.toLowerCase().includes('nhanh') ||
+                                                                partner.description?.toLowerCase().includes('fast');
+                                                            const isSelected = orderData.shippingPartnerId === partner.id;
+                                                            const isDisabled = !isFastDelivery;
 
-                                                        return (
-                                                            <div
-                                                                key={partner.id}
-                                                                className={`shipping-partner-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
-                                                                onClick={() => {
-                                                                    if (!isDisabled) {
-                                                                        handleShippingPartnerChange(partner.id);
-                                                                        setShowShippingOptions(false);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <div className="shipping-partner-info">
-                                                                    <div className="shipping-partner-name">
-                                                                        {partner.name}
-                                                                        {isDisabled && <span className="disabled-badge">(Không khả dụng)</span>}
+                                                            return (
+                                                                <div
+                                                                    key={partner.id}
+                                                                    className={`shipping-partner-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                                                                    onClick={() => {
+                                                                        if (!isDisabled) {
+                                                                            handleShippingPartnerChange(partner.id);
+                                                                            setShowShippingOptions(false);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <div className="shipping-partner-info">
+                                                                        <div className="shipping-partner-name">
+                                                                            {(() => {
+                                                                                const logoPath = getShippingPartnerLogo(partner.name);
+                                                                                return (
+                                                                                    <>
+                                                                                        {logoPath && (
+                                                                                            <img
+                                                                                                src={logoPath}
+                                                                                                alt={partner.name}
+                                                                                                className="shipping-partner-logo"
+                                                                                            />
+                                                                                        )}
+                                                                                        {partner.name}
+                                                                                        {isDisabled && (
+                                                                                            <span className="disabled-tooltip">(Không khả dụng)</span>
+                                                                                        )}
+                                                                                    </>
+                                                                                );
+                                                                            })()}
+                                                                        </div>
+                                                                        <div className="shipping-partner-desc">{partner.description}</div>
                                                                     </div>
-                                                                    <div className="shipping-partner-desc">{partner.description}</div>
+                                                                    {isSelected && <div className="selected-indicator">✓</div>}
                                                                 </div>
-                                                                {isSelected && <div className="selected-indicator">✓</div>}
-                                                            </div>
-                                                        );
-                                                    })}
+                                                            );
+                                                        })}
                                                 </div>
                                             )}
                                         </div>
@@ -1905,47 +2203,100 @@ function PlaceOrder() {
                                             tabIndex={0}
                                         >
                                             <div className="payment-info">
-                                                <div className="payment-name">
-                                                    <Wallet size={20} />
-                                                    Ví điện tử
+                                                <div className="payment-info-left">
+                                                    <div className="payment-name">
+                                                        <Wallet size={20} />
+                                                        Ví điện tử
+                                                    </div>
+                                                    <div className="payment-desc">Thanh toán trực tuyến qua ví điện tử</div>
                                                 </div>
-                                                <div className="payment-desc">Thanh toán trực tuyến qua ví điện tử</div>
                                                 {orderData.paymentId === 2 && (
-                                                    <div className="place-order-wallet-balance">
-                                                        {walletLoading ? (
-                                                            <div className="place-order-wallet-loading">
-                                                                <div className="place-order-loading-spinner-small"></div>
-                                                                <span>Đang tải số dư ví...</span>
+                                                    <div className="wallet-balance-container" ref={walletBalanceRef}>
+                                                        <div
+                                                            className="wallet-balance-selected"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setIsWalletBalanceExpanded(!isWalletBalanceExpanded);
+                                                            }}
+                                                        >
+                                                            <div className="wallet-balance-info">
+                                                                <div className="wallet-balance-name">
+                                                                    <Wallet size={18} />
+                                                                    Số dư ví điện tử
+                                                                </div>
                                                             </div>
-                                                        ) : walletError ? (
-                                                            <div className="place-order-wallet-error">
-                                                                <AlertCircle size={16} />
-                                                                <span>{walletError}</span>
-                                                                <button
-                                                                    className="place-order-retry-btn"
-                                                                    onClick={refreshWalletBalance}
-                                                                    title="Thử lại"
-                                                                    type="button"
-                                                                >
-                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="place-order-wallet-success">
-                                                                <span className="place-order-balance-label">Số dư hiện tại:</span>
-                                                                <span className="place-order-balance-amount">{formatWalletCurrency(walletBalance)}</span>
-                                                                <button
-                                                                    className="place-order-refresh-btn"
-                                                                    onClick={refreshWalletBalance}
-                                                                    title="Cập nhật số dư"
-                                                                    type="button"
-                                                                >
-                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-                                                                    </svg>
-                                                                </button>
+                                                            {isWalletBalanceExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                        </div>
+
+                                                        {isWalletBalanceExpanded && (
+                                                            <div className="wallet-balance-dropdown">
+                                                                {walletLoading ? (
+                                                                    <div className="place-order-wallet-loading">
+                                                                        <div className="place-order-loading-spinner-small"></div>
+                                                                        <span>Đang tải số dư ví...</span>
+                                                                    </div>
+                                                                ) : walletError ? (
+                                                                    <div className="place-order-wallet-error">
+                                                                        <AlertCircle size={16} />
+                                                                        <span>{walletError}</span>
+                                                                        <button
+                                                                            className="place-order-retry-btn"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                refreshWalletBalance();
+                                                                            }}
+                                                                            title="Thử lại"
+                                                                            type="button"
+                                                                        >
+                                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                                                                            </svg>
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="wallet-balance-content">
+                                                                        <div className="wallet-balance-header">
+                                                                            <span className="wallet-balance-label">Số dư hiện tại:</span>
+                                                                            <button
+                                                                                className="wallet-eye-toggle-btn"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setShowWalletBalance(!showWalletBalance);
+                                                                                }}
+                                                                                title={showWalletBalance ? "Ẩn số dư" : "Hiển thị số dư"}
+                                                                                type="button"
+                                                                            >
+                                                                                {showWalletBalance ? (
+                                                                                    <Eye size={18} />
+                                                                                ) : (
+                                                                                    <EyeOff size={18} />
+                                                                                )}
+                                                                            </button>
+                                                                        </div>
+                                                                        <div className="wallet-balance-amount-row">
+                                                                            <div className="wallet-balance-amount-wrapper">
+                                                                                {showWalletBalance ? (
+                                                                                    <span className="wallet-balance-amount">{formatWalletCurrency(walletBalance)}</span>
+                                                                                ) : (
+                                                                                    <span className="wallet-balance-amount-masked">•••••••• ₫</span>
+                                                                                )}
+                                                                                <button
+                                                                                    className="wallet-refresh-btn"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        refreshWalletBalance();
+                                                                                    }}
+                                                                                    title="Cập nhật số dư"
+                                                                                    type="button"
+                                                                                >
+                                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                                                                                    </svg>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1991,16 +2342,6 @@ function PlaceOrder() {
                                     </div>
 
                                     {/* )} */}
-                                </div>
-
-                                <div className="form-actions">
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={() => setCurrentStep(2)}
-                                        disabled={!isFormValid()}
-                                    >
-                                        Tiếp tục
-                                    </button>
                                 </div>
                             </div>
                         )}
@@ -2333,6 +2674,27 @@ function PlaceOrder() {
                         </div>
                     </div>
                 </div>
+
+                {/* Navigation Actions - Outside form component */}
+                {currentStep === 1 && (
+                    <div className="form-actions">
+                        <button
+                            className="back-to-product-btn"
+                            onClick={() => navigate(`/product/${id}`)}
+                        >
+                            <ArrowLeft size={16} />
+                            <span>Quay về sản phẩm</span>
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => setCurrentStep(2)}
+                            disabled={!isFormValid()}
+                        >
+                            <span>Tiếp tục</span>
+                            <ArrowRight size={16} />
+                        </button>
+                    </div>
+                )}
             </div>
 
         </div>

@@ -67,8 +67,7 @@ function OrderList() {
             console.log('[OrderList] Loading order history...', { forceRefresh });
             // Fetch nhiều items hơn để đảm bảo lấy được orders mới nhất
             // Và fetch trang 0 (mới nhất) thay vì trang 1
-
-            const { items, meta } = await getOrderHistory({ page: 1, size: 20 });
+            const { items, meta } = await getOrderHistory({ page: 1, size: 10 });
 
 
             console.log('[OrderList] Order history meta:', meta);
