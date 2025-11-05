@@ -903,11 +903,11 @@ function OrderList() {
                                 const canceledAt = order.canceledAt || order._raw?.canceledAt || null;
                                 const cancelReason = order.cancelReason || order._raw?.cancelReason || '';
 
-                                // Xác định xem đơn có bị hủy không (dựa vào canceledAt hoặc status)
-                                const isCancelled = order.status === 'cancelled' || canceledAt != null;
+                                // Xác định xem đơn có bị hủy không sử dụng helper thống nhất
+                                const isCancelled = isOrderCancelled(order);
 
-                                // Xác định status để hiển thị (ưu tiên cancelled nếu đơn đã bị hủy)
-                                const displayStatus = isCancelled ? 'canceled' : order.status; // <-- ĐÃ SỬA: Dùng 'canceled'
+                                // Xác định status để hiển thị (ưu tiên canceled nếu đơn đã bị hủy)
+                                const displayStatus = isCancelled ? 'canceled' : order.status;
                                 const displayStatusInfo = getStatusInfo(displayStatus);
                                 const DisplayStatusIcon = displayStatusInfo.icon;
 
