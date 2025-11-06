@@ -24,6 +24,7 @@ import { getOrderHistory, hasOrderReview, getOrderStatus, getOrderDetails } from
 import DisputeForm from "../../components/BuyerRaiseDispute/DisputeForm";
 import './OrderList.css';
 import CancelOrderRequest from "../../components/CancelOrderModal/CancelOrderRequest";
+import { fetchPostProductById } from "../../api/productApi";
 
 // Kiểm tra trạng thái không thể hủy
 const isNonCancelable = (status) => {
@@ -416,6 +417,49 @@ function OrderList() {
         loadOrders(true);
     }, [loadOrders]);
 
+    // Sau khi orders tải về, bổ sung ảnh còn thiếu bằng cách gọi API sản phẩm theo postId/productId
+    useEffect(() => {
+        const enhanceImages = async () => {
+            if (!Array.isArray(orders) || orders.length === 0) return;
+
+            const tasks = orders.map(async (o) => {
+                const hasImage = Boolean(o?.product?.image);
+                const raw = o?._raw || {};
+                const productId = raw.postId || raw.productId || raw.product?.id;
+                if (hasImage || !productId) return null;
+                try {
+                    const prod = await fetchPostProductById(productId);
+                    if (prod && prod.image) {
+                        return { id: o.id, image: prod.image, title: prod.title, price: prod.price };
+                    }
+                } catch (e) {
+                    console.warn('[OrderList] fetchPostProductById failed for order', o.id, e);
+                }
+                return null;
+            });
+
+            const results = await Promise.allSettled(tasks);
+            const updates = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+            if (updates.length > 0) {
+                setOrders(prev => prev.map(o => {
+                    const u = updates.find(x => String(x.id) === String(o.id));
+                    if (!u) return o;
+                    return {
+                        ...o,
+                        product: {
+                            ...(o.product || {}),
+                            image: u.image || o.product?.image,
+                            title: o.product?.title || u.title,
+                            price: o.product?.price || u.price
+                        }
+                    };
+                }));
+            }
+        };
+
+        enhanceImages();
+    }, [orders]);
+
     // Refresh khi navigate từ place order (có state refresh)
     useEffect(() => {
         if (location.state?.refreshOrders || location.state?.orderPlaced) {
@@ -710,6 +754,40 @@ function OrderList() {
         alert(`Đặt lại đơn #${orderId} (sẽ thiết kế sau)`);
     };
 
+    const toAbsoluteUrl = (url) => {
+        if (!url || typeof url !== 'string') return '';
+        const trimmed = url.trim();
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        const base = (import.meta?.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
+        const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+        return `${base}${path}`;
+    };
+
+    const extractImageFromOrder = (order) => {
+        try {
+            // 1) Prefer normalized image if provided
+            if (order?.product?.image) return toAbsoluteUrl(order.product.image) || order.product.image;
+
+            const raw = order?._raw || {};
+            const rawProduct = raw.product || {};
+            // 2) Direct fields
+            const direct = raw.productImage || rawProduct.productImage || rawProduct.image || rawProduct.imageUrl || order.image || raw.image || raw.imageUrl;
+            if (typeof direct === 'string' && direct.trim()) return toAbsoluteUrl(direct);
+            // 3) Arrays
+            const images = rawProduct.images || rawProduct.imageUrls || raw.images || [];
+            if (Array.isArray(images) && images.length > 0) {
+                const first = images[0];
+                if (typeof first === 'string') return toAbsoluteUrl(first);
+                if (first && typeof first === 'object') {
+                    const candidate = first.imgUrl || first.url || first.image;
+                    if (typeof candidate === 'string' && candidate.trim()) return toAbsoluteUrl(candidate);
+                }
+            }
+        } catch { /* ignore */ }
+        return '';
+    };
+
     const getActionsForStatus = (status, orderId) => {
         switch (status) {
             case 'pending':
@@ -948,6 +1026,7 @@ function OrderList() {
                                 const displayStatusInfo = getStatusInfo(displayStatus);
                                 const DisplayStatusIcon = displayStatusInfo.icon;
 
+                                const imgSrc = extractImageFromOrder(order) || '/vite.svg';
                                 return (
                                     <div key={order.id} className={`order-card ${isCancelled ? 'order-cancelled' : ''}`} onClick={() => handleViewOrder(order.id)}>
                                         <div className="order-header">
@@ -977,7 +1056,7 @@ function OrderList() {
                                         <div className="order-content">
                                             <div className="order-product-row">
                                                 <div className="thumb">
-                                                    <img src={order.product?.image || '/vite.svg'} alt={order.product?.title || 'product'} />
+                                                    <img src={imgSrc} alt={order.product?.title || 'product'} />
                                                 </div>
                                                 <div className="info-rows">
                                                     <div className="info-row">
