@@ -124,17 +124,29 @@ export const approveSeller = async ({ sellerId, decision, message }) => {
 };
 
 
-// ===== Users (Buyer & Seller) Management ===== //Gia định vì chưa có API
-export const getAllUserAccounts = async (page = 0, size = 20, role, status) => {
+// ===== Users (Buyer & Seller) Management ===== 
+// GET /api/v1/buyer/list - Lấy danh sách buyers (yêu cầu ROLE_ADMIN)
+export const getBuyerList = async (page = 0, size = 10) => {
   try {
-    const params = { page, size };
-    if (role) params.role = role;
-    if (status) params.status = status;
-
-    const res = await adminAxios.get(`/api/v1/admin/users`, { params });
+    const res = await adminAxios.get(`/api/v1/buyer/list`, {
+      params: { page, size },
+    });
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách người dùng:", error);
+    console.error("Lỗi khi lấy danh sách buyers:", error);
+    throw error;
+  }
+};
+
+// GET /api/v1/seller/list - Lấy danh sách sellers (yêu cầu ROLE_SELLER hoặc ROLE_ADMIN)
+export const getSellerList = async (page = 0, size = 10) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/seller/list`, {
+      params: { page, size },
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách sellers:", error);
     throw error;
   }
 };
