@@ -65,7 +65,15 @@ export default function AdminLogin() {
         password: String(formData.password || "").trim(),
       };
       const response = await authApi.adminSignin(payload);
-      const resData = response?.data?.data;
+      const responseData = response?.data?.data;
+      
+      // Lấy thông tin admin từ adminResponse
+      const adminResponse = responseData?.adminResponse || {};
+      
+      // Lấy tokens từ data (không phải từ adminResponse)
+      const accessToken = responseData?.accessToken;
+      const refreshToken = responseData?.refreshToken;
+      const role = responseData?.role;
 
       // CLEAR USER TOKENS TRƯỚC (vì chỉ cho 1 loại login tại 1 thời điểm)
       localStorage.removeItem("buyerId");
@@ -75,35 +83,42 @@ export default function AdminLogin() {
       console.log("[Admin Login] Cleared user-specific data");
 
       // Lưu admin tokens - dùng chung accessToken với user nhưng đánh dấu bằng authType
-      if (resData?.accessToken) {
-        localStorage.setItem("accessToken", resData.accessToken);
-        localStorage.setItem("token", resData.accessToken);
+      if (accessToken) {
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("token", accessToken);
+        localStorage.setItem("adminToken", accessToken);
       }
-      if (resData?.refreshToken) {
-        localStorage.setItem("refreshToken", resData.refreshToken);
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+        localStorage.setItem("adminRefreshToken", refreshToken);
+      }
+      
+      // Lưu role nếu có
+      if (role) {
+        localStorage.setItem("adminRole", role);
       }
       
       // QUAN TRỌNG: Lưu username và email vào adminProfile thay vì localStorage chung
       // để tránh conflict với user data
       // KHÔNG lưu username/userEmail vào localStorage chung khi admin login
 
-      // Lưu hồ sơ admin (bao gồm cả username, email, phoneNumber)
+      // Lưu hồ sơ admin từ adminResponse
       const adminProfile = {
-        avatarUrl:
-          resData?.avatarUrl || resData?.avatar_url || resData?.avatarURL,
-        employeeNumber: resData?.employeeNumber || resData?.employee_number,
-        fullName: resData?.fullName || resData?.full_name,
-        phoneNumber: resData?.phoneNumber || resData?.phone_number,
-        username: resData?.username, // Lưu username trong adminProfile
-        email: resData?.email, // Lưu email trong adminProfile
-        isSuperAdmin:
-          typeof resData?.isSuperAdmin !== "undefined"
-            ? resData?.isSuperAdmin
-            : resData?.is_super_admin,
-        status: resData?.status,
-        gender: resData?.gender,
-        createdAt: resData?.createdAt || resData?.created_at,
-        updatedAt: resData?.updatedAt || resData?.updated_at,
+        id: adminResponse?.id,
+        avatarUrl: adminResponse?.avatarUrl || adminResponse?.avatar_url || adminResponse?.avatarURL,
+        employeeNumber: adminResponse?.employeeNumber || adminResponse?.employee_number,
+        fullName: adminResponse?.fullName || adminResponse?.full_name,
+        phoneNumber: adminResponse?.phoneNumber || adminResponse?.phone_number,
+        email: adminResponse?.email,
+        isSuperAdmin: adminResponse?.superAdmin !== undefined 
+          ? adminResponse?.superAdmin 
+          : (adminResponse?.isSuperAdmin !== undefined 
+            ? adminResponse?.isSuperAdmin 
+            : adminResponse?.is_super_admin),
+        status: adminResponse?.status,
+        gender: adminResponse?.gender,
+        createdAt: adminResponse?.createdAt || adminResponse?.created_at,
+        updatedAt: adminResponse?.updatedAt || adminResponse?.updated_at,
       };
       localStorage.setItem("adminProfile", JSON.stringify(adminProfile));
 

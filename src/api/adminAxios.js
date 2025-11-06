@@ -1,5 +1,4 @@
 import axios from "axios";
-import tokenManager from "../utils/tokenManager";
 
 const adminAxios = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
@@ -19,22 +18,15 @@ adminAxios.interceptors.request.use(async (config) => {
   );
 
   if (!isPublic) {
-    try {
-      // Sử dụng tokenManager để lấy token hợp lệ
-      const validToken = await tokenManager.getValidToken();
-      if (validToken) {
-        config.headers.Authorization = `Bearer ${validToken}`;
-      }
-    } catch (error) {
-      // Nếu không thể lấy token hợp lệ, vẫn thử với token cũ
-      const token =
-        localStorage.getItem("accessToken") || localStorage.getItem("token");
+    // Sử dụng adminToken cho các request admin
+    const adminToken =
+      localStorage.getItem("adminToken") ||
+      localStorage.getItem("adminAccessToken");
 
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      } else {
-        console.warn("Không tìm thấy accessToken trong localStorage");
-      }
+    if (adminToken) {
+      config.headers.Authorization = `Bearer ${adminToken}`;
+    } else {
+      console.warn("Không tìm thấy adminToken trong localStorage");
     }
   }
 
@@ -53,17 +45,26 @@ adminAxios.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        // Thử refresh token
-        const newToken = await tokenManager.refreshAccessToken();
-
-        // Cập nhật header với token mới
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-
-        // Thử lại request với token mới
-        return adminAxios(originalRequest);
+        // Thử refresh admin token
+        const adminRefreshToken =
+          localStorage.getItem("adminRefreshToken") || "";
+        
+        const res = await axios.post(
+          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"}/api/v1/auth/admin/refresh-token`,
+          {},
+          { headers: { Authorization: `Bearer ${adminRefreshToken}` } }
+        );
+        
+        const newToken = res?.data?.data?.accessToken;
+        if (newToken) {
+          localStorage.setItem("adminToken", newToken);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return adminAxios(originalRequest);
+        }
       } catch (refreshError) {
         // Nếu refresh thất bại, xóa tokens và redirect về admin login
-        tokenManager.clearTokens();
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminRefreshToken");
 
         // Redirect về admin login page
         if (typeof window !== 'undefined') {
