@@ -23,6 +23,7 @@ import './OrderTracking.css';
 import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview } from '../../api/orderApi';
 import profileApi from '../../api/profileApi';
 import { AnimatedButton } from '../../components/ui/AnimatedButton';
+import CancelOrderRequest from "../../components/CancelOrderModal/CancelOrderRequest";
 
 
 
@@ -34,6 +35,7 @@ function OrderTracking() {
     const [loading, setLoading] = useState(true);
     const [isGuest, setIsGuest] = useState(true);
     const [hasReview, setHasReview] = useState(false); // Trạng thái đánh giá
+    const [showCancelForm, setShowCancelForm] = useState(false);
 
 
 
@@ -528,16 +530,7 @@ function OrderTracking() {
     };
 
     // Xử lý hủy đơn hàng
-    const handleCancelOrder = () => {
-        if (window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) {
-            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-            const updatedOrders = orders.map(o =>
-                o.id === orderId ? { ...o, status: 'cancelled' } : o
-            );
-            localStorage.setItem('orders', JSON.stringify(updatedOrders));
-            setOrder({ ...order, status: 'cancelled' });
-        }
-    };
+
 
     if (isGuest) {
         return null; // Sẽ redirect về login
@@ -567,8 +560,25 @@ function OrderTracking() {
         );
     }
 
+
     return (
+
         <div className="order-tracking-page">
+            {showCancelForm && (
+                <div className="cancel-order-popup-wrapper">
+                    <CancelOrderRequest
+                        orderId={order.id}
+                        onCancelSuccess={() => {
+                            setShowCancelForm(false);
+                            navigate('/orders', {
+                                state: { refreshOrders: true, filter: 'canceled' },
+                            });
+
+                        }}
+                        onBack={() => setShowCancelForm(false)}
+                    />
+                </div>
+            )}
             <div className="order-tracking-container">
                 {/* Header */}
                 <div className="order-tracking-header">
@@ -828,12 +838,13 @@ function OrderTracking() {
                                     </AnimatedButton>
                                     <AnimatedButton
                                         variant="outline-danger"
-                                        onClick={handleCancelOrder}
+                                        onClick={() => setShowCancelForm(true)}
                                         className="action-btn-danger"
                                     >
                                         <AlertCircle size={18} />
                                         Hủy đơn hàng
                                     </AnimatedButton>
+
                                 </div>
                             )}
 
