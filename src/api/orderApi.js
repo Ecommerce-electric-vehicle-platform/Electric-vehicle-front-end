@@ -494,10 +494,37 @@ function normalizeOrderHistoryItem(item) {
     const shippingAddress = item.shippingAddress || item.shipping_address || '';
     const phoneNumber = item.phoneNumber || item.phone_number || '';
 
-    // Giao diện cần có product info; dùng placeholder nếu BE không trả
+    // Helper: chuyển URL ảnh tương đối thành tuyệt đối
+    const toAbsoluteUrl = (url) => {
+        if (!url || typeof url !== 'string') return '';
+        const trimmed = url.trim();
+        if (!trimmed) return '';
+        const isAbs = /^https?:\/\//i.test(trimmed);
+        if (isAbs) return trimmed;
+        const base = (import.meta?.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
+        const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+        return `${base}${path}`;
+    };
+
+    // Trích xuất ảnh sản phẩm từ nhiều trường khả dĩ của BE
+    const rawProduct = item.product || item._raw?.product || {};
+    const directImage = rawProduct.productImage || rawProduct.image || rawProduct.imageUrl || item.productImage || item.image || item.imageUrl;
+    let productImage = '';
+    if (typeof directImage === 'string' && directImage.trim()) {
+        productImage = toAbsoluteUrl(directImage);
+    } else {
+        const imgs = rawProduct.images || rawProduct.imageUrls || item.images || [];
+        if (Array.isArray(imgs) && imgs.length > 0) {
+            const first = imgs[0];
+            if (typeof first === 'string') productImage = toAbsoluteUrl(first);
+            else if (first && typeof first === 'object') productImage = toAbsoluteUrl(first.imgUrl || first.url || first.image || '');
+        }
+    }
+
+    // Giao diện cần có product info; fallback placeholder nếu BE không trả
     const product = {
-        image: '/vite.svg',
-        title: `Đơn hàng ${orderCode}`,
+        image: productImage || '/vite.svg',
+        title: item.product?.title || item._raw?.productName || `Đơn hàng ${orderCode}`,
         brand: '',
         model: '',
         conditionLevel: ''

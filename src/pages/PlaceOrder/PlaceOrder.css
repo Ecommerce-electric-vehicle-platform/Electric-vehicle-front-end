@@ -2786,3 +2786,10 @@
     color: #6c757d;
     line-height: 1.4;
 }
+
+/* Shipping fee note under summary */
+.shipping-fee-note {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #888;
+}
