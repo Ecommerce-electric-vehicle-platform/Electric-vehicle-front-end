@@ -96,6 +96,32 @@ export const getAdminProfile = async () => {
   }
 };
 
+// Lấy danh sách admin có phân trang
+// GET /api/v1/admin/list?page=&size=
+export const getAdminList = async (page = 0, size = 10) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/list`, {
+      params: { page, size },
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách admin:", error);
+    throw error;
+  }
+};
+
+// Lấy thông tin profile của admin theo accountId
+// GET /api/v1/admin/profile/{accountId}
+export const getAdminProfileById = async (accountId) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/profile/${accountId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin admin profile:", error);
+    throw error;
+  }
+};
+
 /**
  * ================================
  * SELLER APPROVAL
@@ -151,15 +177,18 @@ export const getSellerList = async (page = 0, size = 10) => {
   }
 };
 
-// Kích hoạt / vô hiệu hóa tài khoản Buyer hoặc Seller
-export const toggleUserActive = async (userId, active) => {
+// Block hoặc unblock account (Buyer, Seller, hoặc Admin)
+// POST /api/v1/admin/block-account/{accountId}/{accountType}/{message}/{activity}
+export const blockAccount = async (accountId, accountType, message, activity) => {
   try {
-    const res = await adminAxios.patch(`/api/v1/admin/users/${userId}/active`, {
-      active,
-    });
+    // Encode message để tránh lỗi với ký tự đặc biệt trong URL
+    const encodedMessage = encodeURIComponent(message || "");
+    const res = await adminAxios.post(
+      `/api/v1/admin/block-account/${accountId}/${accountType}/${encodedMessage}/${activity}`
+    );
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi cập nhật trạng thái người dùng:", error);
+    console.error("Lỗi khi block/unblock account:", error);
     throw error;
   }
 };
