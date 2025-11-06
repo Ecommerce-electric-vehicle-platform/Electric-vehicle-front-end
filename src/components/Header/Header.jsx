@@ -152,8 +152,19 @@ export function Header() {
   const handleLogout = () => {
     console.log("User logging out...");
 
-    // ✅ CHỈ xóa user-specific keys, KHÔNG xóa adminProfile
+    //  CHỈ xóa user-specific keys, KHÔNG xóa adminProfile
     // Vì user logout không liên quan đến admin
+
+    // Xóa đơn hàng localStorage theo username khi logout
+    const username = localStorage.getItem("username");
+    if (username) {
+      const storageKey = `orders_${username}`;
+      localStorage.removeItem(storageKey);
+      console.log(`[Header] Cleared localStorage orders for user: ${storageKey}`);
+    }
+    
+
+
     [
       "token",
       "accessToken",
