@@ -84,6 +84,14 @@ function OrderList() {
             const { items, meta } = await getOrderHistory({ page: 1, size: 10 });
 
 
+            // Lấy username hiện tại để lọc localStorage
+            const currentUsername = localStorage.getItem('username') || '';
+            const storageKey = `orders_${currentUsername}`;
+            const localOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+            console.log('[OrderList] LocalStorage orders for user:', currentUsername, localOrders);
+
+
             console.log('[OrderList] Order history meta:', meta);
             console.log('[OrderList] Total items from backend:', items.length);
 
@@ -107,7 +115,10 @@ function OrderList() {
                 const currentUsername = localStorage.getItem('username') || '';
 
                 // XÓA các orders trong localStorage không thuộc user hiện tại (cleanup)
-                let allLocalOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                //let allLocalOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                const username = localStorage.getItem('username') || '';
+                let allLocalOrders = JSON.parse(localStorage.getItem(`orders_${username}`) || '[]');
+
                 if (Array.isArray(allLocalOrders) && allLocalOrders.length > 0 && currentUsername) {
                     const userOrders = allLocalOrders.filter(lo => {
                         if (!lo) return false;
