@@ -142,6 +142,128 @@ export function Chat() {
         }
     };
 
+    // Load messages của một conversation từ BE
+    const loadMessages = async (conversationId) => {
+        if (!conversationId) return;
+        
+        try {
+            console.log("[Chat] Loading messages for conversation:", conversationId);
+            const response = await chatApi.getMessagesByConversationId(conversationId);
+            
+            // Xử lý response - có thể có cấu trúc khác nhau
+            let messagesData = [];
+            
+            // Kiểm tra nhiều cấu trúc response khác nhau
+            if (response?.data?.data) {
+                // Cấu trúc: { data: { data: [...] } }
+                if (Array.isArray(response.data.data)) {
+                    messagesData = response.data.data;
+                } else if (response.data.data.messages && Array.isArray(response.data.data.messages)) {
+                    messagesData = response.data.data.messages;
+                } else if (response.data.data.list && Array.isArray(response.data.data.list)) {
+                    messagesData = response.data.data.list;
+                } else if (response.data.data.content && Array.isArray(response.data.data.content)) {
+                    messagesData = response.data.data.content;
+                }
+            } else if (response?.data) {
+                // Cấu trúc: { data: [...] } hoặc { data: { messages: [...] } }
+                if (Array.isArray(response.data)) {
+                    messagesData = response.data;
+                } else if (response.data.messages && Array.isArray(response.data.messages)) {
+                    messagesData = response.data.messages;
+                } else if (response.data.list && Array.isArray(response.data.list)) {
+                    messagesData = response.data.list;
+                } else if (response.data.content && Array.isArray(response.data.content)) {
+                    messagesData = response.data.content;
+                }
+            } else if (Array.isArray(response)) {
+                // Cấu trúc: [...] (response trực tiếp là array)
+                messagesData = response;
+            }
+            
+            // Nếu không có messages, log cảnh báo và return
+            if (!messagesData || messagesData.length === 0) {
+                console.warn("[Chat] No messages found in response. Full response structure:", {
+                    response: response,
+                    responseData: response?.data,
+                    responseDataData: response?.data?.data,
+                    responseDataKeys: response?.data ? Object.keys(response.data) : [],
+                    responseDataDataKeys: response?.data?.data ? Object.keys(response.data.data) : []
+                });
+                // Vẫn set messages rỗng để tránh lỗi
+                setMessages(prev => ({
+                    ...prev,
+                    [conversationId]: []
+                }));
+                return;
+            }
+            
+            // Lấy buyerId, sellerId và userRole để xác định sender
+            const buyerId = localStorage.getItem('buyerId');
+            const sellerId = localStorage.getItem('sellerId');
+            const currentUserRole = localStorage.getItem('userRole') || 'buyer';
+            
+            // Xác định currentUserId: ID của người đang đăng nhập
+            const currentUserId = currentUserRole === 'seller' && sellerId ? sellerId : buyerId;
+            
+            
+            // Transform messages từ BE format sang format UI
+            const transformedMessages = messagesData.map((msg) => {
+                const msgSenderId = msg.senderId || msg.sender?.id || msg.sender;
+                
+                // Xác định sender dựa vào senderId và buyerId
+                // Nếu senderId === buyerId → sender là "buyer"
+                // Nếu senderId !== buyerId → sender là "seller"
+                const isBuyer = buyerId && String(msgSenderId) === String(buyerId);
+                
+                // Xác định tin nhắn có phải của mình không (để hiển thị sent/received)
+                const isMyMessage = currentUserId && String(msgSenderId) === String(currentUserId);
+                
+                // Format time để hiển thị
+                const msgTime = msg.sendAt || msg.createdAt || msg.created_at || msg.timestamp || new Date().toISOString();
+                const date = new Date(msgTime);
+                const formattedTime = date.toLocaleTimeString('vi-VN', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                return {
+                    id: msg.id || msg.messageId || Date.now() + Math.random(),
+                    text: msg.content || msg.text || "",
+                    imageUrl: msg.imageUrl || msg.picture || msg.image || null,
+                    sender: isBuyer ? 'buyer' : 'seller', // Role của người gửi
+                    senderId: msgSenderId, // ID của người gửi
+                    receiverId: msg.receiverId || msg.receiver?.id || msg.receiver,
+                    isMyMessage: isMyMessage, // Flag để xác định tin nhắn của mình
+                    time: formattedTime,
+                    createdAt: msgTime
+                };
+            });
+            
+            // Sắp xếp messages theo thời gian (cũ nhất trước)
+            transformedMessages.sort((a, b) => {
+                const timeA = new Date(a.createdAt || a.time).getTime();
+                const timeB = new Date(b.createdAt || b.time).getTime();
+                return timeA - timeB;
+            });
+            
+            console.log("[Chat] Loaded", transformedMessages.length, "messages for conversation:", conversationId);
+            
+            // Lưu messages vào state
+            setMessages(prev => ({
+                ...prev,
+                [conversationId]: transformedMessages
+            }));
+        } catch (error) {
+            console.error("[Chat] Error loading messages:", error);
+            // Nếu lỗi, set messages rỗng để tránh hiển thị lỗi
+            setMessages(prev => ({
+                ...prev,
+                [conversationId]: []
+            }));
+        }
+    };
+
     // Load danh sách conversations từ BE
     const loadConversations = async () => {
         try {
@@ -282,33 +404,64 @@ export function Chat() {
     // Subscribe to real-time chat messages via WebSocket
     useEffect(() => {
         const buyerId = localStorage.getItem('buyerId');
-        if (!buyerId) {
-            console.warn('[Chat] No buyerId found, skipping WebSocket subscription');
+        const sellerId = localStorage.getItem('sellerId');
+        const currentUserRole = localStorage.getItem('userRole') || 'buyer';
+        
+        // Xác định ID để subscribe WebSocket
+        let userId = buyerId;
+        if (currentUserRole === 'seller' && sellerId) {
+            userId = sellerId;
+        }
+        
+        if (!userId) {
+            console.warn('[Chat] No userId found, skipping WebSocket subscription. buyerId:', buyerId, 'sellerId:', sellerId, 'role:', currentUserRole);
             return;
         }
         
-        const chatDestination = `/chatting/notifications/${buyerId}`;
-        console.log('[Chat] Subscribing to WebSocket chat messages:', chatDestination);
+        const chatDestination = `/chatting/notifications/${userId}`;
+        console.log('[Chat] Subscribing to WebSocket chat messages:', chatDestination, 'UserRole:', currentUserRole);
         
         // Subscribe to chat messages
         const unsubscribe = websocketService.subscribe(chatDestination, (chatMessage) => {
             console.log('[Chat] New chat message received via WebSocket:', chatMessage);
             
-            // Add the new message to the messages state
-            if (chatMessage.conversationId || chatMessage.conversation?.id) {
-                const conversationId = chatMessage.conversationId || chatMessage.conversation.id;
-                
-                setMessages(prev => {
-                    const currentMessages = prev[conversationId] || [];
-                    const newMessage = {
-                        id: chatMessage.id || Date.now(),
-                        text: chatMessage.content || "",
-                        imageUrl: chatMessage.imageUrl || chatMessage.pictureUrl || null,
-                        sender: chatMessage.senderId === buyerId ? "buyer" : "seller",
-                        time: chatMessage.createdAt || chatMessage.sendAt || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-                    };
+                // Add the new message to the messages state
+                if (chatMessage.conversationId || chatMessage.conversation?.id) {
+                    const conversationId = chatMessage.conversationId || chatMessage.conversation.id;
+                    const currentUserRole = localStorage.getItem('userRole') || 'buyer';
                     
-                    // Add to messages
+                    // Xác định sender giống như logic trong loadMessages
+                    const msgSenderId = chatMessage.senderId || chatMessage.sender?.id || chatMessage.sender;
+                    const sellerId = localStorage.getItem('sellerId');
+                    
+                    // Xác định sender dựa vào senderId và buyerId
+                    const isBuyer = buyerId && String(msgSenderId) === String(buyerId);
+                    
+                    // Xác định currentUserId: ID của người đang đăng nhập
+                    const currentUserId = currentUserRole === 'seller' && sellerId ? sellerId : buyerId;
+                    
+                    // Xác định tin nhắn có phải của mình không
+                    const isMyMessage = currentUserId && String(msgSenderId) === String(currentUserId);
+                    
+                    setMessages(prev => {
+                        const currentMessages = prev[conversationId] || [];
+                        const msgTime = chatMessage.createdAt || chatMessage.sendAt || new Date().toISOString();
+                        const date = new Date(msgTime);
+                        const formattedTime = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                        
+                        const newMessage = {
+                            id: chatMessage.id || Date.now(),
+                            text: chatMessage.content || "",
+                            imageUrl: chatMessage.imageUrl || chatMessage.pictureUrl || null,
+                            sender: isBuyer ? "buyer" : "seller", // Role của người gửi
+                            senderId: msgSenderId, // ID của người gửi
+                            receiverId: chatMessage.receiverId || chatMessage.receiver?.id || chatMessage.receiver,
+                            isMyMessage: isMyMessage, // Flag để xác định tin nhắn của mình
+                            time: formattedTime,
+                            createdAt: msgTime
+                        };
+                        
+                        // Add to messages
                     return {
                         ...prev,
                         [conversationId]: [...currentMessages, newMessage]
@@ -385,6 +538,18 @@ export function Chat() {
         localStorage.setItem('chat_blocked_ids', JSON.stringify(blockedConversationIds));
     }, [blockedConversationIds]);
 
+    // Load messages khi selectedChat thay đổi hoặc khi reload trang
+    useEffect(() => {
+        if (selectedChat) {
+            const conversationId = selectedChat.conversationId || selectedChat.id;
+            if (conversationId) {
+                // Luôn load messages từ API khi chọn conversation (để đảm bảo có dữ liệu mới nhất)
+                loadMessages(conversationId);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedChat?.id, selectedChat?.conversationId]);
+
 
 
     const handleChatSelect = (chat) => {
@@ -394,7 +559,6 @@ export function Chat() {
             return;
         }
         
-        console.log("[Chat] Selecting chat:", chat);
         setSelectedChat(chat);
         
         // Đánh dấu tin nhắn đã đọc
@@ -411,6 +575,8 @@ export function Chat() {
         } else {
             setSellerInfo(null);
         }
+        
+        // Messages sẽ được load tự động bởi useEffect khi selectedChat thay đổi
     };
 
     const handleSendMessage = async () => {
@@ -425,6 +591,10 @@ export function Chat() {
         }
 
         try {
+            // Lấy currentUserId để xác định isMyMessage
+            const sellerId = localStorage.getItem('sellerId');
+            const currentUserId = userRole === 'seller' && sellerId ? sellerId : buyerId;
+            
             // Gửi tin nhắn lên BE
             await chatApi.sendMessage(
                 selectedChat.conversationId || selectedChat.id,
@@ -435,14 +605,18 @@ export function Chat() {
             );
 
             // Update UI optimistically
+            const now = new Date();
             const newMessage = {
                 id: Date.now(),
                 text: messageText,
                 sender: userRole,
-                time: new Date().toLocaleTimeString('vi-VN', {
+                senderId: currentUserId, // ID của người gửi (chính mình)
+                isMyMessage: true, // Tin nhắn của mình → hiển thị bên phải
+                time: now.toLocaleTimeString('vi-VN', {
                     hour: '2-digit',
                     minute: '2-digit'
-                })
+                }),
+                createdAt: now.toISOString()
             };
 
             setMessages(prev => ({
@@ -502,6 +676,10 @@ export function Chat() {
         }
 
         try {
+            // Lấy currentUserId để xác định isMyMessage
+            const sellerId = localStorage.getItem('sellerId');
+            const currentUserId = userRole === 'seller' && sellerId ? sellerId : buyerId;
+            
             // Gửi ảnh lên BE
             await chatApi.sendMessage(
                 selectedChat.conversationId || selectedChat.id,
@@ -512,15 +690,19 @@ export function Chat() {
             );
 
             // Update UI optimistically
+            const now = new Date();
             const newMessage = {
                 id: Date.now(),
                 text: "",
                 imageUrl: selectedImagePreviewUrl,
                 sender: userRole,
-                time: new Date().toLocaleTimeString('vi-VN', {
+                senderId: currentUserId, // ID của người gửi (chính mình)
+                isMyMessage: true, // Tin nhắn của mình → hiển thị bên phải
+                time: now.toLocaleTimeString('vi-VN', {
                     hour: '2-digit',
                     minute: '2-digit'
-                })
+                }),
+                createdAt: now.toISOString()
             };
 
             setMessages(prev => ({
@@ -827,10 +1009,17 @@ export function Chat() {
                                 {/* Messages */}
                                 <div className="messages-container">
                                     <div className="messages">
-                                        {messages[selectedChat.id]?.map((msg) => (
+                                        {messages[selectedChat.id]?.map((msg) => {
+                                            // Xác định class dựa vào isMyMessage (tin nhắn của mình → sent, tin nhắn của đối tác → received)
+                                            // Nếu có flag isMyMessage thì dùng, nếu không thì fallback về logic cũ
+                                            const isSent = msg.isMyMessage !== undefined 
+                                                ? msg.isMyMessage 
+                                                : (msg.sender === userRole);
+                                            
+                                            return (
                                             <div
                                                 key={msg.id}
-                                                className={`message ${msg.sender === userRole ? 'sent' : 'received'}`}
+                                                className={`message ${isSent ? 'sent' : 'received'}`}
                                             >
                                                 <div className="message-content">
                                                     {msg.imageUrl ? (
@@ -844,7 +1033,8 @@ export function Chat() {
                                                     <span className="message-time">{msg.time}</span>
                                                 </div>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
