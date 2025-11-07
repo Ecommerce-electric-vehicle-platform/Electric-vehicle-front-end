@@ -271,30 +271,56 @@ const CoreAdminLayout = () => {
             </div>
           </div>
 
-          <div style={{ marginBottom: "4px" }}>
-            <a
-              href="/admin/manage-admins"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                padding: "12px 20px",
-                color: "#bdc3c7",
-                textDecoration: "none",
-                transition: "all 0.2s",
-              }}
-              onMouseOver={(e) => {
-                e.target.style.background = "rgba(255,255,255,0.05)";
-                e.target.style.color = "#ecf0f1";
-              }}
-              onMouseOut={(e) => {
-                e.target.style.background = "transparent";
-                e.target.style.color = "#bdc3c7";
-              }}
-            >
-              <MdPeople style={{ marginRight: "12px", fontSize: "18px" }} />
-              Manage Admins
-            </a>
-          </div>
+          {(() => {
+            // Kiểm tra quyền Super Admin
+            try {
+              const adminProfileStr = localStorage.getItem("adminProfile");
+              if (adminProfileStr) {
+                const adminProfile = JSON.parse(adminProfileStr);
+                const isSuperAdmin = adminProfile?.isSuperAdmin === true || 
+                                   adminProfile?.superAdmin === true || 
+                                   adminProfile?.is_super_admin === true;
+                
+                // Chỉ hiển thị link nếu là super admin
+                if (!isSuperAdmin) {
+                  return null;
+                }
+              } else {
+                // Nếu không có adminProfile, ẩn link
+                return null;
+              }
+            } catch (err) {
+              // Nếu có lỗi, ẩn link để an toàn
+              return null;
+            }
+            
+            return (
+              <div style={{ marginBottom: "4px" }}>
+                <a
+                  href="/admin/manage-admins"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "12px 20px",
+                    color: "#bdc3c7",
+                    textDecoration: "none",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.background = "rgba(255,255,255,0.05)";
+                    e.target.style.color = "#ecf0f1";
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = "transparent";
+                    e.target.style.color = "#bdc3c7";
+                  }}
+                >
+                  <MdPeople style={{ marginRight: "12px", fontSize: "18px" }} />
+                  Manage Admins
+                </a>
+              </div>
+            );
+          })()}
 
           <div style={{ marginBottom: "4px" }}>
             <a
