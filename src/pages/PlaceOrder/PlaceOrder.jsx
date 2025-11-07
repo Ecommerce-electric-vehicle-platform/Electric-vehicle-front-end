@@ -1589,16 +1589,9 @@ function PlaceOrder() {
                     createdBy: currentUsername // Alias cho compatibility
                 };
 
-                // const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-                // existingOrders.push(newOrderWithUser);
-                // localStorage.setItem('orders', JSON.stringify(existingOrders));
-
-                // Lưu đơn hàng vào localStorage riêng của từng user
-                const storageKey = `orders_${currentUsername}`; // Mỗi user có 1 key riêng
-                const existingOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
                 existingOrders.push(newOrderWithUser);
-                localStorage.setItem(storageKey, JSON.stringify(existingOrders));
-
+                localStorage.setItem('orders', JSON.stringify(existingOrders));
 
                 setCurrentStep(3);
             } else {

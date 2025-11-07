@@ -26,20 +26,6 @@ import './OrderList.css';
 import CancelOrderRequest from "../../components/CancelOrderModal/CancelOrderRequest";
 import { fetchPostProductById } from "../../api/productApi";
 
-// Kiểm tra trạng thái không thể hủy
-const isNonCancelable = (status) => {
-    const lockedStatuses = [
-        'verified',
-        'processing',
-        'confirmed',
-        'shipping',
-        'delivered',
-        'canceled'
-    ];
-    return lockedStatuses.includes(status?.toLowerCase());
-};
-
-
 function OrderList() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -85,14 +71,6 @@ function OrderList() {
             const { items, meta } = await getOrderHistory({ page: 1, size: 10 });
 
 
-            // Lấy username hiện tại để lọc localStorage
-            const currentUsername = localStorage.getItem('username') || '';
-            const storageKey = `orders_${currentUsername}`;
-            const localOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
-
-            console.log('[OrderList] LocalStorage orders for user:', currentUsername, localOrders);
-
-
             console.log('[OrderList] Order history meta:', meta);
             console.log('[OrderList] Total items from backend:', items.length);
 
@@ -116,10 +94,7 @@ function OrderList() {
                 const currentUsername = localStorage.getItem('username') || '';
 
                 // XÓA các orders trong localStorage không thuộc user hiện tại (cleanup)
-                //let allLocalOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-                const username = localStorage.getItem('username') || '';
-                let allLocalOrders = JSON.parse(localStorage.getItem(`orders_${username}`) || '[]');
-
+                let allLocalOrders = JSON.parse(localStorage.getItem('orders') || '[]');
                 if (Array.isArray(allLocalOrders) && allLocalOrders.length > 0 && currentUsername) {
                     const userOrders = allLocalOrders.filter(lo => {
                         if (!lo) return false;
@@ -255,17 +230,7 @@ function OrderList() {
             }
 
             const reversed = list.reverse();
-            if (isMounted) {
-                setOrders(prevOrders => {
-                    // Nếu có đơn bị _justCanceled trong local, giữ nguyên, không bị backend ghi đè
-                    const merged = reversed.map(n => {
-                        const local = prevOrders.find(o => o.id === n.id && o._justCanceled);
-                        return local ? local : n;
-                    });
-                    return merged;
-                });
-            }
-
+            if (isMounted) setOrders(reversed);
 
             // Cập nhật trạng thái đơn hàng từ API order detail và shipping status
             if (isMounted && reversed.length > 0) {
@@ -620,8 +585,8 @@ function OrderList() {
         return (
             feStatus === 'canceled' ||
             rawStatus === 'CANCELED' ||
-            rawStatus === 'CANCELLED'
-            //rawStatus === 'FAILED'
+            rawStatus === 'CANCELLED' ||
+            rawStatus === 'FAILED'
         );
     };
 
@@ -683,32 +648,30 @@ function OrderList() {
     // Trong OrderList.jsx
 
     // Sửa hàm để nhận thêm lý do hủy (reasonName)
-    const handleCancelOrderSuccess = async (orderId, reasonName) => {
-        // 1️⃣ Cập nhật ngay trên FE, thêm cờ _justCanceled
+    const handleCancelOrderSuccess = async (orderId, reasonName) => { // <-- CHÚ Ý CHỖ NÀY
+        // 1. Cập nhật ngay trạng thái local để UI phản ứng tức thì
         setOrders(prev =>
             prev.map(o =>
                 String(o.id) === String(orderId)
                     ? {
                         ...o,
-                        status: 'canceled',
-                        canceledAt: new Date().toISOString(),
-                        cancelReason: reasonName,
-                        _justCanceled: true // 👈 đánh dấu để không bị ghi đè
+                        status: 'canceled', // status chuẩn FE để khớp với filter
+                        canceledAt: new Date().toISOString(), // Set tạm để đảm bảo đồng bộ
+                        cancelReason: reasonName // Cập nhật lý do để hiển thị và xác nhận hủy
                     }
                     : o
             )
         );
 
-        // 2️⃣ Chuyển sang tab "Đã hủy"
+        // 2. Tự động chuyển sang tab “Đã hủy”
         setFilter('canceled');
         setSelectedCancelOrderId(null);
 
-        // 3️⃣ Delay lâu hơn để BE update xong
+        // 3. Chờ 500ms rồi tải lại toàn bộ danh sách từ server (loadOrders)
         setTimeout(() => {
             loadOrders(true);
-        }, 2000);
+        }, 500);
     };
-
 
 
     const handleTrackShipment = (orderId) => {
@@ -1119,23 +1082,14 @@ function OrderList() {
                                                 {/* Actions cho đơn chưa hủy */}
                                                 {!isCancelled && (
                                                     <>
-                                                        {(order.status === 'pending' || order.status === 'confirmed' || order.status === 'verified') && !isOrderCancelled(order) && (
+                                                        {(order.status === 'pending' || order.status === 'confirmed') && !isOrderCancelled(order) && (
                                                             <button
-                                                                className={`btn btn-danger btn-sm btn-animate ${isNonCancelable(order.status) ? 'btn-disabled' : ''}`}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (isNonCancelable(order.status)) {
-                                                                        alert(' Đơn hàng đã được xác thực, không thể hủy!');
-                                                                        return;
-                                                                    }
-                                                                    handleCancelOrder(order.id);
-                                                                }}
+                                                                className="btn btn-danger btn-sm btn-animate"
+                                                                onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id); }}
                                                             >
                                                                 Hủy đơn
                                                             </button>
                                                         )}
-
-
 
                                                         {order.status === 'delivered' && (
                                                             <>
