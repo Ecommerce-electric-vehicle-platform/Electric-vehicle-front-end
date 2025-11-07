@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { CCard, CCardBody, CCardHeader, CAlert } from "@coreui/react";
+import { CCard, CCardBody, CCardHeader, CAlert, CButton } from "@coreui/react";
 import {
   MdPerson,
   MdEmail,
@@ -10,8 +10,10 @@ import {
   MdCancel,
   MdTransgender,
   MdCalendarToday,
+  MdRefresh,
 } from "react-icons/md";
 import { getAdminProfile } from "../../../api/adminApi";
+import "./AdminProfile.css";
 
 export default function AdminProfile() {
   const [adminInfo, setAdminInfo] = useState(null);
@@ -61,7 +63,6 @@ export default function AdminProfile() {
           try {
             const profile = JSON.parse(raw);
             setAdminInfo(profile);
-            setError("Đang hiển thị dữ liệu từ cache. Vui lòng kiểm tra kết nối mạng.");
             console.log("[AdminProfile] Đã sử dụng dữ liệu từ localStorage");
           } catch (parseError) {
             console.error("Error parsing adminProfile:", parseError);
@@ -149,8 +150,10 @@ export default function AdminProfile() {
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="mb-0">Thông tin tài khoản</h2>
-            <button
-              className="btn btn-primary btn-sm"
+            <CButton
+              color="primary"
+              variant="outline"
+              className="refresh-button"
               onClick={async () => {
                 setLoading(true);
                 try {
@@ -188,20 +191,17 @@ export default function AdminProfile() {
             >
               {loading ? (
                 <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                  Đang tải...
+                  <span className="spinner-border spinner-border-sm" role="status" style={{ width: "0.875rem", height: "0.875rem" }}></span>
+                  <span>Đang tải...</span>
                 </>
               ) : (
-                "Làm mới"
+                <>
+                  <MdRefresh size={16} className={`refresh-icon ${loading ? "spinning" : ""}`} />
+                  <span>Làm mới</span>
+                </>
               )}
-            </button>
+            </CButton>
           </div>
-          
-          {error && (
-            <CAlert color="warning" className="mb-3">
-              <strong>Lưu ý:</strong> {error}
-            </CAlert>
-          )}
 
           {/* Avatar and Basic Info Card */}
           <CCard className="mb-4 shadow-sm">

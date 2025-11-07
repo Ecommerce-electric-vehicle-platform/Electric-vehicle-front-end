@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   CCard,
   CCardBody,
@@ -17,8 +17,9 @@ import {
   CButton,
   CPagination,
   CPaginationItem,
+  CAlert,
 } from "@coreui/react";
-import { Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, X, ChevronLeft, ChevronRight, ShieldX } from "lucide-react";
 import { getAdminList, getAdminProfileById } from "../../../api/adminApi";
 import adminAxios from "../../../api/adminAxios";
 import "./ManageAdmins.css";
@@ -30,11 +31,11 @@ export default function ManageAdmins() {
   const [page, setPage] = useState(0);
   const [size] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(null); // null = đang kiểm tra
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -48,7 +49,7 @@ export default function ManageAdmins() {
     Math.floor(1000000000 + Math.random() * 9000000000).toString();
 
   // Load danh sách admin từ API
-  const loadAdmins = async () => {
+  const loadAdmins = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -61,25 +62,21 @@ export default function ManageAdmins() {
         // Nếu response có data là array
         if (Array.isArray(response.data)) {
           setAdmins(response.data);
-          setTotalElements(response.data.length);
           setTotalPages(Math.ceil(response.data.length / size));
         } 
         // Nếu response có data với content và pagination
         else if (response.data.content) {
           setAdmins(response.data.content || []);
           setTotalPages(response.data.totalPages || 0);
-          setTotalElements(response.data.totalElements || 0);
         }
         // Nếu response.data là object với list
         else if (response.data.list) {
           setAdmins(response.data.list || []);
           setTotalPages(response.data.totalPages || 0);
-          setTotalElements(response.data.totalElements || 0);
         }
       } else if (Array.isArray(response)) {
         // Nếu response trực tiếp là array
         setAdmins(response);
-        setTotalElements(response.length);
         setTotalPages(Math.ceil(response.length / size));
       } else {
         setAdmins([]);
@@ -91,7 +88,7 @@ export default function ManageAdmins() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, size]);
 
   // Load chi tiết admin profile
   const loadAdminDetail = async (accountId) => {
@@ -108,10 +105,36 @@ export default function ManageAdmins() {
     }
   };
 
-  // Load danh sách khi component mount hoặc page thay đổi
+  // Kiểm tra quyền Super Admin khi component mount
   useEffect(() => {
-    loadAdmins();
-  }, [page, size]);
+    const checkSuperAdminPermission = () => {
+      try {
+        const adminProfileStr = localStorage.getItem("adminProfile");
+        if (adminProfileStr) {
+          const adminProfile = JSON.parse(adminProfileStr);
+          const isSuper = adminProfile?.isSuperAdmin === true || 
+                         adminProfile?.superAdmin === true || 
+                         adminProfile?.is_super_admin === true;
+          setIsSuperAdmin(isSuper);
+        } else {
+          // Nếu không có adminProfile, không phải super admin
+          setIsSuperAdmin(false);
+        }
+      } catch (err) {
+        console.error("Error checking super admin permission:", err);
+        setIsSuperAdmin(false);
+      }
+    };
+    
+    checkSuperAdminPermission();
+  }, []);
+
+  // Load danh sách khi component mount hoặc page thay đổi (chỉ nếu là super admin)
+  useEffect(() => {
+    if (isSuperAdmin === true) {
+      loadAdmins();
+    }
+  }, [isSuperAdmin, loadAdmins]);
 
   // Xử lý phím ESC để đóng modal
   useEffect(() => {
@@ -184,6 +207,47 @@ export default function ManageAdmins() {
     }
   };
 
+  // Nếu đang kiểm tra quyền, hiển thị loading
+  if (isSuperAdmin === null) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
+        <div className="text-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Đang kiểm tra quyền...</span>
+          </div>
+          <p className="mt-3 text-muted">Đang kiểm tra quyền truy cập...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Nếu không phải super admin, hiển thị thông báo
+  if (isSuperAdmin === false) {
+    return (
+      <div className="container-fluid py-4">
+        <div className="row">
+          <div className="col-12">
+            <CAlert color="warning" className="d-flex align-items-center" style={{ padding: "2rem" }}>
+              <ShieldX size={48} className="me-3" style={{ flexShrink: 0, color: "#ffc107" }} />
+              <div>
+                <h4 className="alert-heading mb-2">Không có quyền truy cập</h4>
+                <p className="mb-0">
+                  Bạn không phải quản trị viên hệ thống (super admin), không đủ quyền hạn để truy cập mục này.
+                </p>
+                <p className="mb-0 mt-2">
+                  <small className="text-muted">
+                    Vui lòng liên hệ với super admin nếu bạn cần quyền truy cập này.
+                  </small>
+                </p>
+              </div>
+            </CAlert>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Nếu là super admin, hiển thị bình thường
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
