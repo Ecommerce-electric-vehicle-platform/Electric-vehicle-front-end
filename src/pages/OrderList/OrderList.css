@@ -1,4 +1,13 @@
 /* OrderList.css */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .order-list-page {
     min-height: 100vh;
     background: linear-gradient(180deg, #f3fbf7 0%, #f7faf9 60%, #ffffff 100%);

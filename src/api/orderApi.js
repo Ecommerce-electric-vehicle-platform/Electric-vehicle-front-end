@@ -82,9 +82,27 @@ export const getOrderDetails = async (orderId) => {
             throw new Error(raw?.message || 'Failed to fetch order details');
         }
 
+        // Debug: Log toàn bộ structure để tìm status
+        console.log('[orderApi] getOrderDetails - Full response structure:', {
+            orderId: orderId,
+            hasData: !!data,
+            dataKeys: Object.keys(data || {}),
+            hasOrder: !!data?.order,
+            orderKeys: data?.order ? Object.keys(data.order) : [],
+            statusInData: data?.status,
+            statusInOrder: data?.order?.status,
+            fullData: data
+        });
+
         // Normalize status from backend to frontend format
-        // Backend status: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
-        const rawStatus = String(data.status || '').toUpperCase();
+        // Backend status: PENDING_PAYMENT, PAID, PROCESSING, VERIFIED, SHIPPED, DELIVERED, CANCELED
+        // Status có thể nằm ở data.status hoặc data.order.status
+        const rawStatus = String(
+            data.status || 
+            data.order?.status || 
+            data.orderStatus ||
+            ''
+        ).toUpperCase();
         let normalizedStatus = 'pending';
 
        // Nếu backend không trả status hoặc rỗng => coi như đơn mới tạo (pending)
@@ -93,7 +111,7 @@ if (!rawStatus || rawStatus.trim() === '') {
   normalizedStatus = 'pending';
 } else if (['PENDING_PAYMENT', 'PENDING'].includes(rawStatus)) {
   normalizedStatus = 'pending';
-} else if (['PAID', 'PROCESSING', 'CONFIRMED'].includes(rawStatus)) {
+} else if (['PAID', 'PROCESSING', 'CONFIRMED', 'VERIFIED'].includes(rawStatus)) {
   normalizedStatus = 'confirmed';
 } else if (['SHIPPED', 'DELIVERING'].includes(rawStatus)) {
   normalizedStatus = 'shipping';
@@ -172,6 +190,14 @@ if (!rawStatus || rawStatus.trim() === '') {
         console.log('[orderApi] getOrderDetails - Normalized response:', {
             orderId: orderId,
             raw: data,
+            statusFields: {
+                'data.status': data.status,
+                'data.order.status': data.order?.status,
+                'data.orderStatus': data.orderStatus,
+                extractedRawStatus: rawStatus
+            },
+            rawStatus: rawStatus,
+            normalizedStatus: normalizedStatus,
             normalized: normalized
         });
 
@@ -259,10 +285,11 @@ export const getOrderHistory = async ({ page = 1, size = 10 } = {}) => {
         const items = Array.isArray(list) ? list : [];
         const meta = data?.meta || raw?.meta || null;
 
-        // Log để debug giá từ backend
+        // Log để debug giá và status từ backend
         if (items.length > 0) {
             console.log('[orderApi] getOrderHistory - Raw response sample:', {
                 firstItem: items[0],
+                status: items[0]?.status,
                 priceFields: {
                     price: items[0]?.price,
                     productPrice: items[0]?.productPrice,
@@ -333,14 +360,47 @@ function normalizeOrderHistoryItem(item) {
     //const cancelReason = item.cancelReason || item.cancel_reason || null;
 
     // Map status từ BE sang UI filter keys
-    // Backend có: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
-    const rawStatus = String(item.status || '').toUpperCase();
+    // Backend có: PENDING_PAYMENT, PAID, PROCESSING, VERIFIED, SHIPPED, DELIVERED, CANCELED
+    // Status có thể nằm ở item.status hoặc item.order.status (nested structure)
+    const rawStatus = String(
+        item.status || 
+        item.order?.status || 
+        item.orderStatus ||
+        ''
+    ).toUpperCase();
     let status = 'pending';
     if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') status = 'pending';
-    else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') status = 'confirmed';
+    else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED' || rawStatus === 'VERIFIED') status = 'confirmed';
     else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') status = 'shipping';
     else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') status = 'delivered';
     else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'canceled';
+    
+    // Log để debug status mapping
+    if (rawStatus && rawStatus !== 'PENDING' && rawStatus !== 'PENDING_PAYMENT') {
+        console.log('[orderApi] normalizeOrderHistoryItem - Status mapping:', {
+            orderCode: item.orderCode || item.order_code,
+            orderId: item.id,
+            statusFields: {
+                'item.status': item.status,
+                'item.order.status': item.order?.status,
+                'item.orderStatus': item.orderStatus,
+                extractedRawStatus: rawStatus
+            },
+            rawStatus: rawStatus,
+            normalizedStatus: status
+        });
+    } else if (!rawStatus || rawStatus.trim() === '') {
+        // Log warning nếu không tìm thấy status
+        console.warn('[orderApi] normalizeOrderHistoryItem - No status found:', {
+            orderCode: item.orderCode || item.order_code,
+            orderId: item.id,
+            statusFields: {
+                'item.status': item.status,
+                'item.order.status': item.order?.status,
+                'item.orderStatus': item.orderStatus
+            }
+        });
+    }
 
     // QUAN TRỌNG: Theo thông tin từ Backend:
     // - Backend xử lý: 'price' = giá sản phẩm riêng (KHÔNG bao gồm shippingFee)
@@ -718,14 +778,14 @@ export const getOrderStatus = async (orderId) => {
         const data = raw?.data ?? {};
 
         // Normalize status from backend to frontend format
-        // Backend status: PENDING_PAYMENT, PAID, PROCESSING, SHIPPED, DELIVERED, CANCELED
+        // Backend status: PENDING_PAYMENT, PAID, PROCESSING, VERIFIED, SHIPPED, DELIVERED, CANCELED
         // Frontend status: pending, confirmed, shipping, delivered, cancelled
         const rawStatus = String(data?.status || raw?.status || '').toUpperCase();
         let normalizedStatus = 'pending';
 
         if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') {
             normalizedStatus = 'pending';
-        } else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED') {
+        } else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED' || rawStatus === 'VERIFIED') {
             normalizedStatus = 'confirmed';
         } else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') {
             normalizedStatus = 'shipping';

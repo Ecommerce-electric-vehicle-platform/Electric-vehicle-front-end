@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import "./CancelOrderRequest.css";
-import { getCancelReasons, cancelOrder, getOrderHistory, getOrderPayment } from "../../api/orderApi";
+import { getCancelReasons, cancelOrder, getOrderHistory, getOrderPayment, getOrderDetails } from "../../api/orderApi";
 
 const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
   const [selectedReason, setSelectedReason] = useState(null);
@@ -33,23 +33,51 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
     if (!orderId) return;
     const fetchOrder = async () => {
       try {
+        // Thử dùng getOrderDetails API trước (chính xác hơn)
+        try {
+          const orderDetailRes = await getOrderDetails(orderId);
+          if (orderDetailRes.success && orderDetailRes.data) {
+            const data = orderDetailRes.data;
+            setOrderData({
+              id: data.id,
+              orderCode: data.orderCode,
+              status: data.status,
+              shippingAddress: data.shippingAddress,
+              phoneNumber: data.phoneNumber,
+              totalAmount: data.finalPrice || (data.price + data.shippingFee),
+              price: data.price,
+              shippingFee: data.shippingFee,
+              paymentMethod: "COD", // Sẽ được cập nhật bởi useEffect fetchPayment
+            });
+            return; // Thành công, không cần fallback
+          }
+        } catch (detailError) {
+          console.warn("getOrderDetails failed, trying order history:", detailError);
+        }
+
+        // Fallback: Tìm trong order history
         const res = await getOrderHistory({ page: 1, size: 20 });
         const orders = res?.items || res?.data?.orderResponses || [];
-        const found = orders.find((o) => String(o.id) === String(orderId));
+        // Tìm theo real ID (từ backend) hoặc normalized ID
+        const found = orders.find((o) => {
+          const realId = o._raw?.id ?? o.id;
+          return String(realId) === String(orderId) || String(o.id) === String(orderId);
+        });
 
         if (found) {
           setOrderData({
-            id: found.id,
+            id: found._raw?.id ?? found.id,
             orderCode: found.orderCode,
             status: found.status,
             shippingAddress: found.shippingAddress,
             phoneNumber: found.phoneNumber,
-            totalAmount: found.price + found.shippingFee,
+            totalAmount: (found.price || 0) + (found.shippingFee || 0),
             price: found.price,
             shippingFee: found.shippingFee,
             paymentMethod: found.paymentMethod || "COD",
           });
         } else {
+          console.error("Order not found in history:", { orderId, ordersCount: orders.length });
           alert("Không tìm thấy thông tin đơn hàng.");
           if (onBack) onBack();
         }
@@ -59,7 +87,7 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
       }
     };
     fetchOrder();
-  }, [orderId]);
+  }, [orderId, onBack]);
 
   // phần này để lấy phương thức COD hay VNPay
   useEffect(() => {
