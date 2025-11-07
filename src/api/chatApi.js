@@ -62,16 +62,20 @@ const chatApi = {
     }
   },
 
-  // Lấy tin nhắn của một conversation
-  // (Tạm thời chưa có endpoint, có thể cần thêm sau)
+  // Lấy danh sách tin nhắn trong một conversation
+  // GET /api/v1/chatting/conversation-messages
+  // Có thể cần conversationId trong query params hoặc body
   getMessagesByConversationId: async (conversationId) => {
     try {
-      // TODO: Khi BE có endpoint này
-      // const response = await axiosInstance.get(
-      //   `/api/v1/chatting/conversation/${conversationId}/messages`
-      // );
-      console.warn("[ChatAPI] getMessagesByConversationId - Endpoint not yet implemented");
-      return { data: [] };
+      const response = await axiosInstance.get(
+        `/api/v1/chatting/conversation-messages`,
+        {
+          params: {
+            conversationId: conversationId
+          }
+        }
+      );
+      return response;
     } catch (error) {
       console.error("[ChatAPI] Error fetching messages:", error);
       throw error;

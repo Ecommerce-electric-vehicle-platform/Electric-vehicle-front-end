@@ -96,6 +96,32 @@ export const getAdminProfile = async () => {
   }
 };
 
+// Lấy danh sách admin có phân trang
+// GET /api/v1/admin/list?page=&size=
+export const getAdminList = async (page = 0, size = 10) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/list`, {
+      params: { page, size },
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách admin:", error);
+    throw error;
+  }
+};
+
+// Lấy thông tin profile của admin theo accountId
+// GET /api/v1/admin/profile/{accountId}
+export const getAdminProfileById = async (accountId) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/profile/${accountId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin admin profile:", error);
+    throw error;
+  }
+};
+
 /**
  * ================================
  * SELLER APPROVAL
@@ -124,30 +150,45 @@ export const approveSeller = async ({ sellerId, decision, message }) => {
 };
 
 
-// ===== Users (Buyer & Seller) Management ===== //Gia định vì chưa có API
-export const getAllUserAccounts = async (page = 0, size = 20, role, status) => {
+// ===== Users (Buyer & Seller) Management ===== 
+// GET /api/v1/buyer/list - Lấy danh sách buyers (yêu cầu ROLE_ADMIN)
+export const getBuyerList = async (page = 0, size = 10) => {
   try {
-    const params = { page, size };
-    if (role) params.role = role;
-    if (status) params.status = status;
-
-    const res = await adminAxios.get(`/api/v1/admin/users`, { params });
+    const res = await adminAxios.get(`/api/v1/buyer/list`, {
+      params: { page, size },
+    });
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách người dùng:", error);
+    console.error("Lỗi khi lấy danh sách buyers:", error);
     throw error;
   }
 };
 
-// Kích hoạt / vô hiệu hóa tài khoản Buyer hoặc Seller
-export const toggleUserActive = async (userId, active) => {
+// GET /api/v1/seller/list - Lấy danh sách sellers (yêu cầu ROLE_SELLER hoặc ROLE_ADMIN)
+export const getSellerList = async (page = 0, size = 10) => {
   try {
-    const res = await adminAxios.patch(`/api/v1/admin/users/${userId}/active`, {
-      active,
+    const res = await adminAxios.get(`/api/v1/seller/list`, {
+      params: { page, size },
     });
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi cập nhật trạng thái người dùng:", error);
+    console.error("Lỗi khi lấy danh sách sellers:", error);
+    throw error;
+  }
+};
+
+// Block hoặc unblock account (Buyer, Seller, hoặc Admin)
+// POST /api/v1/admin/block-account/{accountId}/{accountType}/{message}/{activity}
+export const blockAccount = async (accountId, accountType, message, activity) => {
+  try {
+    // Encode message để tránh lỗi với ký tự đặc biệt trong URL
+    const encodedMessage = encodeURIComponent(message || "");
+    const res = await adminAxios.post(
+      `/api/v1/admin/block-account/${accountId}/${accountType}/${encodedMessage}/${activity}`
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi block/unblock account:", error);
     throw error;
   }
 };
