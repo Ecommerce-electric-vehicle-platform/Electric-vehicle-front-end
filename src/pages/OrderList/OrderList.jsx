@@ -16,7 +16,8 @@ import {
     ChevronUp,
     CreditCard,
     MapPin,
-    ShoppingBag
+    ShoppingBag,
+    RefreshCw
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
 import { getOrderHistory, hasOrderReview, getOrderStatus, getOrderDetails } from '../../api/orderApi';
@@ -24,20 +25,7 @@ import { getOrderHistory, hasOrderReview, getOrderStatus, getOrderDetails } from
 import DisputeForm from "../../components/BuyerRaiseDispute/DisputeForm";
 import './OrderList.css';
 import CancelOrderRequest from "../../components/CancelOrderModal/CancelOrderRequest";
-
-// Kiểm tra trạng thái không thể hủy
-const isNonCancelable = (status) => {
-    const lockedStatuses = [
-        'verified',
-        'processing',
-        'confirmed',
-        'shipping',
-        'delivered',
-        'canceled'
-    ];
-    return lockedStatuses.includes(status?.toLowerCase());
-};
-
+import { fetchPostProductById } from "../../api/productApi";
 
 function OrderList() {
     const navigate = useNavigate();
@@ -84,14 +72,6 @@ function OrderList() {
             const { items, meta } = await getOrderHistory({ page: 1, size: 10 });
 
 
-            // Lấy username hiện tại để lọc localStorage
-            const currentUsername = localStorage.getItem('username') || '';
-            const storageKey = `orders_${currentUsername}`;
-            const localOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
-
-            console.log('[OrderList] LocalStorage orders for user:', currentUsername, localOrders);
-
-
             console.log('[OrderList] Order history meta:', meta);
             console.log('[OrderList] Total items from backend:', items.length);
 
@@ -115,10 +95,7 @@ function OrderList() {
                 const currentUsername = localStorage.getItem('username') || '';
 
                 // XÓA các orders trong localStorage không thuộc user hiện tại (cleanup)
-                //let allLocalOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-                const username = localStorage.getItem('username') || '';
-                let allLocalOrders = JSON.parse(localStorage.getItem(`orders_${username}`) || '[]');
-
+                let allLocalOrders = JSON.parse(localStorage.getItem('orders') || '[]');
                 if (Array.isArray(allLocalOrders) && allLocalOrders.length > 0 && currentUsername) {
                     const userOrders = allLocalOrders.filter(lo => {
                         if (!lo) return false;
@@ -254,17 +231,7 @@ function OrderList() {
             }
 
             const reversed = list.reverse();
-            if (isMounted) {
-                setOrders(prevOrders => {
-                    // Nếu có đơn bị _justCanceled trong local, giữ nguyên, không bị backend ghi đè
-                    const merged = reversed.map(n => {
-                        const local = prevOrders.find(o => o.id === n.id && o._justCanceled);
-                        return local ? local : n;
-                    });
-                    return merged;
-                });
-            }
-
+            if (isMounted) setOrders(reversed);
 
             // Cập nhật trạng thái đơn hàng từ API order detail và shipping status
             if (isMounted && reversed.length > 0) {
@@ -283,6 +250,13 @@ function OrderList() {
                             const orderDetailRes = await getOrderDetails(realOrderId);
                             if (orderDetailRes.success && orderDetailRes.data) {
                                 const orderDetailData = orderDetailRes.data;
+                                // Log để debug
+                                console.log(`[OrderList] Order ${order.id} (realId: ${realOrderId}) status check:`, {
+                                    currentStatus: order.status,
+                                    newStatus: orderDetailData.status,
+                                    rawStatus: orderDetailData.rawStatus,
+                                    willUpdate: orderDetailData.status !== order.status
+                                });
                                 // Chỉ update nếu status thay đổi
                                 if (orderDetailData.status !== order.status) {
                                     return {
@@ -356,30 +330,51 @@ function OrderList() {
 
                 if (validUpdates.length > 0 && isMounted) {
                     console.log('[OrderList] Status updates:', validUpdates);
+                    console.log('[OrderList] Current orders before update:', orders.map(o => ({ id: o.id, status: o.status })));
                     // Cập nhật trạng thái cho các orders có thay đổi
                     setOrders(prevOrders => {
-                        return prevOrders.map(order => {
+                        console.log('[OrderList] setOrders callback - prevOrders:', prevOrders.map(o => ({ id: o.id, status: o.status })));
+                        const updated = prevOrders.map(order => {
                             const update = validUpdates.find(u => String(u.orderId) === String(order.id));
-                            if (update && update.newStatus !== order.status) {
-                                console.log(`[OrderList] Updating order ${order.id} status: ${order.status} -> ${update.newStatus} (from ${update.source})`);
-                                return {
-                                    ...order,
-                                    status: update.newStatus,
-                                    canceledAt: update.canceledAt || order.canceledAt,
-                                    cancelReason: update.cancelReason || order.cancelReason,
-                                    updatedAt: update.updatedAt || order.updatedAt,
-                                    _raw: {
-                                        ...order._raw,
-                                        status: update.rawStatus,
-                                        canceledAt: update.canceledAt || order._raw?.canceledAt,
-                                        cancelReason: update.cancelReason || order._raw?.cancelReason,
-                                        updatedAt: update.updatedAt || order._raw?.updatedAt
-                                    }
-                                };
+                            if (update) {
+                                console.log(`[OrderList] Found update for order ${order.id}:`, {
+                                    currentStatus: order.status,
+                                    newStatus: update.newStatus,
+                                    willUpdate: update.newStatus !== order.status,
+                                    orderIdMatch: String(update.orderId) === String(order.id)
+                                });
+                                if (update.newStatus !== order.status) {
+                                    console.log(`[OrderList] ✅ Updating order ${order.id} status: ${order.status} -> ${update.newStatus} (from ${update.source})`);
+                                    return {
+                                        ...order,
+                                        status: update.newStatus,
+                                        canceledAt: update.canceledAt || order.canceledAt,
+                                        cancelReason: update.cancelReason || order.cancelReason,
+                                        updatedAt: update.updatedAt || order.updatedAt,
+                                        _raw: {
+                                            ...order._raw,
+                                            status: update.rawStatus,
+                                            canceledAt: update.canceledAt || order._raw?.canceledAt,
+                                            cancelReason: update.cancelReason || order._raw?.cancelReason,
+                                            updatedAt: update.updatedAt || order._raw?.updatedAt
+                                        }
+                                    };
+                                } else {
+                                    console.log(`[OrderList] ⚠️ Skipping update for order ${order.id} - status unchanged (${order.status})`);
+                                }
                             }
                             return order;
                         });
+                        console.log('[OrderList] setOrders callback - updated orders:', updated.map(o => ({ id: o.id, status: o.status })));
+                        return updated;
                     });
+                } else {
+                    if (validUpdates.length === 0) {
+                        console.log('[OrderList] ⚠️ No valid updates to apply');
+                    }
+                    if (!isMounted) {
+                        console.log('[OrderList] ⚠️ Component unmounted, skipping update');
+                    }
                 }
             }
 
@@ -415,6 +410,49 @@ function OrderList() {
     useEffect(() => {
         loadOrders(true);
     }, [loadOrders]);
+
+    // Sau khi orders tải về, bổ sung ảnh còn thiếu bằng cách gọi API sản phẩm theo postId/productId
+    useEffect(() => {
+        const enhanceImages = async () => {
+            if (!Array.isArray(orders) || orders.length === 0) return;
+
+            const tasks = orders.map(async (o) => {
+                const hasImage = Boolean(o?.product?.image);
+                const raw = o?._raw || {};
+                const productId = raw.postId || raw.productId || raw.product?.id;
+                if (hasImage || !productId) return null;
+                try {
+                    const prod = await fetchPostProductById(productId);
+                    if (prod && prod.image) {
+                        return { id: o.id, image: prod.image, title: prod.title, price: prod.price };
+                    }
+                } catch (e) {
+                    console.warn('[OrderList] fetchPostProductById failed for order', o.id, e);
+                }
+                return null;
+            });
+
+            const results = await Promise.allSettled(tasks);
+            const updates = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+            if (updates.length > 0) {
+                setOrders(prev => prev.map(o => {
+                    const u = updates.find(x => String(x.id) === String(o.id));
+                    if (!u) return o;
+                    return {
+                        ...o,
+                        product: {
+                            ...(o.product || {}),
+                            image: u.image || o.product?.image,
+                            title: o.product?.title || u.title,
+                            price: o.product?.price || u.price
+                        }
+                    };
+                }));
+            }
+        };
+
+        enhanceImages();
+    }, [orders]);
 
     // Refresh khi navigate từ place order (có state refresh)
     useEffect(() => {
@@ -454,6 +492,14 @@ function OrderList() {
                         const orderDetailRes = await getOrderDetails(realOrderId);
                         if (orderDetailRes.success && orderDetailRes.data) {
                             const orderDetailData = orderDetailRes.data;
+                            // Log để debug
+                            console.log(`[OrderList] Auto-refresh - Order ${order.id} (realId: ${realOrderId}) status check:`, {
+                                currentStatus: order.status,
+                                newStatus: orderDetailData.status,
+                                rawStatus: orderDetailData.rawStatus,
+                                statusChanged: orderDetailData.status !== order.status,
+                                cancelStatusChanged: Boolean(orderDetailData.canceledAt) !== Boolean(order.canceledAt)
+                            });
                             // Chỉ update nếu status hoặc cancel status thay đổi
                             if (orderDetailData.status !== order.status ||
                                 Boolean(orderDetailData.canceledAt) !== Boolean(order.canceledAt)) {
@@ -522,15 +568,26 @@ function OrderList() {
                 .map(p => p.value);
 
             if (validUpdates.length > 0) {
+                console.log('[OrderList] Auto-refresh - Status updates:', validUpdates);
+                console.log('[OrderList] Auto-refresh - Current orders before update:', orders.map(o => ({ id: o.id, status: o.status })));
                 setOrders(prevOrders => {
-                    return prevOrders.map(order => {
+                    console.log('[OrderList] Auto-refresh - setOrders callback - prevOrders:', prevOrders.map(o => ({ id: o.id, status: o.status })));
+                    const updated = prevOrders.map(order => {
                         const update = validUpdates.find(u => String(u.orderId) === String(order.id));
                         if (update) {
                             const isCanceled = order.status === 'canceled';
                             const isTryingToRevertCancel = update.newStatus === 'pending';
 
+                            console.log(`[OrderList] Auto-refresh - Found update for order ${order.id}:`, {
+                                currentStatus: order.status,
+                                newStatus: update.newStatus,
+                                isCanceled: isCanceled,
+                                isTryingToRevertCancel: isTryingToRevertCancel,
+                                willUpdate: !isCanceled && !isTryingToRevertCancel && update.newStatus !== order.status
+                            });
+
                             if (!isCanceled && !isTryingToRevertCancel && update.newStatus !== order.status) {
-                                console.log(`[OrderList] Updating order ${order.id} status: ${order.status} -> ${update.newStatus} (from ${update.source})`);
+                                console.log(`[OrderList] ✅ Auto-refresh - Updating order ${order.id} status: ${order.status} -> ${update.newStatus} (from ${update.source})`);
                                 return {
                                     ...order,
                                     status: update.newStatus,
@@ -545,20 +602,30 @@ function OrderList() {
                                         updatedAt: update.updatedAt || order._raw?.updatedAt,
                                     },
                                 };
+                            } else {
+                                console.log(`[OrderList] ⚠️ Auto-refresh - Skipping update for order ${order.id}:`, {
+                                    reason: isCanceled ? 'order is canceled' : isTryingToRevertCancel ? 'trying to revert cancel' : 'status unchanged',
+                                    currentStatus: order.status,
+                                    newStatus: update.newStatus
+                                });
                             }
                         }
 
                         return order;
                     });
+                    console.log('[OrderList] Auto-refresh - setOrders callback - updated orders:', updated.map(o => ({ id: o.id, status: o.status })));
+                    return updated;
                 });
+            } else {
+                console.log('[OrderList] Auto-refresh - ⚠️ No valid updates to apply');
             }
         };
 
         // Refresh ngay khi component mount với orders
         refreshStatuses();
 
-        // Set interval để refresh mỗi 30 giây
-        const intervalId = setInterval(refreshStatuses, 30000); // 30 seconds
+        // Set interval để refresh mỗi 15 giây (giảm từ 30s để cập nhật nhanh hơn)
+        const intervalId = setInterval(refreshStatuses, 15000); // 15 seconds
 
         return () => clearInterval(intervalId);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -576,8 +643,8 @@ function OrderList() {
         return (
             feStatus === 'canceled' ||
             rawStatus === 'CANCELED' ||
-            rawStatus === 'CANCELLED'
-            //rawStatus === 'FAILED'
+            rawStatus === 'CANCELLED' ||
+            rawStatus === 'FAILED'
         );
     };
 
@@ -626,8 +693,16 @@ function OrderList() {
 
     // Hành động theo trạng thái
     // Mở form hủy đơn
-    const handleCancelOrder = (orderId) => {
-        setSelectedCancelOrderId(orderId);
+    // QUAN TRỌNG: Cần truyền realOrderId từ backend, không phải normalized ID
+    const handleCancelOrder = (orderId, order) => {
+        // Lấy real ID từ backend (ưu tiên _raw.id, fallback id)
+        const realOrderId = order?._raw?.id ?? orderId;
+        console.log('[OrderList] handleCancelOrder:', {
+            normalizedId: orderId,
+            realOrderId: realOrderId,
+            orderCode: order?.orderCode || order?._raw?.orderCode
+        });
+        setSelectedCancelOrderId(realOrderId);
     };
 
     // Khi user nhấn "Quay lại" trong form hủy đơn
@@ -639,32 +714,30 @@ function OrderList() {
     // Trong OrderList.jsx
 
     // Sửa hàm để nhận thêm lý do hủy (reasonName)
-    const handleCancelOrderSuccess = async (orderId, reasonName) => {
-        // 1️⃣ Cập nhật ngay trên FE, thêm cờ _justCanceled
+    const handleCancelOrderSuccess = async (orderId, reasonName) => { // <-- CHÚ Ý CHỖ NÀY
+        // 1. Cập nhật ngay trạng thái local để UI phản ứng tức thì
         setOrders(prev =>
             prev.map(o =>
                 String(o.id) === String(orderId)
                     ? {
                         ...o,
-                        status: 'canceled',
-                        canceledAt: new Date().toISOString(),
-                        cancelReason: reasonName,
-                        _justCanceled: true // 👈 đánh dấu để không bị ghi đè
+                        status: 'canceled', // status chuẩn FE để khớp với filter
+                        canceledAt: new Date().toISOString(), // Set tạm để đảm bảo đồng bộ
+                        cancelReason: reasonName // Cập nhật lý do để hiển thị và xác nhận hủy
                     }
                     : o
             )
         );
 
-        // 2️⃣ Chuyển sang tab "Đã hủy"
+        // 2. Tự động chuyển sang tab “Đã hủy”
         setFilter('canceled');
         setSelectedCancelOrderId(null);
 
-        // 3️⃣ Delay lâu hơn để BE update xong
+        // 3. Chờ 500ms rồi tải lại toàn bộ danh sách từ server (loadOrders)
         setTimeout(() => {
             loadOrders(true);
-        }, 2000);
+        }, 500);
     };
-
 
 
     const handleTrackShipment = (orderId) => {
@@ -710,6 +783,40 @@ function OrderList() {
         alert(`Đặt lại đơn #${orderId} (sẽ thiết kế sau)`);
     };
 
+    const toAbsoluteUrl = (url) => {
+        if (!url || typeof url !== 'string') return '';
+        const trimmed = url.trim();
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        const base = (import.meta?.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
+        const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+        return `${base}${path}`;
+    };
+
+    const extractImageFromOrder = (order) => {
+        try {
+            // 1) Prefer normalized image if provided
+            if (order?.product?.image) return toAbsoluteUrl(order.product.image) || order.product.image;
+
+            const raw = order?._raw || {};
+            const rawProduct = raw.product || {};
+            // 2) Direct fields
+            const direct = raw.productImage || rawProduct.productImage || rawProduct.image || rawProduct.imageUrl || order.image || raw.image || raw.imageUrl;
+            if (typeof direct === 'string' && direct.trim()) return toAbsoluteUrl(direct);
+            // 3) Arrays
+            const images = rawProduct.images || rawProduct.imageUrls || raw.images || [];
+            if (Array.isArray(images) && images.length > 0) {
+                const first = images[0];
+                if (typeof first === 'string') return toAbsoluteUrl(first);
+                if (first && typeof first === 'object') {
+                    const candidate = first.imgUrl || first.url || first.image;
+                    if (typeof candidate === 'string' && candidate.trim()) return toAbsoluteUrl(candidate);
+                }
+            }
+        } catch { /* ignore */ }
+        return '';
+    };
+
     const getActionsForStatus = (status, orderId) => {
         switch (status) {
             case 'pending':
@@ -717,9 +824,8 @@ function OrderList() {
                     { key: 'cancel', label: 'Hủy đơn', className: 'btn btn-danger btn-sm btn-animate', onClick: () => handleCancelOrder(orderId) }
                 ];
             case 'confirmed':
-                return [
-                    { key: 'cancel', label: 'Hủy đơn', className: 'btn btn-danger btn-sm btn-animate', onClick: () => handleCancelOrder(orderId) }
-                ];
+                // Không cho phép hủy đơn ở trạng thái đã xác nhận
+                return [];
             case 'shipping':
                 return [
                     { key: 'track', label: 'Theo dõi vận đơn', className: 'btn btn-primary btn-sm btn-animate', onClick: () => handleTrackShipment(orderId) }
@@ -849,7 +955,32 @@ function OrderList() {
                         <span className="breadcrumb-current">Đơn hàng của tôi</span>
                     </div>
 
-                    <h1 className="page-title">Lịch sử đơn hàng</h1>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <h1 className="page-title" style={{ margin: 0 }}>Lịch sử đơn hàng</h1>
+                        <button
+                            onClick={() => {
+                                console.log('[OrderList] Manual refresh triggered');
+                                loadOrders(true);
+                            }}
+                            disabled={loading}
+                            style={{
+                                padding: '8px 16px',
+                                borderRadius: 8,
+                                border: '1px solid #0d6efd',
+                                background: loading ? '#e9ecef' : '#0d6efd',
+                                color: 'white',
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 14,
+                                fontWeight: 500
+                            }}
+                        >
+                            <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+                            {loading ? 'Đang tải...' : 'Làm mới'}
+                        </button>
+                    </div>
 
                     {/* Search */}
                     <div style={{ marginBottom: 16 }}>
@@ -948,6 +1079,7 @@ function OrderList() {
                                 const displayStatusInfo = getStatusInfo(displayStatus);
                                 const DisplayStatusIcon = displayStatusInfo.icon;
 
+                                const imgSrc = extractImageFromOrder(order) || '/vite.svg';
                                 return (
                                     <div key={order.id} className={`order-card ${isCancelled ? 'order-cancelled' : ''}`} onClick={() => handleViewOrder(order.id)}>
                                         <div className="order-header">
@@ -977,7 +1109,7 @@ function OrderList() {
                                         <div className="order-content">
                                             <div className="order-product-row">
                                                 <div className="thumb">
-                                                    <img src={order.product?.image || '/vite.svg'} alt={order.product?.title || 'product'} />
+                                                    <img src={imgSrc} alt={order.product?.title || 'product'} />
                                                 </div>
                                                 <div className="info-rows">
                                                     <div className="info-row">
@@ -1040,23 +1172,15 @@ function OrderList() {
                                                 {/* Actions cho đơn chưa hủy */}
                                                 {!isCancelled && (
                                                     <>
-                                                        {(order.status === 'pending' || order.status === 'confirmed' || order.status === 'verified') && !isOrderCancelled(order) && (
+                                                        {/* Chỉ cho phép hủy đơn ở trạng thái pending (chờ xác nhận) */}
+                                                        {order.status === 'pending' && !isOrderCancelled(order) && (
                                                             <button
-                                                                className={`btn btn-danger btn-sm btn-animate ${isNonCancelable(order.status) ? 'btn-disabled' : ''}`}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (isNonCancelable(order.status)) {
-                                                                        alert(' Đơn hàng đã được xác thực, không thể hủy!');
-                                                                        return;
-                                                                    }
-                                                                    handleCancelOrder(order.id);
-                                                                }}
+                                                                className="btn btn-danger btn-sm btn-animate"
+                                                                onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id, order); }}
                                                             >
                                                                 Hủy đơn
                                                             </button>
                                                         )}
-
-
 
                                                         {order.status === 'delivered' && (
                                                             <>

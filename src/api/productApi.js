@@ -191,6 +191,18 @@ export function normalizeProduct(item) {
         }
     }
 
+    // Helper: chuyển URL tương đối thành tuyệt đối theo baseURL BE
+    const toAbsoluteUrl = (url) => {
+        if (!url || typeof url !== 'string') return '';
+        const trimmed = url.trim();
+        if (!trimmed) return '';
+        const isAbsolute = /^https?:\/\//i.test(trimmed);
+        if (isAbsolute) return trimmed;
+        const base = (import.meta?.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
+        const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+        return `${base}${path}`;
+    };
+
     // Ảnh chính và danh sách ảnh
     let imageUrl = "";
     let images = [];
@@ -211,27 +223,31 @@ export function normalizeProduct(item) {
                 }
                 return null;
             })
-            .filter(url => url && typeof url === 'string' && url.trim() !== '');
+            .filter(url => url && typeof url === 'string' && url.trim() !== '')
+            .map(toAbsoluteUrl);
 
         // Ảnh chính là ảnh đầu tiên hợp lệ
         imageUrl = images[0] || "";
     }
     // Fallback cho các format cũ
     else if (Array.isArray(productData.imageUrls) && productData.imageUrls.length > 0) {
-        images = productData.imageUrls.filter(url => url && typeof url === 'string' && url.trim() !== '');
+        images = productData.imageUrls
+            .filter(url => url && typeof url === 'string' && url.trim() !== '')
+            .map(toAbsoluteUrl);
         imageUrl = images[0] || "";
     }
     else if (typeof productData.imageUrls === "string" && productData.imageUrls.trim() !== "") {
-        images = [productData.imageUrls];
-        imageUrl = productData.imageUrls;
+        images = [toAbsoluteUrl(productData.imageUrls)];
+        imageUrl = images[0];
     }
 
     // Thử các trường khác nếu chưa có ảnh
     if (!imageUrl) {
         const fallbackImg = productData.thumbnail || productData.image || productData.coverUrl || "";
         if (fallbackImg && typeof fallbackImg === 'string' && fallbackImg.trim() !== '') {
-            images = [fallbackImg];
-            imageUrl = fallbackImg;
+            const abs = toAbsoluteUrl(fallbackImg);
+            images = [abs];
+            imageUrl = abs;
         }
     }
 
@@ -289,8 +305,8 @@ export function normalizeProduct(item) {
         isSold: Boolean(productData.is_sold),
 
         // 🖼️ Ảnh
-        image: imageUrl,
-        images,
+        image: toAbsoluteUrl(imageUrl) || imageUrl,
+        images: images.map(toAbsoluteUrl),
 
         // 🔋 Thông tin pin và tầm xa
         batteryType: productData.batteryType ?? productData.battery_type,

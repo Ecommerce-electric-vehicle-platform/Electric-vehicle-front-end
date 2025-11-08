@@ -40,13 +40,20 @@ const authApi = {
       { headers: { "Content-Type": "application/json" } }
     );
 
-    const result = response?.data?.data;
+    // Response mới có cấu trúc: { success, message, data: { adminResponse, accessToken, refreshToken, role } }
+    const responseData = response?.data?.data;
+    const adminResponse = responseData?.adminResponse || {};
 
-    if (result?.accessToken) {
+    if (responseData?.accessToken) {
       // Lưu token riêng cho admin
-      localStorage.setItem("adminToken", result.accessToken);
-      localStorage.setItem("adminRefreshToken", result.refreshToken);
+      localStorage.setItem("adminToken", responseData.accessToken);
+      localStorage.setItem("adminRefreshToken", responseData.refreshToken || "");
       localStorage.setItem("adminAuthType", "admin");
+      
+      // Lưu role nếu có
+      if (responseData?.role) {
+        localStorage.setItem("adminRole", responseData.role);
+      }
     }
 
     return response;

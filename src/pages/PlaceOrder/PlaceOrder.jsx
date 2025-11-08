@@ -829,9 +829,7 @@ function PlaceOrder() {
             const deliverRemoteFee = Number(data?.deliver_remote_areas_fee ?? 0);
             const calculatedTotal = serviceFee + codFee + insuranceFee + pickRemoteFee + deliverRemoteFee;
 
-            // Chỉ sử dụng service_fee làm shippingFee hiển thị
-            fee = serviceFee;
-            extractedFrom = 'data.service_fee (forced)';
+            // Giữ nguyên fee đã extract (ưu tiên res.data.total) để hiển thị cho người dùng
 
             console.log('💰 Extracted shipping fee:', {
                 fee: fee,
@@ -1596,8 +1594,7 @@ function PlaceOrder() {
                 const storageKey = `orders_${currentUsername}`; // Mỗi user có 1 key riêng
                 const existingOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
                 existingOrders.push(newOrderWithUser);
-                localStorage.setItem(storageKey, JSON.stringify(existingOrders));
-
+                localStorage.setItem('orders', JSON.stringify(existingOrders));
 
                 setCurrentStep(3);
             } else {
@@ -2596,6 +2593,7 @@ function PlaceOrder() {
                                                 )}
                                             </div>
                                         </div>
+                                        <div className="shipping-fee-note">Phí vận chuyển có thể phát sinh hoặc thay đổi tùy theo đơn vị vận chuyển GHN.</div>
 
                                         <div className="separator"></div>
 

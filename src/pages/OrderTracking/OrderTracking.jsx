@@ -20,10 +20,10 @@ import {
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
 import OrderStatus from '../../components/OrderStatus/OrderStatus';
 import './OrderTracking.css';
-import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview } from '../../api/orderApi';
+import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview, getOrderPayment } from '../../api/orderApi';
+import { fetchPostProductById } from '../../api/productApi';
 import profileApi from '../../api/profileApi';
 import { AnimatedButton } from '../../components/ui/AnimatedButton';
-import CancelOrderRequest from "../../components/CancelOrderModal/CancelOrderRequest";
 
 
 
@@ -35,7 +35,6 @@ function OrderTracking() {
     const [loading, setLoading] = useState(true);
     const [isGuest, setIsGuest] = useState(true);
     const [hasReview, setHasReview] = useState(false); // Trạng thái đánh giá
-    const [showCancelForm, setShowCancelForm] = useState(false);
 
 
 
@@ -44,6 +43,47 @@ function OrderTracking() {
         if (method === 'bank_transfer') return 'Chuyển khoản ngân hàng';
         if (method === 'ewallet') return 'Ví điện tử';
         return 'Khác';
+    };
+
+    const toAbsoluteUrl = (url) => {
+        if (!url || typeof url !== 'string') return '';
+        const trimmed = url.trim();
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        const base = (import.meta?.env?.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
+        const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+        return `${base}${path}`;
+    };
+
+    const extractImageFromRawProduct = (rawProduct) => {
+        try {
+            if (!rawProduct || typeof rawProduct !== 'object') return '';
+            // direct fields
+            const direct = rawProduct.productImage || rawProduct.image || rawProduct.imageUrl || rawProduct.thumbnail || rawProduct.coverUrl;
+            if (typeof direct === 'string' && direct.trim()) return toAbsoluteUrl(direct);
+            // array fields
+            const images = rawProduct.images || rawProduct.imageUrls || rawProduct.pictures || [];
+            if (Array.isArray(images) && images.length > 0) {
+                const first = images[0];
+                if (typeof first === 'string') return toAbsoluteUrl(first);
+                if (first && typeof first === 'object') {
+                    const candidate = first.imgUrl || first.url || first.image;
+                    if (typeof candidate === 'string' && candidate.trim()) return toAbsoluteUrl(candidate);
+                }
+            }
+        } catch { /* ignore */ }
+        return '';
+    };
+
+    // Chuẩn hóa tên phương thức thanh toán từ nhiều nguồn BE (VNPay/MoMo/COD/CASH/...)
+    const normalizePaymentMethod = (value) => {
+        const v = String(value || '').toUpperCase();
+        if (!v) return '';
+        if (v.includes('COD') || v.includes('CASH') || v.includes('CASH_ON_DELIVERY')) return 'cod';
+        if (v.includes('BANK')) return 'bank_transfer';
+        // Mặc định gom VNPay/MoMo/ZaloPay/Wallet về ewallet
+        if (v.includes('VNPAY') || v.includes('MOMO') || v.includes('ZALO') || v.includes('WALLET') || v.includes('E-WALLET')) return 'ewallet';
+        return '';
     };
 
     const getStatusLabel = (status) => {
@@ -156,7 +196,7 @@ function OrderTracking() {
 
                             // Product info
                             product: {
-                                image: orderDetailData._raw?.productImage || '/vite.svg',
+                                image: toAbsoluteUrl(orderDetailData._raw?.productImage) || extractImageFromRawProduct(orderDetailData._raw?.product) || '',
                                 title: orderDetailData._raw?.productName || `Đơn hàng ${orderDetailData.orderCode}`,
                                 price: orderDetailData.price || 0
                             },
@@ -172,8 +212,8 @@ function OrderTracking() {
                             buyerPhone: orderDetailData.phoneNumber || '',
                             deliveryAddress: orderDetailData.shippingAddress || '',
 
-                            // Payment info
-                            paymentMethod: (orderDetailData._raw?.paymentMethod || 'ewallet').toLowerCase(),
+                            // Payment info (sẽ xác nhận lại bằng API chuyên biệt phía dưới)
+                            paymentMethod: normalizePaymentMethod(orderDetailData._raw?.paymentMethod || orderDetailData.paymentMethod) || 'cod',
 
                             // Shipping tracking info
                             deliveredAt: orderDetailData._raw?.deliveredAt || null,
@@ -199,6 +239,38 @@ function OrderTracking() {
                             // Raw data reference
                             _raw: orderDetailData._raw || {}
                         };
+
+                        // Lấy hình ảnh sản phẩm nếu thiếu từ Order Detail (dùng post/product API)
+                        try {
+                            if (!mappedOrder.product.image) {
+                                const productId = orderDetailData._raw?.postId || orderDetailData._raw?.productId || orderDetailData._raw?.product?.id;
+                                if (productId) {
+                                    const prod = await fetchPostProductById(productId);
+                                    if (prod && prod.image) {
+                                        mappedOrder.product.image = prod.image;
+                                        if (!mappedOrder.product.title && prod.title) mappedOrder.product.title = prod.title;
+                                        if (!mappedOrder.product.price && prod.price) mappedOrder.product.price = prod.price;
+                                    }
+                                }
+                            }
+                        } catch (imgErr) {
+                            console.warn('[OrderTracking] fetchPostProductById failed for image:', imgErr);
+                            // cuối cùng dùng placeholder
+                            if (!mappedOrder.product.image) mappedOrder.product.image = '/vite.svg';
+                        }
+
+                        // Lấy phương thức thanh toán từ API chuyên biệt (chính xác hơn)
+                        try {
+                            const payRes = await getOrderPayment(orderDetailData.id || orderId);
+                            if (payRes?.success && payRes?.data?.gatewayName) {
+                                const normalized = normalizePaymentMethod(payRes.data.gatewayName);
+                                if (normalized) {
+                                    mappedOrder.paymentMethod = normalized;
+                                }
+                            }
+                        } catch (pmErr) {
+                            console.warn('[OrderTracking] getOrderPayment failed (fallback to detail/raw):', pmErr);
+                        }
 
                         // Cập nhật status từ shipping API để có status mới nhất
                         const realOrderId = orderDetailData.id || orderId;
@@ -489,7 +561,7 @@ function OrderTracking() {
         const shippedAt = item._raw?.shippedAt || item._raw?.shipped_at || null;
         const trackingNumber = item._raw?.trackingNumber || item._raw?.tracking_code || '';
         const carrier = item._raw?.shippingPartner || item._raw?.carrier || '';
-        const paymentMethod = (item._raw?.paymentMethod || '').toLowerCase() || (status === 'confirmed' ? 'ewallet' : 'cod');
+        const paymentMethod = normalizePaymentMethod(item._raw?.paymentMethod) || (status === 'confirmed' ? 'ewallet' : 'cod');
         const needInvoice = Boolean(item._raw?.needInvoice || item._raw?.invoiceRequired);
 
         const product = {
@@ -530,7 +602,16 @@ function OrderTracking() {
     };
 
     // Xử lý hủy đơn hàng
-
+    const handleCancelOrder = () => {
+        if (window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) {
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const updatedOrders = orders.map(o =>
+                o.id === orderId ? { ...o, status: 'cancelled' } : o
+            );
+            localStorage.setItem('orders', JSON.stringify(updatedOrders));
+            setOrder({ ...order, status: 'cancelled' });
+        }
+    };
 
     if (isGuest) {
         return null; // Sẽ redirect về login
@@ -560,25 +641,8 @@ function OrderTracking() {
         );
     }
 
-
     return (
-
         <div className="order-tracking-page">
-            {showCancelForm && (
-                <div className="cancel-order-popup-wrapper">
-                    <CancelOrderRequest
-                        orderId={order.id}
-                        onCancelSuccess={() => {
-                            setShowCancelForm(false);
-                            navigate('/orders', {
-                                state: { refreshOrders: true, filter: 'canceled' },
-                            });
-
-                        }}
-                        onBack={() => setShowCancelForm(false)}
-                    />
-                </div>
-            )}
             <div className="order-tracking-container">
                 {/* Header */}
                 <div className="order-tracking-header">
@@ -838,13 +902,12 @@ function OrderTracking() {
                                     </AnimatedButton>
                                     <AnimatedButton
                                         variant="outline-danger"
-                                        onClick={() => setShowCancelForm(true)}
+                                        onClick={handleCancelOrder}
                                         className="action-btn-danger"
                                     >
                                         <AlertCircle size={18} />
                                         Hủy đơn hàng
                                     </AnimatedButton>
-
                                 </div>
                             )}
 
