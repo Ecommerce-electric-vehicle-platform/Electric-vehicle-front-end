@@ -1589,7 +1589,10 @@ function PlaceOrder() {
                     createdBy: currentUsername // Alias cho compatibility
                 };
 
-                const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                g
+                // Lưu đơn hàng vào localStorage riêng của từng user
+                const storageKey = `orders_${currentUsername}`; // Mỗi user có 1 key riêng
+                const existingOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
                 existingOrders.push(newOrderWithUser);
                 localStorage.setItem('orders', JSON.stringify(existingOrders));
 
