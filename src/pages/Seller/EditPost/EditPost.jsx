@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ServicePackageGuard } from "../../../components/ServicePackageGuard/ServicePackageGuard";
 import sellerApi from "../../../api/sellerApi";
-import { fetchPostProductById } from "../../../api/productApi";
+import { normalizeProduct } from "../../../api/productApi";
 import "./EditPost.css";
 
 export default function EditPost() {
@@ -33,13 +33,26 @@ export default function EditPost() {
     categoryId: "",
   });
 
-  // 🧭 Load dữ liệu bài đăng
+  // Load dữ liệu bài đăng
   useEffect(() => {
     const loadPost = async () => {
       try {
         setLoading(true);
-        const product = await fetchPostProductById(postId);
-        console.log("[EditPost] Loaded product data:", product);
+        // Sử dụng sellerApi.getPostById thay vì fetchPostProductById (vì API GET by ID bị lỗi 500)
+        const post = await sellerApi.getPostById(postId);
+        console.log("[EditPost] Loaded post data (raw):", post);
+        
+        // Lấy categoryId từ raw data (có thể có trong post data)
+        // Backend có thể trả về categoryId hoặc categoryName
+        const categoryId = post?.categoryId || post?.category_id || post?.category?.categoryId || "";
+        console.log("[EditPost] CategoryId from raw data:", categoryId, "CategoryName:", post?.categoryName || post?.category);
+        
+        // Normalize post data để đảm bảo format đúng
+        const product = normalizeProduct(post);
+        if (!product) {
+          throw new Error("Không thể xử lý dữ liệu bài đăng");
+        }
+        console.log("[EditPost] Normalized product data:", product);
 
         setFormData({
           title: product.title || "",
@@ -56,14 +69,19 @@ export default function EditPost() {
           conditionLevel: product.conditionLevel || "Good",
           description: product.description || "",
           locationTrading: product.locationTrading || "",
-          categoryId: product.categoryId || "",
+          // Ưu tiên lấy từ raw data, nếu không có thì dùng từ normalized product
+          categoryId: categoryId || product.categoryId || product.category || "",
         });
 
-        const existingImages = product.images?.map((img) => img.imgUrl) || [];
+        // Lấy images từ product (đã được normalize)
+        const existingImages = product.images?.map((img) => {
+          // img có thể là string (URL) hoặc object với imgUrl
+          return typeof img === 'string' ? img : (img?.imgUrl || img);
+        }) || [];
         setExistingImages(existingImages);
       } catch (err) {
         console.error("Lỗi tải bài đăng:", err);
-        alert("Không thể tải dữ liệu bài đăng này!");
+        alert("Không thể tải dữ liệu bài đăng này: " + (err?.message || "Lỗi không xác định"));
         navigate("/seller/manage-posts");
       } finally {
         setLoading(false);
@@ -131,28 +149,130 @@ export default function EditPost() {
       setLoading(true);
       setUploadProgress(0);
 
+      // Chuẩn bị FormData cho API update (multipart/form-data)
       const formDataToSend = new FormData();
       
-      // Append từng field theo đúng định dạng backend yêu cầu
+      // Append các field text
       formDataToSend.append("title", formData.title);
       formDataToSend.append("brand", formData.brand);
       formDataToSend.append("model", formData.model);
-      formDataToSend.append("manufactureYear", parseInt(formData.manufacturerYear)); // CHUYỂN manufacturerYear -> manufactureYear
-      formDataToSend.append("usedDuration", formData.usedDuration);
+      formDataToSend.append("manufactureYear", parseInt(formData.manufacturerYear));
+      formDataToSend.append("usedDuration", formData.usedDuration || "");
       formDataToSend.append("conditionLevel", formData.conditionLevel || "Good");
       formDataToSend.append("price", parseFloat(formData.price));
-      formDataToSend.append("length", formData.length);
-      formDataToSend.append("width", formData.width);
-      formDataToSend.append("height", formData.height);
-      formDataToSend.append("weight", formData.weight);
-      formDataToSend.append("color", formData.color);
+      if (formData.length) formDataToSend.append("length", formData.length);
+      if (formData.width) formDataToSend.append("width", formData.width);
+      if (formData.height) formDataToSend.append("height", formData.height);
+      if (formData.weight) formDataToSend.append("weight", formData.weight);
+      if (formData.color) formDataToSend.append("color", formData.color);
       formDataToSend.append("description", formData.description);
       formDataToSend.append("locationTrading", formData.locationTrading);
       formDataToSend.append("categoryId", formData.categoryId);
+      
+      // Append ảnh vào FormData
+      // Backend @RequestPart("pictures") yêu cầu BẮT BUỘC phải có ít nhất 1 file
+      // Strategy:
+      // 1. Nếu có ảnh mới: gửi ảnh mới (backend sẽ thay thế toàn bộ)
+      // 2. Nếu không có ảnh mới nhưng có ảnh cũ: download ảnh cũ và gửi lại
+      // 3. Nếu không có ảnh nào: báo lỗi
+      
+      if (newPictures.length > 0) {
+        // Có ảnh mới: chỉ gửi ảnh mới
+        console.log(`[EditPost] Sending ${newPictures.length} new pictures`);
+        newPictures.forEach((file) => {
+          if (file instanceof File) {
+            formDataToSend.append("pictures", file);
+          }
+        });
+      } else if (existingImages.length > 0) {
+        // Không có ảnh mới: download ảnh cũ và convert sang File
+        console.log(`[EditPost] No new pictures, attempting to download ${existingImages.length} existing images`);
+        
+        try {
+          // Download ảnh cũ từ URLs và convert sang File objects
+          // Lưu ý: Có thể gặp CORS issue nếu ảnh từ domain khác
+          const downloadPromises = existingImages.map(async (url, index) => {
+            try {
+              console.log(`[EditPost] Downloading image ${index + 1}/${existingImages.length}: ${url}`);
+              
+              // Thử fetch với mode 'no-cors' nếu gặp CORS issue
+              let response;
+              try {
+                response = await fetch(url, { mode: 'cors' });
+              } catch (corsError) {
+                console.warn(`[EditPost] CORS error for ${url}, trying no-cors mode:`, corsError);
+                // Nếu CORS fail, thử proxy qua backend hoặc yêu cầu user thêm ảnh mới
+                throw new Error(`Không thể tải ảnh từ ${url} (CORS error). Vui lòng thêm ảnh mới hoặc liên hệ admin.`);
+              }
+              
+              if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              }
+              
+              const blob = await response.blob();
+              if (!blob || blob.size === 0) {
+                throw new Error("Empty blob received");
+              }
+              
+              const fileName = `existing-image-${index + 1}.${blob.type.split('/')[1] || 'jpg'}`;
+              const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
+              console.log(`[EditPost] Successfully downloaded image ${index + 1}: ${fileName} (${blob.size} bytes)`);
+              return file;
+            } catch (error) {
+              console.error(`[EditPost] Failed to download image ${index + 1} from ${url}:`, error);
+              return { error: error.message, url, index };
+            }
+          });
+          
+          const results = await Promise.all(downloadPromises);
+          
+          // Filter out failed downloads
+          const validFiles = results.filter(result => result instanceof File);
+          const failedDownloads = results.filter(result => result && result.error);
+          
+          if (validFiles.length === 0) {
+            // Tất cả đều fail
+            const errorDetails = failedDownloads.map(f => `- Ảnh ${f.index + 1}: ${f.error}`).join('\n');
+            console.error("[EditPost] All image downloads failed:", errorDetails);
+            alert(
+              "Không thể tải ảnh cũ từ server.\n\n" +
+              "Nguyên nhân có thể:\n" +
+              "- Lỗi kết nối mạng\n" +
+              "- Ảnh đã bị xóa hoặc không tồn tại\n" +
+              "- Lỗi CORS (Cross-Origin Resource Sharing)\n\n" +
+              "Giải pháp: Vui lòng thêm ít nhất 1 ảnh mới để cập nhật bài đăng."
+            );
+            setLoading(false);
+            return;
+          }
+          
+          // Append ảnh đã download thành công vào FormData
+          validFiles.forEach((file) => {
+            formDataToSend.append("pictures", file);
+          });
+          
+          console.log(`[EditPost] Successfully loaded ${validFiles.length}/${existingImages.length} existing images`);
+          
+          if (failedDownloads.length > 0) {
+            console.warn(`[EditPost] ${failedDownloads.length} images failed to download, but continuing with ${validFiles.length} images`);
+          }
+        } catch (error) {
+          console.error("[EditPost] Unexpected error loading existing images:", error);
+          alert(
+            "Lỗi khi tải ảnh cũ: " + error.message + "\n\n" +
+            "Vui lòng thêm ít nhất 1 ảnh mới để tiếp tục cập nhật bài đăng."
+          );
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Không có ảnh nào: báo lỗi
+        alert("Vui lòng thêm ít nhất 1 ảnh!");
+        setLoading(false);
+        return;
+      }
 
-      // Gửi thêm ảnh mới (nếu có)
-      newPictures.forEach((file) => formDataToSend.append("pictures", file));
-
+      // Gọi API update với FormData (multipart/form-data)
       const response = await sellerApi.updatePostById(postId, formDataToSend);
       if (response?.data?.success) {
         alert("Cập nhật bài đăng thành công!");
@@ -162,18 +282,26 @@ export default function EditPost() {
       }
     } catch (error) {
       console.error("Lỗi khi cập nhật bài đăng:", error);
+      console.error("Error details:", {
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error?.message,
+        url: error?.config?.url
+      });
       
-      // Hiển thị thông báo lỗi chi tiết hơn
-      let errorMessage = "Cập nhật thất bại. Vui lòng thử lại!";
-      if (error?.response?.status === 500) {
-        errorMessage = "Lỗi server: Backend không hỗ trợ endpoint cập nhật bài đăng. Vui lòng liên hệ admin!";
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
+      // Xử lý lỗi cụ thể
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+        navigate("/login");
+      } else if (error?.response?.status === 404) {
+        alert("Không tìm thấy bài đăng này!");
+      } else if (error?.response?.status === 500) {
+        const errorMsg = error?.response?.data?.message || error?.message || "Lỗi server. Vui lòng thử lại sau!";
+        alert("Lỗi server: " + errorMsg);
+      } else {
+        const errorMsg = error?.response?.data?.message || error?.message || "Vui lòng thử lại!";
+        alert("Lỗi khi cập nhật bài đăng: " + errorMsg);
       }
-      
-      alert(errorMessage);
     } finally {
       setLoading(false);
       setUploadProgress(0);

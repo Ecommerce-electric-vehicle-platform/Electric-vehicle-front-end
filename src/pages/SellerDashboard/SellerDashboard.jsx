@@ -438,6 +438,9 @@ function SellerDashboard() {
     }
   };
 
+  // Load thông tin seller từ API (lấy từ JWT token)
+  // API: GET /api/v1/seller/profile
+  //Lấy thông tin seller để hiện thị dashboard 
   const loadSellerData = async () => {
     try {
       const response = await sellerApi.getSellerProfile();

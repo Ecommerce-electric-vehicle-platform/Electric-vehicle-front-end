@@ -555,43 +555,24 @@ function ProductDetail() {
                                 }}
                             >
                                 <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "16px" }}>Mô tả chi tiết</h3>
-                                <p style={{ color: "#6b7280", lineHeight: 1.6, marginBottom: "16px" }}>
+                                <p style={{ color: "#6b7280", lineHeight: 1.8, marginBottom: "20px", fontSize: "15px" }}>
                                     {product.description || `Xe điện ${product.brand} ${product.model} với thiết kế thể thao, phù hợp cho người dùng yêu thích tốc độ.`}
                                 </p>
+                                {/* Thông tin tổng quan - chỉ hiển thị thông tin liên quan đến mô tả sản phẩm */}
                                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            paddingBottom: "8px",
-                                            borderBottom: "1px solid #f3f4f6",
-                                        }}
-                                    >
-                                        <span style={{ color: "#6b7280" }}>Tình trạng:</span>
-                                        <span style={{ fontWeight: 600 }}>{product.condition || "Tốt"}</span>
-                                    </div>
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            paddingBottom: "8px",
-                                            borderBottom: "1px solid #f3f4f6",
-                                        }}
-                                    >
-                                        <span style={{ color: "#6b7280" }}>Năm sản xuất:</span>
-                                        <span style={{ fontWeight: 600 }}>{product.manufactureYear}</span>
-                                    </div>
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            paddingBottom: "8px",
-                                            borderBottom: "1px solid #f3f4f6",
-                                        }}
-                                    >
-                                        <span style={{ color: "#6b7280" }}>Thời gian sử dụng:</span>
-                                        <span style={{ fontWeight: 600 }}>{product.usedDuration ? `${product.usedDuration.toLocaleString()} km` : "Chưa có thông tin"}</span>
-                                    </div>
+                                    {product.color && (
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                paddingBottom: "8px",
+                                                borderBottom: "1px solid #f3f4f6",
+                                            }}
+                                        >
+                                            <span style={{ color: "#6b7280" }}>Màu sắc:</span>
+                                            <span style={{ fontWeight: 600 }}>{product.color}</span>
+                                        </div>
+                                    )}
                                     {product.batteryType && (
                                         <div
                                             style={{
@@ -655,19 +636,37 @@ function ProductDetail() {
                                     {product.usedDuration && (
                                         <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
                                             <span style={{ color: "#6b7280" }}>Thời gian sử dụng:</span>
-                                            <span style={{ fontWeight: 500 }}>{product.usedDuration.toLocaleString()} km</span>
+                                            <span style={{ fontWeight: 500 }}>
+                                                {typeof product.usedDuration === 'string' 
+                                                    ? product.usedDuration 
+                                                    : `${product.usedDuration.toLocaleString()} km`}
+                                            </span>
                                         </div>
                                     )}
-                                    {product.batteryType && (
+                                    {product.length && (
                                         <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
-                                            <span style={{ color: "#6b7280" }}>Loại pin:</span>
-                                            <span style={{ fontWeight: 500 }}>{product.batteryType}</span>
+                                            <span style={{ color: "#6b7280" }}>Chiều dài:</span>
+                                            <span style={{ fontWeight: 500 }}>{product.length} cm</span>
                                         </div>
                                     )}
-                                    {product.range && (
+                                    {product.width && (
                                         <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
-                                            <span style={{ color: "#6b7280" }}>Tầm xa:</span>
-                                            <span style={{ fontWeight: 500 }}>{product.range} km</span>
+                                            <span style={{ color: "#6b7280" }}>Chiều rộng:</span>
+                                            <span style={{ fontWeight: 500 }}>{product.width} cm</span>
+                                        </div>
+                                    )}
+                                    {product.height && (
+                                        <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+                                            <span style={{ color: "#6b7280" }}>Chiều cao:</span>
+                                            <span style={{ fontWeight: 500 }}>{product.height} cm</span>
+                                        </div>
+                                    )}
+                                    {product.weight && (
+                                        <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+                                            <span style={{ color: "#6b7280" }}>Trọng lượng:</span>
+                                            <span style={{ fontWeight: 500 }}>
+                                                {product.weight} {Number(product.weight) >= 1000 ? "kg" : "g"}
+                                            </span>
                                         </div>
                                     )}
                                     {product.locationTrading && (
