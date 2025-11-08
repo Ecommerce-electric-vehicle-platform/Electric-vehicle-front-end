@@ -312,10 +312,18 @@ export function normalizeProduct(item) {
         batteryType: productData.batteryType ?? productData.battery_type,
         range: productData.range ?? productData.maxRange ?? productData.max_range,
 
+        // 📏 Kích thước và trọng lượng
+        width: productData.width ?? "",
+        height: productData.height ?? "",
+        length: productData.length ?? "",
+        weight: productData.weight ?? "",
+        color: productData.color ?? "",
+
         // 📊 Thông tin bổ sung
         sellerId: productData.sellerId ?? productData.seller_id,
         sellerName: productData.sellerName ?? productData.seller_name,
         category: productData.category ?? productData.categoryId ?? productData.category_id,
+        categoryName: productData.categoryName ?? productData.category_name ?? "",
         status: productData.status ?? "active",
 
         // Debug - giữ nguyên raw để debug

@@ -54,6 +54,23 @@ axiosInstance.interceptors.request.use(async (config) => {
     });
   }
 
+  // Xử lý FormData: Xóa Content-Type header để axios tự động set với boundary
+  // Khi gửi FormData, axios cần tự động set Content-Type: multipart/form-data; boundary=...
+  // Nếu để default "application/json" hoặc set thủ công không có boundary, backend sẽ reject
+  // 
+  // Logic:
+  // 1. Nếu data là FormData → xóa Content-Type → axios tự set với boundary
+  // 2. Nếu data không phải FormData → giữ nguyên default "application/json" từ config
+  // 3. Điều này KHÔNG ảnh hưởng các API khác vì:
+  //    - API JSON: data là object/string → không phải FormData → giữ nguyên Content-Type
+  //    - API FormData: data là FormData → xóa Content-Type → axios set đúng với boundary
+  if (config.data instanceof FormData) {
+    // Xóa Content-Type để axios tự động thêm boundary
+    delete config.headers["Content-Type"];
+    // Log để debug (có thể comment lại sau)
+    console.log("[API] FormData detected - Removing Content-Type, axios will auto-set with boundary");
+  }
+
   if (!isPublic) {
     const authType = localStorage.getItem("authType");
     let token = null;

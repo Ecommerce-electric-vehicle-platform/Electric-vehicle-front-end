@@ -21,11 +21,16 @@ const sellerApi = {
     }
   },
 
-  // Lấy thông tin seller profile
-  getSellerProfile: async (sellerId) => {
-    if (!sellerId) return null;
+  // Lấy thông tin seller profile (của seller đang authenticated)
+  // API: GET /api/v1/seller/profile (không cần sellerId, lấy từ JWT token)
+  getSellerProfile: async () => {
     try {
-      const response = await axiosInstance.get(`/api/v1/seller/${sellerId}`);
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get(`/api/v1/seller/profile`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
       if (!response?.data?.success || !response.data?.data) return null;
       return response.data.data;
     } catch (error) {
@@ -35,7 +40,8 @@ const sellerApi = {
     }
   },
 
-  // Lấy thông tin seller theo sellerId (public)
+  // Lấy thông tin seller theo sellerId (chưa sử dụng - chỉ thêm nếu cần)
+  // API: GET /api/v1/seller/{sellerId}
   getSellerById: async (sellerId) => {
     try {
       const response = await axiosInstance.get(`/api/v1/seller/${sellerId}`);
@@ -53,15 +59,14 @@ const sellerApi = {
         throw new Error("createPostProduct expects a FormData object");
       }
 
-      const accessToken = localStorage.getItem("accessToken");
+      // KHÔNG set Content-Type và Authorization thủ công
+      // Interceptor sẽ tự động:
+      // - Xóa Content-Type để axios set với boundary
+      // - Thêm Authorization header từ tokenManager
       const response = await axiosInstance.post(
         "/api/v1/seller/post-products",
         formData,
         {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            "Authorization": `Bearer ${accessToken}`
-          },
           onUploadProgress: (event) => {
             if (onUploadProgress && event.total) {
               const percent = Math.round((event.loaded * 100) / event.total);
@@ -70,7 +75,6 @@ const sellerApi = {
           },
         }
       );
-
       console.log("[SellerAPI] Created post successfully:", response.data);
       return response;
     } catch (error) {
@@ -79,6 +83,7 @@ const sellerApi = {
     }
   },
 
+   //============= PHẨN QUẢN LÝ TIN ĐĂNG ============================
   // Gửi yêu cầu xác minh bài đăng
   requestPostVerification: async (postId) => {
     try {
@@ -93,7 +98,7 @@ const sellerApi = {
     }
   },
 
-  // Lấy danh sách bài đăng của seller (BE đã filter theo seller)
+  // Lấy danh sách bài đăng của seller (đã filter theo seller)
   getMyPosts: async (page = 0, size = 10, sortBy = 'postId', sortDirection = 'desc') => {
     try {
       const accessToken = localStorage.getItem("accessToken");
@@ -114,32 +119,102 @@ const sellerApi = {
     }
   },
 
-  // Cập nhật bài đăng
-  updatePost: async (postId, productData) => {
-    try {
-      const response = await axiosInstance.put(
-        `/api/v1/seller/posts/${postId}`,
-        productData
-      );
-      return response;
-    } catch (error) {
-      console.error("[SellerAPI] Error updating post:", error);
-      throw error;
+  // Cập nhật bài đăng sản phẩm bằng postId (dùng cho Seller)
+// API yêu cầu: PUT /api/v1/post-product/{postId} với multipart/form-data
+// Request body: FormData với các field: title, brand, model, manufactureYear, usedDuration, 
+//               conditionLevel, price, width, height, length, weight, description, 
+//               locationTrading, categoryId, pictures (URLs hoặc Files)
+updatePostById: async (postId, productData, existingImageUrls = []) => {
+  try {
+    // Tạo FormData từ productData
+    // LƯU Ý: Authorization header sẽ được axios interceptor tự động thêm
+    const formData = new FormData();
+    
+    // Nếu productData đã là FormData, sử dụng trực tiếp
+    if (productData instanceof FormData) {
+      // Copy tất cả entries từ FormData cũ
+      for (let [key, value] of productData.entries()) {
+        if (key === "pictures" && value instanceof File) {
+          // Giữ nguyên File objects
+          formData.append("pictures", value);
+        } else if (key !== "pictures") {
+          // Copy các field khác
+          formData.append(key, value);
+        }
+      }
+    } else {
+      // Nếu là object, chuyển đổi sang FormData
+      Object.entries(productData).forEach(([key, value]) => {
+        if (key === "pictures" && Array.isArray(value)) {
+          // Xử lý pictures array
+          value.forEach((pic) => {
+            if (pic instanceof File) {
+              formData.append("pictures", pic);
+            } else if (pic && typeof pic === 'string') {
+              // Nếu là URL string, append như string
+              formData.append("pictures", pic);
+            }
+          });
+        } else if (value !== undefined && value !== null && value !== '') {
+          // Append các field khác
+          formData.append(key, value);
+        }
+      });
     }
-  },
-
-  // Xóa bài đăng
-  deletePost: async (postId) => {
-    try {
-      const response = await axiosInstance.delete(
-        `/api/v1/seller/posts/${postId}`
-      );
-      return response;
-    } catch (error) {
-      console.error("[SellerAPI] Error deleting post:", error);
-      throw error;
+    
+    // Kết hợp URLs ảnh cũ (nếu có)
+    if (existingImageUrls && existingImageUrls.length > 0) {
+      existingImageUrls.forEach((url) => {
+        if (url && typeof url === 'string') {
+          formData.append("pictures", url);
+        }
+      });
     }
-  },
+    
+    // Debug: Log FormData contents
+    const formDataEntries = [];
+    for (let [key, value] of formData.entries()) {
+      formDataEntries.push({
+        key,
+        value: value instanceof File ? `[File: ${value.name}]` : value
+      });
+    }
+    console.log("[SellerAPI] FormData entries:", formDataEntries);
+    
+    // Gọi API PUT với multipart/form-data
+    // Endpoint theo Swagger: PUT /api/v1/post-product/{postId}
+    // Backend expect:
+    // - @ModelAttribute UpdatePostProductRequest (form fields riêng lẻ: title, brand, model, etc.)
+    // - @RequestPart("pictures") List<MultipartFile> files (files với name "pictures")
+    // 
+    // QUAN TRỌNG: 
+    // - KHÔNG set Content-Type thủ công! Axios sẽ tự động set với boundary cho multipart/form-data
+    // - Authorization header sẽ được interceptor tự động thêm (từ tokenManager.getValidToken())
+    // - Interceptor sẽ tự động lấy token từ tokenManager.getValidToken() và thêm vào header
+    console.log("[SellerAPI] Calling PUT /api/v1/post-product/" + postId);
+    console.log("[SellerAPI] Using multipart/form-data");
+    console.log("[SellerAPI] Authorization will be handled by axios interceptor");
+    
+    const response = await axiosInstance.put(
+      `/api/v1/seller/${postId}`,
+      formData
+      // KHÔNG set headers ở đây - để interceptor xử lý Authorization và axios xử lý Content-Type
+    );
+    
+    console.log("[SellerAPI] Update response:", response.data);
+    return response;
+  } catch (error) {
+    console.error("[SellerAPI] Error updating product post:", error);
+    console.error("[SellerAPI] Error response:", error?.response?.data);
+    console.error("[SellerAPI] Error status:", error?.response?.status);
+    console.error("[SellerAPI] Error config:", {
+      url: error?.config?.url,
+      method: error?.config?.method,
+      headers: error?.config?.headers
+    });
+    throw error;
+  }
+},
 
   // Ẩn bài đăng
   hidePost: async (postId) => {
@@ -166,7 +241,7 @@ const sellerApi = {
     try {
       const accessToken = localStorage.getItem("accessToken");
       const response = await axiosInstance.get(
-        `/api/v1/post-product/${postId}/seller`,
+        `/api/v1/post-product/${postId}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`
@@ -180,6 +255,7 @@ const sellerApi = {
     }
   },
 
+  //============= HIỂN THỊ TRÊN TRANG HOME============================
   // Lấy danh sách tất cả sản phẩm (có phân trang và sắp xếp)
   getAllPosts: async (page = 0, size = 10, sortBy = 'id', isAsc = true) => {
     try {
@@ -388,6 +464,53 @@ const sellerApi = {
     }
   },
 
+  // Lấy một post cụ thể theo postId (dùng cho EditPost)
+  // Sử dụng API list posts và filter theo postId (vì API GET by ID bị lỗi 500)
+  // LƯU Ý: KHÔNG gọi trực tiếp GET /api/v1/seller/{postId} vì endpoint này không tồn tại
+  // Endpoint /api/v1/seller/{id} chỉ dùng để lấy seller info (getSellerById), không phải post info
+  getPostById: async (postId, sellerId = null) => {
+    if (!postId) {
+      throw new Error("Thiếu postId");
+    }
+    try {
+      console.log(`[sellerApi.getPostById] Loading post ${postId}...`);
+      
+      let finalSellerId = sellerId;
+      
+      // Nếu không có sellerId, lấy từ profile
+      if (!finalSellerId) {
+        console.log(`[sellerApi.getPostById] Getting seller profile...`);
+        const sellerProfile = await sellerApi.getSellerProfile();
+        if (!sellerProfile || !sellerProfile.sellerId) {
+          throw new Error("Không thể lấy thông tin seller. Vui lòng đăng nhập lại!");
+        }
+        finalSellerId = sellerProfile.sellerId;
+        console.log(`[sellerApi.getPostById] Seller ID: ${finalSellerId}`);
+      }
+      
+      // Lấy danh sách posts của seller (KHÔNG gọi GET /api/v1/seller/{postId})
+      console.log(`[sellerApi.getPostById] Fetching products for seller ${finalSellerId}...`);
+      const products = await sellerApi.getProductsBySeller(finalSellerId, { page: 0, size: 100 });
+      console.log(`[sellerApi.getPostById] Found ${products.length} products`);
+      
+      // Tìm post theo postId
+      const post = products.find(
+        (p) => String(p?.postId || p?.id || p?.post_id) === String(postId)
+      );
+      
+      if (!post) {
+        console.error(`[sellerApi.getPostById] Post ${postId} not found in seller's products`);
+        throw new Error(`Không tìm thấy bài đăng với ID: ${postId}. Có thể bài đăng không thuộc về seller này.`);
+      }
+      
+      console.log(`[sellerApi.getPostById] Found post:`, post);
+      return post;
+    } catch (error) {
+      console.error('[sellerApi.getPostById] Error:', error);
+      throw error;
+    }
+  },
+
   // Ẩn sản phẩm theo postId (dùng cho Seller/Admin)
 hidePostById: async (postId) => {
   try {
@@ -428,61 +551,7 @@ unhidePostById: async (postId) => {
   }
 },
 
-// Cập nhật bài đăng sản phẩm bằng postId (dùng cho Seller)
-updatePostById: async (postId, productData) => {
-  try {
-    const accessToken = localStorage.getItem("accessToken");
-    
-    // Kiểm tra nếu productData đã là FormData
-    let formData;
-    if (productData instanceof FormData) {
-      formData = productData;
-      
-      // Debug: Kiểm tra xem FormData có chứa pictures không
-      console.log("[SellerAPI] FormData received, checking contents...");
-      const entries = [];
-      for (let entry of formData.entries()) {
-        entries.push({ key: entry[0], value: entry[1] instanceof File ? `[File: ${entry[1].name}]` : entry[1] });
-      }
-      console.log("[SellerAPI] FormData entries:", entries);
-      
-      // Kiểm tra xem có field "pictures" không
-      const hasPictures = entries.some(entry => entry.key === "pictures");
-      if (!hasPictures) {
-        console.warn("[SellerAPI] WARNING: FormData does not contain 'pictures' field!");
-        console.warn("[SellerAPI] This will likely cause 'MissingServletRequestPartException' on backend");
-      }
-    } else {
-      // Tạo FormData mới từ object
-      formData = new FormData();
-      Object.entries(productData).forEach(([key, value]) => {
-        if (key === "pictures" && Array.isArray(value)) {
-          value.forEach((file) => {
-            formData.append("pictures", file);
-          });
-        } else if (value !== undefined && value !== null) {
-          formData.append(key, value);
-        }
-      });
-    }
-    
-    console.log("[SellerAPI] Calling PUT /api/v1/post-product/" + postId);
-    const response = await axiosInstance.put(
-      `/api/v1/post-product/${postId}`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          "Authorization": `Bearer ${accessToken}`
-        }
-      }
-    );
-    return response;
-  } catch (error) {
-    console.error("[SellerAPI] Error updating product post:", error);
-    throw error;
-  }
-},
+
 };
 
 export default sellerApi;

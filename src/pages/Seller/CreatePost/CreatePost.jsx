@@ -31,7 +31,7 @@ export default function CreatePost() {
     categoryId: "",
   });
 
-  // Lấy sellerId
+  // Lấy sellerId, để tạo bài đăng 
   useEffect(() => {
     loadSellerProfile();
   }, []);
