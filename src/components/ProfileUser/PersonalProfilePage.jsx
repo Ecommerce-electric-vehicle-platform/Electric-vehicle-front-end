@@ -7,10 +7,8 @@ import ChangePassword from "./ChangePassword";
 import UpgradeToSeller from "./UpgradeToSeller";
 import PersonalEWallet from "./PersonalEWallet";
 import SellerBuyPackage from "./SellerBuyPackage";
-// test raise dispute
-// ĐÃ XÓA: import DisputeForm from "../../BuyerRaiseDispute/DisputeForm";
 import SellerDocumentView from "./SellerDocumentView";
-// === THÊM IMPORT OrderList (Cần có) ===
+//THÊM IMPORT OrderList 
 import OrderList from "../../pages/OrderList/OrderList.jsx";
 
 
@@ -127,7 +125,7 @@ export default function PersonalProfilePage() {
   // === ĐỌC userRole trực tiếp từ sessionStorage trước khi render ===
   //const currentUserRole = sessionStorage.getItem("userRole") || "buyer"; // Nhanh và ổn định nhất
   const currentUserRole = localStorage.getItem("userRole") || "buyer";
-  console.log(`👤 Reading userRole directly before render: '${currentUserRole}'`);
+  console.log(` Reading userRole directly before render: '${currentUserRole}'`);
 
 
 
@@ -162,13 +160,6 @@ export default function PersonalProfilePage() {
 
 
           {activeSection === "Ví điện tử" && <PersonalEWallet />}
-          {/* XÓA: Tạm thời render DisputeForm vào tab Gửi Khiếu Nại */}
-          {activeSection === "Gửi khiếu nại" && (
-            // KHÔNG CÒN GỌI DISPUTEFORM Ở ĐÂY NỮA
-            <p>Form khiếu nại đã được tích hợp vào Lịch sử đơn hàng.</p>
-          )}
-
-
           {activeSection === "Nâng cấp thành người bán" && (
             <UpgradeToSeller
               onGoToProfile={() => setActiveSection("Hồ sơ cá nhân")}
