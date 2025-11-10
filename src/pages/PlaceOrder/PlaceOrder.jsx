@@ -20,14 +20,18 @@ import {
     ChevronDown,
     ChevronUp,
     Eye,
-    EyeOff
+    EyeOff,
+    FileText,
+    Download,
+    RefreshCw
 } from 'lucide-react';
 import { vehicleProducts, batteryProducts, formatCurrency } from '../../test-mock-data/data/productsData';
 import {
     getShippingPartners,
     placeOrder,
     getShippingFee,
-    getOrderDetails
+    getOrderDetails,
+    getOrderInvoice
 } from '../../api/orderApi';
 import { normalizePhoneNumber, isValidVietnamPhoneNumber, formatPhoneForAPI } from '../../utils/format';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
@@ -129,6 +133,10 @@ function PlaceOrder() {
     const [orderId, setOrderId] = useState(null);
     // State để lưu order details từ API sau khi đặt hàng thành công
     const [orderDetailsFromAPI, setOrderDetailsFromAPI] = useState(null);
+    // State quản lý dữ liệu hóa đơn điện tử
+    const [invoiceData, setInvoiceData] = useState(null);
+    const [invoiceLoading, setInvoiceLoading] = useState(false);
+    const [invoiceError, setInvoiceError] = useState('');
 
     // Hàm tạo mã đơn hàng
     const generateOrderCode = () => {
@@ -710,6 +718,38 @@ function PlaceOrder() {
         }));
     };
 
+    const loadInvoice = useCallback(async (targetOrderId) => {
+        if (!targetOrderId) {
+            setInvoiceError('Không tìm thấy mã đơn hàng để tải hóa đơn.');
+            return;
+        }
+
+        setInvoiceLoading(true);
+        setInvoiceError('');
+        setInvoiceData(null);
+
+        try {
+            const response = await getOrderInvoice(targetOrderId);
+            const data = response?.data || null;
+
+            if (response?.success && data?.pdfUrl) {
+                setInvoiceData(data);
+                setInvoiceError('');
+            } else {
+                setInvoiceData(data);
+                const fallbackMessage = response?.message || 'Hóa đơn đang được xử lý. Vui lòng thử lại sau ít phút.';
+                setInvoiceError(fallbackMessage);
+            }
+        } catch (error) {
+            console.error('❌ Error fetching invoice:', error);
+            const message = error?.response?.data?.message || error?.message || 'Không thể tải hóa đơn. Vui lòng thử lại.';
+            setInvoiceError(message);
+            setInvoiceData(null);
+        } finally {
+            setInvoiceLoading(false);
+        }
+    }, []);
+
 
     // (Bỏ input địa chỉ tự do; địa chỉ được ghép tự động từ 4 field)
 
@@ -1064,6 +1104,13 @@ function PlaceOrder() {
             }
         }
 
+        const shouldRequestInvoice = Boolean(orderData.need_order_invoice);
+        setInvoiceData(null);
+        setInvoiceError('');
+        if (!shouldRequestInvoice) {
+            setInvoiceLoading(false);
+        }
+
         setIsSubmitting(true);
 
         // Khai báo apiOrderData ở scope cao hơn để có thể truy cập trong catch block
@@ -1333,6 +1380,7 @@ function PlaceOrder() {
                 shippingPartnerId: resolvedShippingPartnerId,
                 paymentId: Number(resolvedPaymentId),
                 paymentMethod: resolvedPaymentId === 2 ? 'WALLET' : 'COD',
+                needOrderInvoice: shouldRequestInvoice,
                 // ✅ BẮT BUỘC: Backend phải sử dụng shippingFee này (đã tính từ API /api/v1/shipping/shipping-fee)
                 // ⚠️ Backend KHÔNG nên tự tính lại từ GHN API trong placeOrder()
                 shippingFee: shippingFeeValue,
@@ -1511,6 +1559,11 @@ function PlaceOrder() {
                 const currentTime = new Date().toISOString();
 
                 setOrderId(newOrderId);
+                if (shouldRequestInvoice) {
+                    loadInvoice(newOrderId);
+                } else {
+                    setInvoiceLoading(false);
+                }
 
                 // Fetch order details từ API để lấy shipping fee chính xác
                 try {
@@ -1585,7 +1638,8 @@ function PlaceOrder() {
                     paymentMethod: orderData.paymentId === 2 ? 'ewallet' : 'cod',
                     totalPrice: product.price,
                     shippingFee: orderData.shippingFee || 0,
-                    finalPrice: product.price + (orderData.shippingFee || 0)
+                    finalPrice: product.price + (orderData.shippingFee || 0),
+                    needInvoice: shouldRequestInvoice
                 };
 
                 // CHỈ lưu vào localStorage khi order THỰC SỰ thành công
@@ -2524,6 +2578,82 @@ function PlaceOrder() {
                                         </span>
                                     </div>
                                 </div>
+
+                                {orderData.need_order_invoice && (
+                                    <div className="invoice-result">
+                                        <div className="invoice-result-header">
+                                            <FileText size={20} />
+                                            <span>Hóa đơn điện tử</span>
+                                        </div>
+                                        {invoiceLoading ? (
+                                            <div className="invoice-loading">
+                                                <div className="place-order-loading-spinner-small" />
+                                                <span>Đang chuẩn bị hóa đơn...</span>
+                                            </div>
+                                        ) : invoiceData?.pdfUrl ? (
+                                            <div className="invoice-ready">
+                                                <div className="invoice-status-info">
+                                                    <span>Mã hóa đơn:</span>
+                                                    <strong>{invoiceData.invoiceNumber || invoiceData.invoiceId || '--'}</strong>
+                                                </div>
+                                                <div className="invoice-actions">
+                                                    <a
+                                                        href={invoiceData.pdfUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="btn btn-primary invoice-download-btn"
+                                                        title="Tải hóa đơn PDF"
+                                                    >
+                                                        <Download size={18} />
+                                                        <span>Tải hóa đơn</span>
+                                                    </a>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary"
+                                                        onClick={() => loadInvoice(orderId)}
+                                                        title="Tải lại hóa đơn"
+                                                    >
+                                                        <RefreshCw size={16} />
+                                                        <span>Tải lại</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="invoice-pending">
+                                                <div className={`invoice-message ${invoiceError ? 'invoice-message-error' : 'invoice-message-info'}`}>
+                                                    {invoiceError ? (
+                                                        <>
+                                                            <AlertCircle size={18} />
+                                                            <span>{invoiceError}</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Clock size={18} />
+                                                            <span>Hóa đơn đang được xử lý. Vui lòng thử lại sau ít phút.</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div className="invoice-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary"
+                                                        onClick={() => loadInvoice(orderId)}
+                                                        disabled={!orderId}
+                                                        title="Thử tải lại hóa đơn"
+                                                    >
+                                                        <RefreshCw size={16} />
+                                                        <span>Thử lại</span>
+                                                    </button>
+                                                </div>
+                                                {invoiceData?.invoiceNumber && (
+                                                    <div className="invoice-hint">
+                                                        Mã hóa đơn: <strong>{invoiceData.invoiceNumber}</strong>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div className="success-actions">
                                     <button
