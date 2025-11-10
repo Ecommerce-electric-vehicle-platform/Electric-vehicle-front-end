@@ -16,6 +16,7 @@ import { ComparePlans } from "./pages/ComparePlans/ComparePlans";
 import PlaceOrder from "./pages/PlaceOrder/PlaceOrder";
 import OrderTracking from "./pages/OrderTracking/OrderTracking";
 import WalletDeposit from "./pages/WalletDeposit/WalletDeposit";
+import WalletWithdraw from "./pages/WalletWithdraw/WalletWithdraw";
 import VnPayReturn from "./pages/WalletDeposit/VnPayReturn";
 import OrderList from "./pages/OrderList/OrderList";
 import OrderReview from "./pages/OrderReview/OrderReview";
@@ -262,6 +263,14 @@ function AppContent() {
           element={
             <PageTransition className="fade-up">
               <WalletDeposit />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/wallet/withdraw"
+          element={
+            <PageTransition className="fade-up">
+              <WalletWithdraw />
             </PageTransition>
           }
         />

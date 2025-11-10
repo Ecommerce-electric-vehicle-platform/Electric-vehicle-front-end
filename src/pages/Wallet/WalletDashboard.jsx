@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import vnpayApi from "../../api/vnpayApi";
 import profileApi from "../../api/profileApi";
 import { useWalletBalance } from "../../hooks/useWalletBalance";
 import {
@@ -556,6 +555,20 @@ export default function WalletDashboard() {
         };
     }, [isModalOpen]);
 
+    // Refresh when window gains focus or when walletUpdated event is dispatched
+    useEffect(() => {
+        const refreshAll = () => {
+            refreshBalance();
+            fetchTransactions(1, itemsPerPage);
+        };
+        window.addEventListener("focus", refreshAll);
+        window.addEventListener("walletUpdated", refreshAll);
+        return () => {
+            window.removeEventListener("focus", refreshAll);
+            window.removeEventListener("walletUpdated", refreshAll);
+        };
+    }, [refreshBalance, fetchTransactions, itemsPerPage]);
+
     // Handle open modal
     const handleOpenModal = (transaction) => {
         setSelectedTransaction(transaction);
@@ -592,19 +605,6 @@ export default function WalletDashboard() {
         if (type === "Nạp tiền") return <ArrowDownToLine size={18} className="icon in" />;
         if (type === "Rút tiền") return <ArrowUpRight size={18} className="icon out" />;
         return <ArrowLeftRight size={18} className="icon transfer" />;
-    };
-
-    // Reserved for future use - top up functionality
-    const _handleTopUp = async () => {
-        const amount = prompt("Nhập số tiền cần nạp (VND):");
-        if (!amount || Number(amount) <= 0) return;
-        try {
-            const res = await vnpayApi.createPayment(Number(amount));
-            const url = res?.data?.data?.url_payment || res?.data?.paymentUrl || res?.data?.url;
-            if (url) window.location.href = url; else alert("Không nhận được đường dẫn thanh toán");
-        } catch {
-            alert("Tạo yêu cầu thanh toán thất bại");
-        }
     };
 
     return (
@@ -670,10 +670,7 @@ export default function WalletDashboard() {
                 </button>
                 <button
                     className="wallet-action-btn wallet-withdraw-btn"
-                    onClick={() => {
-                        // TODO: Navigate to withdraw page when available
-                        alert("Tính năng rút tiền sẽ sớm được cập nhật!");
-                    }}
+                    onClick={() => navigate("/wallet/withdraw")}
                 >
                     <ArrowUpRight size={18} />
                     <span>Rút tiền</span>
@@ -895,6 +892,7 @@ export default function WalletDashboard() {
                     </div>
                 </div>
             )}
+
         </div>
     );
 }
