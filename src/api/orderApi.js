@@ -111,7 +111,7 @@ export const getOrderDetails = async (orderId) => {
             normalizedStatus = 'pending';
         } else if (['PENDING_PAYMENT', 'PENDING'].includes(rawStatus)) {
             normalizedStatus = 'pending';
-        } else if (['PAID', 'PROCESSING', 'CONFIRMED', 'VERIFIED'].includes(rawStatus)) {
+        } else if (['PAID', 'PROCESSING', 'CONFIRMED', 'VERIFIED', 'PICKED'].includes(rawStatus)) {
             normalizedStatus = 'confirmed';
         } else if (['SHIPPED', 'DELIVERING'].includes(rawStatus)) {
             normalizedStatus = 'shipping';
@@ -490,7 +490,7 @@ function normalizeOrderHistoryItem(item) {
     ).toUpperCase();
     let status = 'pending';
     if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') status = 'pending';
-    else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED' || rawStatus === 'VERIFIED') status = 'confirmed';
+    else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED' || rawStatus === 'VERIFIED' || rawStatus === 'PICKED') status = 'confirmed';
     else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') status = 'shipping';
     else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') status = 'delivered';
     else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'canceled';
@@ -931,7 +931,7 @@ export const getOrderStatus = async (orderId) => {
 
         if (rawStatus === 'PENDING_PAYMENT' || rawStatus === 'PENDING') {
             normalizedStatus = 'pending';
-        } else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED' || rawStatus === 'VERIFIED') {
+        } else if (rawStatus === 'PAID' || rawStatus === 'PROCESSING' || rawStatus === 'CONFIRMED' || rawStatus === 'VERIFIED' || rawStatus === 'PICKED') {
             normalizedStatus = 'confirmed';
         } else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') {
             normalizedStatus = 'shipping';

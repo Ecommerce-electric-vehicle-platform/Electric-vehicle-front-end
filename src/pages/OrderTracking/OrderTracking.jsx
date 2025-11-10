@@ -86,11 +86,15 @@ function OrderTracking() {
         return '';
     };
 
-    const getStatusLabel = (status) => {
+    const getStatusLabel = (status, rawStatus) => {
+        const normalizedRaw = String(rawStatus || '').toUpperCase();
         switch (status) {
             case 'pending':
                 return 'Chờ xác nhận';
             case 'confirmed':
+                if (normalizedRaw === 'PICKED') {
+                    return 'Đơn vị vận chuyển đã lấy hàng';
+                }
                 return 'Đã xác nhận';
             case 'shipping':
                 return 'Đang giao hàng';
@@ -710,7 +714,7 @@ function OrderTracking() {
                                 {getPaymentMethodLabel(order.paymentMethod)}
                             </span>
                             <span className={`status-badge ${order.status}`}>
-                                {getStatusLabel(order.status)}
+                                {getStatusLabel(order.status, order.rawStatus)}
                             </span>
                         </div>
                     </div>
@@ -785,7 +789,7 @@ function OrderTracking() {
                                 <div className={`p-sep ${['confirmed', 'shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}></div>
                                 <div className={`p-step ${['confirmed', 'shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}>
                                     <div className="p-dot"><CheckCircle size={16} color="#fff" /></div>
-                                    <div className="p-label">Đang xử lý</div>
+                                    <div className="p-label">Đơn vị vận chuyển đã lấy hàng</div>
                                     <div className="p-time">{formatDate(order.createdAt)}</div>
                                 </div>
                                 <div className={`p-sep ${['shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}></div>
