@@ -252,7 +252,7 @@ const CoreAdminLayout = () => {
               }}
             >
               <MdDashboard style={{ marginRight: "12px", fontSize: "18px" }} />
-              Dashboard
+              Bảng điều khiển
             </a>
           </div>
 
@@ -267,7 +267,7 @@ const CoreAdminLayout = () => {
                 fontWeight: "600",
               }}
             >
-              MANAGEMENT
+              QUẢN LÝ
             </div>
           </div>
 
@@ -316,7 +316,7 @@ const CoreAdminLayout = () => {
                   }}
                 >
                   <MdPeople style={{ marginRight: "12px", fontSize: "18px" }} />
-                  Manage Admins
+                  Quản lý quản trị viên
                 </a>
               </div>
             );
@@ -345,7 +345,7 @@ const CoreAdminLayout = () => {
               <MdCheckCircle
                 style={{ marginRight: "12px", fontSize: "18px" }}
               />
-              Approve Sellers
+              Phê duyệt người bán
             </a>
           </div>
 
@@ -370,7 +370,7 @@ const CoreAdminLayout = () => {
               }}
             >
               <MdArticle style={{ marginRight: "12px", fontSize: "18px" }} />
-              Review Posts
+              Duyệt bài đăng
             </a>
           </div>
 
@@ -395,7 +395,7 @@ const CoreAdminLayout = () => {
               }}
             >
               <MdPerson style={{ marginRight: "12px", fontSize: "18px" }} />
-              Manage Users
+              Quản lý người dùng
             </a>
           </div>
 
@@ -420,7 +420,7 @@ const CoreAdminLayout = () => {
               }}
             >
               <MdWarning style={{ marginRight: "12px", fontSize: "18px" }} />
-              Manage Disputes
+              Quản lý tranh chấp
             </a>
           </div>
         </nav>
