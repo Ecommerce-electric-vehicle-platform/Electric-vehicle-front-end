@@ -918,25 +918,6 @@ function OrderTracking() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="delivered-actions">
-                                <button className="btn btn-warning" onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}>
-                                    <MessageSquareWarning className="btn-icon" /> Khiếu nại
-                                </button>
-                                {hasReview ? (
-                                    <button className="btn btn-secondary" onClick={handleViewReview}>
-                                        <Star className="btn-icon" /> Xem đánh giá
-                                    </button>
-                                ) : (
-                                    <button className="btn btn-success" onClick={handleRateOrder}>
-                                        <Star className="btn-icon" /> Đánh giá
-                                    </button>
-                                )}
-                                {order.needInvoice && (
-                                    <button className="btn btn-soft" onClick={() => alert('Tải hóa đơn (sẽ triển khai)')}>
-                                        <FileDown className="btn-icon" /> Tải hóa đơn
-                                    </button>
-                                )}
-                            </div>
                         </div>
                     </div>
                 )}
@@ -1258,13 +1239,6 @@ function OrderTracking() {
                                                 Đánh giá
                                             </AnimatedButton>
                                         )}
-                                        <AnimatedButton
-                                            variant="secondary"
-                                            onClick={() => alert('Đặt lại đơn (sẽ triển khai)')}
-                                            size="sm"
-                                        >
-                                            Đặt lại
-                                        </AnimatedButton>
                                     </div>
                                 </div>
                             )}
