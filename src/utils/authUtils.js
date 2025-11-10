@@ -47,21 +47,19 @@ export function saveAuthData(data) {
   // Khi login user mới, xóa orders của user cũ để tránh hiển thị sai
   try {
     if (username) {
-      const allOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-      if (Array.isArray(allOrders) && allOrders.length > 0) {
-        // Chỉ giữ orders của user hiện tại
-        const userOrders = allOrders.filter(order => {
+      const storageKey = `orders_${username}`;
+      const legacyOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      if (Array.isArray(legacyOrders) && legacyOrders.length > 0) {
+        const userOrders = legacyOrders.filter(order => {
           if (!order) return false;
           const orderUsername = order.username || order.userId || order.createdBy || '';
-          return orderUsername === username;
+          return !orderUsername || orderUsername === username;
         });
-
-        // Nếu có orders không thuộc user hiện tại, xóa chúng
-        if (userOrders.length !== allOrders.length) {
-          const removedCount = allOrders.length - userOrders.length;
-          console.log(`[AuthUtils] Cleaned up ${removedCount} orders from localStorage that don't belong to user ${username}`);
-          localStorage.setItem('orders', JSON.stringify(userOrders));
+        if (userOrders.length > 0) {
+          localStorage.setItem(storageKey, JSON.stringify(userOrders));
+          console.log(`[AuthUtils] Migrated ${userOrders.length} orders to per-user storage (${storageKey}).`);
         }
+        localStorage.removeItem('orders');
       }
     }
   } catch (e) {

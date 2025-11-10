@@ -317,7 +317,18 @@ function OrderTracking() {
                             }
                         }
 
-                        setOrder(mappedOrder);
+                        // Cập nhật theo nguyên tắc "không lùi trạng thái"
+                        setOrder(prev => {
+                            const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
+                            if (prev && prev.status) {
+                                const pr = rank[String(prev.status)] || 0;
+                                const nr = rank[String(mappedOrder.status)] || 0;
+                                const isBackward = nr > 0 && pr > 0 && nr < pr && mappedOrder.status !== 'canceled' && mappedOrder.status !== 'cancelled';
+                                if (isBackward) return prev;
+                                return { ...prev, ...mappedOrder };
+                            }
+                            return mappedOrder;
+                        });
                         setLoading(false);
                         return;
                     }
@@ -383,7 +394,18 @@ function OrderTracking() {
                             }
                         }
 
-                        setOrder(mapped);
+                        // Cập nhật theo nguyên tắc "không lùi trạng thái"
+                        setOrder(prev => {
+                            const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
+                            if (prev && prev.status) {
+                                const pr = rank[String(prev.status)] || 0;
+                                const nr = rank[String(mapped.status)] || 0;
+                                const isBackward = nr > 0 && pr > 0 && nr < pr && mapped.status !== 'canceled' && mapped.status !== 'cancelled';
+                                if (isBackward) return prev;
+                                return { ...prev, ...mapped };
+                            }
+                            return mapped;
+                        });
                         setLoading(false);
                         return;
                     }
@@ -391,9 +413,11 @@ function OrderTracking() {
                     console.warn('[OrderTracking] Failed to load from order history:', e);
                 }
 
-                // Fallback 2: localStorage
+                // Fallback 2: localStorage (theo từng user)
                 try {
-                    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+                    const currentUsername = localStorage.getItem('username') || '';
+                    const storageKey = currentUsername ? `orders_${currentUsername}` : 'orders_guest';
+                    const orders = JSON.parse(localStorage.getItem(storageKey) || '[]');
                     const foundOrder = orders.find(o => String(o.id) === String(orderId));
 
                     if (foundOrder) {
@@ -437,7 +461,18 @@ function OrderTracking() {
                             }
                         }
 
-                        setOrder(mapped);
+                        // Cập nhật theo nguyên tắc "không lùi trạng thái"
+                        setOrder(prev => {
+                            const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
+                            if (prev && prev.status) {
+                                const pr = rank[String(prev.status)] || 0;
+                                const nr = rank[String(mapped.status)] || 0;
+                                const isBackward = nr > 0 && pr > 0 && nr < pr && mapped.status !== 'canceled' && mapped.status !== 'cancelled';
+                                if (isBackward) return prev;
+                                return { ...prev, ...mapped };
+                            }
+                            return mapped;
+                        });
                         setLoading(false);
                         return;
                     }
@@ -521,11 +556,18 @@ function OrderTracking() {
                     const statusResponse = await getOrderStatus(realOrderId);
                     if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
                         console.log(`[OrderTracking] Status updated from shipping API: ${order.status} -> ${statusResponse.status}`);
-                        setOrder(prevOrder => ({
-                            ...prevOrder,
-                            status: statusResponse.status,
-                            rawStatus: statusResponse.rawStatus || prevOrder.rawStatus
-                        }));
+                        setOrder(prevOrder => {
+                            const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
+                            const pr = rank[String(prevOrder?.status)] || 0;
+                            const nr = rank[String(statusResponse.status)] || 0;
+                            const isBackward = nr > 0 && pr > 0 && nr < pr && statusResponse.status !== 'canceled' && statusResponse.status !== 'cancelled';
+                            if (isBackward) return prevOrder;
+                            return {
+                                ...prevOrder,
+                                status: statusResponse.status,
+                                rawStatus: statusResponse.rawStatus || prevOrder.rawStatus
+                            };
+                        });
                     }
                 } catch (statusError) {
                     console.warn('[OrderTracking] Failed to refresh status from shipping API:', statusError);
@@ -604,11 +646,13 @@ function OrderTracking() {
     // Xử lý hủy đơn hàng
     const handleCancelOrder = () => {
         if (window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) {
-            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const currentUsername = localStorage.getItem('username') || '';
+            const storageKey = currentUsername ? `orders_${currentUsername}` : 'orders_guest';
+            const orders = JSON.parse(localStorage.getItem(storageKey) || '[]');
             const updatedOrders = orders.map(o =>
                 o.id === orderId ? { ...o, status: 'cancelled' } : o
             );
-            localStorage.setItem('orders', JSON.stringify(updatedOrders));
+            localStorage.setItem(storageKey, JSON.stringify(updatedOrders));
             setOrder({ ...order, status: 'cancelled' });
         }
     };

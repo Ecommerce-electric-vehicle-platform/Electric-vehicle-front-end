@@ -98,28 +98,28 @@ export const getOrderDetails = async (orderId) => {
         // Backend status: PENDING_PAYMENT, PAID, PROCESSING, VERIFIED, SHIPPED, DELIVERED, CANCELED
         // Status có thể nằm ở data.status hoặc data.order.status
         const rawStatus = String(
-            data.status || 
-            data.order?.status || 
+            data.status ||
+            data.order?.status ||
             data.orderStatus ||
             ''
         ).toUpperCase();
         let normalizedStatus = 'pending';
 
-       // Nếu backend không trả status hoặc rỗng => coi như đơn mới tạo (pending)
+        // Nếu backend không trả status hoặc rỗng => coi như đơn mới tạo (pending)
 
-if (!rawStatus || rawStatus.trim() === '') {
-  normalizedStatus = 'pending';
-} else if (['PENDING_PAYMENT', 'PENDING'].includes(rawStatus)) {
-  normalizedStatus = 'pending';
-} else if (['PAID', 'PROCESSING', 'CONFIRMED', 'VERIFIED'].includes(rawStatus)) {
-  normalizedStatus = 'confirmed';
-} else if (['SHIPPED', 'DELIVERING'].includes(rawStatus)) {
-  normalizedStatus = 'shipping';
-} else if (['DELIVERED', 'COMPLETED', 'SUCCESS'].includes(rawStatus)) {
-  normalizedStatus = 'delivered';
-} else if (['CANCELLED', 'CANCELED', 'FAILED'].includes(rawStatus)) {
-  normalizedStatus = 'canceled';
-}
+        if (!rawStatus || rawStatus.trim() === '') {
+            normalizedStatus = 'pending';
+        } else if (['PENDING_PAYMENT', 'PENDING'].includes(rawStatus)) {
+            normalizedStatus = 'pending';
+        } else if (['PAID', 'PROCESSING', 'CONFIRMED', 'VERIFIED'].includes(rawStatus)) {
+            normalizedStatus = 'confirmed';
+        } else if (['SHIPPED', 'DELIVERING'].includes(rawStatus)) {
+            normalizedStatus = 'shipping';
+        } else if (['DELIVERED', 'COMPLETED', 'SUCCESS'].includes(rawStatus)) {
+            normalizedStatus = 'delivered';
+        } else if (['CANCELLED', 'CANCELED', 'FAILED'].includes(rawStatus)) {
+            normalizedStatus = 'canceled';
+        }
 
         // Normalize price fields (support nested structures from BE)
         const price = Number(
@@ -268,19 +268,32 @@ export const getUserOrders = async (page = 1, limit = 10) => {
 export const getOrderHistory = async ({ page = 1, size = 10 } = {}) => {
     const pageIndex = Math.max(0, Number(page) - 1);
     const safeSize = Math.max(1, Number(size) || 10);
-    
+
     try {
         const res = await axiosInstance.get('/api/v1/order/history', {
             params: { page: pageIndex, size: safeSize }
         });
         const raw = res?.data ?? {};
         const data = raw?.data ?? raw;
-      
-        const list =
-            data?.orderResponses ||
-            data?.orders ||
-            data?.content ||
-            data?.items ||
+
+        // Hỗ trợ nhiều cấu trúc trả về khác nhau của BE
+        let list =
+            data?.orderResponses ??
+            data?.orderHistoryResponses ??
+            data?.orders ??
+            data?.content ??
+            data?.items ??
+            data?.orderList ??
+            data?.list ??
+            data?.results ??
+            data?.rows ??
+            raw?.orderHistoryResponses ??
+            data?.data?.orderResponses ??
+            data?.data?.orderHistoryResponses ??
+            data?.data?.orders ??
+            data?.data?.items ??
+            data?.data?.content ??
+            (Array.isArray(data?.data) ? data?.data : null) ??
             (Array.isArray(data) ? data : []);
         const items = Array.isArray(list) ? list : [];
         const meta = data?.meta || raw?.meta || null;
@@ -300,7 +313,17 @@ export const getOrderHistory = async ({ page = 1, size = 10 } = {}) => {
             });
         }
 
-        const normalizedItems = items.map(normalizeOrderHistoryItem);
+        const normalizedItems = items.map(normalizeOrderHistoryItem).filter(Boolean);
+
+        if (normalizedItems.length === 0) {
+            console.warn('[orderApi] getOrderHistory - No items after normalization. Raw response snapshot:', {
+                rawSuccess: raw?.success,
+                rawMessage: raw?.message,
+                dataKeys: data ? Object.keys(data) : [],
+                meta,
+                rawData: data
+            });
+        }
 
         // Log sau khi normalize để so sánh
         if (normalizedItems.length > 0) {
@@ -351,10 +374,61 @@ export const getOrderHistory = async ({ page = 1, size = 10 } = {}) => {
 //   createdAt, updatedAt, canceledAt, cancelReason }
 function normalizeOrderHistoryItem(item) {
     if (!item || typeof item !== 'object') return null;
+    // Bỏ qua các record không có id và không có orderCode (không hợp lệ để hiển thị)
+    const hasAnyId =
+        item.id != null ||
+        item.orderId != null ||
+        item.order_id != null ||
+        item.orderHistoryId != null ||
+        item.orderResponseId != null ||
+        item.order?.id != null ||
+        item.order?.orderId != null ||
+        item.orderResponse?.id != null ||
+        item.orderResponse?.orderId != null;
+    const hasAnyCode =
+        item.orderCode != null ||
+        item.order_code != null ||
+        item.code != null ||
+        item.orderNumber != null ||
+        item.order?.orderCode != null ||
+        item.order?.code != null ||
+        item.order?.orderNumber != null ||
+        item.orderResponse?.orderCode != null ||
+        item.orderResponse?.code != null ||
+        item.orderResponse?.orderNumber != null;
+    if (!hasAnyId && !hasAnyCode) {
+        // Nếu thiếu cả id và code, thử kiểm tra createdAt/price để quyết định bỏ qua hay synthesize
+        const hasMeaningfulData =
+            item.createdAt != null || item.created_at != null ||
+            item.price != null || item.totalPrice != null || item.finalPrice != null;
+        if (!hasMeaningfulData) return null;
+    }
 
-    const id = item.id ?? item.orderId ?? item.order_id ?? String(Math.random());
-    const orderCode = item.orderCode || item.order_code || id; // Extract orderCode trực tiếp
-    const createdAt = item.createdAt || item.created_at || item.updatedAt || new Date().toISOString();
+    const id =
+        item.id ??
+        item.orderId ??
+        item.order_id ??
+        item.orderHistoryId ??
+        item.orderResponseId ??
+        item.order?.id ??
+        item.order?.orderId ??
+        item.orderResponse?.id ??
+        item.orderResponse?.orderId ??
+        // Fallback synth id (stable-ish): from createdAt timestamp
+        (item.createdAt || item.created_at ? String(new Date(item.createdAt || item.created_at).getTime()) : String(Math.random()));
+    const orderCode =
+        item.orderCode ||
+        item.order_code ||
+        item.code ||
+        item.orderNumber ||
+        item.order?.orderCode ||
+        item.order?.code ||
+        item.order?.orderNumber ||
+        item.orderResponse?.orderCode ||
+        item.orderResponse?.code ||
+        item.orderResponse?.orderNumber ||
+        id; // Extract orderCode trực tiếp
+    const createdAt = item.createdAt || item.created_at || item.order?.createdAt || item.orderResponse?.createdAt || item.updatedAt || new Date().toISOString();
     const updatedAt = item.updatedAt || item.updated_at || null;
     const canceledAt = item.canceledAt || item.canceled_at || null;
     //const cancelReason = item.cancelReason || item.cancel_reason || null;
@@ -363,8 +437,9 @@ function normalizeOrderHistoryItem(item) {
     // Backend có: PENDING_PAYMENT, PAID, PROCESSING, VERIFIED, SHIPPED, DELIVERED, CANCELED
     // Status có thể nằm ở item.status hoặc item.order.status (nested structure)
     const rawStatus = String(
-        item.status || 
-        item.order?.status || 
+        item.status ||
+        item.order?.status ||
+        item.orderResponse?.status ||
         item.orderStatus ||
         ''
     ).toUpperCase();
@@ -374,7 +449,7 @@ function normalizeOrderHistoryItem(item) {
     else if (rawStatus === 'SHIPPED' || rawStatus === 'DELIVERING') status = 'shipping';
     else if (rawStatus === 'DELIVERED' || rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS') status = 'delivered';
     else if (rawStatus === 'CANCELLED' || rawStatus === 'CANCELED' || rawStatus === 'FAILED') status = 'canceled';
-    
+
     // Log để debug status mapping
     if (rawStatus && rawStatus !== 'PENDING' && rawStatus !== 'PENDING_PAYMENT') {
         console.log('[orderApi] normalizeOrderHistoryItem - Status mapping:', {
@@ -413,16 +488,19 @@ function normalizeOrderHistoryItem(item) {
     // - finalPrice = productPrice + shippingFee (tính trong frontend)
 
     const cancelReason =
-    item.cancelReason ||
-    item.cancel_reason ||
-    item.cancelOrderReasonResponse?.cancelOrderReasonName ||
-    null;
+        item.cancelReason ||
+        item.cancel_reason ||
+        item.cancelOrderReasonResponse?.cancelOrderReasonName ||
+        null;
     // Lấy phí ship từ backend response
     // Prefer service_fee if provided by BE
     const serviceFeePreferred = Number(
         item.service_fee ??
         item.breakdown?.service_fee ??
         item.shipping?.service_fee ??
+        item.order?.service_fee ??
+        item.order?.breakdown?.service_fee ??
+        item.orderResponse?.service_fee ??
         0
     );
 
@@ -431,6 +509,9 @@ function normalizeOrderHistoryItem(item) {
         item.shipping_fee ??
         item.deliveryFee ??
         item.delivery_fee ??
+        item.order?.shippingFee ??
+        item.order?.shipping_fee ??
+        item.orderResponse?.shippingFee ??
         0
     );
 
@@ -442,53 +523,47 @@ function normalizeOrderHistoryItem(item) {
         item.product_price ??
         item.itemPrice ??
         item.item_price ??
+        item.order?.price ??
+        item.order?.productPrice ??
+        item.order?.product_price ??
+        item.orderResponse?.price ??
+        item.orderResponse?.productPrice ??
+        item.orderResponse?.product_price ??
         0
     );
 
-    // Lấy totalPrice/finalPrice từ backend nếu có (ưu tiên cao nhất)
-    // Backend có thể không trả về totalPrice (do FE tự tính)
-    const backendTotalPrice = Number(
+    // Tổng từ backend (nếu có) để bù khi thiếu price
+    const backendTotal = Number(
         item.finalPrice ??
         item.final_price ??
         item.totalPrice ??
         item.total_price ??
         item.total ??
+        item.order?.finalPrice ??
+        item.order?.final_price ??
+        item.order?.totalPrice ??
+        item.order?.total_price ??
+        item.orderResponse?.finalPrice ??
+        item.orderResponse?.final_price ??
+        item.orderResponse?.totalPrice ??
+        item.orderResponse?.total_price ??
         0
     );
 
-    let finalPrice = 0;
-
-    // Logic đơn giản và rõ ràng:
-    // 1. Nếu có backendTotalPrice từ backend → dùng nó
-    // 2. Nếu không có → tính từ productPrice + shippingFee (theo cách FE xử lý)
-
-    if (backendTotalPrice > 0) {
-        // Backend có trả về totalPrice/finalPrice
-        finalPrice = backendTotalPrice;
-
-        // Verify: productPrice + shippingFee có bằng backendTotalPrice không?
-        const calculatedTotal = productPrice + shippingFee;
-        const diff = Math.abs(calculatedTotal - backendTotalPrice);
-
-        if (diff > 100) {
-            // Có sự khác biệt, log warning
-            console.warn('[orderApi] normalizeOrderHistoryItem - Price mismatch:', {
-                productPrice: productPrice,
-                shippingFee: shippingFee,
-                calculatedTotal: calculatedTotal,
-                backendTotalPrice: backendTotalPrice,
-                difference: diff
-            });
+    if ((!productPrice || productPrice <= 0) && backendTotal > 0) {
+        const inferred = backendTotal - Number(shippingFee || 0);
+        if (isFinite(inferred) && inferred >= 0) {
+            productPrice = inferred;
         }
-    } else {
-        // Backend KHÔNG trả về totalPrice
-        // Frontend tự tính: finalPrice = productPrice + shippingFee
-        finalPrice = productPrice + shippingFee;
     }
+
+    // finalPrice đồng nhất với Tracking/DB
+    const finalPrice = backendTotal > 0
+        ? backendTotal
+        : Math.max(0, productPrice) + Math.max(0, shippingFee);
 
     // Đảm bảo giá không âm và hợp lý
     productPrice = Math.max(0, productPrice);
-    finalPrice = Math.max(0, finalPrice);
 
     // Log để debug - CHI TIẾT
     console.log('[orderApi] normalizeOrderHistoryItem - Price normalization:', {
@@ -509,10 +584,10 @@ function normalizeOrderHistoryItem(item) {
         calculation: {
             backendPrice: item.price,              // Giá sản phẩm từ backend
             backendShippingFee: item.shippingFee,  // Phí ship từ backend
-            backendTotalPrice: backendTotalPrice,  // Tổng giá từ backend (nếu có)
+            backendTotal: backendTotal,
             calculatedFinalPrice: productPrice + shippingFee, // FE tự tính
             usedFinalPrice: finalPrice,
-            assumption: backendTotalPrice > 0 ? 'use_backendTotalPrice' : 'calculate_from_productPrice_plus_shippingFee'
+            assumption: backendTotal > 0 ? 'use_backend_total' : 'sum_price_plus_shipping'
         },
         verification: {
             productPrice_plus_shippingFee: productPrice + shippingFee,
@@ -530,7 +605,7 @@ function normalizeOrderHistoryItem(item) {
             shippingFee: shippingFee,
             finalPrice: finalPrice,
             backendPrice: item.price,
-            backendTotalPrice: backendTotalPrice
+            note: 'finalPrice computed as productPrice + shippingFee'
         });
     }
 
@@ -546,13 +621,13 @@ function normalizeOrderHistoryItem(item) {
             backendPrice: item.price,
             productPrice: productPrice,
             shippingFee: shippingFee,
-            backendTotalPrice: backendTotalPrice
+            note: 'finalPrice should equal productPrice + shippingFee'
         });
     }
 
     // Extract thông tin từ response
-    const shippingAddress = item.shippingAddress || item.shipping_address || '';
-    const phoneNumber = item.phoneNumber || item.phone_number || '';
+    const shippingAddress = item.shippingAddress || item.shipping_address || item.orderResponse?.shippingAddress || '';
+    const phoneNumber = item.phoneNumber || item.phone_number || item.orderResponse?.phoneNumber || '';
 
     // Helper: chuyển URL ảnh tương đối thành tuyệt đối
     const toAbsoluteUrl = (url) => {
@@ -566,14 +641,30 @@ function normalizeOrderHistoryItem(item) {
         return `${base}${path}`;
     };
 
-    // Trích xuất ảnh sản phẩm từ nhiều trường khả dĩ của BE
-    const rawProduct = item.product || item._raw?.product || {};
-    const directImage = rawProduct.productImage || rawProduct.image || rawProduct.imageUrl || item.productImage || item.image || item.imageUrl;
+    // Trích xuất thông tin sản phẩm từ nhiều cấu trúc Order History của BE
+    const rawProduct =
+        item.product ||
+        item.order?.product ||
+        item.orderResponse?.product ||
+        item.productResponse ||
+        item.productInfo ||
+        item.postProduct ||
+        item._raw?.product ||
+        {};
+    const directImage =
+        rawProduct.productImage ||
+        rawProduct.image ||
+        rawProduct.imageUrl ||
+        rawProduct.imgUrl ||
+        item.productImage ||
+        item.image ||
+        item.imageUrl ||
+        item.imgUrl;
     let productImage = '';
     if (typeof directImage === 'string' && directImage.trim()) {
         productImage = toAbsoluteUrl(directImage);
     } else {
-        const imgs = rawProduct.images || rawProduct.imageUrls || item.images || [];
+        const imgs = rawProduct.images || rawProduct.imageUrls || item.images || item.productImages || [];
         if (Array.isArray(imgs) && imgs.length > 0) {
             const first = imgs[0];
             if (typeof first === 'string') productImage = toAbsoluteUrl(first);
@@ -581,13 +672,23 @@ function normalizeOrderHistoryItem(item) {
         }
     }
 
+    // Tiêu đề sản phẩm từ nhiều nguồn khả dĩ
+    const productTitle =
+        item.product?.title ||
+        rawProduct.title ||
+        item.productTitle ||
+        item.product_name ||
+        item.productName ||
+        item._raw?.productName ||
+        `Đơn hàng ${orderCode}`;
+
     // Giao diện cần có product info; fallback placeholder nếu BE không trả
     const product = {
         image: productImage || '/vite.svg',
-        title: item.product?.title || item._raw?.productName || `Đơn hàng ${orderCode}`,
-        brand: '',
-        model: '',
-        conditionLevel: ''
+        title: productTitle,
+        brand: rawProduct.brand || item.brand || '',
+        model: rawProduct.model || item.model || '',
+        conditionLevel: rawProduct.conditionLevel || rawProduct.condition || item.conditionLevel || ''
     };
 
     return {
@@ -733,8 +834,8 @@ export const cancelOrder = async (orderId, cancelData = {}) => {
 };
 
 
-    // thêm cái này để lấy phương thức thanh toán 
-    // Get payment method for an order
+// thêm cái này để lấy phương thức thanh toán 
+// Get payment method for an order
 // GET /api/v1/order/payment/{orderId}
 // Response example: { success: true, message: "OK", data: { gatewayName: "VNPay" } }
 export const getOrderPayment = async (orderId) => {
