@@ -164,7 +164,6 @@ export default function PersonalEWallet() {
     const [walletData, setWalletData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
     // Recent transactions from API
     const [recentTransactions, setRecentTransactions] = useState([]);
     const [loadingTransactions, setLoadingTransactions] = useState(false);
@@ -446,12 +445,10 @@ export default function PersonalEWallet() {
                     </button>
                     <button
                         className="action-btn send-btn"
-                        onClick={() => {
-                            alert("Tính năng gửi tiền sẽ sớm được cập nhật!");
-                        }}
+                        onClick={() => navigate("/wallet/withdraw")}
                     >
                         <ArrowUpRight size={18} />
-                        <span>Gửi tiền</span>
+                        <span>Rút tiền</span>
                     </button>
                 </div>
             )}
@@ -514,6 +511,7 @@ export default function PersonalEWallet() {
                     </button>
                 </div>
             )}
+
         </div>
     );
 }

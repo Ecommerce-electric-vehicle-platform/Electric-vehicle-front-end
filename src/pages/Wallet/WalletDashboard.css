@@ -611,15 +611,15 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(17, 24, 39, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 2000;
     padding: 20px;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px);
 }
 
 /* Hide scrollbar for overlay but allow scrolling */

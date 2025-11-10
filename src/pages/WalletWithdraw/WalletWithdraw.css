@@ -1,0 +1,90 @@
+@import "../WalletDeposit/WalletDeposit.css";
+
+.wallet-withdraw-page .page-title {
+    color: #111827;
+}
+
+.wallet-withdraw-card {
+    border: 1px solid rgba(239, 68, 68, 0.08);
+}
+
+.wallet-withdraw-page .payment-method-title {
+    color: #ef4444;
+}
+
+.wallet-withdraw-page .continue-button.withdraw-continue-button {
+    background: #ef4444;
+    border-color: #ef4444;
+}
+
+.wallet-withdraw-page .continue-button.withdraw-continue-button:hover:not(:disabled) {
+    background: #dc2626;
+    border-color: #dc2626;
+}
+
+.wallet-withdraw-page .continue-button.withdraw-continue-button:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+}
+
+.wallet-withdraw-page .currency-symbol {
+    color: #ef4444;
+}
+
+.wallet-withdraw-page .quick-amount-btn.active {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+}
+
+.success-message {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid #bbf7d0;
+    background: #ecfdf5;
+    color: #047857;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.success-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.success-btn {
+    flex: 1;
+    min-width: 160px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.success-btn.primary {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #fff;
+}
+
+.success-btn.primary:hover {
+    background: #dc2626;
+}
+
+.success-btn.secondary {
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    color: #111827;
+}
+
+.success-btn.secondary:hover {
+    background: #e5e7eb;
+}
+
