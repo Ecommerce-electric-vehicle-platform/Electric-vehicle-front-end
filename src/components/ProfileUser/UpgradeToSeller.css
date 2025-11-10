@@ -482,46 +482,45 @@
   .btn {
     padding: 14px 20px;
   }
+}
 
-/* Add these styles to UpgradeToSeller.css */
+/* ==================================== */
+/* === STYLES CHO IMAGE PREVIEW VÀ OCR === */
+/* ==================================== */
 
-/* Style for image preview */
+/* Container cho tất cả các ảnh preview */
 .image-preview-container {
     margin-top: 10px;
     margin-bottom: 10px;
-    text-align: center; /* Center preview if needed */
+    text-align: left; /* Căn lề trái để phù hợp với flow form */
 }
 
-.image-preview {
-    max-width: 150px; /* Limit preview size */
-    max-height: 100px;
+/* Style cho ảnh để ép ảnh vào khung nhỏ, đồng nhất */
+.image-preview-fit {
+    /* Kích thước tối đa cố định (ví dụ: hình chữ nhật nhỏ 300x200) */
+    max-width: 300px;
+    max-height: 200px;
+    
+    /* Đảm bảo hình ảnh lấp đầy khung và bị cắt bớt nếu cần */
+    object-fit: cover; 
+    
+    /* Thêm border và radius cho đẹp */
     border: 1px solid #ddd;
-    border-radius: 4px;
-    object-fit: contain; /* Ensure image fits */
+    border-radius: 6px; 
+    
+    /* Đảm bảo ảnh hiển thị rõ ràng */
+    display: block;
 }
 
-/* Style for OCR status messages */
+/* Style cho trạng thái OCR */
 .ocr-status {
     font-size: 12px;
     color: #3b82f6; /* Blue for loading */
     margin-left: 10px;
 }
 .ocr-error {
-     margin-left: 10px;
-     font-weight: 500;
+    margin-left: 0; /* Đưa về 0 để đồng bộ với error-text */
+    font-weight: 500;
 }
 
-/* Style for read-only fields */
-.read-only-input {
-    background-color: #f3f4f6; /* Light grey background */
-    color: #6b7280; /* Grey text */
-    cursor: not-allowed; /* Indicate it's not editable */
-    border-color: #e5e7eb; /* Lighter border */
-}
 
-.read-only-input:focus {
-    box-shadow: none; /* Remove focus glow */
-    border-color: #e5e7eb; /* Keep border light on focus attempt */
-}
-
-}

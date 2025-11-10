@@ -15,7 +15,6 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
   const [formData, setFormData] = useState({
     storeName: "",
     taxNumber: "",
-    // identityNumber sẽ lấy từ OCR state khi submit
     frontOfIdentity: null, // File object
     backOfIdentity: null,
     businessLicense: null,
@@ -42,12 +41,12 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
   const [kycStatus, setKycStatus] = useState(null); // Trạng thái KYC: null, "NOT_SUBMITTED", "PENDING", "ACCEPTED"
   const [sellerData, setSellerData] = useState(null); // Dữ liệu gộp (buyer+seller) cho màn hình Pending/Accepted
 
-  // === OCR State ===
+  // === OCR State (Dữ liệu có thể chỉnh sửa) ===
   const [ocrData, setOcrData] = useState({
-    name: "", // Điền vào "Full name" (read-only)
-    id: "", // Điền vào "Identity number" (read-only) và gửi đi
-    nationality: "", // Điền vào "Nationality" (read-only) và gửi đi
-    home: "", // Điền vào "Địa chỉ cá nhân" (read-only) và gửi đi
+    name: "", // Sẽ điền vào "Full name"
+    id: "", // Sẽ điền vào "Identity number"
+    nationality: "", // Sẽ điền vào "Nationality"
+    home: "", // Sẽ điền vào "Địa chỉ cá nhân"
   });
   const [isOcrLoading, setIsOcrLoading] = useState(false); // Loading khi gọi API OCR
   const [ocrError, setOcrError] = useState(null); // Lỗi từ API OCR
@@ -65,19 +64,23 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
   const regex = {
     storeName: /^[A-Za-z0-9\s\u00C0-\u1EF9]{2,50}$/,
     taxNumber: /^[0-9]{10,13}$/,
-    // Bỏ identityNumber regex vì dùng OCR, nhưng giữ validation check rỗng
   };
+// === Flow Control State ===
 
+// ... các state khác ...
+
+// THÊM DÒNG NÀY:
+const [statusCheckError, setStatusCheckError] = useState(null); // Lỗi kiểm tra trạng thái ban đầu
   // === useEffect: Kiểm tra trạng thái ban đầu ===
   useEffect(() => {
-    let isMounted = true; //  chặn setState sau khi component unmount
+    let isMounted = true;
 
     const checkStatus = async () => {
       console.log(" UpgradeToSeller: Bắt đầu kiểm tra trạng thái...");
       setCheckingStatus(true);
 
       try {
-        // === 1Kiểm tra Buyer Profile ===
+        // === 1. Kiểm tra Buyer Profile ===
         const buyerResponse = await profileApi.getProfile();
         if (!isMounted) return;
 
@@ -132,7 +135,7 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
             setSellerData((prev) => ({ ...prev, ...sellerData }));
             setKycStatus(sellerStatus);
 
-            // === AUTO-UPDATE ROLE NẾUI ĐÃ ĐƯỢC APPROVE ===
+            // === AUTO-UPDATE ROLE NẾU ĐÃ ĐƯỢC APPROVE ===
             if (sellerStatus === "ACCEPTED") {
               const currentRole = localStorage.getItem("userRole");
               if (currentRole !== "seller") {
@@ -164,12 +167,21 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
             if (isMounted) setKycStatus("NOT_SUBMITTED");
           }
         }
-      } catch (error) {
-        console.error(" Lỗi khi kiểm tra trạng thái hồ sơ:", error);
-        if (isMounted) {
-          setIsProfileComplete(false);
-          setKycStatus(null);
-        }
+      // } catch (error) {
+      //   console.error(" Lỗi khi kiểm tra trạng thái hồ sơ:", error);
+      //   if (isMounted) {
+      //     setIsProfileComplete(false);
+      //     setKycStatus(null);
+      //   }
+       } catch (error) {
+ console.error(" Lỗi khi kiểm tra trạng thái hồ sơ:", error);
+ if (isMounted) {
+ // Giả định rằng nếu đã qua bước 1 (buyer profile) thì lỗi là do seller/server
+            // Hoặc nếu lỗi ở bước 1, thông báo cho người dùng.
+ setKycStatus(null); 
+            // Nếu lỗi nặng:
+            setStatusCheckError("Lỗi hệ thống khi kiểm tra trạng thái. Vui lòng thử lại sau.");
+ }
       } finally {
         if (isMounted) {
           setCheckingStatus(false);
@@ -180,7 +192,7 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
 
     checkStatus();
 
-    //  Cleanup để tránh memory leak
+    // Cleanup để tránh memory leak
     return () => {
       isMounted = false;
     };
@@ -207,14 +219,31 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
       setErrors((prev) => ({ ...prev, [name]: null }));
     }
   };
+  
+  // NEW: Handler cho các trường OCR có thể chỉnh sửa
+  const handleOcrInputChange = (e) => {
+    const { name, value } = e.target;
+    setOcrData((prev) => ({ ...prev, [name]: value }));
+    // Xóa lỗi ID number nếu người dùng bắt đầu nhập/chỉnh ID
+    if (name === "id") {
+      if (!value.trim()) {
+        setErrors((prev) => ({ ...prev, identityNumber: "Số CCCD là bắt buộc." }));
+      } else {
+        setErrors((prev) => ({ ...prev, identityNumber: null }));
+      }
+    }
+  };
+
 
   // Handler cho CCCD Mặt Trước (có OCR)
   const handleFrontIdUpload = async (e) => {
     const file = e.target.files[0];
     const fieldName = "frontOfIdentity";
-    // Clear preview và OCR cũ khi chọn file mới hoặc cancel
+    
+    // Reset trạng thái liên quan đến OCR/File cũ
     if (imagePreviews[fieldName]) URL.revokeObjectURL(imagePreviews[fieldName]);
     setImagePreviews((prev) => ({ ...prev, [fieldName]: null }));
+    // NEW: Clear OCR data khi upload file mới
     setOcrData({ name: "", id: "", nationality: "", home: "" });
     setOcrError(null);
     setUploadedFiles((prev) => ({ ...prev, [fieldName]: null }));
@@ -284,9 +313,12 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
       newErrors.storeName = "Tên cửa hàng: 2-50 ký tự, chữ/số.";
     if (!formData.taxNumber.trim() || !regex.taxNumber.test(formData.taxNumber))
       newErrors.taxNumber = "Mã số thuế: 10-13 chữ số.";
-    if (!ocrData.id)
+    
+    // UPDATED: Kiểm tra ocrData.id (dữ liệu có thể được người dùng sửa)
+    if (!ocrData.id) 
       newErrors.identityNumber =
-        "Vui lòng tải CCCD mặt trước hợp lệ để lấy số."; // Lỗi nếu OCR chưa có ID
+        "Vui lòng tải CCCD mặt trước hợp lệ hoặc nhập Số CCCD.";
+    
     const requiredFiles = [
       "frontOfIdentity",
       "backOfIdentity",
@@ -307,7 +339,7 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
     setFormData({
       storeName: "",
       taxNumber: "",
-      /* identityNumber ko cần reset */ frontOfIdentity: null,
+      frontOfIdentity: null,
       backOfIdentity: null,
       businessLicense: null,
       selfie: null,
@@ -342,82 +374,98 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
   };
 
   // --- Submit KYC ---
-  const handleSubmit = async (e) => {
+  // --- Submit KYC ---
+const handleSubmit = async (e) => {
     e.preventDefault();
     if (isLoading || isOcrLoading) return; // Chặn submit khi đang loading
     setShowLoadingMessage(false);
 
     const formErrors = validateForm();
     if (Object.keys(formErrors).length > 0) {
-      const firstErrorField = Object.keys(formErrors)[0];
-      // Tìm input tương ứng (kể cả input read-only của OCR)
-      const firstErrorElement =
-        document.getElementById(firstErrorField) ||
-        document.getElementById("identityNumberOcr") || // ID của input CCCD read-only
-        document.getElementById("ocrFullName") || // ID của input tên read-only
-        document.getElementById("ocrNationality") || // ID của input quốc tịch read-only
-        document.getElementById("ocrHome"); // ID của input địa chỉ read-only
-      if (firstErrorElement?.focus) {
-        try {
-          firstErrorElement.focus();
-        } catch {
-          console.warn("Could not focus error field:", firstErrorField);
+        // ... (Giữ nguyên logic focus lỗi) ...
+        const firstErrorField = Object.keys(formErrors)[0];
+        const firstErrorElement =
+          document.getElementById(firstErrorField) ||
+          document.getElementById("identityNumberOcr") || 
+          document.getElementById("ocrFullName") ||
+          document.getElementById("ocrNationality") ||
+          document.getElementById("ocrHome");
+        if (firstErrorElement?.focus) {
+          try {
+            firstErrorElement.focus();
+          } catch {
+            console.warn("Could not focus error field:", firstErrorField);
+          }
         }
-      }
-      alert("Vui lòng kiểm tra lại các thông tin lỗi.");
-      return;
+        alert("Vui lòng kiểm tra lại các thông tin lỗi.");
+        return;
     }
 
     setIsLoading(true); // Bật loading submit
     setShowLoadingMessage(true);
     try {
-      const formBody = new FormData();
-      // Dữ liệu nhập tay
-      formBody.append("storeName", formData.storeName);
-      formBody.append("taxNumber", formData.taxNumber);
-      // Dữ liệu từ OCR (theo DTO backend)
-      formBody.append("identityNumber", ocrData.id);
-      formBody.append("nationality", ocrData.nationality);
-      formBody.append("home", ocrData.home);
-      formBody.append("sellerName", ocrData.name); // Tạm dùng name OCR cho sellerName
+        const formBody = new FormData();
+        // Dữ liệu nhập tay
+        formBody.append("storeName", formData.storeName);
+        formBody.append("taxNumber", formData.taxNumber);
+        // Dữ liệu từ OCR (đã qua chỉnh sửa của người dùng)
+        formBody.append("identityNumber", ocrData.id);
+        formBody.append("nationality", ocrData.nationality);
+        formBody.append("home", ocrData.home);
+        formBody.append("sellerName", ocrData.name); 
 
-      // Các file
-      formBody.append("front of identity", formData.frontOfIdentity);
-      formBody.append("back of identity", formData.backOfIdentity);
-      formBody.append("business license", formData.businessLicense);
-      formBody.append("store policy", formData.storePolicy);
-      formBody.append("selfie", formData.selfie);
+        // Các file
+        formBody.append("front of identity", formData.frontOfIdentity);
+        formBody.append("back of identity", formData.backOfIdentity);
+        formBody.append("business license", formData.businessLicense);
+        formBody.append("store policy", formData.storePolicy);
+        formBody.append("selfie", formData.selfie);
 
-      const response = await profileApi.verifyKyc(formBody);
-      if (!response.data?.success)
-        throw new Error(response.data?.message || "Lỗi gửi đơn KYC.");
+        const response = await profileApi.verifyKyc(formBody);
+        
+        // --- BƯỚC MỚI: XỬ LÝ LỖI REJECTED CỤ THỂ ---
+        if (
+            response.data?.success === true && // LƯU Ý: Success: true ở level ngoài cùng
+            response.data?.data?.status === "REJECTED" &&
+            response.data?.data?.message === "Face not matched"
+        ) {
+            setShowLoadingMessage(false);
+            alert("Ảnh trên căn cước công dân không trùng với ảnh chân dung, vui lòng điền lại đơn.");
+            // KHÔNG CHUYỂN sang PENDING, giữ lại form.
+            return; // Thoát khỏi hàm try
+        }
+        // --- KẾT THÚC BƯỚC MỚI ---
 
-      // --- THÀNH CÔNG -> Chuyển sang PENDING ---
-      setShowLoadingMessage(false);
-      // Cập nhật sellerData để truyền cho màn Pending
-      setSellerData((prev) => ({
-        ...prev,
-        storeName: formData.storeName,
-        // Lấy createAt từ response nếu có, nếu không thì giữ cái cũ hoặc tạo mới
-        createAt:
-          response.data?.data?.createAt ||
-          prev?.createAt ||
-          new Date().toISOString(),
-      }));
-      setKycStatus("PENDING"); // Chuyển giao diện
+        if (!response.data?.success)
+            throw new Error(response.data?.message || "Lỗi gửi đơn KYC.");
+
+        // --- THÀNH CÔNG -> Chuyển sang PENDING (ÁP DỤNG cho success: true + status: PENDING) ---
+        setShowLoadingMessage(false);
+        // Cập nhật sellerData để truyền cho màn Pending
+        setSellerData((prev) => ({
+            ...prev,
+            storeName: formData.storeName,
+            createAt:
+                response.data?.data?.createAt ||
+                prev?.createAt ||
+                new Date().toISOString(),
+        }));
+        setKycStatus("PENDING"); // Chuyển giao diện
     } catch (error) {
-      console.error("KYC Submission Error:", error);
-      setShowLoadingMessage(false);
-      alert(
-        error.response?.data?.message ||
-          error.message ||
-          "Không thể gửi đơn KYC."
-      );
-      if (error.response?.data?.errors) setErrors(error.response.data.errors);
+        console.error("KYC Submission Error:", error);
+        setShowLoadingMessage(false);
+        alert(
+            error.response?.data?.message ||
+            error.message ||
+            "Không thể gửi đơn KYC."
+        );
+        if (error.response?.data?.errors) setErrors(error.response.data.errors);
     } finally {
-      setIsLoading(false); // Tắt loading submit
+        setIsLoading(false); // Tắt loading submit
     }
-  };
+};
+
+
 
   // --- Cleanup Image Preview URLs on Unmount ---
   useEffect(() => {
@@ -445,7 +493,17 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
       </div>
     );
   }
-
+if (statusCheckError) {
+    return (
+        <div className="upgrade-container">
+            <div className="upgrade-wrapper profile-incomplete-notice">
+                <p className="form-message error">
+                    Đã xảy ra lỗi: {statusCheckError}
+                </p>
+            </div>
+        </div>
+    );
+}
   // 2. Profile Buyer chưa hoàn tất
   if (!isProfileComplete) {
     return (
@@ -499,7 +557,8 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
                 <img
                   src={imagePreviews.frontOfIdentity}
                   alt="Xem trước CCCD mặt trước"
-                  className="image-preview"
+                  className="image-preview image-preview-fit" // UPDATED: Thêm class CSS
+                  style={{ maxWidth: '300px', maxHeight: '200px', objectFit: 'cover' }} // Inline style giả định
                 />
               </div>
             )}
@@ -559,18 +618,18 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
             )}
           </div>
 
-          {/* === 2. Thông tin từ OCR (Read Only) === */}
+          {/* === 2. Thông tin từ OCR (Bây giờ có thể chỉnh sửa) === */}
           <div className="form-group">
             <label htmlFor="ocrFullName" className="form-label">
               Full name
             </label>
             <input
               id="ocrFullName"
-              name="ocrFullName"
+              name="name" // UPDATED: dùng "name" để match ocrData
               type="text"
               value={ocrData.name}
-              readOnly
-              className="form-input read-only-input"
+              onChange={handleOcrInputChange} // UPDATED: cho phép chỉnh sửa
+              className="form-input" // UPDATED: Bỏ read-only-input
             />
           </div>
           <div className="form-group">
@@ -579,13 +638,13 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
             </label>
             <input
               id="identityNumberOcr"
-              name="identityNumberOcr"
+              name="id" // UPDATED: dùng "id" để match ocrData
               type="text"
               value={ocrData.id}
-              readOnly
-              className={`form-input read-only-input ${
+              onChange={handleOcrInputChange} // UPDATED: cho phép chỉnh sửa
+              className={`form-input ${
                 errors.identityNumber ? "input-error" : ""
-              }`}
+              }`} // UPDATED: Bỏ read-only-input
               aria-describedby={
                 errors.identityNumber ? "identityNumber-error" : undefined
               }
@@ -602,11 +661,11 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
             </label>
             <input
               id="ocrNationality"
-              name="ocrNationality"
+              name="nationality" // UPDATED: dùng "nationality" để match ocrData
               type="text"
               value={ocrData.nationality}
-              readOnly
-              className="form-input read-only-input"
+              onChange={handleOcrInputChange} // UPDATED: cho phép chỉnh sửa
+              className="form-input" // UPDATED: Bỏ read-only-input
             />
           </div>
           <div className="form-group">
@@ -615,11 +674,11 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
             </label>
             <input
               id="ocrHome"
-              name="ocrHome"
+              name="home" // UPDATED: dùng "home" để match ocrData
               type="text"
               value={ocrData.home}
-              readOnly
-              className="form-input read-only-input"
+              onChange={handleOcrInputChange} // UPDATED: cho phép chỉnh sửa
+              className="form-input" // UPDATED: Bỏ read-only-input
             />
           </div>
 
@@ -686,7 +745,8 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
                   <img
                     src={imagePreviews[key]}
                     alt={`Xem trước ${label}`}
-                    className="image-preview"
+                    className="image-preview image-preview-fit" // UPDATED: Thêm class CSS
+                    style={{ maxWidth: '300px', maxHeight: '200px', objectFit: 'cover' }} // Inline style giả định
                   />
                 </div>
               )}
@@ -789,3 +849,4 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
     </div>
   );
 }
+
