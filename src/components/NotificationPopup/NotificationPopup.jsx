@@ -8,7 +8,13 @@ export function NotificationPopup({ notifications, onClose, onClick }) {
   const [visibleNotifications, setVisibleNotifications] = useState([]);
 
   useEffect(() => {
-    setVisibleNotifications(notifications);
+    // FIX: Chỉ hiển thị 1 notification mới nhất (đầu tiên trong array)
+    if (notifications.length > 0) {
+      // Chỉ lấy notification mới nhất
+      setVisibleNotifications([notifications[0]]);
+    } else {
+      setVisibleNotifications([]);
+    }
   }, [notifications]);
 
   const handleClose = (notificationId, e) => {
@@ -44,41 +50,9 @@ export function NotificationPopup({ notifications, onClose, onClick }) {
     }
   };
 
-  const getRelativeTime = (notification) => {
-    // ⭐ Ưu tiên: Nếu là real-time notification từ WebSocket
-    if (notification.isRealtime && notification.realtimeReceivedAt) {
-      const now = new Date();
-      const receivedTime = new Date(notification.realtimeReceivedAt);
-      const diffMs = now - receivedTime;
-      const diffSecs = Math.floor(diffMs / 1000);
-
-      // Trong vòng 60 giây → "Vừa xong"
-      if (diffSecs < 60) return "Vừa xong";
-
-      // 1-59 phút → "X phút trước"
-      const diffMins = Math.floor(diffSecs / 60);
-      if (diffMins < 60) return `${diffMins} phút trước`;
-
-      // Sau 1 giờ → fallback to timestamp
-    }
-
-    // Fallback: Dùng timestamp gốc
-    const timestamp = notification.createdAt;
-    if (!timestamp) return "Vừa xong";
-
-    const now = new Date();
-    const notifTime = new Date(timestamp);
-    const diffMs = now - notifTime;
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return "Vừa xong";
-    if (diffMins < 60) return `${diffMins} phút trước`;
-
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} ngày trước`;
+  const getRelativeTime = () => {
+    // FIX: Tất cả notification đều hiển thị "Vừa xong" (real-time)
+    return "Vừa xong";
   };
 
   if (visibleNotifications.length === 0) return null;
@@ -104,7 +78,7 @@ export function NotificationPopup({ notifications, onClose, onClick }) {
             <h4 className="notification-popup-title">{notification.title}</h4>
             <p className="notification-popup-message">{notification.message}</p>
             <div className="notification-popup-time">
-              {getRelativeTime(notification)}
+              {getRelativeTime()}
             </div>
           </div>
           <button

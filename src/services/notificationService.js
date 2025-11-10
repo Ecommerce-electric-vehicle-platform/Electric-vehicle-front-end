@@ -12,6 +12,7 @@ class NotificationService {
     this.pollingDelay = 10000; // Poll mỗi 10 giây
     this.lastNotificationId = null;
     this.websocketConnected = false;
+    this.processedNotificationIds = new Set(); // Track các notification đã xử lý
   }
 
   // Đăng ký listener để nhận thông báo mới
@@ -24,6 +25,29 @@ class NotificationService {
 
   // Thông báo cho tất cả listeners
   notify(notification) {
+    // FIX: Chỉ notify nếu notification chưa được xử lý (tránh duplicate)
+    const notificationId = notification.notificationId;
+    
+    if (!notificationId) {
+      console.warn("[NotificationService] Notification missing ID, skipping");
+      return;
+    }
+    
+    if (this.processedNotificationIds.has(notificationId)) {
+      console.log(`[NotificationService] Notification ${notificationId} already processed, skipping duplicate`);
+      return;
+    }
+    
+    // Đánh dấu đã xử lý
+    this.processedNotificationIds.add(notificationId);
+    
+    // Giới hạn Set size để tránh memory leak (giữ tối đa 100 IDs)
+    if (this.processedNotificationIds.size > 100) {
+      const firstId = this.processedNotificationIds.values().next().value;
+      this.processedNotificationIds.delete(firstId);
+    }
+    
+    console.log(`[NotificationService] Notifying listeners about notification ${notificationId}`);
     this.listeners.forEach((callback) => {
       try {
         callback(notification);
@@ -34,8 +58,17 @@ class NotificationService {
   }
 
   // Bắt đầu polling
-  startPolling() {
+  startPolling(resetLastId = false) {
+    // ✅ FIX: Reset lastNotificationId khi user login lại (để hiển thị notification chưa đọc)
+    if (resetLastId) {
+      console.log("[NotificationService] Resetting lastNotificationId for new session");
+      this.lastNotificationId = null;
+    }
+    
     if (this.pollingInterval) {
+      // Nếu đang poll, vẫn poll ngay để lấy notification mới
+      console.log("[NotificationService] Already polling, triggering immediate poll...");
+      this.pollNotifications();
       return; // Đã đang poll rồi
     }
 
@@ -90,25 +123,60 @@ class NotificationService {
       if (notifications.length > 0) {
         console.log("[Notification] Notifications:", notifications);
         
-        const latestNotification = notifications[0];
-        console.log(" [Notification] Latest notification:", {
-          id: latestNotification.notificationId,
-          title: latestNotification.title,
-          isRead: latestNotification.isRead,
-          lastId: this.lastNotificationId
-        });
+        // FIX: Nếu lastNotificationId là null (lần đầu poll), hiển thị notification chưa đọc đầu tiên
+        // Nếu không, chỉ hiển thị notification mới nhất chưa đọc
+        const notificationsToCheck = this.lastNotificationId === null 
+          ? notifications.filter(n => !n.readAt) // Lần đầu: lấy tất cả chưa đọc
+          : [notifications[0]]; // Sau đó: chỉ lấy mới nhất
         
-        // Nếu có thông báo mới (ID khác với lần trước)
-        if (
-          latestNotification.notificationId !== this.lastNotificationId &&
-          !latestNotification.isRead
-        ) {
-          console.log("[Notification] NEW NOTIFICATION! Showing popup...");
-          // Notify listeners về thông báo mới
-          this.notify(latestNotification);
-          this.lastNotificationId = latestNotification.notificationId;
-        } else {
-          console.log("Notification] No new notification (already seen or read)");
+        for (const notification of notificationsToCheck) {
+          console.log("[Notification] Checking notification:", {
+            id: notification.notificationId,
+            title: notification.title,
+            isRead: !!notification.readAt,
+            lastId: this.lastNotificationId
+          });
+          
+          // FIX: Transform notification từ API format sang format Header component mong đợi
+          const transformedNotification = {
+            notificationId: notification.notificationId,
+            title: notification.title || "Thông báo",
+            message: notification.content || notification.message || "",
+            type: this.detectType(notification.title, notification.content),
+            isRead: !!notification.readAt,
+            createdAt: notification.createdAt || notification.sendAt,
+            receiverId: notification.receiverId
+          };
+          
+          // FIX: Chỉ hiển thị notification mới nếu:
+          // 1. ID khác với lần trước
+          // 2. Chưa đọc (readAt là null/undefined/empty)
+          // 3. Chưa được processed (tránh duplicate)
+          const isUnread = !notification.readAt || 
+                          notification.readAt === null || 
+                          notification.readAt === undefined || 
+                          notification.readAt === "";
+          
+          if (
+            transformedNotification.notificationId !== this.lastNotificationId &&
+            isUnread &&
+            !this.processedNotificationIds.has(transformedNotification.notificationId)
+          ) {
+            console.log("[Notification] NEW NOTIFICATION! Showing popup...", transformedNotification);
+            // Notify listeners về thông báo mới
+            this.notify(transformedNotification);
+            this.lastNotificationId = transformedNotification.notificationId;
+            break; // Chỉ hiển thị một notification mỗi lần poll
+          } else if (!isUnread) {
+            console.log("[Notification] Notification đã đọc, bỏ qua:", {
+              id: transformedNotification.notificationId,
+              readAt: notification.readAt
+            });
+          }
+        }
+        
+        if (notificationsToCheck.length === 0 || notificationsToCheck.every(n => n.readAt || n.notificationId === this.lastNotificationId)) {
+          console.log("[Notification] No new notification (already seen or read)");
         }
       } else {
         console.log("[Notification] No notifications found");
@@ -126,6 +194,10 @@ class NotificationService {
   // Khởi tạo service (gọi khi app start)
   init() {
     console.log(`[NotificationService] Initializing... Mode: ${USE_WEBSOCKET ? 'WebSocket' : 'Polling'}`);
+    
+    // FIX: Reset processedNotificationIds khi init lại (để hiển thị notification chưa đọc)
+    this.processedNotificationIds.clear();
+    console.log("[NotificationService] Cleared processed notification IDs");
     
     if (USE_WEBSOCKET) {
       // Mode: WebSocket (Realtime)
@@ -145,31 +217,21 @@ class NotificationService {
       if (token && userRole !== "admin") {
         console.log('🔌 [NotificationService] Starting WebSocket connection...');
         
-        // Connect WebSocket
-        websocketService.connect(
-          () => {
-            console.log('[NotificationService] WebSocket connected!');
-            this.websocketConnected = true;
-          },
-          (error) => {
-            console.error('[NotificationService] WebSocket error:', error);
-            this.websocketConnected = false;
-            
-            // Fallback to polling if WebSocket fails
-            console.log('[NotificationService] Falling back to polling...');
-            this.startPolling();
-          }
-        );
-
-        // Subscribe to WebSocket notifications
+        // FIX: Disconnect WebSocket cũ trước khi connect lại (tránh duplicate connections)
+        websocketService.disconnect();
+        
+        // Subscribe to WebSocket notifications (phải subscribe TRƯỚC khi connect)
         const buyerId = localStorage.getItem('buyerId');
         const sellerId = localStorage.getItem('sellerId');
         const userId = buyerId || sellerId; // Support both buyer and seller
         
         if (userId) {
           const destination = `/queue/notifications/${userId}`;
-          console.log(`[NotificationService] Subscribing to: ${destination}`);
+          console.log(`[NotificationService] Will subscribe to: ${destination}`);
           
+          // FIX: Subscribe listener TRƯỚC khi connect (để nhận notification ngay khi WebSocket connect)
+          // websocketService.subscribeToNotifications() sẽ tự động subscribe đến STOMP topic
+          // Chúng ta chỉ cần thêm listener để nhận notification
           websocketService.subscribe(destination, (notification) => {
             console.log('[NotificationService] Received WebSocket notification:', notification);
             
@@ -183,7 +245,7 @@ class NotificationService {
               createdAt: notification.createdAt || notification.sendAt,
               receiverId: notification.receiverId,
               
-              // ⭐ Đánh dấu đây là notification real-time từ WebSocket
+              // Đánh dấu đây là notification real-time từ WebSocket
               isRealtime: true,
               realtimeReceivedAt: new Date().toISOString()
             };
@@ -193,12 +255,37 @@ class NotificationService {
             // Notify all listeners
             this.notify(transformedNotification);
           });
+          
+          // FIX: Connect WebSocket (subscribeToNotifications sẽ tự động được gọi trong onConnect)
+          websocketService.connect(
+            () => {
+              console.log('[NotificationService] WebSocket connected! Ready to receive notifications...');
+              this.websocketConnected = true;
+              
+              // FIX: Poll ngay một lần để lấy notification hiện có (chưa đọc)
+              // WebSocket chỉ nhận notification mới, không lấy notification cũ
+              console.log('[NotificationService] Polling once to get existing notifications...');
+              this.lastNotificationId = null; // Reset để lấy tất cả notification chưa đọc
+              this.pollNotifications(); // Poll ngay một lần
+            },
+            (error) => {
+              console.error('[NotificationService] WebSocket error:', error);
+              this.websocketConnected = false;
+              
+              // Fallback to polling if WebSocket fails
+              console.log('[NotificationService] Falling back to polling...');
+              this.startPolling(true); // Reset lastNotificationId khi fallback
+            }
+          );
         } else {
           console.warn('[NotificationService] No buyerId or sellerId found for WebSocket subscription');
+          // Fallback to polling nếu không có userId
+          this.startPolling(true);
         }
       } else {
         console.log('[NotificationService] Not starting WebSocket: No token or is admin');
         websocketService.disconnect();
+        this.websocketConnected = false;
       }
     };
 
@@ -216,13 +303,22 @@ class NotificationService {
 
   // Khởi tạo Polling mode
   initPolling() {
+    // FIX: Mỗi lần init lại, luôn reset lastNotificationId để hiển thị notification chưa đọc
+    this.lastNotificationId = null;
+    console.log("[NotificationService] Reset lastNotificationId for new session");
+    
     const checkAndStartPolling = () => {
       const token = localStorage.getItem("token");
       const userRole = localStorage.getItem("userRole");
       
+      console.log("[NotificationService] Checking auth status:", { hasToken: !!token, userRole });
+      
       if (token && userRole !== "admin") {
-        this.startPolling();
+        console.log("[NotificationService] Starting polling immediately...");
+        //FIX: Luôn reset lastNotificationId khi start polling (để hiển thị notification chưa đọc)
+        this.startPolling(true); // Reset lastNotificationId
       } else {
+        console.log("[NotificationService] Stopping polling (no token or is admin)");
         this.stopPolling();
       }
     };

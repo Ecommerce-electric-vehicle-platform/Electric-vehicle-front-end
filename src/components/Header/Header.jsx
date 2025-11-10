@@ -14,7 +14,6 @@ import { CategorySidebar } from "../CategorySidebar/CategorySidebar";
 import { UserDropdown } from "../UserDropdown/UserDropdown";
 import { UpgradeNotificationModal } from "../UpgradeNotificationModal/UpgradeNotificationModal";
 import { NotificationList } from "../NotificationList/NotificationList";
-import { NotificationPopup } from "../NotificationPopup/NotificationPopup";
 import notificationApi from "../../api/notificationApi";
 import notificationService from "../../services/notificationService";
 import "./Header.css";
@@ -29,7 +28,6 @@ export function Header() {
 
 
   const [notificationCount, setNotificationCount] = useState(0);
-  const [notificationPopups, setNotificationPopups] = useState([]);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeFeatureName, setUpgradeFeatureName] = useState("");
@@ -100,42 +98,151 @@ export function Header() {
     const loadNotificationCount = async () => {
       try {
         const response = await notificationApi.getUnreadCount();
-        setNotificationCount(response?.data?.unreadCount || 0);
-      } catch {
-        console.warn("Cannot load notification count");
+        const count = response?.data?.unreadCount || 0;
+        console.log("[Header] Loaded notification count:", count);
+        setNotificationCount(count);
+      } catch (error) {
+        console.warn("Cannot load notification count:", error);
         setNotificationCount(0);
       }
     };
+    
+    // FIX: Load count ngay và reload lại nhiều lần để đảm bảo có dữ liệu mới nhất
     loadNotificationCount();
+    
+    // Reload sau 500ms
+    const reloadTimer1 = setTimeout(() => {
+      loadNotificationCount();
+    }, 500);
+    
+    // Reload sau 1.5s (để đảm bảo backend đã cập nhật)
+    const reloadTimer2 = setTimeout(() => {
+      loadNotificationCount();
+    }, 1500);
+    
+    // FIX: Reload count khi focus vào window (khi user quay lại tab)
+    const handleFocus = () => {
+      loadNotificationCount();
+    };
+    window.addEventListener("focus", handleFocus);
+    
+    return () => {
+      clearTimeout(reloadTimer1);
+      clearTimeout(reloadTimer2);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [isAuthenticated]);
 
 
   // ========== SUBSCRIBE REALTIME NOTIFICATION (Giữ nguyên) ==========
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      // FIX: Stop notification service khi logout
+      notificationService.stopPolling();
+      return;
+    }
 
-
-    notificationService.init();
+    // FIX: Đảm bảo notification service được init lại khi user login
+    // (Trường hợp user login sau khi app đã load)
+    console.log("[Header] User authenticated, initializing notification service...");
+    
+    // FIX: Init ngay lập tức và poll ngay sau đó
+    const initAndPoll = async () => {
+      // Đợi một chút để đảm bảo localStorage đã được update
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const token = localStorage.getItem("token");
+      const buyerId = localStorage.getItem("buyerId");
+      
+      console.log("[Header] Initializing notification service after login...", {
+        hasToken: !!token,
+        buyerId
+      });
+      
+      if (token && buyerId) {
+        // Init service
+        notificationService.init();
+        
+        // FIX: Poll ngay sau khi init (đợi một chút để service đã start)
+        setTimeout(async () => {
+          console.log("[Header] Force polling once to get existing notifications...");
+          try {
+            // Poll một lần để lấy notification hiện có
+            await notificationService.pollNotifications();
+          } catch (error) {
+            console.error("[Header] Error polling notifications:", error);
+          }
+        }, 800); // Đợi 800ms để WebSocket/Polling đã start hoàn toàn
+      } else {
+        console.warn("[Header] Cannot init notification service: Missing token or buyerId");
+        // Retry sau 500ms nếu chưa có token/buyerId
+        setTimeout(() => {
+          const retryToken = localStorage.getItem("token");
+          const retryBuyerId = localStorage.getItem("buyerId");
+          if (retryToken && retryBuyerId) {
+            console.log("[Header] Retrying notification service init...");
+            notificationService.init();
+            setTimeout(() => {
+              notificationService.pollNotifications();
+            }, 800);
+          }
+        }, 500);
+      }
+    };
+    
+    initAndPoll();
+    
     const unsubscribe = notificationService.subscribe((notification) => {
       console.log("New notification:", notification);
-      setNotificationPopups((prev) => [...prev, notification]);
-      setNotificationCount((prev) => prev + 1);
-
-
-      setTimeout(() => {
-        setNotificationPopups((prev) =>
-          prev.filter((n) => n.notificationId !== notification.notificationId)
-        );
-      }, 5000);
+      
+      // FIX: Chỉ tăng count, không hiển thị popup
+      if (!notification.isRead) {
+        setNotificationCount((prev) => prev + 1);
+      }
     });
 
 
     const handleNotificationRead = async () => {
       try {
-        const response = await notificationApi.getUnreadCount();
-        setNotificationCount(response?.data?.unreadCount || 0);
+        // FIX: Đợi đủ lâu để backend đã cập nhật readAt
+        // markAsRead có retry verification mất đến 2.5 giây, nên đợi 3 giây
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // FIX: Retry với delay tăng dần để đảm bảo backend đã cập nhật
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+          try {
+            const response = await notificationApi.getUnreadCount();
+            const newCount = response?.data?.unreadCount || 0;
+            console.log(`[Header] Notification read, updating count (attempt ${retryCount + 1}/${maxRetries}):`, newCount);
+            setNotificationCount(newCount);
+            
+            // Nếu count = 0, có thể đã thành công, nhưng vẫn retry thêm 1 lần để chắc chắn
+            if (newCount === 0 && retryCount < maxRetries - 1) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              retryCount++;
+            } else {
+              break;
+            }
+          } catch (error) {
+            console.error(`[Header] Error updating notification count (attempt ${retryCount + 1}):`, error);
+            retryCount++;
+            if (retryCount < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+        }
       } catch (error) {
         console.error("Error updating notification count:", error);
+        // Nếu lỗi, vẫn thử reload count
+        try {
+          const response = await notificationApi.getUnreadCount();
+          setNotificationCount(response?.data?.unreadCount || 0);
+        } catch {
+          // Ignore
+        }
       }
     };
 
@@ -292,11 +399,6 @@ export function Header() {
 
 
   const handleNotificationPopupClick = (notification) => {
-    setNotificationPopups((prev) =>
-      prev.filter((n) => n.notificationId !== notification.notificationId)
-    );
-
-
     // Navigate based on notification type
     // === SỬA: Bỏ hàm handleNotificationNavigation cũ ===
     if (
@@ -309,11 +411,6 @@ export function Header() {
   };
 
 
-  const handleNotificationPopupClose = (notificationId) => {
-    setNotificationPopups((prev) =>
-      prev.filter((n) => n.notificationId !== notificationId)
-    );
-  };
 
 
   // ========== JSX ==========
@@ -501,12 +598,6 @@ export function Header() {
       />
 
 
-      {/* Notification Popup Toast */}
-      <NotificationPopup
-        notifications={notificationPopups}
-        onClose={handleNotificationPopupClose}
-        onClick={handleNotificationPopupClick}
-      />
     </nav>
   );
 }

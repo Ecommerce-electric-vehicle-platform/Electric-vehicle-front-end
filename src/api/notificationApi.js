@@ -64,7 +64,40 @@ const notificationApi = {
     try {
       const res = await axiosInstance.get("/api/v1/notifications");
       const notifications = Array.isArray(res.data) ? res.data : [];
-      const unreadCount = notifications.filter(n => !n.readAt).length;
+      
+      // FIX: Filter chính xác - chỉ đếm notification chưa đọc
+      // Notification đã đọc có readAt là string/date (không phải null/undefined/empty string)
+      const unreadCount = notifications.filter(n => {
+        // Nếu readAt là null, undefined, hoặc empty string → chưa đọc
+        // Nếu readAt có giá trị (string/date) → đã đọc
+        const readAt = n.readAt;
+        const isUnread = !readAt || readAt === null || readAt === undefined || readAt === "";
+        
+        // Log để debug
+        if (notifications.length > 0 && notifications.indexOf(n) === 0) {
+          console.log("[API] getUnreadCount - Sample notification:", {
+            id: n.notificationId,
+            readAt: readAt,
+            readAtType: typeof readAt,
+            isUnread: isUnread
+          });
+        }
+        
+        return isUnread;
+      }).length;
+      
+      console.log("[API] getUnreadCount result:", {
+        total: notifications.length,
+        unread: unreadCount,
+        read: notifications.length - unreadCount,
+        allNotifications: notifications.map(n => ({
+          id: n.notificationId,
+          title: n.title,
+          readAt: n.readAt,
+          readAtType: typeof n.readAt,
+          isUnread: !n.readAt || n.readAt === null || n.readAt === undefined || n.readAt === ""
+        }))
+      });
       
       return {
         data: {
@@ -82,9 +115,52 @@ const notificationApi = {
   // PUT /api/v1/notifications/{notificationId}/read
   markAsRead: async (notificationId) => {
     try {
+      console.log("[API] Marking notification as read:", notificationId);
       const res = await axiosInstance.put(
         `/api/v1/notifications/${notificationId}/read`
       );
+      console.log("[API] Mark as read response:", res.data);
+      
+      // FIX: Retry verification với delay tăng dần để đảm bảo backend đã cập nhật
+      let verified = false;
+      let attempts = 0;
+      const maxAttempts = 5;
+      
+      while (!verified && attempts < maxAttempts) {
+        // Delay tăng dần: 500ms, 1000ms, 1500ms, 2000ms, 2500ms
+        await new Promise(resolve => setTimeout(resolve, 500 + attempts * 500));
+        
+        try {
+          const verifyRes = await axiosInstance.get("/api/v1/notifications");
+          const notifications = Array.isArray(verifyRes.data) ? verifyRes.data : [];
+          const updatedNotification = notifications.find(n => n.notificationId === notificationId);
+          
+          console.log(`[API] Verification attempt ${attempts + 1}/${maxAttempts}:`, {
+            notificationId,
+            readAt: updatedNotification?.readAt,
+            readAtType: typeof updatedNotification?.readAt,
+            isRead: !!updatedNotification?.readAt
+          });
+          
+          // Check: readAt phải có giá trị (không phải null/undefined/empty string)
+          if (updatedNotification?.readAt && 
+              updatedNotification.readAt !== null && 
+              updatedNotification.readAt !== undefined && 
+              updatedNotification.readAt !== "") {
+            verified = true;
+            console.log("[API] Verified: readAt đã được cập nhật thành công!");
+          } else {
+            attempts++;
+            if (attempts >= maxAttempts) {
+              console.warn("[API] WARNING: readAt chưa được cập nhật sau", maxAttempts, "attempts!");
+            }
+          }
+        } catch (verifyError) {
+          console.error("[API] Error verifying markAsRead:", verifyError);
+          attempts++;
+        }
+      }
+      
       return res.data;
     } catch (error) {
       console.error("Lỗi khi đánh dấu thông báo đã đọc:", error);
