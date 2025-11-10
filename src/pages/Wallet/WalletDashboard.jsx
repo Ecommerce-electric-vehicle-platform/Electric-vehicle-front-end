@@ -15,7 +15,6 @@ import {
     Plus,
     TrendingUp,
     TrendingDown,
-    Filter,
     Wallet,
     ArrowUpRight as ExpandIcon,
     ChevronLeft,
@@ -44,7 +43,6 @@ export default function WalletDashboard() {
     // Filters
     const [query, setQuery] = useState("");
     const [typeFilter, setTypeFilter] = useState("Tất cả loại");
-    const [statusFilter, setStatusFilter] = useState("Tất cả trạng thái");
 
     // Pagination - using backend pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -67,15 +65,24 @@ export default function WalletDashboard() {
         // Map transaction type from API to Vietnamese
         const mapTransactionType = (type) => {
             if (!type) return "Giao dịch";
+            const normalizedType = type?.toUpperCase();
             const typeMap = {
                 "CREDIT": "Nạp tiền",
-                "DEBIT": "Thanh toán",
                 "DEPOSIT": "Nạp tiền",
+                "TOP_UP": "Nạp tiền",
+                "WALLET_TOP_UP": "Nạp tiền",
+                "WALLET_DEPOSIT": "Nạp tiền",
+                "DEBIT": "Thanh toán",
                 "PAYMENT": "Thanh toán",
+                "PLACE_ORDER": "Thanh toán",
+                "ORDER_PAYMENT": "Thanh toán",
+                "PURCHASE": "Thanh toán",
+                "CHECKOUT": "Thanh toán",
                 "WITHDRAW": "Rút tiền",
+                "CASH_OUT": "Rút tiền",
                 "TRANSFER": "Chuyển khoản"
             };
-            const mapped = typeMap[type?.toUpperCase()] || type || "Giao dịch";
+            const mapped = typeMap[normalizedType] || type || "Giao dịch";
             console.log(`🔄 Type mapping: ${type} -> ${mapped}`);
             return mapped;
         };
@@ -504,50 +511,24 @@ export default function WalletDashboard() {
         fetchTransactions(currentPage, itemsPerPage);
     }, [currentPage, fetchTransactions, itemsPerPage]);
 
-    // Client-side filtering for search and type/status filters
+    // Client-side filtering for search and type filters
     const filtered = useMemo(() => {
         console.log('🔍 Starting filter process:', {
             transactionsCount: transactions.length,
             query: query,
             typeFilter: typeFilter,
-            statusFilter: statusFilter,
             transactions: transactions
         });
 
         const result = transactions.filter(t => {
-            // Check each condition individually for debugging
             const matchText = !query || (`${t.id} ${t.type} ${t.note}`).toLowerCase().includes(query.toLowerCase());
             const matchType = typeFilter === "Tất cả loại" || t.type === typeFilter;
-            const matchStatus = statusFilter === "Tất cả trạng thái" || t.status === statusFilter;
 
-            const matches = matchText && matchType && matchStatus;
-
-            if (!matches) {
-                console.log(`❌ Transaction ${t.id} filtered out:`, {
-                    matchText,
-                    matchType,
-                    matchStatus,
-                    transactionType: t.type,
-                    transactionStatus: t.status,
-                    typeFilter,
-                    statusFilter
-                });
-            }
-
-            return matches;
-        });
-
-        console.log('🔍 Filter result:', {
-            total: transactions.length,
-            filtered: result.length,
-            query,
-            typeFilter,
-            statusFilter,
-            result: result
+            return matchText && matchType;
         });
 
         return result;
-    }, [transactions, query, typeFilter, statusFilter]);
+    }, [transactions, query, typeFilter]);
 
     // Debug: Log when transactions change
     useEffect(() => {
@@ -560,7 +541,7 @@ export default function WalletDashboard() {
     // Reset to page 1 when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [query, typeFilter, statusFilter]);
+    }, [query, typeFilter]);
 
     // Disable scroll when modal is open
     useEffect(() => {
@@ -712,13 +693,6 @@ export default function WalletDashboard() {
                         className="search-input"
                     />
                 </div>
-                <button className="filter-btn" aria-label="Bộ lọc">
-                    <Filter size={20} />
-                </button>
-            </div>
-
-            {/* Filter Dropdowns */}
-            <div className="filter-toolbar">
                 <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
@@ -727,18 +701,7 @@ export default function WalletDashboard() {
                     <option>Tất cả loại</option>
                     <option>Nạp tiền</option>
                     <option>Thanh toán</option>
-                    <option>Chuyển khoản</option>
                     <option>Rút tiền</option>
-                </select>
-                <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="filter-select"
-                >
-                    <option>Tất cả trạng thái</option>
-                    <option>Thành công</option>
-                    <option>Đang xử lý</option>
-                    <option>Thất bại</option>
                 </select>
             </div>
 
@@ -767,11 +730,7 @@ export default function WalletDashboard() {
                         filtered
                     });
 
-                    // Use transactions directly if filtered is empty but transactions exist
-                    // This helps identify if filtering is the issue
-                    const displayTransactions = filtered.length > 0 ? filtered : transactions;
-
-                    if (displayTransactions.length === 0) {
+                    if (filtered.length === 0) {
                         return (
                             <div className="empty-state">
                                 <p>Không tìm thấy giao dịch nào</p>
@@ -779,7 +738,7 @@ export default function WalletDashboard() {
                         );
                     }
 
-                    return displayTransactions.map((t) => {
+                    return filtered.map((t) => {
                         console.log('🎨 Rendering transaction:', t);
                         return (
                             <div
