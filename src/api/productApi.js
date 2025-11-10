@@ -304,22 +304,22 @@ export function normalizeProduct(item) {
         updatedAt: productData.updatedAt || productData.updated_at || productData.created_at || productData.createdAt || new Date().toISOString(),
         isSold: Boolean(productData.is_sold),
 
-        // 🖼️ Ảnh
+        //  Ảnh
         image: toAbsoluteUrl(imageUrl) || imageUrl,
         images: images.map(toAbsoluteUrl),
 
-        // 🔋 Thông tin pin và tầm xa
+        //  Thông tin pin và tầm xa
         batteryType: productData.batteryType ?? productData.battery_type,
         range: productData.range ?? productData.maxRange ?? productData.max_range,
 
-        // 📏 Kích thước và trọng lượng
+        //  Kích thước và trọng lượng
         width: productData.width ?? "",
         height: productData.height ?? "",
         length: productData.length ?? "",
         weight: productData.weight ?? "",
         color: productData.color ?? "",
 
-        // 📊 Thông tin bổ sung
+        //  Thông tin bổ sung
         sellerId: productData.sellerId ?? productData.seller_id,
         sellerName: productData.sellerName ?? productData.seller_name,
         category: productData.category ?? productData.categoryId ?? productData.category_id,
