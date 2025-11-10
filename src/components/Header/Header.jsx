@@ -423,6 +423,7 @@ export function Header() {
             className="navbar-hamburger"
             onClick={toggleHamburgerMenu}
             aria-label="Mở menu danh mục"
+            data-tooltip="Danh mục sản phẩm"
           >
             {hamburgerMenuOpen ? <X /> : <Menu />}
           </button>
@@ -440,7 +441,7 @@ export function Header() {
 
 
           {/* Nav Links */}
-          <nav className="navbar-nav">
+          <nav className={`navbar-nav ${location.pathname === "/" && !isAuthenticated ? "navbar-nav-centered" : ""}`}>
             <button
               className="nav-link"
               onClick={() => handleSmartNavigation("vehicleshowcase-section")}
@@ -475,6 +476,7 @@ export function Header() {
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("heart")}
                   aria-label="Yêu thích"
+                  data-tooltip="Danh sách yêu thích"
                 >
                   <Heart className="navbar-icon" />
                 </button>
@@ -484,6 +486,7 @@ export function Header() {
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("chat")}
                   aria-label="Tin nhắn"
+                  data-tooltip="Tin nhắn"
                 >
                   <MessageCircle className="navbar-icon" />
                 </button>
@@ -493,6 +496,7 @@ export function Header() {
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("orders")}
                   aria-label="Đơn hàng"
+                  data-tooltip="Đơn hàng của tôi"
                 >
                   <Package className="navbar-icon" />
                 </button>
@@ -504,6 +508,7 @@ export function Header() {
                     className="navbar-notification-button"
                     onClick={(e) => { e.stopPropagation(); handleIconClick("bell"); }} // Added stopPropagation
                     aria-label="Thông báo"
+                    data-tooltip="Thông báo"
                   >
                     <Bell className="navbar-icon" />
                     {notificationCount > 0 && (

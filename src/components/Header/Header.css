@@ -8,6 +8,7 @@
   border-bottom: 1px solid #e5e7eb;
   background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
+  overflow: visible;
 }
 
 @supports (backdrop-filter: blur(8px)) {
@@ -20,6 +21,7 @@
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 1rem;
+  overflow: visible;
 }
 
 .navbar-content {
@@ -27,6 +29,7 @@
   height: 4rem;
   align-items: center;
   gap: 1.25rem;
+  overflow: visible;
 }
 
 /* Logo */
@@ -61,33 +64,79 @@
 
 /* Hamburger Menu Button */
 .navbar-hamburger {
-  height: 3rem;
-  width: 3rem;
-  border-radius: 0.75rem;
-  background-color: #22c55e;
-  border: none;
+  height: 3.5rem;
+  width: 3.5rem;
+  min-height: 3.5rem;
+  min-width: 3.5rem;
+  border-radius: 0.875rem;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  border: 2px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 12px rgba(34, 197, 94, 0.25),
+    0 2px 4px rgba(34, 197, 94, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.navbar-hamburger::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .navbar-hamburger:hover {
-  background-color: #16a34a;
-  transform: translateY(-1px) scale(1.02);
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 
+    0 8px 20px rgba(34, 197, 94, 0.35),
+    0 4px 8px rgba(34, 197, 94, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.navbar-hamburger:hover::before {
+  opacity: 1;
 }
 
 .navbar-hamburger:active {
-  transform: translateY(0) scale(0.98);
+  transform: translateY(0) scale(0.97);
+  box-shadow: 
+    0 2px 8px rgba(34, 197, 94, 0.3),
+    inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .navbar-hamburger-icon {
   height: 1.25rem;
   width: 3.25rem;
   color: white;
+}
+
+/* Icon bên trong hamburger button */
+.navbar-hamburger svg {
+  height: 1.5rem;
+  width: 1.5rem;
+  color: white;
+  stroke-width: 2.5;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.navbar-hamburger:hover svg {
+  transform: scale(1.05);
 }
 
 /* Navigation Menu */
@@ -102,6 +151,7 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
+  display: flex !important;
 }
 
 @media (min-width: 1024px) {
@@ -145,6 +195,9 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  overflow: visible;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .navbar-icon-button {
@@ -160,7 +213,7 @@
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   aspect-ratio: 1;
 }
 
@@ -278,6 +331,12 @@
   transition: all 0.2s ease;
   font-size: 0.8rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1;
+  overflow: visible;
 }
 
 .navbar-action-button:hover {
@@ -351,6 +410,187 @@
 .btn-primary:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+}
+
+/* ===========================
+   💬 TOOLTIP STYLES
+   =========================== */
+/* Tooltip cho Hamburger Menu */
+.navbar-hamburger[data-tooltip] {
+  position: relative;
+}
+
+.navbar-hamburger[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background-color: #1f2937;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.navbar-hamburger[data-tooltip]::after {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: #1f2937;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 9999;
+}
+
+.navbar-hamburger[data-tooltip]:hover::before,
+.navbar-hamburger[data-tooltip]:focus::before,
+.navbar-hamburger[data-tooltip]:active::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.navbar-hamburger[data-tooltip]:hover::after,
+.navbar-hamburger[data-tooltip]:focus::after,
+.navbar-hamburger[data-tooltip]:active::after {
+  opacity: 1;
+}
+
+/* Tooltip cho Icon Buttons */
+.navbar-icon-button[data-tooltip] {
+  position: relative;
+}
+
+.navbar-icon-button[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background-color: #1f2937;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.navbar-icon-button[data-tooltip]::after {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: #1f2937;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 9999;
+}
+
+.navbar-icon-button[data-tooltip]:hover::before,
+.navbar-icon-button[data-tooltip]:focus::before,
+.navbar-icon-button[data-tooltip]:active::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.navbar-icon-button[data-tooltip]:hover::after,
+.navbar-icon-button[data-tooltip]:focus::after,
+.navbar-icon-button[data-tooltip]:active::after {
+  opacity: 1;
+}
+
+/* Tooltip cho Notification Button */
+.navbar-notification-button[data-tooltip] {
+  position: relative;
+}
+
+.navbar-notification-button[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background-color: #1f2937;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.navbar-notification-button[data-tooltip]::after {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: #1f2937;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 9999;
+}
+
+.navbar-notification-button[data-tooltip]:hover::before,
+.navbar-notification-button[data-tooltip]:focus::before,
+.navbar-notification-button[data-tooltip]:active::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.navbar-notification-button[data-tooltip]:hover::after,
+.navbar-notification-button[data-tooltip]:focus::after,
+.navbar-notification-button[data-tooltip]:active::after {
+  opacity: 1;
+}
+
+/* Touch support - hiển thị tooltip khi touch trên mobile */
+@media (hover: none) and (pointer: coarse) {
+  .navbar-hamburger[data-tooltip]:active::before,
+  .navbar-icon-button[data-tooltip]:active::before,
+  .navbar-notification-button[data-tooltip]:active::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .navbar-hamburger[data-tooltip]:active::after,
+  .navbar-icon-button[data-tooltip]:active::after,
+  .navbar-notification-button[data-tooltip]:active::after {
+    opacity: 1;
+  }
 }
 
 /* ===========================
@@ -499,6 +739,8 @@ body.hamburger-menu-open .navbar {
     height: 2.25rem;
     padding: 0 0.75rem;
     font-size: 0.75rem;
+    white-space: nowrap;
+    line-height: 1;
   }
 }
 
@@ -509,6 +751,18 @@ body.hamburger-menu-open .navbar {
 
   .navbar-content {
     gap: 0.75rem;
+  }
+
+  .navbar-hamburger {
+    height: 3.25rem;
+    width: 3.25rem;
+    min-height: 3.25rem;
+    min-width: 3.25rem;
+  }
+
+  .navbar-hamburger svg {
+    height: 1.4rem;
+    width: 1.4rem;
   }
 
   .navbar-nav {
@@ -540,6 +794,8 @@ body.hamburger-menu-open .navbar {
     height: 2rem;
     padding: 0 0.6rem;
     font-size: 0.7rem;
+    white-space: nowrap;
+    line-height: 1;
   }
 
   .navbar-logo {
@@ -565,6 +821,19 @@ body.hamburger-menu-open .navbar {
     gap: 0.5rem;
   }
 
+  .navbar-hamburger {
+    height: 3rem;
+    width: 3rem;
+    min-height: 3rem;
+    min-width: 3rem;
+    border-radius: 0.75rem;
+  }
+
+  .navbar-hamburger svg {
+    height: 1.3rem;
+    width: 1.3rem;
+  }
+
   .navbar-actions {
     gap: 0.4rem;
   }
@@ -585,6 +854,8 @@ body.hamburger-menu-open .navbar {
     height: 1.875rem;
     padding: 0 0.5rem;
     font-size: 0.65rem;
+    white-space: nowrap;
+    line-height: 1;
   }
 
   .navbar-logo {
