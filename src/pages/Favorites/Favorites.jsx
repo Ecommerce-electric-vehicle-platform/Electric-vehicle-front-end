@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, MessageCircle, Trash2, Loader2, Search, CheckSquare, Square, ShoppingCart, Heart, AlertCircle } from "lucide-react";
+import { MessageCircle, Trash2, Loader2, Search, CheckSquare, Square, Heart } from "lucide-react";
 import "./Favorites.css";
 import { fetchWishlist, removeFromWishlist } from "../../api/wishlistApi";
 import { ConfirmationDialog } from "../../components/ConfirmationDialog/ConfirmationDialog";
@@ -483,36 +483,6 @@ export function Favorites() {
                                     <span>Chọn tất cả</span>
                                 </button>
                             )}
-                            <div className="filter-dropdown">
-                                <button
-                                    className="filter-dropdown-btn"
-                                    onClick={() => {
-                                        const options = ["date", "priceLow", "priceHigh", "batteryType"];
-                                        const currentIndex = options.indexOf(sortBy);
-                                        setSortBy(options[(currentIndex + 1) % options.length]);
-                                        setDisplayPage(1); // Reset to first page when sort changes
-                                    }}
-                                >
-                                    <span>Sắp xếp theo: {getSortLabel()}</span>
-                                    <ChevronDown size={16} />
-                                </button>
-                            </div>
-
-                            <div className="filter-dropdown">
-                                <button
-                                    className="filter-dropdown-btn"
-                                    onClick={() => {
-                                        const options = [null, "LOW", "MEDIUM", "HIGH"];
-                                        const currentIndex = options.indexOf(priorityFilter);
-                                        const nextIndex = (currentIndex + 1) % options.length;
-                                        setPriorityFilter(options[nextIndex]);
-                                        setDisplayPage(1); // Reset to first page when filter changes
-                                    }}
-                                >
-                                    <span>{getPriorityFilterLabel()}</span>
-                                    <ChevronDown size={16} />
-                                </button>
-                            </div>
                         </div>
 
                         {loading && (

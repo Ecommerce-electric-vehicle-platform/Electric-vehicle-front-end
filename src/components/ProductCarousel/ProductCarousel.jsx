@@ -5,6 +5,7 @@ import { Car, Battery } from "lucide-react";
 import { usePageTransition } from "../../hooks/usePageTransition";
 import { fetchPostProducts, normalizeProduct } from "../../api/productApi";
 import { ProductCard } from "../ProductCard/ProductCard";
+import { useFavoritesList } from "../../hooks/useFavorite";
 
 export function ProductCarousel({ title, showCategoryToggle = false }) {
     const [activeCategory, setActiveCategory] = useState("vehicles");
@@ -31,6 +32,9 @@ export function ProductCarousel({ title, showCategoryToggle = false }) {
     const [page] = useState(1);
     const [size] = useState(12);
     const [productsRaw, setProductsRaw] = useState([]);
+
+    // Favorite management hook
+    const { getFavoriteStatus, toggleFavoriteForProduct } = useFavoritesList();
 
     useEffect(() => {
         let mounted = true;
@@ -94,6 +98,8 @@ export function ProductCarousel({ title, showCategoryToggle = false }) {
                                 product={product}
                                 variant="default"
                                 onViewDetails={handleViewDetails}
+                                onToggleFavorite={toggleFavoriteForProduct}
+                                isFavorite={getFavoriteStatus(product.postId || product.id)}
                                 showActions={true}
                                 showCondition={true}
                                 showLocation={true}

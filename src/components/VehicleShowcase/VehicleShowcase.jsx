@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { fetchPostProducts, normalizeProduct } from "../../api/productApi"
 import { ProductCard } from "../ProductCard/ProductCard"
 import { GlobalSearch } from "../GlobalSearch/GlobalSearch"
+import { useFavoritesList } from "../../hooks/useFavorite"
 
 export function VehicleShowcase() {
   const [activeTab, setActiveTab] = useState("vehicles")
@@ -21,6 +22,9 @@ export function VehicleShowcase() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [itemsRaw, setItemsRaw] = useState([])
+
+  // Favorite management hook
+  const { getFavoriteStatus, toggleFavoriteForProduct } = useFavoritesList()
 
   useEffect(() => {
     let mounted = true
@@ -132,6 +136,8 @@ export function VehicleShowcase() {
               product={product}
               variant="default"
               onViewDetails={handleViewDetails}
+              onToggleFavorite={toggleFavoriteForProduct}
+              isFavorite={getFavoriteStatus(product.postId || product.id)}
               showActions={true}
               showCondition={true}
               showLocation={true}

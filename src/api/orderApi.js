@@ -167,7 +167,26 @@ export const getOrderDetails = async (orderId) => {
         const createdAt = data.createdAt || data.created_at || data.order?.createdAt || data.order?.created_at || null;
         const updatedAt = data.updatedAt || data.updated_at || data.order?.updatedAt || data.order?.updated_at || null;
         const canceledAt = data.canceledAt || data.canceled_at || data.order?.canceledAt || data.order?.canceled_at || null;
-        const cancelReason = data.cancelReason || data.cancel_reason || data.order?.cancelReason || data.order?.cancel_reason || null;
+
+        // Extract cancelReason from multiple sources (similar to OrderTracking extractCancelInfo)
+        const cancelReasonResponse = data.cancelOrderReasonResponse ||
+            data.order?.cancelOrderReasonResponse ||
+            data.cancelReasonResponse ||
+            data.order?.cancelReasonResponse ||
+            data.cancelOrderReason ||
+            null;
+
+        const cancelReason =
+            data.cancelReason ||
+            data.cancel_reason ||
+            data.order?.cancelReason ||
+            data.order?.cancel_reason ||
+            data.cancelReasonName ||
+            data.order?.cancelReasonName ||
+            cancelReasonResponse?.cancelOrderReasonName ||
+            cancelReasonResponse?.name ||
+            cancelReasonResponse?.title ||
+            null;
 
         // Build normalized response
         const normalized = {
@@ -198,6 +217,14 @@ export const getOrderDetails = async (orderId) => {
             },
             rawStatus: rawStatus,
             normalizedStatus: normalizedStatus,
+            cancelReasonFields: {
+                'data.cancelReason': data.cancelReason,
+                'data.cancel_reason': data.cancel_reason,
+                'data.order.cancelReason': data.order?.cancelReason,
+                'data.order.cancel_reason': data.order?.cancel_reason,
+                'cancelReasonResponse': cancelReasonResponse,
+                extractedCancelReason: cancelReason
+            },
             normalized: normalized
         });
 

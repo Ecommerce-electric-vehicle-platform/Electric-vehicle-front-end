@@ -36,6 +36,27 @@ export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ========== HIDE TOOLTIPS ON NAVIGATION ==========
+  // Ẩn tooltip khi navigate sang trang mới
+  useEffect(() => {
+    // Ẩn tooltip bằng cách thêm class tooltip-hidden
+    const hideTooltips = () => {
+      const tooltipButtons = document.querySelectorAll('[data-tooltip]');
+      tooltipButtons.forEach((button) => {
+        if (button instanceof HTMLElement) {
+          button.blur();
+          button.classList.add('tooltip-hidden');
+          // Remove class sau một chút để tooltip có thể hiển thị lại khi hover
+          setTimeout(() => {
+            button.classList.remove('tooltip-hidden');
+          }, 100);
+        }
+      });
+    };
+
+    // Hide tooltips khi location thay đổi
+    hideTooltips();
+  }, [location.pathname]);
 
   // ========== AUTH STATE SYNC (ĐÃ SỬA ĐỂ ĐỌC userRole) ==========
   useEffect(() => {
@@ -371,25 +392,39 @@ export function Header() {
   };
 
 
-  // ========== ICON HANDLERS (Giữ nguyên) ==========
+  // ========== ICON HANDLERS (ĐÃ SỬA ĐỂ ẨN TOOLTIP KHI NAVIGATE) ==========
   const handleIconClick = (type) => {
     if (!isAuthenticated) {
       navigate("/signin");
       return;
     }
 
+    // Ẩn tooltip trước khi navigate bằng cách thêm class
+    const hideTooltips = () => {
+      const tooltipButtons = document.querySelectorAll('[data-tooltip]');
+      tooltipButtons.forEach((button) => {
+        if (button instanceof HTMLElement) {
+          button.blur();
+          button.classList.add('tooltip-hidden');
+        }
+      });
+    };
 
     switch (type) {
       case "heart":
+        hideTooltips();
         navigate("/favorites");
         break;
       case "chat":
+        hideTooltips();
         navigate("/chat");
         break;
       case "orders":
+        hideTooltips();
         navigate("/orders");
         break;
       case "bell":
+        // Bell không navigate, chỉ toggle dropdown nên không cần hide tooltip
         setShowNotificationDropdown((prev) => !prev);
         break;
       default:

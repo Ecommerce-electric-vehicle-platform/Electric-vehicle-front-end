@@ -593,6 +593,17 @@
   }
 }
 
+/* Ẩn tooltip khi có class tooltip-hidden */
+.navbar-hamburger[data-tooltip].tooltip-hidden::before,
+.navbar-hamburger[data-tooltip].tooltip-hidden::after,
+.navbar-icon-button[data-tooltip].tooltip-hidden::before,
+.navbar-icon-button[data-tooltip].tooltip-hidden::after,
+.navbar-notification-button[data-tooltip].tooltip-hidden::before,
+.navbar-notification-button[data-tooltip].tooltip-hidden::after {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* ===========================
    🍔 HAMBURGER MENU SIDEBAR
    =========================== */

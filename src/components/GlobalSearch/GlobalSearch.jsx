@@ -5,6 +5,7 @@ import { searchProducts, quickSearch } from '../../api/searchApi';
 import { normalizeProduct } from '../../api/productApi';
 import { ProductCard } from '../ProductCard/ProductCard';
 import { normalizeVietnameseText } from '../../utils/textUtils';
+import { useFavoritesList } from '../../hooks/useFavorite';
 import './GlobalSearch.css';
 
 export function GlobalSearch({
@@ -20,6 +21,9 @@ export function GlobalSearch({
     const [showSuggestionsList, setShowSuggestionsList] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const navigate = useNavigate();
+
+    // Favorite management hook
+    const { getFavoriteStatus, toggleFavoriteForProduct } = useFavoritesList();
 
     // Debounced search với hỗ trợ tìm kiếm có dấu và không dấu
     useEffect(() => {
@@ -180,7 +184,9 @@ export function GlobalSearch({
                                     product={product}
                                     variant="compact"
                                     onViewDetails={() => handleProductClick(product)}
-                                    showActions={false}
+                                    onToggleFavorite={toggleFavoriteForProduct}
+                                    isFavorite={getFavoriteStatus(product.postId || product.id)}
+                                    showActions={true}
                                     showCondition={true}
                                     showLocation={true}
                                     showDate={false}
