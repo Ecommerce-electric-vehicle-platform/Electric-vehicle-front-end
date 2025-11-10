@@ -110,6 +110,13 @@ function PlaceOrder() {
         shipping_per_km_fee: 0
     });
 
+    // Helper: xác định storage key cho đơn hàng của user hiện tại
+    const resolveOrderStorage = () => {
+        const username = localStorage.getItem('username') || '';
+        const storageKey = username ? `orders_${username}` : 'orders_guest';
+        return { username, storageKey };
+    };
+
     // Địa chỉ dạng từng cấp giống Profile
     const [provinces, setProvinces] = useState([]);
     const [selectedProvince, setSelectedProvince] = useState('');
@@ -385,7 +392,8 @@ function PlaceOrder() {
         }
 
         // Kiểm tra xem đã có order thành công cho product này chưa
-        const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const { storageKey } = resolveOrderStorage();
+        const existingOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
         const currentProductId = parseInt(id);
         const currentUsername = localStorage.getItem('username') || '';
 
@@ -1383,9 +1391,10 @@ function PlaceOrder() {
             });
 
             // QUAN TRỌNG: Kiểm tra xem đã có order thành công cho product này chưa
-            const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const { storageKey, username: storageUsername } = resolveOrderStorage();
+            const existingOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
             const currentProductId = apiOrderData.postProductId;
-            const currentUsername = apiOrderData.username || localStorage.getItem('username') || '';
+            const currentUsername = apiOrderData.username || storageUsername;
 
             const existingOrder = existingOrders.find(order =>
                 (order.product?.id === currentProductId || order.postProductId === currentProductId) &&
@@ -1581,6 +1590,7 @@ function PlaceOrder() {
 
                 // CHỈ lưu vào localStorage khi order THỰC SỰ thành công
                 // QUAN TRỌNG: Lưu username để filter theo user sau này
+                const { storageKey } = resolveOrderStorage();
                 const currentUsername = localStorage.getItem('username') || '';
                 const newOrderWithUser = {
                     ...newOrder,
@@ -1589,12 +1599,11 @@ function PlaceOrder() {
                     createdBy: currentUsername // Alias cho compatibility
                 };
 
-                g
                 // Lưu đơn hàng vào localStorage riêng của từng user
-                const storageKey = `orders_${currentUsername}`; // Mỗi user có 1 key riêng
-                const existingOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                const resolvedStorageKey = currentUsername ? storageKey : 'orders_guest';
+                const existingOrders = JSON.parse(localStorage.getItem(resolvedStorageKey) || '[]');
                 existingOrders.push(newOrderWithUser);
-                localStorage.setItem('orders', JSON.stringify(existingOrders));
+                localStorage.setItem(resolvedStorageKey, JSON.stringify(existingOrders));
 
                 setCurrentStep(3);
             } else {
@@ -1698,9 +1707,10 @@ function PlaceOrder() {
             if (isAlreadyOrdered) {
                 // Đã đặt hàng rồi - redirect về trang đơn hàng
                 // Lấy orderId từ localStorage để điều hướng đến trang order tracking cụ thể
-                const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+                const { storageKey, username: storageUsername } = resolveOrderStorage();
+                const existingOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
                 const currentProductId = product?.id;
-                const currentUsername = localStorage.getItem('username') || '';
+                const currentUsername = storageUsername || localStorage.getItem('username') || '';
                 const existingOrder = existingOrders.find(order =>
                     (order.product?.id === currentProductId || order.postProductId === currentProductId) &&
                     order.username === currentUsername &&

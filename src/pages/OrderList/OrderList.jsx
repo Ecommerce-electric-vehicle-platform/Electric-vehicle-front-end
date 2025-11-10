@@ -89,146 +89,7 @@ function OrderList() {
                 })));
             }
 
-            // QUAN TRỌNG: Chỉ merge localStorage orders của user hiện tại
-            // localStorage là shared giữa các user, cần filter theo username
-            try {
-                const currentUsername = localStorage.getItem('username') || '';
-
-                // XÓA các orders trong localStorage không thuộc user hiện tại (cleanup)
-                let allLocalOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-                if (Array.isArray(allLocalOrders) && allLocalOrders.length > 0 && currentUsername) {
-                    const userOrders = allLocalOrders.filter(lo => {
-                        if (!lo) return false;
-                        // Chỉ giữ orders có username trùng với user hiện tại
-                        const orderUsername = lo.username || lo.userId || lo.createdBy || '';
-                        return orderUsername === currentUsername;
-                    });
-
-                    // Nếu có orders không thuộc user hiện tại, xóa chúng
-                    if (userOrders.length !== allLocalOrders.length) {
-                        const removedCount = allLocalOrders.length - userOrders.length;
-                        console.warn(`[OrderList] Removed ${removedCount} orders from localStorage that don't belong to current user (${currentUsername})`);
-                        localStorage.setItem('orders', JSON.stringify(userOrders));
-                        allLocalOrders = userOrders;
-                    }
-                }
-
-                const localOrders = allLocalOrders;
-
-                if (Array.isArray(localOrders) && localOrders.length > 0) {
-                    console.log('[OrderList] Found localStorage orders for current user:', localOrders.length);
-                    console.log('[OrderList] Current username:', currentUsername);
-                    console.log('[OrderList] LocalStorage orders:', localOrders.map(lo => ({
-                        id: lo.id,
-                        orderCode: lo.orderCode || lo.order_code,
-                        username: lo.username || lo.userId || lo.createdBy,
-                        createdAt: lo.createdAt || lo.created_at
-                    })));
-
-                    // Tạo Set từ backend orders để check duplicate
-                    const existingOrderCodes = new Set();
-                    const existingOrderIds = new Set();
-
-                    list.forEach(o => {
-                        const code = String(o.orderCode || o.id || '');
-                        const id = String(o.id || '');
-                        if (code && code !== 'undefined') existingOrderCodes.add(code);
-                        if (id && id !== 'undefined') existingOrderIds.add(id);
-                    });
-
-                    console.log('[OrderList] Existing order codes from backend:', Array.from(existingOrderCodes));
-                    console.log('[OrderList] Existing order ids from backend:', Array.from(existingOrderIds));
-
-                    // Tìm các orders trong localStorage chưa có trong list từ backend
-                    // QUAN TRỌNG: Chỉ lấy orders của user hiện tại
-                    const newLocalOrders = localOrders.filter(lo => {
-                        if (!lo) return false;
-
-                        // CHỈ lấy orders của user hiện tại
-                        const orderUsername = lo.username || lo.userId || lo.createdBy || '';
-                        if (currentUsername && orderUsername !== currentUsername) {
-                            console.warn('[OrderList] Skipping order from different user:', {
-                                orderId: lo.id,
-                                orderCode: lo.orderCode || lo.order_code,
-                                orderUsername: orderUsername,
-                                currentUsername: currentUsername
-                            });
-                            return false;
-                        }
-
-                        const orderCode = String(lo.orderCode || lo.order_code || lo.id || '');
-                        const orderId = String(lo.id || '');
-
-                        // Kiểm tra cả orderCode và orderId để tránh duplicate
-                        const hasCode = orderCode && orderCode !== 'undefined';
-                        const hasId = orderId && orderId !== 'undefined';
-
-                        if (!hasCode && !hasId) return false; // Không có code hoặc id, bỏ qua
-
-                        // Chỉ lấy orders chưa có trong backend list
-                        const codeExists = hasCode && existingOrderCodes.has(orderCode);
-                        const idExists = hasId && existingOrderIds.has(orderId);
-
-                        return !codeExists && !idExists;
-                    }).map(lo => {
-                        // Normalize localStorage order để match với format từ backend
-                        return {
-                            id: lo.id || lo.orderCode || String(Math.random()),
-                            orderCode: lo.order_code || lo.orderCode || lo.id,
-                            status: lo.status || lo.order_status || 'pending',
-                            price: lo.totalPrice || lo.price || 0,
-                            shippingFee: lo.shippingFee || 0,
-                            finalPrice: lo.finalPrice || lo.totalPrice || (lo.totalPrice + (lo.shippingFee || 0)),
-                            shippingAddress: lo.deliveryAddress || '',
-                            phoneNumber: lo.buyerPhone || '',
-                            product: lo.product || {
-                                image: '/vite.svg',
-                                title: `Đơn hàng ${lo.orderCode || lo.id}`,
-                                brand: '',
-                                model: '',
-                                conditionLevel: ''
-                            },
-                            createdAt: lo.createdAt || lo.created_at || new Date().toISOString(),
-                            updatedAt: lo.updatedAt || null,
-                            canceledAt: lo.canceledAt || null,
-                            cancelReason: lo.cancelReason || null,
-                            _raw: lo, // Giữ nguyên raw data
-                            _fromLocalStorage: true // Đánh dấu để biết là từ localStorage
-                        };
-                    });
-
-                    if (newLocalOrders.length > 0) {
-                        console.log('[OrderList] Adding', newLocalOrders.length, 'orders from localStorage:', newLocalOrders.map(o => o.orderCode));
-                        // Merge vào đầu list (orders mới nhất)
-                        list = [...newLocalOrders, ...list];
-                    }
-                }
-            } catch (e) {
-                console.warn('[OrderList] Local orders parse failed:', e);
-            }
-
-            // Fallback: nếu BE chưa trả lịch sử (trễ đồng bộ), hiển thị đơn mới nhất lưu localStorage
-            // QUAN TRỌNG: Chỉ lấy orders của user hiện tại
-            if (list.length === 0) {
-                try {
-                    const currentUsername = localStorage.getItem('username') || '';
-                    const allLocal = JSON.parse(localStorage.getItem('orders') || '[]');
-
-                    // CHỈ lấy orders của user hiện tại
-                    const userLocal = Array.isArray(allLocal) ? allLocal.filter(lo => {
-                        if (!lo) return false;
-                        const orderUsername = lo.username || lo.userId || lo.createdBy || '';
-                        return !currentUsername || orderUsername === currentUsername;
-                    }) : [];
-
-                    if (userLocal.length > 0) {
-                        console.log('[OrderList] Using localStorage fallback for current user:', userLocal[userLocal.length - 1]);
-                        list = [userLocal[userLocal.length - 1]];
-                    }
-                } catch (e) {
-                    console.warn('[OrderList] Local orders parse failed:', e);
-                }
-            }
+            // Không merge dữ liệu localStorage. Chỉ hiển thị đơn từ backend để đảm bảo tính chính xác.
 
             const reversed = list.reverse();
             if (isMounted) setOrders(reversed);
@@ -240,7 +101,9 @@ function OrderList() {
                     try {
                         // Lấy orderId thực từ backend (ưu tiên _raw.id, fallback id)
                         const realOrderId = order._raw?.id ?? order.id;
-                        if (!realOrderId) {
+                        // Bỏ qua nếu không có id hợp lệ hoặc là đơn local-only (id không phải số nguyên dương)
+                        const isNumericId = /^\d+$/.test(String(realOrderId));
+                        if (!realOrderId || !isNumericId) {
                             console.warn('[OrderList] No real orderId found for order:', order);
                             return null;
                         }
@@ -270,6 +133,40 @@ function OrderList() {
                                         source: 'orderDetail'
                                     };
                                 }
+                            } else if (orderDetailRes && orderDetailRes.success === false && orderDetailRes.error === 'NOT_FOUND') {
+                                // Nếu BE trả 404 → coi là đơn không hợp lệ và loại khỏi UI
+                                if (order._fromLocalStorage === true) {
+                                    try {
+                                        const currentUsername = localStorage.getItem('username') || '';
+                                        const storageKey = currentUsername ? `orders_${currentUsername}` : 'orders_guest';
+                                        const rawLocalOrders = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                                        if (Array.isArray(rawLocalOrders) && rawLocalOrders.length > 0) {
+                                            const filteredLocal = rawLocalOrders.filter(lo => {
+                                                const localId = String(lo?.id ?? lo?.orderCode ?? lo?.order_code ?? '');
+                                                return localId !== String(order.id);
+                                            });
+                                            if (filteredLocal.length !== rawLocalOrders.length) {
+                                                console.log('[OrderList] Removing stale localStorage order (backend 404):', {
+                                                    orderId: order.id,
+                                                    orderCode: order.orderCode
+                                                });
+                                                localStorage.setItem(storageKey, JSON.stringify(filteredLocal));
+                                            }
+                                        }
+                                    } catch (cleanupError) {
+                                        console.warn('[OrderList] Failed to cleanup localStorage for stale order:', cleanupError);
+                                    }
+                                }
+                                console.warn('[OrderList] Removing order not found on backend:', {
+                                    orderId: order.id,
+                                    realOrderId: realOrderId,
+                                    orderCode: order.orderCode
+                                });
+                                return {
+                                    orderId: String(order.id),
+                                    remove: true,
+                                    source: 'orderDetail_not_found'
+                                };
                             }
                             // Nếu getOrderDetails trả về lỗi (404, 500, etc.), bỏ qua im lặng
                             // Vì đơn hàng có thể không tồn tại hoặc đã bị xóa
@@ -330,11 +227,18 @@ function OrderList() {
 
                 if (validUpdates.length > 0 && isMounted) {
                     console.log('[OrderList] Status updates:', validUpdates);
-                    console.log('[OrderList] Current orders before update:', orders.map(o => ({ id: o.id, status: o.status })));
                     // Cập nhật trạng thái cho các orders có thay đổi
                     setOrders(prevOrders => {
                         console.log('[OrderList] setOrders callback - prevOrders:', prevOrders.map(o => ({ id: o.id, status: o.status })));
-                        const updated = prevOrders.map(order => {
+                        // 1) Loại bỏ các đơn localStorage không tồn tại trên BE (NOT_FOUND)
+                        const toRemoveIds = new Set(
+                            validUpdates
+                                .filter(u => u && u.remove === true)
+                                .map(u => String(u.orderId))
+                        );
+                        const filtered = prevOrders.filter(o => !toRemoveIds.has(String(o.id)));
+                        // 2) Cập nhật trạng thái cho các đơn còn lại
+                        const updated = filtered.map(order => {
                             const update = validUpdates.find(u => String(u.orderId) === String(order.id));
                             if (update) {
                                 console.log(`[OrderList] Found update for order ${order.id}:`, {
@@ -343,6 +247,15 @@ function OrderList() {
                                     willUpdate: update.newStatus !== order.status,
                                     orderIdMatch: String(update.orderId) === String(order.id)
                                 });
+                                // Không cho phép "lùi trạng thái" (ví dụ: confirmed -> pending)
+                                const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
+                                const currentRank = rank[String(order.status)] || 0;
+                                const newRank = rank[String(update.newStatus)] || 0;
+                                const isBackward = newRank > 0 && currentRank > 0 && newRank < currentRank;
+                                if (isBackward) {
+                                    console.warn(`[OrderList] Skipping backward transition ${order.status} -> ${update.newStatus} for order ${order.id}`);
+                                    return order;
+                                }
                                 if (update.newStatus !== order.status) {
                                     console.log(`[OrderList] ✅ Updating order ${order.id} status: ${order.status} -> ${update.newStatus} (from ${update.source})`);
                                     return {
@@ -485,7 +398,8 @@ function OrderList() {
             const statusUpdateTasks = orders.map(async (order) => {
                 try {
                     const realOrderId = order._raw?.id ?? order.id;
-                    if (!realOrderId) return null;
+                    const isNumericId = /^\d+$/.test(String(realOrderId));
+                    if (!realOrderId || !isNumericId) return null;
 
                     // Ưu tiên gọi order detail API để lấy thông tin mới nhất
                     try {
@@ -569,7 +483,6 @@ function OrderList() {
 
             if (validUpdates.length > 0) {
                 console.log('[OrderList] Auto-refresh - Status updates:', validUpdates);
-                console.log('[OrderList] Auto-refresh - Current orders before update:', orders.map(o => ({ id: o.id, status: o.status })));
                 setOrders(prevOrders => {
                     console.log('[OrderList] Auto-refresh - setOrders callback - prevOrders:', prevOrders.map(o => ({ id: o.id, status: o.status })));
                     const updated = prevOrders.map(order => {
@@ -648,6 +561,19 @@ function OrderList() {
         );
     };
 
+    // Cho phép hủy khi đơn ở pending hoặc confirmed và CHƯA giao cho DVVC
+    const canCancelOrder = (order) => {
+        if (!order) return false;
+        if (isOrderCancelled(order)) return false;
+        const fe = String(order.status || '').toLowerCase();
+        const raw = String(order._raw?.status || '').toUpperCase();
+        const isPending = fe === 'pending' || raw === 'PENDING' || raw === 'PENDING_PAYMENT';
+        const isConfirmed = fe === 'confirmed' || ['PAID', 'PROCESSING', 'CONFIRMED', 'VERIFIED'].includes(raw);
+        const isShipping = fe === 'shipping' || fe === 'delivered' || ['SHIPPED', 'DELIVERING', 'DELIVERED', 'COMPLETED'].includes(raw);
+        const hasCanceledAt = (order.canceledAt || order._raw?.canceledAt) != null;
+        const handedOver = Boolean(order._raw?.handoverAt || order._raw?.shippingId);
+        return (isPending || isConfirmed) && !isShipping && !hasCanceledAt && !handedOver;
+    };
 
     // Lọc theo trạng thái + tìm kiếm
     const filteredOrders = orders
@@ -1172,8 +1098,8 @@ function OrderList() {
                                                 {/* Actions cho đơn chưa hủy */}
                                                 {!isCancelled && (
                                                     <>
-                                                        {/* Chỉ cho phép hủy đơn ở trạng thái pending (chờ xác nhận) */}
-                                                        {order.status === 'pending' && !isOrderCancelled(order) && (
+                                                        {/* Cho phép hủy khi pending hoặc confirmed và chưa handed-over */}
+                                                        {canCancelOrder(order) && (
                                                             <button
                                                                 className="btn btn-danger btn-sm btn-animate"
                                                                 onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id, order); }}
