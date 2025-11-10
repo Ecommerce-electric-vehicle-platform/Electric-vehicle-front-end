@@ -10,6 +10,7 @@ import { GlobalSearch } from "../../components/GlobalSearch/GlobalSearch";
 import { Breadcrumbs } from "../../components/Breadcrumbs/Breadcrumbs";
 import { searchInProduct, calculateSearchScore } from "../../utils/textUtils";
 import { ProductSkeleton } from "../../components/ProductSkeleton/ProductSkeleton";
+import { useFavoritesList } from "../../hooks/useFavorite";
 
 export function Products() {
     const navigate = useNavigate();
@@ -50,6 +51,9 @@ export function Products() {
         return saved === 'list' ? 'list' : 'grid';
     });
     const [priceRange, setPriceRange] = useState(null); // { min: number, max: number } or null
+
+    // Favorite management hook
+    const { getFavoriteStatus, toggleFavoriteForProduct } = useFavoritesList();
 
     // Clear search and return to default product list
     const clearSearch = () => {
@@ -557,53 +561,7 @@ export function Products() {
                             </button>
                         </div>
                     </div>
-                    <div className="quick-sort-buttons">
-                        <button
-                            className={`quick-sort-btn ${sortDate === 'newest' && sortPrice === 'none' ? 'active' : ''}`}
-                            onClick={() => handleQuickSort('newest')}
-                        >
-                            Mới đăng
-                        </button>
-                        <button
-                            className={`quick-sort-btn ${sortPrice === 'low' ? 'active' : ''}`}
-                            onClick={() => handleQuickSort('price-low')}
-                        >
-                            Giá tốt nhất
-                        </button>
-                        <button
-                            className={`quick-sort-btn ${sortPrice === 'high' ? 'active' : ''}`}
-                            onClick={() => handleQuickSort('price-high')}
-                        >
-                            Giá cao nhất
-                        </button>
-                    </div>
                 </div>
-
-                {/* Active Filters Chips */}
-                {activeFilters.length > 0 && (
-                    <div className="active-filters-section">
-                        <div className="active-filters-header">
-                            <span className="active-filters-label">Bộ lọc đang áp dụng:</span>
-                            <button className="clear-all-filters-btn" onClick={clearAllFilters}>
-                                Xóa tất cả
-                            </button>
-                        </div>
-                        <div className="active-filters-chips">
-                            {activeFilters.map((filter) => (
-                                <div key={filter.key} className="filter-chip">
-                                    <span className="filter-chip-label">{filter.label}</span>
-                                    <button
-                                        className="filter-chip-remove"
-                                        onClick={() => removeFilter(filter.type)}
-                                        aria-label={`Xóa bộ lọc ${filter.label}`}
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
                 {/* Filters */}
                 <div className="filter-section">
@@ -714,6 +672,8 @@ export function Products() {
                                 product={product}
                                 variant={viewMode === 'list' ? 'compact' : 'default'}
                                 onViewDetails={(product) => navigate(`/product/${product.postId ?? product.id}`)}
+                                onToggleFavorite={toggleFavoriteForProduct}
+                                isFavorite={getFavoriteStatus(product.postId || product.id)}
                                 showActions={true}
                                 showCondition={true}
                                 showLocation={true}

@@ -957,9 +957,9 @@ function OrderTracking() {
                                 </p>
                                 <div className="cancelled-meta">
                                     <span className="chip danger">Tổng: {formatCurrency(order.finalPrice)}</span>
-                                    {order.cancelReason && (
-                                        <span className="chip neutral">Lý do: {order.cancelReason}</span>
-                                    )}
+                                    <span className="chip neutral">
+                                        Lý do: {order.cancelReason || 'Không có thông tin'}
+                                    </span>
                                 </div>
                             </div>
                         </div>

@@ -36,6 +36,27 @@ export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ========== HIDE TOOLTIPS ON NAVIGATION ==========
+  // Ẩn tooltip khi navigate sang trang mới
+  useEffect(() => {
+    // Ẩn tooltip bằng cách thêm class tooltip-hidden
+    const hideTooltips = () => {
+      const tooltipButtons = document.querySelectorAll('[data-tooltip]');
+      tooltipButtons.forEach((button) => {
+        if (button instanceof HTMLElement) {
+          button.blur();
+          button.classList.add('tooltip-hidden');
+          // Remove class sau một chút để tooltip có thể hiển thị lại khi hover
+          setTimeout(() => {
+            button.classList.remove('tooltip-hidden');
+          }, 100);
+        }
+      });
+    };
+
+    // Hide tooltips khi location thay đổi
+    hideTooltips();
+  }, [location.pathname]);
 
   // ========== AUTH STATE SYNC (ĐÃ SỬA ĐỂ ĐỌC userRole) ==========
   useEffect(() => {
@@ -371,25 +392,39 @@ export function Header() {
   };
 
 
-  // ========== ICON HANDLERS (Giữ nguyên) ==========
+  // ========== ICON HANDLERS (ĐÃ SỬA ĐỂ ẨN TOOLTIP KHI NAVIGATE) ==========
   const handleIconClick = (type) => {
     if (!isAuthenticated) {
       navigate("/signin");
       return;
     }
 
+    // Ẩn tooltip trước khi navigate bằng cách thêm class
+    const hideTooltips = () => {
+      const tooltipButtons = document.querySelectorAll('[data-tooltip]');
+      tooltipButtons.forEach((button) => {
+        if (button instanceof HTMLElement) {
+          button.blur();
+          button.classList.add('tooltip-hidden');
+        }
+      });
+    };
 
     switch (type) {
       case "heart":
+        hideTooltips();
         navigate("/favorites");
         break;
       case "chat":
+        hideTooltips();
         navigate("/chat");
         break;
       case "orders":
+        hideTooltips();
         navigate("/orders");
         break;
       case "bell":
+        // Bell không navigate, chỉ toggle dropdown nên không cần hide tooltip
         setShowNotificationDropdown((prev) => !prev);
         break;
       default:
@@ -423,6 +458,7 @@ export function Header() {
             className="navbar-hamburger"
             onClick={toggleHamburgerMenu}
             aria-label="Mở menu danh mục"
+            data-tooltip="Danh mục sản phẩm"
           >
             {hamburgerMenuOpen ? <X /> : <Menu />}
           </button>
@@ -440,7 +476,7 @@ export function Header() {
 
 
           {/* Nav Links */}
-          <nav className="navbar-nav">
+          <nav className={`navbar-nav ${location.pathname === "/" && !isAuthenticated ? "navbar-nav-centered" : ""}`}>
             <button
               className="nav-link"
               onClick={() => handleSmartNavigation("vehicleshowcase-section")}
@@ -475,6 +511,7 @@ export function Header() {
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("heart")}
                   aria-label="Yêu thích"
+                  data-tooltip="Danh sách yêu thích"
                 >
                   <Heart className="navbar-icon" />
                 </button>
@@ -484,6 +521,7 @@ export function Header() {
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("chat")}
                   aria-label="Tin nhắn"
+                  data-tooltip="Tin nhắn"
                 >
                   <MessageCircle className="navbar-icon" />
                 </button>
@@ -493,6 +531,7 @@ export function Header() {
                   className="navbar-icon-button"
                   onClick={() => handleIconClick("orders")}
                   aria-label="Đơn hàng"
+                  data-tooltip="Đơn hàng của tôi"
                 >
                   <Package className="navbar-icon" />
                 </button>
@@ -504,6 +543,7 @@ export function Header() {
                     className="navbar-notification-button"
                     onClick={(e) => { e.stopPropagation(); handleIconClick("bell"); }} // Added stopPropagation
                     aria-label="Thông báo"
+                    data-tooltip="Thông báo"
                   >
                     <Bell className="navbar-icon" />
                     {notificationCount > 0 && (
