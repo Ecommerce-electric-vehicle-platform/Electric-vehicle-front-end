@@ -8,6 +8,15 @@
   padding-bottom: 100px; /* Thêm padding-bottom để tránh bị VIP PLAN banner che mất button */
 }
 
+/* Banner cảnh báo từ ServicePackageGuard - nằm ngoài manage-posts-page */
+/* Banner được render bên trong package-guard-valid, trước ManagePostsContent */
+/* Banner cần margin-top để tránh bị header fixed che */
+/* Header fixed: 4rem (64px), cần margin-top ít nhất 5.5rem (88px) để có khoảng cách */
+.package-guard-viewonly > .package-warning-banner {
+  /* Đảm bảo banner có margin-top đủ để không bị header che */
+  margin-top: 5.5rem !important;
+}
+
 .manage-posts-container {
   max-width: 1200px;
   margin: 0 auto;

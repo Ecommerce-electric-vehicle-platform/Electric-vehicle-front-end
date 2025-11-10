@@ -69,6 +69,7 @@
   font-size: 1rem;
   cursor: pointer;
   transition: background 0.3s ease;
+  min-width: 140px;
 }
 
 .btn-retry:hover {
@@ -115,6 +116,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  min-width: 160px;
 }
 
 .btn-buy-package {
@@ -141,6 +143,16 @@
 /* Valid State */
 .package-guard-valid {
   width: 100%;
+}
+
+/* Banner cảnh báo - đảm bảo không bị header fixed che */
+/* Header fixed cao 4rem (64px), z-index: 50 */
+.package-warning-banner {
+  position: relative;
+  z-index: 10;
+  /* Margin sẽ được set bởi CSS cụ thể của từng trang */
+  /* Mặc định: không set margin-top để các trang tự quản lý */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .package-info-banner {

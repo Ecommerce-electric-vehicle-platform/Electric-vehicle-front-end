@@ -1,12 +1,14 @@
 // src/pages/Seller/ManagePosts/ManagePosts.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ServicePackageGuard } from "../../../components/ServicePackageGuard/ServicePackageGuard";
+import { ServicePackageGuard, usePackage } from "../../../components/ServicePackageGuard/ServicePackageGuard";
 import sellerApi from "../../../api/sellerApi";
 import "./ManagePosts.css";
 
-export default function ManagePosts() {
+// Component con để sử dụng usePackage hook (phải nằm trong PackageContext)
+function ManagePostsContent() {
   const navigate = useNavigate();
+  const { packageValid } = usePackage();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -145,38 +147,33 @@ export default function ManagePosts() {
 
   if (loading) {
     return (
-      <ServicePackageGuard>
-        <div className="manage-posts-page">
-          <div className="loading-state">
-            <div className="spinner"></div>
-            <p>Đang tải tin đăng...</p>
-          </div>
+      <div className="manage-posts-page">
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Đang tải tin đăng...</p>
         </div>
-      </ServicePackageGuard>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <ServicePackageGuard>
-        <div className="manage-posts-page">
-          <div className="error-state">
-            <div className="error-icon"></div>
-            <h3>Lỗi tải tin đăng</h3>
-            <p>{error}</p>
-            <button onClick={loadPosts} className="btn-retry">
-              Thử lại
-            </button>
-          </div>
+      <div className="manage-posts-page">
+        <div className="error-state">
+          <div className="error-icon"></div>
+          <h3>Lỗi tải tin đăng</h3>
+          <p>{error}</p>
+          <button onClick={loadPosts} className="btn-retry">
+            Thử lại
+          </button>
         </div>
-      </ServicePackageGuard>
+      </div>
     );
   }
 
   return (
-    <ServicePackageGuard>
-      <div className="manage-posts-page">
-        <div className="manage-posts-container">
+    <div className="manage-posts-page">
+      <div className="manage-posts-container">
           {/* Header */}
           <div className="page-header">
             <div>
@@ -186,6 +183,12 @@ export default function ManagePosts() {
             <button
               className="btn-create-new"
               onClick={() => navigate("/seller/create-post")}
+              disabled={!packageValid}
+              title={!packageValid ? "Gói dịch vụ đã hết hạn. Vui lòng gia hạn để đăng tin mới." : "Đăng tin mới"}
+              style={{
+                opacity: !packageValid ? 0.6 : 1,
+                cursor: !packageValid ? 'not-allowed' : 'pointer'
+              }}
             >
               + Đăng tin mới
             </button>
@@ -249,6 +252,12 @@ export default function ManagePosts() {
               <button
                 className="btn-create-first"
                 onClick={() => navigate("/seller/create-post")}
+                disabled={!packageValid}
+                title={!packageValid ? "Gói dịch vụ đã hết hạn. Vui lòng gia hạn để đăng tin mới." : "Đăng tin đầu tiên"}
+                style={{
+                  opacity: !packageValid ? 0.6 : 1,
+                  cursor: !packageValid ? 'not-allowed' : 'pointer'
+                }}
               >
                 Đăng tin đầu tiên
               </button>
@@ -330,8 +339,16 @@ export default function ManagePosts() {
               ))}
             </div>
           )}
-        </div>
       </div>
+    </div>
+  );
+}
+
+// Component chính với ServicePackageGuard
+export default function ManagePosts() {
+  return (
+    <ServicePackageGuard viewOnly={true}>
+      <ManagePostsContent />
     </ServicePackageGuard>
   );
 }
