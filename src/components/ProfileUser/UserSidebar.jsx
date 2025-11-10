@@ -40,7 +40,7 @@ export default function UserSidebar({ activeItem, onItemClick, username, userRol
         "Đổi mật khẩu",
         "Đơn hàng của tôi",
         "Ví điện tử",
-        "Gửi khiếu nại" // Giữ lại mục chung
+       
     ];
    
     // Đảm bảo tạo một bản sao mới để không thay đổi baseItems
