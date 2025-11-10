@@ -245,6 +245,51 @@ export const getOrderDetails = async (orderId) => {
     }
 };
 
+// Get invoice info for an order
+// GET /api/v1/order/{orderId}/invoice
+// Response: { success: true, message: "OK", data: { invoiceId, invoiceNumber, pdfUrl } }
+export const getOrderInvoice = async (orderId) => {
+    if (!orderId) {
+        throw new Error('orderId is required to fetch invoice');
+    }
+
+    const toAbsoluteUrl = (url) => {
+        if (!url || typeof url !== 'string') return '';
+        const trimmed = url.trim();
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        const base = (import.meta?.env?.VITE_API_BASE_URL || window?.location?.origin || 'http://localhost:8080').replace(/\/$/, '');
+        const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+        return `${base}${path}`;
+    };
+
+    try {
+        const response = await axiosInstance.get(`/api/v1/order/${orderId}/invoice`);
+        const raw = response?.data ?? {};
+        const data = raw?.data ?? raw ?? {};
+
+        const pdfUrl = data?.pdfUrl || data?.pdf_url || data?.url || data?.fileUrl || null;
+
+        const normalized = {
+            invoiceId: data?.invoiceId ?? data?.id ?? null,
+            invoiceNumber: data?.invoiceNumber ?? data?.invoiceNo ?? data?.invoice_code ?? data?.number ?? null,
+            pdfUrl: pdfUrl ? toAbsoluteUrl(pdfUrl) : null
+        };
+
+        const isSuccess = raw?.success !== false;
+
+        return {
+            success: isSuccess,
+            message: raw?.message || '',
+            data: normalized,
+            error: raw?.error || null
+        };
+    } catch (error) {
+        console.error(`[orderApi] Error fetching invoice for order ${orderId}:`, error);
+        throw error;
+    }
+};
+
 // Get user's orders
 export const getUserOrders = async (page = 1, limit = 10) => {
     try {
