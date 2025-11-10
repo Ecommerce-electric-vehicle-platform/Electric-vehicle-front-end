@@ -40,18 +40,6 @@ const sellerApi = {
     }
   },
 
-  // Lấy thông tin seller theo sellerId (chưa sử dụng - chỉ thêm nếu cần)
-  // API: GET /api/v1/seller/{sellerId}
-  getSellerById: async (sellerId) => {
-    try {
-      const response = await axiosInstance.get(`/api/v1/seller/${sellerId}`);
-      return response;
-    } catch (error) {
-      console.error("[SellerAPI] Error fetching seller by ID:", error);
-      throw error;
-    }
-  },
-
   // Đăng tin bán sản phẩm (multipart/form-data)
   createPostProduct: async (formData, onUploadProgress) => {
     try {
@@ -216,25 +204,45 @@ updatePostById: async (postId, productData, existingImageUrls = []) => {
   }
 },
 
-  // Ẩn bài đăng
-  hidePost: async (postId) => {
-    try {
-      const accessToken = localStorage.getItem("accessToken");
-      const response = await axiosInstance.post(
-        `/api/v1/post-product/hide/${postId}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
+  // Ẩn sản phẩm theo postId (dùng cho Seller)
+hidePostById: async (postId) => {
+  try {
+    const accessToken = localStorage.getItem("accessToken");
+    const response = await axiosInstance.post(
+      `/api/v1/seller/hide/${postId}?is_hide=true`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
         }
-      );
-      return response;
-    } catch (error) {
-      console.error("[SellerAPI] Error hiding post:", error);
-      throw error;
-    }
-  },
+      }
+    );
+    return response;
+  } catch (error) {
+    console.error("[SellerAPI] Error hiding post by id:", error);
+    throw error;
+  }
+},
+
+// Hiện lại sản phẩm theo postId (dùng cho Seller)
+unhidePostById: async (postId) => {
+  try {
+    const accessToken = localStorage.getItem("accessToken");
+    const response = await axiosInstance.post(
+      `/api/v1/seller/hide/${postId}?is_hide=false`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
+    return response;
+  } catch (error) {
+    console.error("[SellerAPI] Error unhiding post by id:", error);
+    throw error;
+  }
+},
 
   // Lấy thông tin seller theo postId
   getSellerByPostId: async (postId) => {
@@ -510,47 +518,6 @@ updatePostById: async (postId, productData, existingImageUrls = []) => {
       throw error;
     }
   },
-
-  // Ẩn sản phẩm theo postId (dùng cho Seller/Admin)
-hidePostById: async (postId) => {
-  try {
-    const accessToken = localStorage.getItem("accessToken");
-    const response = await axiosInstance.post(
-      `/api/v1/post-product/hide/${postId}?is_hide=true`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      }
-    );
-    return response;
-  } catch (error) {
-    console.error("[SellerAPI] Error hiding post by id:", error);
-    throw error;
-  }
-},
-
-// Hiện lại sản phẩm theo postId (dùng cho Seller/Admin)
-unhidePostById: async (postId) => {
-  try {
-    const accessToken = localStorage.getItem("accessToken");
-    const response = await axiosInstance.post(
-      `/api/v1/post-product/hide/${postId}?is_hide=false`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      }
-    );
-    return response;
-  } catch (error) {
-    console.error("[SellerAPI] Error unhiding post by id:", error);
-    throw error;
-  }
-},
-
 
 };
 
