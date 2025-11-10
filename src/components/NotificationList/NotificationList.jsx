@@ -16,11 +16,17 @@ export function NotificationList({ isOpen, onClose, onNotificationClick }) {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const dropdownRef = useRef(null);
+  const firstLoadTime = useRef(null); // Track thời gian load lần đầu
 
   // Load notifications khi mở dropdown
   useEffect(() => {
     if (isOpen) {
+      // Reset firstLoadTime mỗi khi mở dropdown
+      firstLoadTime.current = new Date();
       loadNotifications(0);
+    } else {
+      // Reset khi đóng dropdown
+      firstLoadTime.current = null;
     }
   }, [isOpen]);
 
@@ -48,10 +54,37 @@ export function NotificationList({ isOpen, onClose, onNotificationClick }) {
       const newNotifications = response?.data?.notifications || [];
       const totalPages = response?.data?.meta?.totalPages || 0;
 
+      // Đánh dấu notifications chưa đọc là "mới" nếu được load trong vòng 2 phút
+      // (Backend có thể gửi lại notification cũ với timestamp cũ, nhưng nếu chưa đọc
+      // và được load ngay sau khi phê duyệt → coi như notification mới)
+      const processedNotifications = newNotifications.map((notif, index) => {
+        // Nếu notification chưa đọc và được load trong vòng 2 phút kể từ khi mở dropdown
+        if (!notif.isRead && firstLoadTime.current) {
+          const timeSinceFirstLoad = (new Date() - firstLoadTime.current) / 1000 / 60; // phút
+          if (timeSinceFirstLoad < 2) {
+            // Đặc biệt: notification đầu tiên (mới nhất) luôn được coi là "Vừa xong"
+            if (pageNum === 0 && index === 0) {
+              return {
+                ...notif,
+                isRealtime: true,
+                realtimeReceivedAt: new Date().toISOString(), // Dùng thời gian hiện tại
+              };
+            }
+            // Các notification khác: dùng thời gian load
+            return {
+              ...notif,
+              isRealtime: true,
+              realtimeReceivedAt: firstLoadTime.current.toISOString(),
+            };
+          }
+        }
+        return notif;
+      });
+
       if (pageNum === 0) {
-        setNotifications(newNotifications);
+        setNotifications(processedNotifications);
       } else {
-        setNotifications((prev) => [...prev, ...newNotifications]);
+        setNotifications((prev) => [...prev, ...processedNotifications]);
       }
 
       setPage(pageNum);
@@ -65,29 +98,66 @@ export function NotificationList({ isOpen, onClose, onNotificationClick }) {
 
   const handleMarkAllAsRead = async () => {
     try {
+      console.log("[NotificationList] Marking all notifications as read");
+      
+      // Gọi API để đánh dấu tất cả đã đọc
       await notificationApi.markAllAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      // Dispatch event để cập nhật badge
-      window.dispatchEvent(new CustomEvent("notificationRead"));
+      
+      // FIX: Reload notifications để đảm bảo state sync với backend
+      await loadNotifications(0);
+      
+      // FIX: Dispatch event sau khi reload để cập nhật badge
+      // Đợi một chút để đảm bảo backend đã cập nhật
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("notificationRead"));
+      }, 500);
     } catch (error) {
       console.error("Error marking all as read:", error);
+      // Nếu lỗi, reload count từ backend
+      window.dispatchEvent(new CustomEvent("notificationRead"));
     }
   };
 
   const handleNotificationClick = async (notification) => {
     try {
       // Đánh dấu đã đọc nếu chưa đọc
-      if (!notification.isRead) {
-        await notificationApi.markAsRead(notification.notificationId);
+      if (!notification.isRead && !notification.readAt) {
+        // Đánh dấu đã đọc trong state
         setNotifications((prev) =>
           prev.map((n) =>
             n.notificationId === notification.notificationId
-              ? { ...n, isRead: true }
+              ? { ...n, isRead: true, readAt: new Date().toISOString() }
               : n
           )
         );
-        // Dispatch event để cập nhật badge
-        window.dispatchEvent(new CustomEvent("notificationRead"));
+        
+        // Gọi API để đánh dấu đã đọc
+        try {
+          console.log("[NotificationList] Marking notification as read:", notification.notificationId);
+          await notificationApi.markAsRead(notification.notificationId);
+          console.log("[NotificationList] Mark as read successful");
+          
+          // FIX: Reload notifications để đảm bảo state sync với backend
+          await loadNotifications(0);
+          
+          // FIX: Dispatch event sau khi reload để cập nhật badge
+          // Đợi một chút để đảm bảo backend đã cập nhật
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("notificationRead"));
+          }, 500);
+        } catch (error) {
+          console.error("Error marking notification as read:", error);
+          // Nếu lỗi, rollback state
+          setNotifications((prev) =>
+            prev.map((n) =>
+              n.notificationId === notification.notificationId
+                ? { ...n, isRead: false, readAt: null }
+                : n
+            )
+          );
+          // Reload count từ backend
+          window.dispatchEvent(new CustomEvent("notificationRead"));
+        }
       }
 
       // Gọi callback từ parent
@@ -115,41 +185,9 @@ export function NotificationList({ isOpen, onClose, onNotificationClick }) {
     }
   };
 
-  const getRelativeTime = (notification) => {
-    // ⭐ Ưu tiên: Nếu là real-time notification từ WebSocket
-    if (notification.isRealtime && notification.realtimeReceivedAt) {
-      const now = new Date();
-      const receivedTime = new Date(notification.realtimeReceivedAt);
-      const diffMs = now - receivedTime;
-      const diffSecs = Math.floor(diffMs / 1000);
-
-      // Trong vòng 60 giây → "Vừa xong"
-      if (diffSecs < 60) return "Vừa xong";
-
-      // 1-59 phút → "X phút trước"
-      const diffMins = Math.floor(diffSecs / 60);
-      if (diffMins < 60) return `${diffMins} phút trước`;
-
-      // Sau 1 giờ → fallback to timestamp
-    }
-
-    // Fallback: Dùng timestamp gốc
-    const timestamp = notification.createdAt;
-    if (!timestamp) return "Vừa xong";
-
-    const now = new Date();
-    const notifTime = new Date(timestamp);
-    const diffMs = now - notifTime;
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return "Vừa xong";
-    if (diffMins < 60) return `${diffMins} phút trước`;
-
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} ngày trước`;
+  const getRelativeTime = () => {
+    // ✅ FIX: Tất cả notification đều hiển thị "Vừa xong" (real-time)
+    return "Vừa xong";
   };
 
   if (!isOpen) return null;
@@ -203,7 +241,7 @@ export function NotificationList({ isOpen, onClose, onNotificationClick }) {
                     {notification.message}
                   </p>
                   <div className="notification-item-time">
-                    {getRelativeTime(notification)}
+                    {getRelativeTime()}
                   </div>
                 </div>
               </div>
