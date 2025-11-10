@@ -20,7 +20,7 @@ import {
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
 import OrderStatus from '../../components/OrderStatus/OrderStatus';
 import './OrderTracking.css';
-import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview, getOrderPayment } from '../../api/orderApi';
+import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview, getOrderPayment, getCancelReasons } from '../../api/orderApi';
 import { fetchPostProductById } from '../../api/productApi';
 import profileApi from '../../api/profileApi';
 import { AnimatedButton } from '../../components/ui/AnimatedButton';
@@ -35,7 +35,75 @@ function OrderTracking() {
     const [loading, setLoading] = useState(true);
     const [isGuest, setIsGuest] = useState(true);
     const [hasReview, setHasReview] = useState(false); // Trạng thái đánh giá
+    const [cancelReasonMap, setCancelReasonMap] = useState({});
 
+    const pickFirstTruthy = (...values) => {
+        for (const value of values) {
+            if (value === undefined || value === null) continue;
+            if (typeof value === 'string') {
+                const trimmed = value.trim();
+                if (trimmed) return trimmed;
+            } else if (value !== '') {
+                return value;
+            }
+        }
+        return '';
+    };
+
+    const extractCancelInfo = (source) => {
+        const raw = source?._raw || {};
+        const response =
+            source?.cancelOrderReasonResponse ||
+            raw?.cancelOrderReasonResponse ||
+            raw?.cancelReasonResponse ||
+            raw?.cancelOrderReason ||
+            null;
+
+        const reasonText = pickFirstTruthy(
+            source?.cancelReason,
+            source?.cancel_reason,
+            raw?.cancelReason,
+            raw?.cancel_reason,
+            raw?.cancelReasonName,
+            raw?.cancelOrderReasonName,
+            response?.cancelOrderReasonName,
+            response?.name,
+            response?.title
+        );
+
+        const reasonId = pickFirstTruthy(
+            source?.cancelReasonId,
+            source?.cancel_reason_id,
+            raw?.cancelReasonId,
+            raw?.cancel_reason_id,
+            response?.id,
+            response?.cancelOrderReasonId,
+            raw?.cancelReasonCode,
+            raw?.cancel_order_reason_id
+        );
+
+        const rawValue = pickFirstTruthy(reasonText, reasonId);
+
+        return {
+            text: reasonText || '',
+            id: reasonId ? String(reasonId).trim() : '',
+            raw: rawValue ? String(rawValue).trim() : ''
+        };
+    };
+
+    const normalizeCancelReason = (value) => {
+        if (!value) return '';
+        const key = String(value).trim();
+        if (!key) return '';
+        if (cancelReasonMap[key]) return cancelReasonMap[key];
+        const lowerKey = key.toLowerCase();
+        for (const mapKey of Object.keys(cancelReasonMap || {})) {
+            if (mapKey.toLowerCase() === lowerKey) {
+                return cancelReasonMap[mapKey];
+            }
+        }
+        return key;
+    };
 
 
     const getPaymentMethodLabel = (method) => {
@@ -43,6 +111,21 @@ function OrderTracking() {
         if (method === 'bank_transfer') return 'Chuyển khoản ngân hàng';
         if (method === 'ewallet') return 'Ví điện tử';
         return 'Khác';
+    };
+
+    const getPaymentStatusInfo = (method, rawStatus) => {
+        const normalizedMethod = String(method || '').toLowerCase();
+        const normalizedRawStatus = String(rawStatus || '').toUpperCase();
+
+        if (normalizedMethod === 'cod') {
+            return { label: 'Chưa thanh toán', statusClass: 'pending' };
+        }
+
+        if (normalizedRawStatus === 'PENDING_PAYMENT') {
+            return { label: 'Chờ thanh toán', statusClass: 'pending' };
+        }
+
+        return { label: 'Đã thanh toán', statusClass: 'paid' };
     };
 
     const toAbsoluteUrl = (url) => {
@@ -132,6 +215,38 @@ function OrderTracking() {
         });
     };
 
+    useEffect(() => {
+        let isMounted = true;
+        const loadCancelReasons = async () => {
+            try {
+                const reasons = await getCancelReasons();
+                if (!isMounted || !Array.isArray(reasons)) return;
+                const map = {};
+                reasons.forEach((reason) => {
+                    if (!reason) return;
+                    const id = pickFirstTruthy(reason.id, reason.cancelOrderReasonId, reason.code, reason.value);
+                    const text = pickFirstTruthy(reason.cancelOrderReasonName, reason.name, reason.reasonName, reason.title, reason.description);
+                    const idKey = id ? String(id).trim() : '';
+                    const textValue = text ? String(text).trim() : '';
+                    if (idKey) {
+                        map[idKey] = textValue || idKey;
+                    }
+                    if (textValue) {
+                        map[textValue] = textValue;
+                    }
+                });
+                setCancelReasonMap(map);
+            } catch (error) {
+                console.warn('[OrderTracking] Failed to load cancel reasons:', error);
+            }
+        };
+        loadCancelReasons();
+        return () => {
+            isMounted = false;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // Kiểm tra đăng nhập
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -189,6 +304,8 @@ function OrderTracking() {
                             buyerName = username || userEmail || '';
                         }
 
+                        const cancelInfo = extractCancelInfo(orderDetailData);
+
                         // Map từ order detail API response sang format của OrderTracking
                         const mappedOrder = {
                             id: orderDetailData.orderCode || String(orderDetailData.id || orderId),
@@ -238,11 +355,24 @@ function OrderTracking() {
 
                             // Cancel info
                             canceledAt: orderDetailData.canceledAt || null,
-                            cancelReason: orderDetailData.cancelReason || null,
+                            cancelReason: cancelInfo.text || cancelInfo.raw || null,
+                            cancelReasonId: cancelInfo.id || null,
+                            cancelReasonRaw: cancelInfo.raw || null,
 
                             // Raw data reference
                             _raw: orderDetailData._raw || {}
                         };
+
+                        // Fallback: nếu vẫn chưa có lý do, đọc từ localStorage (được lưu sau khi người dùng hủy)
+                        try {
+                            if (!mappedOrder.cancelReason) {
+                                const localMap = JSON.parse(localStorage.getItem('cancel_reason_map') || '{}');
+                                const localReason = localMap[String(mappedOrder.realId)] || localMap[String(orderId)] || '';
+                                if (localReason && String(localReason).trim()) {
+                                    mappedOrder.cancelReason = String(localReason).trim();
+                                }
+                            }
+                        } catch { /* ignore */ }
 
                         // Lấy hình ảnh sản phẩm nếu thiếu từ Order Detail (dùng post/product API)
                         try {
@@ -517,6 +647,8 @@ function OrderTracking() {
                         const orderDetailData = orderDetailRes.data;
 
                         // Cập nhật order với dữ liệu mới
+                        const cancelInfo = extractCancelInfo(orderDetailData);
+
                         setOrder(prevOrder => {
                             if (!prevOrder) return prevOrder;
 
@@ -538,7 +670,18 @@ function OrderTracking() {
                                     status: orderDetailData.status || prevOrder.status,
                                     rawStatus: orderDetailData.rawStatus || prevOrder.rawStatus,
                                     canceledAt: orderDetailData.canceledAt || prevOrder.canceledAt,
-                                    cancelReason: orderDetailData.cancelReason || prevOrder.cancelReason,
+                                    cancelReason: (() => {
+                                        const fromApi = cancelInfo.text || cancelInfo.raw || prevOrder.cancelReason;
+                                        if (fromApi) return fromApi;
+                                        try {
+                                            const map = JSON.parse(localStorage.getItem('cancel_reason_map') || '{}');
+                                            return map[String(prevOrder.realId)] || map[String(prevOrder.id)] || '';
+                                        } catch {
+                                            return fromApi;
+                                        }
+                                    })(),
+                                    cancelReasonId: cancelInfo.id || prevOrder.cancelReasonId,
+                                    cancelReasonRaw: cancelInfo.raw || prevOrder.cancelReasonRaw,
                                     estimatedDelivery: orderDetailData.updatedAt || prevOrder.estimatedDelivery,
                                     totalPrice: orderDetailData.price ?? prevOrder.totalPrice,
                                     shippingFee: orderDetailData.shippingFee ?? prevOrder.shippingFee,
@@ -593,6 +736,22 @@ function OrderTracking() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [order?.id, order?.realId, orderId]); // Chỉ chạy khi orderId thay đổi
 
+    useEffect(() => {
+        if (!order) return;
+        const status = String(order.status || '').toLowerCase();
+        if (status !== 'cancelled' && status !== 'canceled') return;
+        if (!cancelReasonMap || Object.keys(cancelReasonMap).length === 0) return;
+        const rawReason = pickFirstTruthy(order.cancelReasonRaw, order.cancelReasonId, order.cancelReason);
+        if (!rawReason) return;
+        const normalized = normalizeCancelReason(rawReason);
+        if (normalized && normalized !== order.cancelReason) {
+            setOrder(prev => {
+                if (!prev) return prev;
+                return { ...prev, cancelReason: normalized };
+            });
+        }
+    }, [order, cancelReasonMap]);
+
     function mapHistoryItemToTracking(item) {
         const id = item.id ?? item._raw?.orderCode ?? String(Date.now());
         const createdAt = item.createdAt || item._raw?.createdAt || new Date().toISOString();
@@ -602,6 +761,7 @@ function OrderTracking() {
         const totalPrice = subtotalFromFinal > 0 ? subtotalFromFinal : fallbackSubtotal;
         const finalPrice = totalPrice + shippingFee;
         const status = item.status || 'confirmed';
+        const cancelInfo = extractCancelInfo(item);
 
         const deliveredAt = item._raw?.deliveredAt || item._raw?.delivered_at || null;
         const shippedAt = item._raw?.shippedAt || item._raw?.shipped_at || null;
@@ -635,6 +795,19 @@ function OrderTracking() {
             trackingNumber,
             carrier,
             needInvoice,
+            canceledAt: item.canceledAt || item._raw?.canceledAt || item._raw?.canceled_at || null,
+            cancelReason: (() => {
+                const fromData = cancelInfo.text || cancelInfo.raw || '';
+                if (fromData) return fromData;
+                try {
+                    const map = JSON.parse(localStorage.getItem('cancel_reason_map') || '{}');
+                    return map[String(item._raw?.id ?? item.id)] || '';
+                } catch {
+                    return fromData;
+                }
+            })(),
+            cancelReasonId: cancelInfo.id || '',
+            cancelReasonRaw: cancelInfo.raw || '',
         };
     }
     // Xử lý về trang chủ
@@ -688,6 +861,9 @@ function OrderTracking() {
             </div>
         );
     }
+
+    const paymentStatusInfo = getPaymentStatusInfo(order.paymentMethod, order.rawStatus);
+    const isCancelled = order.status === 'cancelled' || order.status === 'canceled';
 
     return (
         <div className="order-tracking-page">
@@ -765,11 +941,36 @@ function OrderTracking() {
                     </div>
                 )}
 
+                {/* Cancellation banner */}
+                {isCancelled && (
+                    <div className="cancelled-hero">
+                        <div className="cancelled-glow"></div>
+                        <div className="cancelled-card">
+                            <div className="cancelled-icon">
+                                <AlertCircle size={28} />
+                            </div>
+                            <div className="cancelled-content">
+                                <h2>Đơn hàng đã bị hủy</h2>
+                                <p>
+                                    Đơn hàng <span className="badge-code">#{order.id}</span> đã được hủy
+                                    {order.canceledAt ? ` vào ${formatDate(order.canceledAt)}` : ''}.
+                                </p>
+                                <div className="cancelled-meta">
+                                    <span className="chip danger">Tổng: {formatCurrency(order.finalPrice)}</span>
+                                    {order.cancelReason && (
+                                        <span className="chip neutral">Lý do: {order.cancelReason}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="order-tracking-content">
                     {/* Cột trái - Thông tin đơn hàng */}
                     <div className="order-info-column">
                         {/* Header thành công + bước tiến trình (theo mẫu) */}
-                        {order.status !== 'delivered' && (
+                        {!isCancelled && order.status !== 'delivered' && (
                             <div className="success-header">
                                 <div className="success-icon">
                                     <CheckCircle size={28} color="#2bb673" />
@@ -779,7 +980,7 @@ function OrderTracking() {
                             </div>
                         )}
 
-                        <div className="progress-card">
+                        <div className={`progress-card ${isCancelled ? 'is-cancelled' : ''}`}>
                             <div className="progress-steps">
                                 <div className={`p-step ${['pending', 'confirmed', 'shipping', 'delivered'].indexOf(order.status) >= 0 ? 'active' : ''}`}>
                                     <div className="p-dot"><CheckCircle size={16} color="#fff" /></div>
@@ -805,6 +1006,11 @@ function OrderTracking() {
                                     <div className="p-time">{formatDate(order.deliveredAt || order.estimatedDelivery)}</div>
                                 </div>
                             </div>
+                            {isCancelled && (
+                                <div className="cancelled-progress-note">
+                                    Đơn hàng đã bị hủy {order.canceledAt ? `vào ${formatDate(order.canceledAt)}` : ''}.
+                                </div>
+                            )}
                         </div>
 
                         {/* Danh sách sản phẩm (theo mẫu) */}
@@ -910,10 +1116,32 @@ function OrderTracking() {
                                     </div>
                                     <div className="payment-info">
                                         <div className="payment-label">{getPaymentMethodLabel(order.paymentMethod)}</div>
-                                        <div className="paid-note">Đã thanh toán</div>
+                                        {paymentStatusInfo?.label && (
+                                            <div className={`payment-status ${paymentStatusInfo.statusClass}`}>
+                                                {paymentStatusInfo.label}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
+                            {isCancelled && (
+                                <div className="info-card cancellation-card">
+                                    <div className="card-head">
+                                        <h4>
+                                            <AlertCircle size={16} className="card-icon danger" />
+                                            Thông tin hủy đơn
+                                        </h4>
+                                    </div>
+                                    <div className="info-line">
+                                        <Calendar size={16} />
+                                        <span>Ngày hủy: {order.canceledAt ? formatDate(order.canceledAt) : 'Chưa cập nhật'}</span>
+                                    </div>
+                                    <div className="info-line">
+                                        <AlertCircle size={16} />
+                                        <span>Lý do: {order.cancelReason || 'Không có'}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Action buttons */}

@@ -142,6 +142,16 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
 
         alert(` Đã gửi yêu cầu hủy đơn thành công!\nLý do: ${reasonText}`);
 
+        // Lưu tạm lý do vào localStorage để các màn hình khác có thể hiển thị ngay nếu BE chưa trả về
+        try {
+          const key = 'cancel_reason_map';
+          const map = JSON.parse(localStorage.getItem(key) || '{}');
+          map[String(orderId)] = reasonText || selectedReason?.text || '';
+          localStorage.setItem(key, JSON.stringify(map));
+        } catch (e) {
+          console.warn('Failed to persist cancel reason to localStorage:', e);
+        }
+
         //  Refresh danh sách đơn hàng để cập nhật trạng thái mới
         await getOrderHistory();
 
