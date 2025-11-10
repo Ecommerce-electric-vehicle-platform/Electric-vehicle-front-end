@@ -244,3 +244,56 @@ export const resolveDispute = async ({
 
 // Giữ lại API cũ để tương thích (nếu cần)
 export const listDisputes = getDisputes;
+
+/**
+ * ================================
+ * DASHBOARD STATISTICS
+ * ================================
+ */
+
+// GET /api/v1/seller/total-sellers - Lấy tổng số sellers (yêu cầu ROLE_ADMIN)
+export const getTotalSellers = async () => {
+  try {
+    const res = await adminAxios.get(`/api/v1/seller/total-sellers`);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy tổng số sellers:", error);
+    throw error;
+  }
+};
+
+// GET /api/v1/buyer/total-buyers - Lấy tổng số buyers (yêu cầu ROLE_ADMIN)
+export const getTotalBuyers = async () => {
+  try {
+    const res = await adminAxios.get(`/api/v1/buyer/total-buyers`);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy tổng số buyers:", error);
+    throw error;
+  }
+};
+
+// GET /api/v1/admin/total-new-post - Lấy tổng số bài đăng mới trong khoảng thời gian (yêu cầu ROLE_ADMIN)
+// startDate và endDate phải theo định dạng yyyy-MM-dd
+export const getTotalNewPosts = async (startDate, endDate) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/total-new-post`, {
+      params: { start_date: startDate, end_date: endDate },
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy tổng số bài đăng mới:", error);
+    throw error;
+  }
+};
+
+// GET /api/v1/packages/subscription-revenue - Lấy tổng doanh thu subscription (yêu cầu ROLE_ADMIN)
+export const getSubscriptionRevenue = async () => {
+  try {
+    const res = await adminAxios.get(`/api/v1/packages/subscription-revenue`);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy tổng doanh thu subscription:", error);
+    throw error;
+  }
+};

@@ -16,27 +16,27 @@ export default function AdminSidebar() {
 
   const menu = [
     {
-      name: "Dashboard",
+      name: "Bảng điều khiển",
       icon: <LayoutDashboard size={18} />,
       path: "/admin/dashboard",
     },
     {
-      name: "Manage Admins",
+      name: "Quản lý quản trị viên",
       icon: <Users size={18} />,
       path: "/admin/manage-admins",
     },
     {
-      name: "Approve Sellers",
+      name: "Phê duyệt người bán",
       icon: <FileCheck size={18} />,
       path: "/admin/approve-seller",
     },
     {
-      name: "Review Posts",
+      name: "Duyệt bài đăng",
       icon: <ClipboardList size={18} />,
       path: "/admin/review-posts",
     },
     {
-      name: "Manage Users",
+      name: "Quản lý người dùng",
       icon: <Users size={18} />,
       path: "/admin/manage-users",
     },
@@ -50,7 +50,7 @@ export default function AdminSidebar() {
     >
       <div className="flex items-center justify-between px-4 py-3 border-b">
         {!collapsed && (
-          <h2 className="text-lg font-semibold text-green-600">Admin Panel</h2>
+          <h2 className="text-lg font-semibold text-green-600">GREENTRADE</h2>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
@@ -83,7 +83,7 @@ export default function AdminSidebar() {
           onClick={() => alert("Logout clicked")}
         >
           <LogOut size={18} />
-          {!collapsed && <span>Logout</span>}
+          {!collapsed && <span>Đăng xuất</span>}
         </button>
       </div>
     </aside>

@@ -31,21 +31,21 @@ const AppSidebar = () => {
                         adminProfile?.is_super_admin === true;
         }
 
-        // Filter navigation: ẩn "Manage Admins" nếu không phải super admin
+        // Filter navigation: ẩn "Quản lý quản trị viên" nếu không phải super admin
         const filtered = navigation.filter((item) => {
-          // Giữ tất cả các item không phải "Manage Admins"
-          if (item.name !== "Manage Admins") {
+          // Giữ tất cả các item không phải "Quản lý quản trị viên"
+          if (item.name !== "Quản lý quản trị viên") {
             return true;
           }
-          // Chỉ hiển thị "Manage Admins" nếu là super admin
+          // Chỉ hiển thị "Quản lý quản trị viên" nếu là super admin
           return isSuperAdmin;
         });
 
         setFilteredNavigation(filtered);
       } catch (err) {
         console.error("Error filtering navigation:", err);
-        // Nếu có lỗi, ẩn "Manage Admins" để an toàn
-        setFilteredNavigation(navigation.filter((item) => item.name !== "Manage Admins"));
+        // Nếu có lỗi, ẩn "Quản lý quản trị viên" để an toàn
+        setFilteredNavigation(navigation.filter((item) => item.name !== "Quản lý quản trị viên"));
       }
     };
 
