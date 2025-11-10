@@ -310,7 +310,7 @@ export default function EditPost() {
 
   if (loading) {
     return (
-      <ServicePackageGuard>
+      <ServicePackageGuard viewOnly={true}>
         <div className="edit-post-page">
           <div className="loading-state">
             <div className="spinner"></div>
@@ -322,7 +322,7 @@ export default function EditPost() {
   }
 
   return (
-    <ServicePackageGuard>
+    <ServicePackageGuard viewOnly={true}>
       <div className="edit-post-page">
         <div className="edit-post-container">
           <div className="page-header">
