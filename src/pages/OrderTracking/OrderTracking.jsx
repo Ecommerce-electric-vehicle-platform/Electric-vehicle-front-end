@@ -24,8 +24,9 @@ import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview, getOr
 import { fetchPostProductById } from '../../api/productApi';
 import profileApi from '../../api/profileApi';
 import { AnimatedButton } from '../../components/ui/AnimatedButton';
-
-
+import DisputeForm from '../../components/BuyerRaiseDispute/DisputeForm';
+import DisputeModal from '../../components/ui/DisputeModal';
+import CancelOrderRequest from '../../components/CancelOrderModal/CancelOrderRequest';
 
 function OrderTracking() {
     const { orderId } = useParams();
@@ -37,6 +38,8 @@ function OrderTracking() {
     const [hasReview, setHasReview] = useState(false); // Trạng thái đánh giá
     const [cancelReasonMap, setCancelReasonMap] = useState({});
 
+    const [isDisputeFormVisible, setIsDisputeFormVisible] = useState(false);
+    const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
     const pickFirstTruthy = (...values) => {
         for (const value of values) {
             if (value === undefined || value === null) continue;
@@ -810,6 +813,17 @@ function OrderTracking() {
             cancelReasonRaw: cancelInfo.raw || '',
         };
     }
+    // 👇 HÀM MỞ FORM KHIẾU NẠI
+    const handleRaiseDisputeClick = () => {
+        setIsDisputeFormVisible(true);
+    };
+
+    // 👇 HÀM ĐÓNG FORM (Dùng khi Submit thành công hoặc nhấn Hủy)
+    const handleDisputeFormClose = () => {
+        setIsDisputeFormVisible(false);
+        // Có thể thêm logic reload order details để thấy trạng thái khiếu nại (nếu cần)
+        // loadOrder(); 
+    };
     // Xử lý về trang chủ
     const handleGoHome = () => {
         navigate('/');
@@ -821,16 +835,21 @@ function OrderTracking() {
     };
 
     // Xử lý hủy đơn hàng
-    const handleCancelOrder = () => {
-        if (window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) {
-            const currentUsername = localStorage.getItem('username') || '';
-            const storageKey = currentUsername ? `orders_${currentUsername}` : 'orders_guest';
-            const orders = JSON.parse(localStorage.getItem(storageKey) || '[]');
-            const updatedOrders = orders.map(o =>
-                o.id === orderId ? { ...o, status: 'cancelled' } : o
-            );
-            localStorage.setItem(storageKey, JSON.stringify(updatedOrders));
-            setOrder({ ...order, status: 'cancelled' });
+   const handleCancelOrderClick = () => { // Đổi tên để dễ phân biệt với hàm cũ
+        setIsCancelModalVisible(true);
+    };
+
+    //  HÀM CALLBACK KHI HỦY THÀNH CÔNG/HỦY BỎ TỪ FORM
+    const handleCancelFormClose = (canceledSuccessfully = false, reason = '') => {
+        setIsCancelModalVisible(false);
+        if (canceledSuccessfully) {
+            // Nếu hủy thành công, cập nhật trạng thái đơn hàng (từ callback của CancelOrderRequest)
+            setOrder(prev => ({ 
+                ...prev, 
+                status: 'cancelled',
+                canceledAt: new Date().toISOString(), // Cập nhật ngày hủy
+                cancelReason: reason || 'Đã hủy thành công' // Cập nhật lý do
+            }));
         }
     };
 
@@ -1157,14 +1176,16 @@ function OrderTracking() {
                                         <Phone size={18} />
                                         Liên hệ người bán
                                     </AnimatedButton>
-                                    <AnimatedButton
-                                        variant="outline-danger"
-                                        onClick={handleCancelOrder}
-                                        className="action-btn-danger"
-                                    >
-                                        <AlertCircle size={18} />
-                                        Hủy đơn hàng
-                                    </AnimatedButton>
+                                   {!isCancelModalVisible && (
+                                        <AnimatedButton
+                                            variant="outline-danger"
+                                            onClick={handleCancelOrderClick} // 👈 Gắn hàm mở Modal
+                                            className="action-btn-danger"
+                                        >
+                                            <AlertCircle size={18} />
+                                            Hủy đơn hàng
+                                        </AnimatedButton>
+                                    )}
                                 </div>
                             )}
 
@@ -1211,14 +1232,23 @@ function OrderTracking() {
                                         <span>Đơn hàng đã được giao thành công</span>
                                     </div>
                                     <div className="delivered-action-buttons">
-                                        <AnimatedButton
-                                            variant="warning"
-                                            onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}
-                                            size="sm"
-                                        >
-                                            <MessageSquareWarning size={16} />
-                                            Khiếu nại
-                                        </AnimatedButton>
+                                       {isDisputeFormVisible ? (
+                                         // 1. Hiển thị Form nếu isDisputeFormVisible là true
+                                         <DisputeForm
+                                             initialOrderId={order.realId || order.id || orderId}
+                                             onCancelDispute={handleDisputeFormClose} 
+                                         />
+                                     ) : (
+                                         // 2. Hiển thị nút nếu form chưa mở
+                                         <AnimatedButton
+                                             variant="warning"
+                                             onClick={handleRaiseDisputeClick} 
+                                             size="sm"
+                                         >
+                                             <MessageSquareWarning size={16} />
+                                             Khiếu nại
+                                         </AnimatedButton>
+                                     )}
                                         {hasReview ? (
                                             <AnimatedButton
                                                 variant="secondary"
@@ -1271,6 +1301,26 @@ function OrderTracking() {
                     </div>
                 </div>
             </div>
+            <DisputeModal // Dùng lại DisputeModal , nếu đổi là CustomModel thì rõ ràng hơn, tại...
+                isOpen={isCancelModalVisible}
+                onClose={handleCancelFormClose} 
+            >
+                <CancelOrderRequest
+                    orderId={order.realId || order.id || orderId}
+                    onCancelSuccess={handleCancelFormClose} // Form gọi hàm này khi hủy thành công
+                    onBack={handleCancelFormClose} // Form gọi hàm này khi bấm nút Back/Hủy trong Form
+                />
+            </DisputeModal>
+            <DisputeModal
+                isOpen={isDisputeFormVisible}
+                onClose={handleDisputeFormClose} 
+            >
+                <DisputeForm
+                    initialOrderId={order.realId || order.id || orderId}
+                    // Truyền hàm đóng modal khi gửi thành công HOẶC hủy
+                    onCancelDispute={handleDisputeFormClose} 
+                />
+            </DisputeModal>
         </div>
     );
 }
