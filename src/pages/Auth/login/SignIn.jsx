@@ -146,9 +146,42 @@ export default function SignIn() {
       navigate("/"); // Chuyển về trang chủ
     } catch (error) {
       console.error("Lỗi đăng nhập:", error.response?.data || error.message);
-      setBackendError(
-        error.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại."
-      );
+      
+      // Ưu tiên lấy thông báo lỗi chi tiết từ field "error" trước
+      const errorData = error.response?.data;
+      let errorMessage = "Đăng nhập thất bại. Vui lòng thử lại.";
+      
+      // Kiểm tra error field trước
+      if (errorData?.error) {
+        // Xử lý các trường hợp lỗi cụ thể
+        const errorText = String(errorData.error).toLowerCase();
+        console.log("Error text detected:", errorText);
+        
+        if (errorText.includes("blocked") || errorText.includes("chặn")) {
+          errorMessage = "Tài khoản của bạn đã bị chặn. Vui lòng liên hệ quản trị viên để được hỗ trợ.";
+        } else if (errorText.includes("disabled") || errorText.includes("vô hiệu")) {
+          errorMessage = "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.";
+        } else if (errorText.includes("invalid") || errorText.includes("sai")) {
+          errorMessage = "Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.";
+        } else if (errorText.includes("not found") || errorText.includes("không tìm thấy")) {
+          errorMessage = "Tài khoản không tồn tại. Vui lòng kiểm tra lại thông tin đăng nhập.";
+        } else {
+          // Hiển thị thông báo lỗi từ backend (có thể là tiếng Anh hoặc tiếng Việt)
+          errorMessage = errorData.error;
+        }
+      } else if (errorData?.message) {
+        // Fallback về message nếu không có error field
+        // Kiểm tra xem message có chứa thông tin về blocked không
+        const messageText = String(errorData.message).toLowerCase();
+        if (messageText.includes("blocked") || messageText.includes("chặn")) {
+          errorMessage = "Tài khoản của bạn đã bị chặn. Vui lòng liên hệ quản trị viên để được hỗ trợ.";
+        } else {
+          errorMessage = errorData.message;
+        }
+      }
+      
+      console.log("Final error message:", errorMessage);
+      setBackendError(errorMessage);
 
       // Xóa sạch nếu lỗi (Đảm bảo xóa các key liên quan)
       [
@@ -283,7 +316,26 @@ export default function SignIn() {
       navigate("/");
     } catch (error) {
       console.error("Google login error:", error);
-      setBackendError("Đăng nhập Google thất bại.");
+      
+      // Xử lý lỗi Google login tương tự như đăng nhập thường
+      const errorData = error.response?.data;
+      let errorMessage = "Đăng nhập Google thất bại. Vui lòng thử lại.";
+      
+      if (errorData?.error) {
+        const errorText = String(errorData.error).toLowerCase();
+        
+        if (errorText.includes("blocked") || errorText.includes("chặn")) {
+          errorMessage = "Tài khoản của bạn đã bị chặn. Vui lòng liên hệ quản trị viên để được hỗ trợ.";
+        } else if (errorText.includes("disabled") || errorText.includes("vô hiệu")) {
+          errorMessage = "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.";
+        } else {
+          errorMessage = errorData.error;
+        }
+      } else if (errorData?.message) {
+        errorMessage = errorData.message;
+      }
+      
+      setBackendError(errorMessage);
       // Xóa các key khi lỗi
       [
         "accessToken",

@@ -48,7 +48,7 @@ export function VehicleShowcase() {
   )
   const allLocations = ["Tất cả khu vực", ...new Set(items.map((i) => i.locationTrading))]
 
-  // ✅ Lọc dữ liệu
+  // Lọc dữ liệu
   const filteredItems = items
     .filter((item) => {
       const locationMatch = selectedLocation === "Tất cả khu vực" || item.locationTrading === selectedLocation

@@ -26,7 +26,7 @@ export default function AdminProfile() {
         setLoading(true);
         setError(null);
         
-        // ✅ Ưu tiên gọi API để lấy thông tin mới nhất từ server
+        // Ưu tiên gọi API để lấy thông tin mới nhất từ server
         const response = await getAdminProfile();
         const profileData = response?.data || response;
         
@@ -50,14 +50,14 @@ export default function AdminProfile() {
           
           setAdminInfo(normalizedProfile);
           
-          // ✅ Cập nhật localStorage với dữ liệu mới nhất
+          // Cập nhật localStorage với dữ liệu mới nhất
           localStorage.setItem("adminProfile", JSON.stringify(normalizedProfile));
           console.log("[AdminProfile] Đã cập nhật adminProfile từ API");
         }
       } catch (err) {
         console.warn("Không thể lấy admin profile từ API, sử dụng localStorage:", err);
         
-        // ✅ Fallback: Lấy từ localStorage nếu API lỗi
+        // Fallback: Lấy từ localStorage nếu API lỗi
         const raw = localStorage.getItem("adminProfile");
         if (raw) {
           try {
