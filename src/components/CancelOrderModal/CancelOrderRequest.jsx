@@ -156,7 +156,7 @@ const CancelOrderRequest = ({ orderId, onCancelSuccess, onBack }) => {
         await getOrderHistory();
 
         //  Cập nhật lên component cha để đổi trạng thái UI ngay lập tức
-        if (onCancelSuccess) onCancelSuccess(orderId, reasonText);
+        if (onCancelSuccess) onCancelSuccess(true, reasonText);
       } else {
         const errorMessage = res?.message || "Gửi yêu cầu thất bại. Vui lòng thử lại.";
         alert(` Gửi yêu cầu thất bại: ${errorMessage}`);
