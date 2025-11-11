@@ -5,33 +5,7 @@ body.no-footer #footer {
     display: none !important;
 }
 
-/* Khóa cuộn cho trang ComparePlans */
-body.no-scroll {
-    overflow: hidden !important;
-    position: fixed;
-    width: 100%;
-}
-
-/* Vùng compare-plans bị khóa pointer mặc định, chỉ bật cho nút cần click */
-.cp-locked {
-    position: relative;
-    min-height: 100vh;
-}
-
-.cp-locked * {
-    pointer-events: none;
-}
-
-.cp-locked .plan-cta,
-.cp-locked .cp-switch-btn,
-.cp-locked .cp-faq summary,
-.cp-locked .cp-secondary-cta .cp-legal,
-.cp-locked .warn-link,
-.cp-locked .cp-big-cta,
-.cp-locked a,
-.cp-locked button {
-    pointer-events: auto;
-}
+/* Khóa cuộn cho trang ComparePlans - Đã loại bỏ để cho phép scroll */
 
 /* Global styles for Grand Trade Platform */
 

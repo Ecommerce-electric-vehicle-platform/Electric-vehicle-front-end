@@ -58,6 +58,22 @@ export function Header() {
     hideTooltips();
   }, [location.pathname]);
 
+  // ========== AUTO SCROLL TO HASH SECTION ==========
+  // Tự động scroll đến section khi có hash trong URL
+  useEffect(() => {
+    if (location.pathname === "/" && location.hash) {
+      const sectionId = location.hash.substring(1); // Bỏ dấu #
+      // Đợi để đảm bảo DOM đã render xong (tăng timeout để đảm bảo scroll hoạt động)
+      const timer = setTimeout(() => {
+        const section = document.getElementById(sectionId);
+        if (section) {
+          section.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, location.hash]);
+
   // ========== AUTH STATE SYNC (ĐÃ SỬA ĐỂ ĐỌC userRole) ==========
   useEffect(() => {
     const checkAuthAndRole = () => {
@@ -127,26 +143,26 @@ export function Header() {
         setNotificationCount(0);
       }
     };
-    
+
     // FIX: Load count ngay và reload lại nhiều lần để đảm bảo có dữ liệu mới nhất
     loadNotificationCount();
-    
+
     // Reload sau 500ms
     const reloadTimer1 = setTimeout(() => {
       loadNotificationCount();
     }, 500);
-    
+
     // Reload sau 1.5s (để đảm bảo backend đã cập nhật)
     const reloadTimer2 = setTimeout(() => {
       loadNotificationCount();
     }, 1500);
-    
+
     // FIX: Reload count khi focus vào window (khi user quay lại tab)
     const handleFocus = () => {
       loadNotificationCount();
     };
     window.addEventListener("focus", handleFocus);
-    
+
     return () => {
       clearTimeout(reloadTimer1);
       clearTimeout(reloadTimer2);
@@ -166,24 +182,24 @@ export function Header() {
     // FIX: Đảm bảo notification service được init lại khi user login
     // (Trường hợp user login sau khi app đã load)
     console.log("[Header] User authenticated, initializing notification service...");
-    
+
     // FIX: Init ngay lập tức và poll ngay sau đó
     const initAndPoll = async () => {
       // Đợi một chút để đảm bảo localStorage đã được update
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       const token = localStorage.getItem("token");
       const buyerId = localStorage.getItem("buyerId");
-      
+
       console.log("[Header] Initializing notification service after login...", {
         hasToken: !!token,
         buyerId
       });
-      
+
       if (token && buyerId) {
         // Init service
         notificationService.init();
-        
+
         // FIX: Poll ngay sau khi init (đợi một chút để service đã start)
         setTimeout(async () => {
           console.log("[Header] Force polling once to get existing notifications...");
@@ -210,12 +226,12 @@ export function Header() {
         }, 500);
       }
     };
-    
+
     initAndPoll();
-    
+
     const unsubscribe = notificationService.subscribe((notification) => {
       console.log("New notification:", notification);
-      
+
       // FIX: Chỉ tăng count, không hiển thị popup
       if (!notification.isRead) {
         setNotificationCount((prev) => prev + 1);
@@ -228,18 +244,18 @@ export function Header() {
         // FIX: Đợi đủ lâu để backend đã cập nhật readAt
         // markAsRead có retry verification mất đến 2.5 giây, nên đợi 3 giây
         await new Promise(resolve => setTimeout(resolve, 3000));
-        
+
         // FIX: Retry với delay tăng dần để đảm bảo backend đã cập nhật
         let retryCount = 0;
         const maxRetries = 3;
-        
+
         while (retryCount < maxRetries) {
           try {
             const response = await notificationApi.getUnreadCount();
             const newCount = response?.data?.unreadCount || 0;
             console.log(`[Header] Notification read, updating count (attempt ${retryCount + 1}/${maxRetries}):`, newCount);
             setNotificationCount(newCount);
-            
+
             // Nếu count = 0, có thể đã thành công, nhưng vẫn retry thêm 1 lần để chắc chắn
             if (newCount === 0 && retryCount < maxRetries - 1) {
               await new Promise(resolve => setTimeout(resolve, 1000));
@@ -290,7 +306,7 @@ export function Header() {
       localStorage.removeItem(storageKey);
       console.log(`[Header] Cleared localStorage orders for user: ${storageKey}`);
     }
-    
+
 
 
     [
@@ -341,14 +357,36 @@ export function Header() {
   };
 
 
-  // ========== SMART NAVIGATION (Giữ nguyên) ==========
+  // ========== SMART NAVIGATION (ĐÃ SỬA ĐỂ SCROLL SAU KHI NAVIGATE) ==========
   const scrollToSection = (id) => {
     const section = document.getElementById(id);
     if (section) section.scrollIntoView({ behavior: "smooth" });
   };
   const handleSmartNavigation = (sectionId) => {
-    if (location.pathname === "/") scrollToSection(sectionId);
-    else navigate(`/#${sectionId}`);
+    if (location.pathname === "/") {
+      // Đang ở trang chủ: scroll ngay
+      scrollToSection(sectionId);
+    } else {
+      // Không ở trang chủ: navigate và scroll sẽ được xử lý bởi useEffect
+      navigate(`/#${sectionId}`);
+    }
+  };
+
+  // ========== LOGO CLICK HANDLER ==========
+  // Reload trang và scroll về đầu trang khi click logo
+  const handleLogoClick = () => {
+    if (location.pathname === "/") {
+      // Đang ở trang chủ: reload trang và scroll to top
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.location.reload();
+    } else {
+      // Không ở trang chủ: navigate về trang chủ và scroll to top
+      navigate("/");
+      // Scroll to top sau khi navigate
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }, 100);
+    }
   };
 
 
@@ -467,7 +505,7 @@ export function Header() {
           {/* Logo */}
           <div
             className="navbar-logo"
-            onClick={() => navigate("/")} // Đơn giản hóa điều hướng logo
+            onClick={handleLogoClick}
             style={{ cursor: "pointer" }}
           >
             <span className="navbar-logo-green">GREEN</span>
@@ -487,7 +525,7 @@ export function Header() {
               className="nav-link"
               onClick={() => handleSmartNavigation("upgrade-section")} // Giữ lại link này?
             >
-              Đăng tin
+              Gói bán hàng
             </button>
             <button
               className="nav-link"
