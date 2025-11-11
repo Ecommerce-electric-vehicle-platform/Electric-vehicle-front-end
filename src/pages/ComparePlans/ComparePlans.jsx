@@ -1,21 +1,62 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { UpgradeNotificationModal } from '../../components/UpgradeNotificationModal/UpgradeNotificationModal';
 import './ComparePlans.css';
 
 export function ComparePlans() {
     const containerRef = useRef(null);
+    const navigate = useNavigate();
     const [billingCycle, setBillingCycle] = useState('semi'); // 'semi' | 'year'
+    const [userRole, setUserRole] = useState('guest'); // buyer | seller | guest
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [upgradeFeatureName, setUpgradeFeatureName] = useState('');
+
+    // Kiểm tra role của user
+    useEffect(() => {
+        const checkUserRole = () => {
+            const authType = localStorage.getItem('authType');
+            // Nếu là admin, không hiển thị user info
+            if (authType === 'admin') {
+                setUserRole('guest');
+                return;
+            }
+            const role = localStorage.getItem('userRole') || 'guest';
+            setUserRole(role);
+        };
+        
+        checkUserRole();
+        
+        // Lắng nghe sự kiện storage để cập nhật role khi user đăng nhập/đăng xuất
+        const handleStorageChange = (e) => {
+            if (e.key === 'userRole' || e.key === 'authType' || e.key === 'token') {
+                checkUserRole();
+            }
+        };
+        
+        window.addEventListener('storage', handleStorageChange);
+        
+        // Lắng nghe custom event khi user đăng nhập/đăng xuất trong cùng tab
+        const handleAuthChange = () => {
+            checkUserRole();
+        };
+        
+        window.addEventListener('authStateChanged', handleAuthChange);
+        
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('authStateChanged', handleAuthChange);
+        };
+    }, []);
 
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return;
         requestAnimationFrame(() => el.classList.add('enter'));
         document.body.classList.add('no-footer');
-        document.body.classList.add('no-scroll');
-        el.classList.add('cp-locked');
+        
         return () => {
             document.body.classList.remove('no-footer');
-            document.body.classList.remove('no-scroll');
-            el.classList.remove('cp-locked');
         };
     }, []);
 
@@ -113,10 +154,35 @@ export function ComparePlans() {
     ];
 
     const handleChoose = (id) => {
-        window.location.href = '/seller?plan=' + id;
+        const currentRole = userRole;
+        console.log(`handleChoose called for plan "${id}". Current role: ${currentRole}`);
+        
+        // Lấy tên gói để hiển thị trong modal
+        const planName = plans.find(p => p.id === id)?.name || 'gói này';
+        
+        // Buyer or guest → show upgrade modal
+        if (currentRole === 'buyer' || currentRole === 'guest') {
+            setUpgradeFeatureName(`Chọn ${planName}`);
+            setShowUpgradeModal(true);
+        }
+        // Seller → navigate directly
+        else if (currentRole === 'seller') {
+            navigate(`/seller?plan=${id}`);
+        }
     };
 
-    return (
+    const handleUpgrade = () => {
+        navigate('/profile?tab=upgrade');
+        setShowUpgradeModal(false);
+        setUpgradeFeatureName('');
+    };
+
+    const handleCloseUpgradeModal = () => {
+        setShowUpgradeModal(false);
+        setUpgradeFeatureName('');
+    };
+
+    const content = (
         <section className="cp-section" ref={containerRef} aria-labelledby="cp-title">
             <div className="cp-hero">
                 <h1 id="cp-title" className="cp-title">Chọn gói phù hợp và bắt đầu bán ngay</h1>
@@ -197,6 +263,22 @@ export function ComparePlans() {
 
             <div className="cp-note">Giá có thể thay đổi tuỳ chương trình ưu đãi. Bạn có thể nâng cấp bất cứ lúc nào.</div>
         </section>
+    );
+    
+    // Render modal using Portal to ensure it appears on top
+    return (
+        <>
+            {content}
+            {showUpgradeModal && createPortal(
+                <UpgradeNotificationModal
+                    isOpen={showUpgradeModal}
+                    onClose={handleCloseUpgradeModal}
+                    onUpgrade={handleUpgrade}
+                    featureName={upgradeFeatureName}
+                />,
+                document.body
+            )}
+        </>
     );
 }
 

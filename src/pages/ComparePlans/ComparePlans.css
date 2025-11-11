@@ -1,8 +1,10 @@
 .cp-section {
-    padding: 72px 16px;
+    padding: 72px 16px 120px 16px;
+    min-height: auto;
     background: radial-gradient(1000px 600px at 10% -10%, rgba(16, 185, 129, .08), transparent 60%),
         radial-gradient(800px 500px at 100% 20%, rgba(59, 130, 246, .06), transparent 60%);
     font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    overflow: visible;
 }
 
 .cp-hero {
