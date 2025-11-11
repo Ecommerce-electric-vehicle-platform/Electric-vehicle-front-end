@@ -119,7 +119,13 @@ axiosInstance.interceptors.response.use(
     }
 
     // === 401 UNAUTHORIZED: Thử refresh token ===
-    if (status === 401 && !originalRequest._retry) {
+    // QUAN TRỌNG: Không refresh token cho public endpoints (signin, signup, etc.)
+    // vì những endpoint này không cần token và 401 ở đây là lỗi đăng nhập, không phải token hết hạn
+    const isPublicEndpoint = publicEndpoints.some((endpoint) => 
+      originalRequest?.url?.includes(endpoint)
+    );
+    
+    if (status === 401 && !originalRequest._retry && !isPublicEndpoint) {
       originalRequest._retry = true;
       try {
         const authType = localStorage.getItem("authType");
@@ -157,7 +163,9 @@ axiosInstance.interceptors.response.use(
             })
           );
         }
-        return Promise.reject(refreshError);
+        // QUAN TRỌNG: Reject với error gốc, không phải refreshError
+        // để component có thể xử lý lỗi đúng từ backend
+        return Promise.reject(error);
       }
     }
 

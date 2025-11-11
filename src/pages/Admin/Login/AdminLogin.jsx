@@ -128,9 +128,36 @@ export default function AdminLogin() {
       window.dispatchEvent(new CustomEvent("authStatusChanged"));
       navigate("/admin/dashboard", { replace: true });
     } catch (err) {
-      const msg =
-        err?.response?.data?.message || err?.message || "Đăng nhập thất bại";
-      setError(msg);
+      console.error("Lỗi đăng nhập admin:", err.response?.data || err.message);
+      
+      // Ưu tiên lấy thông báo lỗi chi tiết từ field "error" trước
+      const errorData = err?.response?.data;
+      let errorMessage = "Đăng nhập thất bại. Vui lòng thử lại.";
+      
+      if (errorData?.error) {
+        // Xử lý các trường hợp lỗi cụ thể
+        const errorText = String(errorData.error).toLowerCase();
+        
+        if (errorText.includes("blocked") || errorText.includes("chặn")) {
+          errorMessage = "Tài khoản của bạn đã bị chặn. Vui lòng liên hệ quản trị viên hệ thống để được hỗ trợ.";
+        } else if (errorText.includes("disabled") || errorText.includes("vô hiệu")) {
+          errorMessage = "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên hệ thống.";
+        } else if (errorText.includes("invalid") || errorText.includes("sai")) {
+          errorMessage = "Mã nhân viên không đúng. Vui lòng kiểm tra lại.";
+        } else if (errorText.includes("not found") || errorText.includes("không tìm thấy")) {
+          errorMessage = "Tài khoản không tồn tại. Vui lòng kiểm tra lại thông tin đăng nhập.";
+        } else {
+          // Hiển thị thông báo lỗi từ backend
+          errorMessage = errorData.error;
+        }
+      } else if (errorData?.message) {
+        // Fallback về message nếu không có error field
+        errorMessage = errorData.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
