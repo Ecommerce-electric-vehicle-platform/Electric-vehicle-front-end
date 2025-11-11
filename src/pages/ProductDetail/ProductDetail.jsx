@@ -665,7 +665,9 @@ function ProductDetail() {
                                         <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
                                             <span style={{ color: "#6b7280" }}>Trọng lượng:</span>
                                             <span style={{ fontWeight: 500 }}>
-                                                {product.weight} {Number(product.weight) >= 1000 ? "kg" : "g"}
+                                                {Number(product.weight) >= 1000 
+                                                    ? `${(Number(product.weight) / 1000).toLocaleString('vi-VN')} kg`
+                                                    : `${product.weight} kg`}
                                             </span>
                                         </div>
                                     )}

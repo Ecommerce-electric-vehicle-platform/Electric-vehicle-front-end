@@ -475,7 +475,7 @@ export default function EditPost() {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Trọng lượng (kg)</label>
+                  <label>Trọng lượng (g)</label>
                   <input
                     type="number"
                     name="weight"
