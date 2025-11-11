@@ -10,6 +10,12 @@ import {
   CTableDataCell,
   CBadge,
   CButton,
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CAlert,
 } from "@coreui/react";
 import {
   Power,
@@ -30,6 +36,11 @@ export default function ManageUsers() {
   const [updateTrigger, setUpdateTrigger] = useState(0); // Trigger để force re-render
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [showToggleModal, setShowToggleModal] = useState(false);
+  const [userToToggle, setUserToToggle] = useState(null);
+  const [toggleReason, setToggleReason] = useState("");
+  const [toggleAction, setToggleAction] = useState(null); // { accountType, accountId, action, actionText, isActive }
+  const [isToggling, setIsToggling] = useState(false);
 
   // Normalize dữ liệu buyer thành format chung
   const normalizeBuyer = (buyer) => {
@@ -227,9 +238,9 @@ export default function ManageUsers() {
     };
   }, [showDetailModal]);
 
-  // Block/Unblock account (cho cả Buyer và Seller)
-  const handleToggleActive = async (user) => {
-    console.log("handleToggleActive - User hiện tại:", user);
+  // Mở modal xác nhận vô hiệu hóa/kích hoạt lại
+  const handleToggleActiveClick = (user) => {
+    console.log("handleToggleActiveClick - User hiện tại:", user);
     
     // Xác định accountType và accountId
     let accountType = "buyer"; // Mặc định là buyer
@@ -277,20 +288,29 @@ export default function ManageUsers() {
       status: user.status
     });
     
-    const confirmText = `Bạn có chắc muốn ${actionText} tài khoản ${accountType === "seller" ? "Seller" : "Buyer"} này?`;
-    if (!window.confirm(confirmText)) return;
+    // Lưu thông tin vào state
+    setUserToToggle(user);
+    setToggleAction({
+      accountType,
+      accountId,
+      action,
+      actionText,
+      isActive
+    });
+    setToggleReason(isActive ? "Vi phạm chính sách" : "Đã giải quyết vấn đề");
+    setShowToggleModal(true);
+  };
 
-    // Prompt để nhập message (tùy chọn)
-    const message = prompt(
-      `Nhập lý do ${actionText} tài khoản (có thể để trống):`,
-      isActive ? "Vi phạm chính sách" : "Đã giải quyết vấn đề"
-    );
-
-    // Nếu user cancel prompt, hủy action
-    if (message === null) return;
+  // Block/Unblock account (cho cả Buyer và Seller)
+  const handleToggleActive = async () => {
+    if (!userToToggle || !toggleAction) return;
+    
+    const { accountId, accountType, action, actionText } = toggleAction;
+    const message = toggleReason || "";
 
     try {
-      setLoading(true);
+      setIsToggling(true);
+      setError("");
       console.log(`Bắt đầu ${actionText} account:`, { accountId, accountType, action });
       
       console.log(`🔵 Gọi API ${actionText}:`, {
@@ -298,7 +318,7 @@ export default function ManageUsers() {
         accountType,
         action,
         message: message || "",
-        fullUser: user
+        fullUser: userToToggle
       });
       
       const response = await blockAccount(
@@ -423,7 +443,11 @@ export default function ManageUsers() {
       setUpdateTrigger((prev) => prev + 1);
       console.log("Update trigger:", updateTrigger + 1);
       
-      setLoading(false);
+      // Đóng modal và reset state
+      setShowToggleModal(false);
+      setUserToToggle(null);
+      setToggleAction(null);
+      setToggleReason("");
       
       // Hiển thị thông báo
       if (isSuccess) {
@@ -501,10 +525,10 @@ export default function ManageUsers() {
       }, 1000); // Tăng từ 500ms lên 1000ms để đảm bảo backend xử lý xong
       
     } catch (error) {
-      setLoading(false);
       console.error(`Lỗi khi ${actionText} account:`, error);
-      const errorMessage = error?.response?.data?.message || error?.message || "Cập nhật trạng thái thất bại!";
-      alert(errorMessage);
+      setError(error?.response?.data?.message || error?.message || "Cập nhật trạng thái thất bại!");
+    } finally {
+      setIsToggling(false);
     }
   };
 
@@ -569,12 +593,12 @@ export default function ManageUsers() {
                     <CTableDataCell>
                       <div className="d-flex flex-column gap-1">
                       <CBadge
-                        color={user.role === "SELLER" ? "success" : "secondary"}
+                        className={user.role === "SELLER" ? "role-seller-badge" : "role-buyer-badge"}
                       >
                         {user.role || "BUYER"}
                       </CBadge>
                         {user.hasUpgradedToSeller && (
-                          <CBadge color="info" className="mt-1">
+                          <CBadge className="role-upgraded-badge mt-1">
                             Đã nâng cấp lên Seller
                           </CBadge>
                         )}
@@ -586,7 +610,7 @@ export default function ManageUsers() {
                         const displayActive = user.active === true;
                         
                         return (
-                          <CBadge color={displayActive ? "success" : "danger"}>
+                          <CBadge className={displayActive ? "status-active-badge" : "status-inactive-badge"}>
                             {displayActive ? "Active" : "Inactive"}
                           </CBadge>
                         );
@@ -622,7 +646,8 @@ export default function ManageUsers() {
                                 size="sm"
                                 color={isUserActive ? "danger" : "success"}
                                 variant="outline"
-                                onClick={() => handleToggleActive(user)}
+                                onClick={() => handleToggleActiveClick(user)}
+                                disabled={loading || isToggling}
                               >
                                 {isUserActive ? (
                                   <>
@@ -931,6 +956,110 @@ export default function ManageUsers() {
           </div>
         </div>
       )}
+
+      {/* Modal xác nhận vô hiệu hóa/kích hoạt lại */}
+      <CModal visible={showToggleModal} onClose={() => !isToggling && setShowToggleModal(false)}>
+        <CModalHeader>
+          <CModalTitle>
+            {toggleAction && toggleAction.actionText === "vô hiệu hóa" 
+              ? "Vô hiệu hóa tài khoản" 
+              : "Kích hoạt lại tài khoản"}
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {error && <CAlert color="danger" className="mb-3">{error}</CAlert>}
+          {userToToggle && toggleAction && (
+            <>
+              <div className="mb-3">
+                <strong>Thông tin tài khoản:</strong>
+                <ul className="mt-2 mb-0">
+                  <li><strong>Họ tên:</strong> {userToToggle.fullName || "N/A"}</li>
+                  <li><strong>Email:</strong> {userToToggle.email || "N/A"}</li>
+                  <li><strong>Vai trò:</strong> 
+                    {userToToggle.hasUpgradedToSeller ? (
+                      <span className="ms-2">
+                        <CBadge className="role-buyer-badge me-1">BUYER</CBadge>
+                        <CBadge className="role-upgraded-badge">Đã nâng cấp lên Seller</CBadge>
+                      </span>
+                    ) : (
+                      <CBadge className={`ms-2 ${userToToggle.role === "SELLER" ? "role-seller-badge" : "role-buyer-badge"}`}>
+                        {userToToggle.role || "BUYER"}
+                      </CBadge>
+                    )}
+                  </li>
+                  <li><strong>Trạng thái hiện tại:</strong>
+                    <CBadge className={`ms-2 ${userToToggle.active ? "status-active-badge" : "status-inactive-badge"}`}>
+                      {userToToggle.active ? "Active" : "Inactive"}
+                    </CBadge>
+                  </li>
+                </ul>
+              </div>
+              <div className="mb-3">
+                <label className="form-label">
+                  <strong>Lý do {toggleAction.actionText}:</strong>
+                  <span className="text-muted ms-1">(Tùy chọn)</span>
+                </label>
+                <textarea
+                  className="form-control"
+                  rows="4"
+                  value={toggleReason}
+                  onChange={(e) => setToggleReason(e.target.value)}
+                  placeholder={toggleAction.actionText === "vô hiệu hóa"
+                    ? "Nhập lý do vô hiệu hóa (ví dụ: Vi phạm chính sách, ...)"
+                    : "Nhập lý do kích hoạt lại (ví dụ: Đã giải quyết vấn đề, ...)"}
+                  disabled={isToggling}
+                />
+              </div>
+              {toggleAction.actionText === "vô hiệu hóa" && (
+                <CAlert color="warning" className="mb-0">
+                  <strong>Lưu ý:</strong> Khi vô hiệu hóa, tài khoản này sẽ không thể đăng nhập vào hệ thống cho đến khi được kích hoạt lại.
+                </CAlert>
+              )}
+            </>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setShowToggleModal(false);
+              setUserToToggle(null);
+              setToggleAction(null);
+              setToggleReason("");
+              setError("");
+            }}
+            disabled={isToggling}
+          >
+            Hủy
+          </CButton>
+          <CButton
+            color={toggleAction && toggleAction.actionText === "vô hiệu hóa" ? "danger" : "success"}
+            onClick={handleToggleActive}
+            disabled={isToggling}
+          >
+            {isToggling ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Đang xử lý...
+              </>
+            ) : (
+              <>
+                {toggleAction && toggleAction.actionText === "vô hiệu hóa" ? (
+                  <>
+                    <PowerOff size={14} className="me-1" />
+                    Xác nhận vô hiệu hóa
+                  </>
+                ) : (
+                  <>
+                    <Power size={14} className="me-1" />
+                    Xác nhận kích hoạt lại
+                  </>
+                )}
+              </>
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
     </div>
   );
 }

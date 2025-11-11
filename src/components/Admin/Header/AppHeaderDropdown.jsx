@@ -29,7 +29,7 @@ const AppHeaderDropdown = () => {
     e.preventDefault();
     console.log("Admin logging out...");
     
-    // ✅ CHỈ xóa admin-specific keys, KHÔNG xóa user data
+    // CHỈ xóa admin-specific keys, KHÔNG xóa user data
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("token");
@@ -44,6 +44,19 @@ const AppHeaderDropdown = () => {
     window.dispatchEvent(new CustomEvent("authStatusChanged"));
     window.location.href = "/admin/signin";
   };
+  
+  // Hàm hiển thị status badge
+  const getStatusBadge = (status) => {
+    if (status === "ACTIVE" || status === "active") {
+      return <CBadge color="success">ACTIVE</CBadge>;
+    } else if (status === "INACTIVE" || status === "inactive") {
+      return <CBadge color="danger">INACTIVE</CBadge>;
+    } else if (status === "BLOCKED" || status === "blocked") {
+      return <CBadge color="danger">BLOCKED</CBadge>;
+    }
+    return <CBadge color="secondary">{status || "N/A"}</CBadge>;
+  };
+  
   // Lấy thông tin admin để hiển thị tối thiểu
   let displayName = "Admin";
   let username = ""; // Thêm username
@@ -51,18 +64,20 @@ const AppHeaderDropdown = () => {
   let email = "";
   let employeeNumber = "";
   let isSuperAdmin = false;
+  let status = null;
   {
     const raw = localStorage.getItem("adminProfile");
     if (raw) {
       try {
         const profile = JSON.parse(raw);
-        username = profile?.username || ""; // ✅ Lấy username từ adminProfile
+        username = profile?.username || ""; // Lấy username từ adminProfile
         displayName =
           profile?.fullName || profile?.employeeNumber || displayName;
         avatarUrl = profile?.avatarUrl || null;
         email = profile?.email || "";
         employeeNumber = profile?.employeeNumber || "";
         isSuperAdmin = !!profile?.isSuperAdmin;
+        status = profile?.status || null;
       } catch {
         // ignore parse error
       }
@@ -79,7 +94,7 @@ const AppHeaderDropdown = () => {
         <div className="d-flex align-items-center gap-2">
           <CAvatar src={avatarUrl || avatar8} size="md" />
           <div className="d-none d-md-flex flex-column text-start">
-            {/* ✅ Hiển thị username hoặc displayName */}
+            {/* Hiển thị username hoặc displayName */}
             <span
               className="fw-semibold"
               style={{
@@ -97,24 +112,29 @@ const AppHeaderDropdown = () => {
                 {isSuperAdmin ? " • Super" : ""}
               </small>
             )}
+            {status && (
+              <div className="mt-1">
+                {getStatusBadge(status)}
+              </div>
+            )}
           </div>
         </div>
       </CDropdownToggle>
       <CDropdownMenu className="pt-0" placement="bottom-end">
-        {/* ✅ Hiển thị username hoặc displayName */}
+        {/* Hiển thị username hoặc displayName */}
         <CDropdownHeader className="bg-body-secondary fw-semibold mb-2">
           {username || displayName}
         </CDropdownHeader>
-        {/* ✅ Hiển thị email */}
+        {/* Hiển thị email */}
         {email && (
           <CDropdownItem href="#" disabled>
             <span className="text-body-secondary">{email}</span>
           </CDropdownItem>
         )}
-        {employeeNumber && (
+        {status && (
           <CDropdownItem href="#" disabled>
-            <span className="text-body-secondary">
-              Employee #: {employeeNumber}
+            <span className="text-body-secondary d-flex align-items-center gap-2">
+              Trạng thái: {getStatusBadge(status)}
             </span>
           </CDropdownItem>
         )}

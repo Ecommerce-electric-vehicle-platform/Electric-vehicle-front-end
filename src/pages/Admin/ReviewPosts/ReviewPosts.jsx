@@ -16,6 +16,7 @@ import {
   CModalBody,
   CModalFooter,
   CButton,
+  CAlert,
 } from "@coreui/react";
 import {
   Eye,
@@ -48,6 +49,12 @@ export default function ReviewPosts() {
   const [error, setError] = useState("");
   const [selectedPost, setSelectedPost] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [postToApprove, setPostToApprove] = useState(null);
+  const [postToReject, setPostToReject] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   /** Load danh sách bài đăng cần duyệt */
   const loadPosts = async () => {
@@ -85,44 +92,63 @@ export default function ReviewPosts() {
     }
   };
 
+  /** Mở modal phê duyệt */
+  const handleApproveClick = (postId) => {
+    const post = posts.find((p) => p.postId === postId);
+    setPostToApprove(post);
+    setShowApproveModal(true);
+  };
+
   /** Phê duyệt bài đăng */
-  const handleApprove = async (postId) => {
-    if (!window.confirm("Xác nhận phê duyệt bài đăng này?")) return;
+  const handleApprove = async () => {
+    if (!postToApprove) return;
     try {
-      setLoading(true);
+      setIsProcessing(true);
+      setError("");
       await decidePostProduct({
-        postProductId: postId,
+        postProductId: postToApprove.postId,
         passed: true,
         rejectedReason: "",
       });
-      alert("Phê duyệt bài đăng thành công!");
-      loadPosts();
+      setShowApproveModal(false);
+      setPostToApprove(null);
+      await loadPosts();
     } catch (err) {
       console.error("Lỗi khi phê duyệt:", err);
-      alert("Không thể phê duyệt bài đăng.");
+      setError(err?.response?.data?.message || "Không thể phê duyệt bài đăng.");
     } finally {
-      setLoading(false);
+      setIsProcessing(false);
     }
   };
 
+  /** Mở modal từ chối */
+  const handleRejectClick = (postId) => {
+    const post = posts.find((p) => p.postId === postId);
+    setPostToReject(post);
+    setRejectReason("");
+    setShowRejectModal(true);
+  };
+
   /** Từ chối bài đăng */
-  const handleReject = async (postId) => {
-    const reason = prompt("Nhập lý do từ chối:");
-    if (!reason) return;
+  const handleReject = async () => {
+    if (!postToReject || !rejectReason.trim()) return;
     try {
-      setLoading(true);
+      setIsProcessing(true);
+      setError("");
       await decidePostProduct({
-        postProductId: postId,
+        postProductId: postToReject.postId,
         passed: false,
-        rejectedReason: reason,
+        rejectedReason: rejectReason.trim(),
       });
-      alert("Đã từ chối bài đăng.");
-      loadPosts();
+      setShowRejectModal(false);
+      setPostToReject(null);
+      setRejectReason("");
+      await loadPosts();
     } catch (err) {
       console.error("Lỗi khi từ chối:", err);
-      alert("Không thể từ chối bài đăng.");
+      setError(err?.response?.data?.message || "Không thể từ chối bài đăng.");
     } finally {
-      setLoading(false);
+      setIsProcessing(false);
     }
   };
 
@@ -186,7 +212,8 @@ export default function ReviewPosts() {
                             size="sm"
                             color="success"
                             variant="outline"
-                            onClick={() => handleApprove(post.postId)}
+                            onClick={() => handleApproveClick(post.postId)}
+                            disabled={loading}
                           >
                             <CheckCircle size={14} className="me-1" />
                             Phê duyệt
@@ -195,7 +222,8 @@ export default function ReviewPosts() {
                             size="sm"
                             color="danger"
                             variant="outline"
-                            onClick={() => handleReject(post.postId)}
+                            onClick={() => handleRejectClick(post.postId)}
+                            disabled={loading}
                           >
                             <XCircle size={14} className="me-1" />
                             Từ chối
@@ -475,34 +503,166 @@ export default function ReviewPosts() {
         <CModalFooter>
           {selectedPost && (
             <>
-              <button
-                className="btn btn-success"
+              <CButton
+                color="success"
                 onClick={() => {
                   setShowModal(false);
-                  handleApprove(selectedPost.postId);
+                  handleApproveClick(selectedPost.postId);
                 }}
                 disabled={loading}
               >
+                <CheckCircle size={14} className="me-1" />
                 Phê duyệt
-              </button>
-              <button
-                className="btn btn-danger"
+              </CButton>
+              <CButton
+                color="danger"
                 onClick={() => {
                   setShowModal(false);
-                  handleReject(selectedPost.postId);
+                  handleRejectClick(selectedPost.postId);
                 }}
                 disabled={loading}
               >
+                <XCircle size={14} className="me-1" />
                 Từ chối
-              </button>
+              </CButton>
             </>
           )}
-          <button
-            className="btn btn-secondary"
+          <CButton
+            color="secondary"
             onClick={() => setShowModal(false)}
           >
             Đóng
-          </button>
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Modal xác nhận phê duyệt */}
+      <CModal visible={showApproveModal} onClose={() => !isProcessing && setShowApproveModal(false)}>
+        <CModalHeader>
+          <CModalTitle>Xác nhận phê duyệt bài đăng</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {error && <CAlert color="danger" className="mb-3">{error}</CAlert>}
+          {postToApprove && (
+            <>
+              <div className="mb-3">
+                <strong>Thông tin bài đăng:</strong>
+                <ul className="mt-2 mb-0">
+                  <li><strong>Mã bài đăng:</strong> #{postToApprove.postId || "N/A"}</li>
+                  <li><strong>Tiêu đề:</strong> {postToApprove.title || "N/A"}</li>
+                  <li><strong>Người đăng:</strong> {postToApprove.sellerStoreName || "N/A"}</li>
+                  <li><strong>Giá:</strong> {postToApprove.price?.toLocaleString("vi-VN")} ₫</li>
+                </ul>
+              </div>
+              <CAlert color="info" className="mb-0">
+                <strong>Lưu ý:</strong> Sau khi phê duyệt, bài đăng sẽ được hiển thị công khai cho người mua.
+              </CAlert>
+            </>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setShowApproveModal(false);
+              setPostToApprove(null);
+              setError("");
+            }}
+            disabled={isProcessing}
+          >
+            Hủy
+          </CButton>
+          <CButton
+            color="success"
+            onClick={handleApprove}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Đang xử lý...
+              </>
+            ) : (
+              <>
+                <CheckCircle size={14} className="me-1" />
+                Xác nhận phê duyệt
+              </>
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Modal từ chối bài đăng */}
+      <CModal visible={showRejectModal} onClose={() => !isProcessing && setShowRejectModal(false)}>
+        <CModalHeader>
+          <CModalTitle>Từ chối bài đăng</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {error && <CAlert color="danger" className="mb-3">{error}</CAlert>}
+          {postToReject && (
+            <>
+              <div className="mb-3">
+                <strong>Thông tin bài đăng:</strong>
+                <ul className="mt-2 mb-0">
+                  <li><strong>Mã bài đăng:</strong> #{postToReject.postId || "N/A"}</li>
+                  <li><strong>Tiêu đề:</strong> {postToReject.title || "N/A"}</li>
+                  <li><strong>Người đăng:</strong> {postToReject.sellerStoreName || "N/A"}</li>
+                </ul>
+              </div>
+              <div className="mb-3">
+                <label className="form-label">
+                  <strong>Lý do từ chối:</strong>
+                  <span className="text-muted ms-1">(Bắt buộc)</span>
+                </label>
+                <textarea
+                  className="form-control"
+                  rows="4"
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Nhập lý do từ chối bài đăng này (ví dụ: Nội dung không phù hợp, hình ảnh không rõ ràng, ...)"
+                  disabled={isProcessing}
+                  required
+                />
+                {!rejectReason.trim() && (
+                  <small className="text-danger">Vui lòng nhập lý do từ chối để tiếp tục.</small>
+                )}
+              </div>
+              <CAlert color="warning" className="mb-0">
+                <strong>Lưu ý:</strong> Lý do từ chối sẽ được gửi đến người bán để họ có thể chỉnh sửa và gửi lại bài đăng.
+              </CAlert>
+            </>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setShowRejectModal(false);
+              setPostToReject(null);
+              setRejectReason("");
+              setError("");
+            }}
+            disabled={isProcessing}
+          >
+            Hủy
+          </CButton>
+          <CButton
+            color="danger"
+            onClick={handleReject}
+            disabled={isProcessing || !rejectReason.trim()}
+          >
+            {isProcessing ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Đang xử lý...
+              </>
+            ) : (
+              <>
+                <XCircle size={14} className="me-1" />
+                Xác nhận từ chối
+              </>
+            )}
+          </CButton>
         </CModalFooter>
       </CModal>
     </div>

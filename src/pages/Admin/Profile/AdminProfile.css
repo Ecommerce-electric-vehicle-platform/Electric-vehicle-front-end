@@ -42,3 +42,105 @@
   }
 }
 
+/* Badge styles - Thiết kế hiện đại và đẹp mắt */
+.status-active-badge {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 8px !important;
+  font-size: 0.875rem !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+}
+
+.status-active-badge:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+}
+
+.status-inactive-badge {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 8px !important;
+  font-size: 0.875rem !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+}
+
+.status-inactive-badge:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35) !important;
+}
+
+.account-type-admin-badge {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 8px !important;
+  font-size: 0.875rem !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+}
+
+.account-type-admin-badge:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35) !important;
+}
+
+.account-type-super-badge {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 8px !important;
+  font-size: 0.875rem !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.account-type-super-badge::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: -100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent) !important;
+  transition: left 0.5s ease !important;
+}
+
+.account-type-super-badge:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35) !important;
+}
+
+.account-type-super-badge:hover::before {
+  left: 100% !important;
+}
+
