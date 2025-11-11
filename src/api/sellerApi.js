@@ -353,68 +353,74 @@ unhidePostById: async (postId) => {
       throw error;
     }
   },
-
-
-  //===============MOCK API===============
-  // Lấy doanh thu theo tháng (7 ngày gần nhất)
-  getMonthlyRevenue: async () => {
+//==============SELLER DASHBOARD=====================================
+  // Lấy tổng số đơn hàng của seller hiện tại
+  // API: GET /api/v1/seller/total-order
+  getTotalOrders: async () => {
     try {
-      const response = await axiosInstance.get('/api/v1/seller/revenue/monthly');
-      return response;
-    } catch (error) {
-      console.error("[SellerAPI] Error fetching monthly revenue:", error);
-      throw error;
-    }
-  },
-
-  // Lấy top sản phẩm bán chạy
-  getTopProducts: async (limit = 5) => {
-    try {
-      const response = await axiosInstance.get('/api/v1/seller/products/top', {
-        params: { limit }
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/seller/total-order', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
       });
       return response;
     } catch (error) {
-      console.error("[SellerAPI] Error fetching top products:", error);
+      console.error("[SellerAPI] Error fetching total orders:", error);
       throw error;
     }
   },
 
-  // Lấy doanh thu analytics theo thời gian (day/week/month)
-  getRevenueAnalytics: async (timeFilter = 'month') => {
+  // Lấy tổng doanh thu của seller hiện tại
+  // API: GET /api/v1/seller/total-revenue
+  getTotalRevenue: async () => {
     try {
-      const response = await axiosInstance.get('/api/v1/seller/revenue/analytics', {
-        params: { period: timeFilter }
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/seller/total-revenue', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
       });
       return response;
     } catch (error) {
-      console.error("[SellerAPI] Error fetching revenue analytics:", error);
+      console.error("[SellerAPI] Error fetching total revenue:", error);
       throw error;
     }
   },
 
-  // Lấy báo cáo theo danh mục
-  getReportsByCategory: async () => {
+  // Lấy tổng số đơn hàng đang chờ của seller hiện tại
+  // API: GET /api/v1/seller/total-pending-order
+  getTotalPendingOrders: async () => {
     try {
-      const response = await axiosInstance.get('/api/v1/seller/reports/category');
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/seller/total-pending-order', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
       return response;
     } catch (error) {
-      console.error("[SellerAPI] Error fetching reports by category:", error);
+      console.error("[SellerAPI] Error fetching total pending orders:", error);
       throw error;
     }
   },
 
-  // Lấy báo cáo theo khu vực
-  getReportsByRegion: async () => {
+  // Lấy tổng số sản phẩm đang bán (active posts) của seller hiện tại
+  // API: GET /api/v1/seller/active-post
+  getActivePosts: async () => {
     try {
-      const response = await axiosInstance.get('/api/v1/seller/reports/region');
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/seller/active-post', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
       return response;
     } catch (error) {
-      console.error("[SellerAPI] Error fetching reports by region:", error);
+      console.error("[SellerAPI] Error fetching active posts:", error);
       throw error;
     }
   },
-  //=============== KẾT THÚC MOCK API===============
 
 
 
