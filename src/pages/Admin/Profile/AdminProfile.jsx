@@ -121,20 +121,29 @@ export default function AdminProfile() {
   const getStatusBadge = (status) => {
     if (status === "ACTIVE" || status === "active") {
       return (
-        <span className="badge bg-success">
+        <span className="badge status-active-badge">
           <MdCheckCircle className="me-1" />
           Đang hoạt động
         </span>
       );
     } else if (status === "INACTIVE" || status === "inactive") {
       return (
-        <span className="badge bg-danger">
+        <span className="badge status-inactive-badge">
           <MdCancel className="me-1" />
           Không hoạt động
         </span>
       );
     }
     return <span className="badge bg-secondary">{status || "N/A"}</span>;
+  };
+
+  const getStatusText = (status) => {
+    if (status === "ACTIVE" || status === "active") {
+      return "Đang hoạt động";
+    } else if (status === "INACTIVE" || status === "inactive") {
+      return "Không hoạt động";
+    }
+    return status || "N/A";
   };
 
   const getGenderText = (gender) => {
@@ -238,8 +247,10 @@ export default function AdminProfile() {
                     {adminInfo.fullName || adminInfo.username || "Admin"}
                   </h3>
                   <div className="mb-2">
-                    {adminInfo.isSuperAdmin && (
-                      <span className="badge bg-primary me-2">Super Admin</span>
+                    {adminInfo.isSuperAdmin ? (
+                      <span className="badge account-type-super-badge me-2">Super Admin</span>
+                    ) : (
+                      <span className="badge account-type-admin-badge me-2">Admin</span>
                     )}
                     {getStatusBadge(adminInfo.status)}
                   </div>
@@ -332,7 +343,7 @@ export default function AdminProfile() {
                       <MdCheckCircle className="me-2 text-success" size={20} />
                       <strong className="me-2">Trạng thái:</strong>
                     </div>
-                    <div className="ms-4">{getStatusBadge(adminInfo.status)}</div>
+                    <p className="ms-4 mb-0">{getStatusText(adminInfo.status)}</p>
                   </div>
 
                   <div className="mb-3">
@@ -340,13 +351,9 @@ export default function AdminProfile() {
                       <MdPerson className="me-2 text-success" size={20} />
                       <strong className="me-2">Loại tài khoản:</strong>
                     </div>
-                    <div className="ms-4">
-                      {adminInfo.isSuperAdmin ? (
-                        <span className="badge bg-primary">Super Admin</span>
-                      ) : (
-                        <span className="badge bg-info">Admin</span>
-                      )}
-                    </div>
+                    <p className="ms-4 mb-0">
+                      {adminInfo.isSuperAdmin ? "Super Admin" : "Admin"}
+                    </p>
                   </div>
 
                   {adminInfo.createdAt && (

@@ -128,3 +128,66 @@
   border-bottom-left-radius: calc(0.3rem - 1px);
 }
 
+/* Status badges - tương tự ManageUsers */
+.status-active-badge,
+.badge.status-active-badge,
+span.badge.status-active-badge,
+.CBadge.status-active-badge {
+  background-color: #2eb85c !important; /* Success - Green */
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.4rem 0.75rem !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
+  border: none !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+  text-transform: uppercase !important;
+}
+
+.status-active-badge:hover,
+.badge.status-active-badge:hover,
+span.badge.status-active-badge:hover {
+  background-color: #28a745 !important;
+}
+
+.status-inactive-badge,
+.badge.status-inactive-badge,
+span.badge.status-inactive-badge,
+.CBadge.status-inactive-badge {
+  background-color: #e55353 !important; /* Danger - Red */
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.4rem 0.75rem !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
+  border: none !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+  text-transform: uppercase !important;
+}
+
+.status-inactive-badge:hover,
+.badge.status-inactive-badge:hover,
+span.badge.status-inactive-badge:hover {
+  background-color: #dc3545 !important;
+}
+
+/* Button trong modal footer - đảm bảo hiển thị đầy đủ nội dung */
+.modal-footer .btn,
+.modal-footer .CButton,
+.modal-footer button {
+  white-space: nowrap !important;
+  min-width: fit-content !important;
+  padding: 0.5rem 1rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+/* Đảm bảo button có đủ không gian cho text dài */
+.modal-footer {
+  flex-wrap: wrap !important;
+  gap: 0.5rem !important;
+}
+

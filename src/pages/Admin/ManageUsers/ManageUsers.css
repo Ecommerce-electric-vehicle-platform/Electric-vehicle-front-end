@@ -121,3 +121,128 @@ table .btn[class*="outline-info"] {
   border-bottom-left-radius: calc(0.3rem - 1px);
 }
 
+/* Badge styles - Màu sắc nhẹ nhàng, dễ nhìn */
+.role-buyer-badge,
+.badge.role-buyer-badge,
+span.badge.role-buyer-badge,
+.CBadge.role-buyer-badge {
+  background-color: #6c757d !important; /* Secondary color */
+  background: #6c757d !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.4rem 0.75rem !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
+  border: none !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+  text-transform: uppercase !important;
+}
+
+.role-buyer-badge:hover,
+.badge.role-buyer-badge:hover,
+span.badge.role-buyer-badge:hover {
+  background-color: #5a6268 !important;
+  background: #5a6268 !important;
+}
+
+.role-seller-badge,
+.badge.role-seller-badge,
+span.badge.role-seller-badge,
+.CBadge.role-seller-badge {
+  background-color: #6c757d !important; /* Secondary color */
+  background: #6c757d !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.4rem 0.75rem !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
+  border: none !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+  text-transform: uppercase !important;
+}
+
+.role-seller-badge:hover,
+.badge.role-seller-badge:hover,
+span.badge.role-seller-badge:hover {
+  background-color: #5a6268 !important;
+  background: #5a6268 !important;
+}
+
+.role-upgraded-badge,
+.badge.role-upgraded-badge,
+span.badge.role-upgraded-badge,
+.CBadge.role-upgraded-badge {
+  background-color: #6c757d !important; /* Secondary color */
+  background: #6c757d !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.4rem 0.75rem !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
+  border: 2px solid #f59e0b !important; /* Warning border */
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+}
+
+.role-upgraded-badge:hover,
+.badge.role-upgraded-badge:hover,
+span.badge.role-upgraded-badge:hover {
+  background-color: #5a6268 !important;
+  background: #5a6268 !important;
+  border-color: #fbbf24 !important;
+}
+
+.status-active-badge {
+  background-color: #2eb85c !important; /* Success - Green */
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.4rem 0.75rem !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
+  border: none !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+  text-transform: uppercase !important;
+}
+
+.status-active-badge:hover {
+  background-color: #28a745 !important;
+}
+
+.status-inactive-badge {
+  background-color: #e55353 !important; /* Danger - Red */
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.4rem 0.75rem !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
+  border: none !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.2s ease !important;
+  text-transform: uppercase !important;
+}
+
+.status-inactive-badge:hover {
+  background-color: #dc3545 !important;
+}
+
+/* Button trong modal footer - đảm bảo hiển thị đầy đủ nội dung */
+.modal-footer .btn,
+.modal-footer .CButton,
+.modal-footer button {
+  white-space: nowrap !important;
+  min-width: fit-content !important;
+  padding: 0.5rem 1rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+/* Đảm bảo button có đủ không gian cho text dài */
+.modal-footer {
+  flex-wrap: wrap !important;
+  gap: 0.5rem !important;
+}
+

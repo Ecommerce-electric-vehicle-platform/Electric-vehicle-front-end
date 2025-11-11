@@ -19,8 +19,8 @@ import {
   CPaginationItem,
   CAlert,
 } from "@coreui/react";
-import { Eye, X, ChevronLeft, ChevronRight, ShieldX } from "lucide-react";
-import { getAdminList, getAdminProfileById } from "../../../api/adminApi";
+import { Eye, X, ChevronLeft, ChevronRight, ShieldX, Power, PowerOff } from "lucide-react";
+import { getAdminList, getAdminProfileById, blockAccount } from "../../../api/adminApi";
 import adminAxios from "../../../api/adminAxios";
 import "./ManageAdmins.css";
 
@@ -36,6 +36,10 @@ export default function ManageAdmins() {
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(null); // null = đang kiểm tra
+  const [showToggleModal, setShowToggleModal] = useState(false);
+  const [adminToToggle, setAdminToToggle] = useState(null);
+  const [toggleReason, setToggleReason] = useState("");
+  const [isToggling, setIsToggling] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -58,29 +62,40 @@ export default function ManageAdmins() {
       console.log("Admin list response:", response);
       
       // Xử lý response - có thể có cấu trúc khác nhau
+      let adminList = [];
       if (response?.data) {
         // Nếu response có data là array
         if (Array.isArray(response.data)) {
-          setAdmins(response.data);
+          adminList = response.data;
           setTotalPages(Math.ceil(response.data.length / size));
         } 
         // Nếu response có data với content và pagination
         else if (response.data.content) {
-          setAdmins(response.data.content || []);
+          adminList = response.data.content || [];
           setTotalPages(response.data.totalPages || 0);
         }
         // Nếu response.data là object với list
         else if (response.data.list) {
-          setAdmins(response.data.list || []);
+          adminList = response.data.list || [];
           setTotalPages(response.data.totalPages || 0);
         }
       } else if (Array.isArray(response)) {
         // Nếu response trực tiếp là array
-        setAdmins(response);
+        adminList = response;
         setTotalPages(Math.ceil(response.length / size));
-      } else {
-        setAdmins([]);
       }
+      
+      // Normalize dữ liệu: map status từ API thành active field
+      const normalizedAdmins = adminList.map(admin => ({
+        ...admin,
+        // Nếu có status từ API, map thành active
+        active: admin.status === "ACTIVE" ? true : 
+                admin.status === "INACTIVE" ? false :
+                admin.active !== undefined ? admin.active : 
+                admin.status !== "INACTIVE" // Mặc định là true nếu không phải INACTIVE
+      }));
+      
+      setAdmins(normalizedAdmins);
     } catch (err) {
       console.error("Lỗi khi load danh sách admin:", err);
       setError(err?.response?.data?.message || "Không thể tải danh sách admin.");
@@ -102,6 +117,91 @@ export default function ManageAdmins() {
       alert(err?.response?.data?.message || "Không thể tải thông tin admin.");
     } finally {
       setLoadingDetail(false);
+    }
+  };
+
+  // Mở modal xác nhận vô hiệu hóa/kích hoạt lại
+  const handleToggleActiveClick = (admin) => {
+    setAdminToToggle(admin);
+    // Kiểm tra status từ API hoặc active field
+    const isActive = admin.status === "ACTIVE" || 
+                     (admin.status !== "INACTIVE" && admin.active !== false);
+    const defaultReason = isActive 
+      ? "Vi phạm hợp đồng hoặc nghỉ làm" 
+      : "Đã giải quyết vấn đề, kích hoạt lại tài khoản";
+    setToggleReason(defaultReason);
+    setShowToggleModal(true);
+  };
+
+  // Vô hiệu hóa/Kích hoạt lại tài khoản admin
+  const handleToggleActive = async () => {
+    if (!adminToToggle) return;
+    
+    const accountId = adminToToggle.accountId || adminToToggle.id;
+    // Kiểm tra status từ API hoặc active field
+    const isActive = adminToToggle.status === "ACTIVE" || 
+                     (adminToToggle.status !== "INACTIVE" && adminToToggle.active !== false);
+    
+    // Xác định action dựa vào trạng thái hiện tại
+    const action = isActive ? "block" : "unblock";
+    const actionText = isActive ? "vô hiệu hóa" : "kích hoạt lại";
+
+    try {
+      setIsToggling(true);
+      setError("");
+      console.log(`Bắt đầu ${actionText} admin:`, { accountId, action });
+      
+      const response = await blockAccount(
+        accountId,
+        "admin",
+        toggleReason || "",
+        action
+      );
+      
+      console.log(`✅ API ${actionText} response:`, response);
+      
+      // Cập nhật state ngay lập tức
+      setAdmins((prevAdmins) => {
+        return prevAdmins.map((a) => {
+          const aId = String(a.accountId || a.id || "");
+          const targetId = String(accountId || "");
+          
+          if (aId === targetId) {
+            const newActive = action === "unblock";
+            const newStatus = newActive ? "ACTIVE" : "INACTIVE";
+            return {
+              ...a,
+              active: newActive,
+              status: newStatus, // Cập nhật cả status field
+            };
+          }
+          return a;
+        });
+      });
+      
+      // Hiển thị thông báo thành công
+      const isSuccess = response?.success === true || response?.message?.includes("SUCCESS");
+      if (isSuccess) {
+        setError("");
+        // Đóng modal và reset
+        setShowToggleModal(false);
+        setAdminToToggle(null);
+        setToggleReason("");
+        
+        // Reload lại dữ liệu từ server sau khi block/unblock
+        setTimeout(() => {
+          loadAdmins();
+        }, 500);
+      } else {
+        setError(`Đã ${actionText} tài khoản Admin nhưng có thể có lỗi gửi email. Vui lòng kiểm tra lại.`);
+      }
+      
+    } catch (error) {
+      console.error(`Lỗi khi ${actionText} admin:`, error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Cập nhật trạng thái thất bại!";
+      setError(errorMessage);
+    } finally {
+      setIsToggling(false);
     }
   };
 
@@ -139,13 +239,19 @@ export default function ManageAdmins() {
   // Xử lý phím ESC để đóng modal
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === "Escape" && (showDetailModal || showCreate)) {
-        if (showDetailModal) setShowDetailModal(false);
+      if (e.key === "Escape" && (showDetailModal || showCreate || showToggleModal)) {
+        if (showDetailModal && !loadingDetail) setShowDetailModal(false);
         if (showCreate) setShowCreate(false);
+        if (showToggleModal && !isToggling) {
+          setShowToggleModal(false);
+          setAdminToToggle(null);
+          setToggleReason("");
+          setError("");
+        }
       }
     };
 
-    if (showDetailModal || showCreate) {
+    if (showDetailModal || showCreate || showToggleModal) {
       document.addEventListener("keydown", handleEscape);
       document.body.style.overflow = "hidden";
     }
@@ -154,7 +260,7 @@ export default function ManageAdmins() {
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "";
     };
-  }, [showDetailModal, showCreate]);
+  }, [showDetailModal, showCreate, showToggleModal, loadingDetail, isToggling]);
 
   // Gửi request dạng multipart/form-data
   const onCreate = async () => {
@@ -295,25 +401,61 @@ export default function ManageAdmins() {
                     <CTableDataCell>{admin.email || "N/A"}</CTableDataCell>
                     <CTableDataCell>{admin.phoneNumber || "N/A"}</CTableDataCell>
                     <CTableDataCell>
-                      <CBadge color={admin.active !== false ? "success" : "danger"}>
-                        {admin.active !== false ? "Active" : "Inactive"}
-                      </CBadge>
+                      {(() => {
+                        // Kiểm tra status từ API hoặc active field
+                        const isActive = admin.status === "ACTIVE" || 
+                                         (admin.status !== "INACTIVE" && admin.active !== false);
+                        return (
+                          <CBadge className={isActive ? "status-active-badge" : "status-inactive-badge"}>
+                            {isActive ? "Active" : "Inactive"}
+                          </CBadge>
+                        );
+                      })()}
                     </CTableDataCell>
                     <CTableDataCell>
-                      <CButton
-                        size="sm"
-                        color="info"
-                        variant="outline"
-                        onClick={() => {
-                          const accountId = admin.accountId || admin.id;
-                          setSelectedAdmin(admin);
-                          loadAdminDetail(accountId);
-                          setShowDetailModal(true);
-                        }}
-                      >
-                        <Eye size={14} className="me-1" />
-                        Chi tiết
-                      </CButton>
+                      <div className="d-flex gap-2 align-items-center">
+                        <CButton
+                          size="sm"
+                          color="info"
+                          variant="outline"
+                          onClick={() => {
+                            const accountId = admin.accountId || admin.id;
+                            setSelectedAdmin(admin);
+                            loadAdminDetail(accountId);
+                            setShowDetailModal(true);
+                          }}
+                        >
+                          <Eye size={14} className="me-1" />
+                          Chi tiết
+                        </CButton>
+                        {(() => {
+                          // Kiểm tra status từ API hoặc active field
+                          const isAdminActive = admin.status === "ACTIVE" || 
+                                                (admin.status !== "INACTIVE" && admin.active !== false);
+                          return (
+                            <CButton
+                              size="sm"
+                              color={isAdminActive ? "danger" : "success"}
+                              variant="outline"
+                              onClick={() => handleToggleActiveClick(admin)}
+                              disabled={loading || isToggling}
+                              title={isAdminActive ? "Vô hiệu hóa tài khoản admin" : "Kích hoạt lại tài khoản admin"}
+                            >
+                              {isAdminActive ? (
+                                <>
+                                  <PowerOff size={14} className="me-1" />
+                                  Vô hiệu hóa
+                                </>
+                              ) : (
+                                <>
+                                  <Power size={14} className="me-1" />
+                                  Kích hoạt lại
+                                </>
+                              )}
+                            </CButton>
+                          );
+                        })()}
+                      </div>
                     </CTableDataCell>
                   </CTableRow>
                 ))
@@ -446,6 +588,132 @@ export default function ManageAdmins() {
         </CModalFooter>
       </CModal>
 
+      {/* Modal xác nhận vô hiệu hóa/kích hoạt lại */}
+      <CModal visible={showToggleModal} onClose={() => !isToggling && setShowToggleModal(false)}>
+        <CModalHeader>
+          <CModalTitle>
+            {adminToToggle && (() => {
+              const isActive = adminToToggle.status === "ACTIVE" || 
+                               (adminToToggle.status !== "INACTIVE" && adminToToggle.active !== false);
+              return isActive ? "Vô hiệu hóa tài khoản Admin" : "Kích hoạt lại tài khoản Admin";
+            })()}
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {error && <CAlert color="danger" className="mb-3">{error}</CAlert>}
+          
+          {adminToToggle && (
+            <>
+              <div className="mb-3">
+                <strong>Thông tin Admin:</strong>
+                <ul className="mt-2 mb-0">
+                  <li><strong>Họ tên:</strong> {adminToToggle.fullName || "N/A"}</li>
+                  <li><strong>Email:</strong> {adminToToggle.email || "N/A"}</li>
+                  <li><strong>Trạng thái hiện tại:</strong> 
+                    {(() => {
+                      const isActive = adminToToggle.status === "ACTIVE" || 
+                                       (adminToToggle.status !== "INACTIVE" && adminToToggle.active !== false);
+                      return (
+                        <CBadge className={`ms-2 ${isActive ? "status-active-badge" : "status-inactive-badge"}`}>
+                          {isActive ? "ACTIVE" : "INACTIVE"}
+                        </CBadge>
+                      );
+                    })()}
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="mb-3">
+                {(() => {
+                  const isActive = adminToToggle.status === "ACTIVE" || 
+                                   (adminToToggle.status !== "INACTIVE" && adminToToggle.active !== false);
+                  return (
+                    <>
+                      <label className="form-label">
+                        <strong>Lý do {isActive ? "vô hiệu hóa" : "kích hoạt lại"}:</strong>
+                        <span className="text-muted ms-1">(Bắt buộc)</span>
+                      </label>
+                      <textarea
+                        className="form-control"
+                        rows="4"
+                        value={toggleReason}
+                        onChange={(e) => setToggleReason(e.target.value)}
+                        placeholder={isActive 
+                          ? "Nhập lý do vô hiệu hóa (ví dụ: Vi phạm hợp đồng, nghỉ làm, ...)" 
+                          : "Nhập lý do kích hoạt lại (ví dụ: Đã giải quyết vấn đề, ...)"}
+                        disabled={isToggling}
+                        required
+                      />
+                      {!toggleReason.trim() && (
+                        <small className="text-danger">Vui lòng nhập lý do để tiếp tục.</small>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+              
+              {(() => {
+                const isActive = adminToToggle.status === "ACTIVE" || 
+                                 (adminToToggle.status !== "INACTIVE" && adminToToggle.active !== false);
+                return isActive && (
+                  <CAlert color="warning" className="mb-0">
+                    <strong>Lưu ý:</strong> Khi vô hiệu hóa, admin này sẽ không thể đăng nhập vào hệ thống cho đến khi được kích hoạt lại.
+                  </CAlert>
+                );
+              })()}
+            </>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setShowToggleModal(false);
+              setAdminToToggle(null);
+              setToggleReason("");
+              setError("");
+            }}
+            disabled={isToggling}
+          >
+            Hủy
+          </CButton>
+          <CButton
+            color={adminToToggle && (() => {
+              const isActive = adminToToggle.status === "ACTIVE" || 
+                               (adminToToggle.status !== "INACTIVE" && adminToToggle.active !== false);
+              return isActive ? "danger" : "success";
+            })()}
+            onClick={handleToggleActive}
+            disabled={isToggling || !toggleReason.trim()}
+          >
+            {isToggling ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Đang xử lý...
+              </>
+            ) : (
+              <>
+                {adminToToggle && (() => {
+                  const isActive = adminToToggle.status === "ACTIVE" || 
+                                   (adminToToggle.status !== "INACTIVE" && adminToToggle.active !== false);
+                  return isActive ? (
+                    <>
+                      <PowerOff size={14} className="me-1" />
+                      Xác nhận vô hiệu hóa
+                    </>
+                  ) : (
+                    <>
+                      <Power size={14} className="me-1" />
+                      Xác nhận kích hoạt lại
+                    </>
+                  );
+                })()}
+              </>
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
       {/* Modal hiển thị chi tiết admin */}
       {showDetailModal && (
         <div
@@ -517,9 +785,15 @@ export default function ManageAdmins() {
                             <tr>
                               <th>Trạng thái:</th>
                               <td>
-                                <CBadge color={selectedAdmin.active !== false ? "success" : "danger"}>
-                                  {selectedAdmin.active !== false ? "Active" : "Inactive"}
-                                </CBadge>
+                                {(() => {
+                                  const isActive = selectedAdmin.status === "ACTIVE" || 
+                                                   (selectedAdmin.status !== "INACTIVE" && selectedAdmin.active !== false);
+                                  return (
+                                    <CBadge className={isActive ? "status-active-badge" : "status-inactive-badge"}>
+                                      {isActive ? "Active" : "Inactive"}
+                                    </CBadge>
+                                  );
+                                })()}
                               </td>
                             </tr>
                             <tr>

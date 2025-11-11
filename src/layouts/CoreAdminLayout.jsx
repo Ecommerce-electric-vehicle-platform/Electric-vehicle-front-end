@@ -47,6 +47,7 @@ const CoreAdminLayout = () => {
           email: profile?.email || "",
           employeeNumber: profile?.employeeNumber || "",
           isSuperAdmin: !!profile?.isSuperAdmin,
+          status: profile?.status || null,
         };
       } catch {
         return {
@@ -55,6 +56,7 @@ const CoreAdminLayout = () => {
           email: "",
           employeeNumber: "",
           isSuperAdmin: false,
+          status: null,
         };
       }
     }
@@ -64,6 +66,7 @@ const CoreAdminLayout = () => {
       email: "",
       employeeNumber: "",
       isSuperAdmin: false,
+      status: null,
     };
   };
 
@@ -289,7 +292,7 @@ const CoreAdminLayout = () => {
                 // Nếu không có adminProfile, ẩn link
                 return null;
               }
-            } catch (err) {
+            } catch {
               // Nếu có lỗi, ẩn link để an toàn
               return null;
             }
@@ -600,17 +603,44 @@ const CoreAdminLayout = () => {
                         {adminInfo.email}
                       </div>
                     )}
-                    {/* Hiển thị employeeNumber nếu có */}
-                    {adminInfo.employeeNumber && (
+                    {/* Hiển thị status nếu có */}
+                    {adminInfo.status && (
                       <div
                         style={{
-                          fontSize: "12px",
-                          color: "#6b7280",
-                          marginTop: "2px",
+                          marginTop: "6px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
                         }}
                       >
-                        #{adminInfo.employeeNumber}
-                        {adminInfo.isSuperAdmin && " • Super Admin"}
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            padding: "2px 8px",
+                            borderRadius: "12px",
+                            fontWeight: "500",
+                            backgroundColor:
+                              adminInfo.status === "ACTIVE" || adminInfo.status === "active"
+                                ? "#d1fae5"
+                                : adminInfo.status === "INACTIVE" ||
+                                  adminInfo.status === "inactive" ||
+                                  adminInfo.status === "BLOCKED" ||
+                                  adminInfo.status === "blocked"
+                                ? "#fee2e2"
+                                : "#e5e7eb",
+                            color:
+                              adminInfo.status === "ACTIVE" || adminInfo.status === "active"
+                                ? "#065f46"
+                                : adminInfo.status === "INACTIVE" ||
+                                  adminInfo.status === "inactive" ||
+                                  adminInfo.status === "BLOCKED" ||
+                                  adminInfo.status === "blocked"
+                                ? "#991b1b"
+                                : "#374151",
+                          }}
+                        >
+                          {adminInfo.status.toUpperCase()}
+                        </span>
                       </div>
                     )}
                   </div>
