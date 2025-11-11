@@ -33,11 +33,10 @@ export default function ManageUsers() {
 
   // Normalize dữ liệu buyer thành format chung
   const normalizeBuyer = (buyer) => {
-    // Xác định active: kiểm tra active, blocked, hoặc status
-    // Nếu có field active thì dùng, nếu không thì mặc định true
-    // Nếu có field blocked = true thì active = false
+    // Backend đã trả về field active, dùng trực tiếp
+    // Nếu không có active, fallback về blocked hoặc status
     const isActive = buyer.active !== undefined 
-      ? buyer.active 
+      ? Boolean(buyer.active)  // Dùng trực tiếp từ API
       : buyer.blocked === true 
         ? false 
         : buyer.status === "BLOCKED" 
@@ -45,18 +44,19 @@ export default function ManageUsers() {
           : true; // Mặc định là active
     
     return {
+      // Giữ nguyên các field khác trước
+      ...buyer,
+      // Sau đó override các field cần thiết
       id: buyer.buyerId,
       userId: buyer.buyerId,
       fullName: buyer.fullName || buyer.username,
       username: buyer.username,
       email: buyer.email,
       role: "BUYER",
-      active: isActive,
+      active: isActive, // Đảm bảo active được set đúng từ API
       status: buyer.status,
       blocked: buyer.blocked,
       createdAt: buyer.createdAt,
-      // Giữ nguyên các field khác
-      ...buyer,
     };
   };
 
@@ -110,10 +110,12 @@ export default function ManageUsers() {
       
       if (correspondingSeller) {
         // Buyer đã nâng cấp lên Seller - gộp thông tin
-        // Trạng thái active phụ thuộc vào block/unblock, không phải ACCEPTED
-        const isBlocked = correspondingSeller.status === "BLOCKED" || 
-                         correspondingSeller.blocked === true ||
-                         buyer.active === false;
+        // Ưu tiên dùng active từ buyer (đã được normalize từ API)
+        // Nếu seller bị blocked thì cũng inactive
+        const isSellerBlocked = correspondingSeller.status === "BLOCKED" || 
+                                correspondingSeller.blocked === true;
+        // Active = buyer.active && !sellerBlocked
+        const finalActive = buyer.active === false ? false : !isSellerBlocked;
         
         mergedUsers.push({
           ...buyer,
@@ -122,8 +124,8 @@ export default function ManageUsers() {
           sellerId: correspondingSeller.sellerId,
           storeName: correspondingSeller.storeName,
           sellerStatus: correspondingSeller.status,
-          // Active phụ thuộc vào block/unblock, không phải ACCEPTED
-          active: !isBlocked && buyer.active !== false,
+          // Dùng active từ buyer (từ API), nhưng nếu seller bị block thì cũng inactive
+          active: finalActive,
         });
         // Xóa seller khỏi map để không thêm lại
         sellerMap.delete(buyerId);
@@ -233,28 +235,29 @@ export default function ManageUsers() {
     let accountType = "buyer"; // Mặc định là buyer
     let accountId = user.id || user.userId;
     
-    // Xác định trạng thái active hiện tại
-    // Active/Inactive phụ thuộc vào block/unblock, KHÔNG phải ACCEPTED
-    let isActive = user.active !== undefined ? user.active : true;
+    // Dùng trực tiếp user.active từ API (đã được normalize)
+    // Backend đã trả về active, không cần logic phức tạp
+    let isActive = user.active === true;
     
     if (user.hasUpgradedToSeller) {
-      // Nếu đã nâng cấp lên seller, block/unblock seller account
-      accountType = "seller";
-      accountId = user.sellerId || user.sellerInfo?.sellerId || user.id;
-      // Active phụ thuộc vào block/unblock, không phải ACCEPTED
-      // Nếu status = BLOCKED hoặc blocked = true thì inactive
-      const isBlocked = user.sellerStatus === "BLOCKED" || 
-                       user.sellerInfo?.status === "BLOCKED" ||
-                       user.sellerInfo?.blocked === true ||
-                       user.active === false;
-      isActive = !isBlocked;
+      // QUAN TRỌNG: User đã nâng cấp lên seller
+      // is_active nằm trong bảng buyer, nên cần block/unblock buyer account
+      // Không block seller vì seller chỉ có status (ACCEPTED/BLOCKED), không có is_active
+      accountType = "buyer";
+      accountId = user.buyerId || user.id || user.userId;
+      // Dùng active từ user (đã được merge từ buyer và seller)
+      isActive = user.active === true;
+      console.log("⚠️ User đã nâng cấp lên seller - sẽ block/unblock buyer account:", {
+        buyerId: accountId,
+        sellerId: user.sellerId,
+        reason: "is_active nằm trong bảng buyer"
+      });
     } else if (user.role === "SELLER") {
       // Seller thuần
       accountType = "seller";
       accountId = user.sellerId || user.id || user.userId;
-      // Active phụ thuộc vào block/unblock, không phải ACCEPTED
-      const isBlocked = user.status === "BLOCKED" || user.blocked === true;
-      isActive = !isBlocked;
+      // Dùng active từ user (đã được normalize từ API)
+      isActive = user.active === true;
     }
     
     // Xác định action dựa vào trạng thái hiện tại
@@ -290,6 +293,14 @@ export default function ManageUsers() {
       setLoading(true);
       console.log(`Bắt đầu ${actionText} account:`, { accountId, accountType, action });
       
+      console.log(`🔵 Gọi API ${actionText}:`, {
+        accountId,
+        accountType,
+        action,
+        message: message || "",
+        fullUser: user
+      });
+      
       const response = await blockAccount(
         accountId,
         accountType,
@@ -297,13 +308,20 @@ export default function ManageUsers() {
         action
       );
       
-      console.log(`API ${actionText} response:`, response);
-      console.log("Danh sách users hiện tại:", users);
-      console.log("User được chọn:", user);
-      console.log("accountId để tìm:", accountId, "accountType:", accountType);
+      console.log(`✅ API ${actionText} response:`, response);
+      console.log("📋 Request details:", {
+        accountId,
+        accountType,
+        action,
+        url: `/api/v1/admin/block-account/${accountId}/${accountType}/${encodeURIComponent(message || "")}/${action}`
+      });
       
       // Kiểm tra xem API có thành công không (có thể success: false do lỗi mail nhưng account vẫn bị block)
       const isSuccess = response?.success === true || response?.message?.includes("SUCCESS");
+      
+      if (!isSuccess) {
+        console.warn("⚠️ API response không thành công:", response);
+      }
       
       // Cập nhật state ngay lập tức để UI phản hồi nhanh (ngay cả khi có lỗi mail server)
       setUsers((prevUsers) => {
@@ -320,14 +338,13 @@ export default function ManageUsers() {
           let isTargetUser = false;
           
           if (accountType === "seller") {
-            // Kiểm tra seller
-            if (u.hasUpgradedToSeller) {
-              isTargetUser = uSellerId === targetAccountId || uId === targetAccountId;
-            } else if (u.role === "SELLER") {
+            // Kiểm tra seller (chỉ seller thuần, không phải buyer đã nâng cấp)
+            if (u.role === "SELLER" && !u.hasUpgradedToSeller) {
               isTargetUser = uSellerId === targetAccountId || uId === targetAccountId;
             }
           } else if (accountType === "buyer") {
-            // Kiểm tra buyer - so sánh với id, userId, hoặc buyerId
+            // Kiểm tra buyer - bao gồm cả buyer thuần và buyer đã nâng cấp
+            // So sánh với id, userId, hoặc buyerId
             isTargetUser = uId === targetAccountId || uBuyerId === targetAccountId;
           }
           
@@ -340,19 +357,20 @@ export default function ManageUsers() {
               userIds: { id: uId, buyerId: uBuyerId, sellerId: uSellerId }
             });
             
-            if (accountType === "seller") {
+            if (accountType === "seller" && !u.hasUpgradedToSeller) {
+              // Seller thuần (không phải buyer đã nâng cấp)
               // Cập nhật seller status
               const newStatus = action === "block" ? "BLOCKED" : "ACCEPTED";
               const updatedUser = {
                 ...u,
-                status: u.hasUpgradedToSeller ? newStatus : (u.role === "SELLER" ? newStatus : u.status),
-                sellerStatus: u.hasUpgradedToSeller ? newStatus : u.sellerStatus,
+                status: newStatus,
                 active: newStatus === "ACCEPTED",
               };
-              console.log("User sau khi cập nhật (seller):", updatedUser);
+              console.log("User sau khi cập nhật (seller thuần):", updatedUser);
               return updatedUser;
             } else {
-              // Cập nhật buyer active
+              // Buyer hoặc Buyer đã nâng cấp lên Seller
+              // Cập nhật buyer active (vì is_active nằm trong bảng buyer)
               // action = "block" → active = false (Inactive)
               // action = "unblock" → active = true (Active)
               const newActive = action === "unblock";
@@ -361,13 +379,18 @@ export default function ManageUsers() {
                 active: newActive,
                 blocked: action === "block",
                 status: action === "block" ? "BLOCKED" : (action === "unblock" ? "ACTIVE" : u.status),
+                // Nếu là buyer đã nâng cấp, cũng cập nhật sellerStatus
+                ...(u.hasUpgradedToSeller && {
+                  sellerStatus: action === "block" ? "BLOCKED" : "ACCEPTED"
+                })
               };
-              console.log("User sau khi cập nhật (buyer):", {
+              console.log("User sau khi cập nhật (buyer hoặc buyer đã nâng cấp):", {
                 ...updatedUser,
                 action,
                 oldActive: u.active,
                 newActive,
-                statusChange: `${u.status} → ${updatedUser.status}`
+                statusChange: `${u.status} → ${updatedUser.status}`,
+                hasUpgradedToSeller: u.hasUpgradedToSeller
               });
               // Tạo object mới hoàn toàn để đảm bảo React re-render
               return { ...updatedUser };
@@ -400,11 +423,6 @@ export default function ManageUsers() {
       setUpdateTrigger((prev) => prev + 1);
       console.log("Update trigger:", updateTrigger + 1);
       
-      // KHÔNG reload ngay vì API có thể không trả về field active/blocked
-      // State đã được cập nhật ở trên, UI sẽ tự động cập nhật
-      // KHÔNG reload tự động vì sẽ ghi đè lại state đã cập nhật
-      // Chỉ reload khi user thực sự cần (refresh page, thay đổi filter, etc.)
-      
       setLoading(false);
       
       // Hiển thị thông báo
@@ -415,11 +433,72 @@ export default function ManageUsers() {
         alert(`Đã ${actionText} tài khoản nhưng có lỗi gửi email. Vui lòng kiểm tra lại.`);
       }
       
-      // KHÔNG reload tự động vì:
-      // 1. API /api/v1/buyer/list có thể không trả về field active/blocked sau khi block
-      // 2. normalizeBuyer sẽ set lại active: true mặc định
-      // 3. State đã cập nhật sẽ bị ghi đè
-      // User có thể refresh page hoặc thay đổi filter nếu muốn reload từ server
+      // Reload lại dữ liệu từ server sau khi block/unblock
+      // Tăng thời gian delay để đảm bảo backend đã cập nhật database xong
+      // Đặc biệt quan trọng với unblock vì có thể backend cần thời gian xử lý
+      setTimeout(() => {
+        console.log("🔄 Reloading users after block/unblock to sync with database...");
+        loadUsers();
+        
+        // Kiểm tra xem database đã được cập nhật chưa sau khi reload
+        setTimeout(() => {
+          console.log("🔄 Second reload to ensure database sync...");
+          loadUsers();
+          
+          // Kiểm tra lại sau khi state đã được cập nhật
+          setTimeout(() => {
+            setUsers((currentUsers) => {
+              // Kiểm tra lại user sau khi reload
+              const reloadedUser = currentUsers.find(u => {
+                const uId = String(u.id || u.userId || "");
+                const uBuyerId = String(u.buyerId || "");
+                const uSellerId = String(u.sellerId || "");
+                const targetId = String(accountId || "");
+                
+                if (accountType === "seller") {
+                  // Chỉ seller thuần (không phải buyer đã nâng cấp)
+                  return (u.role === "SELLER" && !u.hasUpgradedToSeller && (uSellerId === targetId || uId === targetId));
+                } else {
+                  // Buyer hoặc buyer đã nâng cấp
+                  return uId === targetId || uBuyerId === targetId;
+                }
+              });
+              
+              if (reloadedUser) {
+                const expectedActive = action === "unblock";
+                const actualActive = reloadedUser.active === true;
+                
+                console.log("🔍 Kiểm tra database sync:", {
+                  accountId,
+                  accountType,
+                  action,
+                  expectedActive,
+                  actualActive,
+                  userActive: reloadedUser.active,
+                  synced: expectedActive === actualActive,
+                  reloadedUser
+                });
+                
+                if (expectedActive !== actualActive) {
+                  console.error("❌ Database chưa được cập nhật! Backend có thể có vấn đề.", {
+                    expected: expectedActive,
+                    actual: actualActive,
+                    user: reloadedUser,
+                    requestUrl: `/api/v1/admin/block-account/${accountId}/${accountType}/${encodeURIComponent(message || "")}/${action}`
+                  });
+                  alert(`⚠️ Cảnh báo: Database có thể chưa được cập nhật sau khi ${actionText}.\n\nVui lòng:\n1. Kiểm tra lại database\n2. Kiểm tra backend logs\n3. Thử lại sau vài giây`);
+                } else {
+                  console.log("✅ Database đã được cập nhật thành công!");
+                }
+              } else {
+                console.warn("⚠️ Không tìm thấy user sau khi reload:", { accountId, accountType });
+              }
+              
+              return currentUsers; // Không thay đổi state, chỉ kiểm tra
+            });
+          }, 500);
+        }, 1500);
+      }, 1000); // Tăng từ 500ms lên 1000ms để đảm bảo backend xử lý xong
       
     } catch (error) {
       setLoading(false);
@@ -503,23 +582,9 @@ export default function ManageUsers() {
                     </CTableDataCell>
                     <CTableDataCell>
                       {(() => {
-                        // Xác định trạng thái hiển thị
-                        // Active/Inactive phụ thuộc vào block/unblock, KHÔNG phải ACCEPTED
-                        let displayActive = user.active !== undefined ? user.active : true;
+                        // Dùng trực tiếp user.active từ API (đã được normalize)
+                        const displayActive = user.active === true;
                         
-                        if (user.hasUpgradedToSeller) {
-                          // Buyer đã nâng cấp: active phụ thuộc vào block/unblock
-                          const isBlocked = user.sellerStatus === "BLOCKED" || 
-                                          user.sellerInfo?.status === "BLOCKED" ||
-                                          user.active === false;
-                          displayActive = !isBlocked;
-                        } else if (user.role === "SELLER") {
-                          // Seller thuần: active phụ thuộc vào block/unblock
-                          const isBlocked = user.status === "BLOCKED" || user.blocked === true;
-                          displayActive = !isBlocked;
-                        }
-                        
-                        // Hiển thị Active/Inactive dựa vào block/unblock
                         return (
                           <CBadge color={displayActive ? "success" : "danger"}>
                             {displayActive ? "Active" : "Inactive"}
@@ -535,23 +600,9 @@ export default function ManageUsers() {
                     <CTableDataCell>
                       <div className="d-flex gap-2 align-items-center">
                         {(() => {
-                          // Xác định active status đúng
-                          // Active/Inactive phụ thuộc vào block/unblock, KHÔNG phải ACCEPTED
-                          let isUserActive = user.active !== undefined ? user.active : true;
-                          
-                          if (user.hasUpgradedToSeller) {
-                            // Buyer đã nâng cấp: active phụ thuộc vào block/unblock
-                            // Nếu sellerStatus = BLOCKED hoặc active = false thì inactive
-                            const isBlocked = user.sellerStatus === "BLOCKED" || 
-                                            user.sellerInfo?.status === "BLOCKED" ||
-                                            user.active === false;
-                            isUserActive = !isBlocked;
-                          } else if (user.role === "SELLER") {
-                            // Seller thuần: active phụ thuộc vào block/unblock
-                            const isBlocked = user.status === "BLOCKED" || user.blocked === true;
-                            isUserActive = !isBlocked;
-                          }
-                          // Buyer thuần: dùng user.active từ normalizeBuyer
+                          // Dùng trực tiếp user.active từ API (đã được normalize)
+                          // Backend đã trả về active, không cần logic phức tạp
+                          const isUserActive = user.active === true;
 
                           return (
                             <>
