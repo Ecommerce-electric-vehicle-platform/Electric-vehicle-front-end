@@ -32,6 +32,9 @@ export default function SignUp() {
   const [loadingMessage, setLoadingMessage] = useState("");
   const [validationTimeout, setValidationTimeout] = useState(null);
   const [focusedFields, setFocusedFields] = useState({});
+  // Track which fields should show errors (only after blur or submit)
+  const [touchedFields, setTouchedFields] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // thêm phần này cho hiện policy
   const [showPolicyModal, setShowPolicyModal] = useState(false);
@@ -122,45 +125,9 @@ export default function SignUp() {
     // Clear backend error when user starts typing
     setBackendError("");
 
-    // Clear existing error for this field when user starts typing
-    setErrors((prev) => ({ ...prev, [name]: "" }));
-
-    // Immediate validation for certain cases
-    if (name === "username" && value.length > 0) {
-      // Validate username immediately if it has invalid characters
-      if (!/^[a-zA-Z]*$/.test(value)) {
-        if (/\d/.test(value)) {
-          setErrors((prev) => ({
-            ...prev,
-            [name]: "Tên đăng nhập chỉ được chứa chữ cái (a-z, A-Z).",
-          }));
-        } else if (/[^a-zA-Z]/.test(value)) {
-          setErrors((prev) => ({
-            ...prev,
-            [name]: "Tên đăng nhập chỉ được chứa chữ cái (a-z, A-Z).",
-          }));
-        }
-        return;
-      }
-    }
-
-    if (name === "password" && value.length > 0) {
-      // Validate password immediately if it has spaces
-      if (/\s/.test(value)) {
-        setErrors((prev) => ({
-          ...prev,
-          [name]: "Mật khẩu không được chứa khoảng trắng.",
-        }));
-        return;
-      }
-    }
-
-    // Real-time validation with faster debounce for other cases
-    clearTimeout(validationTimeout);
-    const timeout = setTimeout(() => {
-      validateField(name, value, focusedFields[name]);
-    }, 100); // Giảm thời gian debounce để hiển thị nhanh hơn
-    setValidationTimeout(timeout);
+    // Validate immediately on change to show tooltip right away
+    // This will show errors as user types (like browser validation)
+    validateField(name, value, true);
   };
 
   const handleFocus = (e) => {
@@ -171,14 +138,26 @@ export default function SignUp() {
   const handleBlur = (e) => {
     const { name, value } = e.target;
     setFocusedFields((prev) => ({ ...prev, [name]: true }));
+    
+    // Mark field as touched
+    setTouchedFields((prev) => ({ ...prev, [name]: true }));
 
-    // Validate on blur
+    // Validate on blur (errors already shown on change, but re-validate to ensure accuracy)
     validateField(name, value, true);
   };
 
   const validateAll = () => {
     const newErrors = {};
     let hasErrors = false;
+
+    // Mark all fields as touched when submit is attempted
+    setSubmitAttempted(true);
+    const allFieldsTouched = {
+      username: true,
+      password: true,
+      email: true,
+    };
+    setTouchedFields((prev) => ({ ...prev, ...allFieldsTouched }));
 
     // Validate each field and collect errors
     Object.entries(formData).forEach(([key, value]) => {
@@ -625,13 +604,13 @@ export default function SignUp() {
                     onBlur={handleBlur}
                   />
                   <div className="input-border"></div>
+                  {errors.username && (
+                    <div className="error-tooltip">
+                      <span className="error-icon">⚠️</span>
+                      <span className="error-text">{errors.username}</span>
+                    </div>
+                  )}
                 </div>
-                {errors.username && (
-                  <div className="error-message">
-                    <i className="fas fa-exclamation-circle"></i>
-                    <span>{errors.username}</span>
-                  </div>
-                )}
               </div>
 
               {/* Password */}
@@ -652,13 +631,13 @@ export default function SignUp() {
                     onBlur={handleBlur}
                   />
                   <div className="input-border"></div>
+                  {errors.password && (
+                    <div className="error-tooltip">
+                      <span className="error-icon">⚠️</span>
+                      <span className="error-text">{errors.password}</span>
+                    </div>
+                  )}
                 </div>
-                {errors.password && (
-                  <div className="error-message">
-                    <i className="fas fa-exclamation-circle"></i>
-                    <span>{errors.password}</span>
-                  </div>
-                )}
               </div>
 
               {/* Email */}
@@ -677,13 +656,13 @@ export default function SignUp() {
                     onBlur={handleBlur}
                   />
                   <div className="input-border"></div>
+                  {errors.email && (
+                    <div className="error-tooltip">
+                      <span className="error-icon">⚠️</span>
+                      <span className="error-text">{errors.email}</span>
+                    </div>
+                  )}
                 </div>
-                {errors.email && (
-                  <div className="error-message">
-                    <i className="fas fa-exclamation-circle"></i>
-                    <span>{errors.email}</span>
-                  </div>
-                )}
               </div>
 
               {/* Backend Error */}
@@ -721,12 +700,13 @@ export default function SignUp() {
                       Điều khoản & Chính sách
                     </a>
                   </span>
-
                 </label>
-                {showAgreeError && (
-                  <div className="agree-error">
-                    <i className="fas fa-exclamation-triangle"></i>
-                    <span>Vui lòng đồng ý với điều khoản để tiếp tục.</span>
+                {showAgreeError && !isAgreed && (
+                  <div className="agree-tooltip">
+                    <span className="agree-icon">⚠️</span>
+                    <span className="agree-text">
+                      Vui lòng đồng ý với điều khoản để tiếp tục.
+                    </span>
                   </div>
                 )}
               </div>

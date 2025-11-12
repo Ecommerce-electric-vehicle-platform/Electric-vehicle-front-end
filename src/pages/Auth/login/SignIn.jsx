@@ -379,16 +379,17 @@ export default function SignIn() {
           placeholder="Tên đăng nhập"
           value={formData.username}
           onChange={handleChange}
-          onBlur={handleChange} // Thêm onBlur để validate khi rời khỏi input
+          onBlur={handleChange}
           aria-invalid={!!errors.username}
           aria-describedby={errors.username ? "username-error" : undefined}
         />
+        {errors.username && (
+          <div className="error-tooltip" id="username-error">
+            <span className="error-icon">⚠️</span>
+            <span className="error-text">{errors.username}</span>
+          </div>
+        )}
       </div>
-      {errors.username && (
-        <p id="username-error" className="error-message">
-          {errors.username}
-        </p>
-      )}
 
       <div className={`input-field ${errors.password ? "error" : ""}`}>
         <i className="fas fa-lock"></i>
@@ -398,16 +399,17 @@ export default function SignIn() {
           placeholder="Mật khẩu"
           value={formData.password}
           onChange={handleChange}
-          onBlur={handleChange} // Thêm onBlur để validate khi rời khỏi input
+          onBlur={handleChange}
           aria-invalid={!!errors.password}
           aria-describedby={errors.password ? "password-error" : undefined}
         />
+        {errors.password && (
+          <div className="error-tooltip" id="password-error">
+            <span className="error-icon">⚠️</span>
+            <span className="error-text">{errors.password}</span>
+          </div>
+        )}
       </div>
-      {errors.password && (
-        <p id="password-error" className="error-message">
-          {errors.password}
-        </p>
-      )}
 
       {backendError && (
         <p
