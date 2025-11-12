@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from "react"
-import { Battery, Car, MapPin, Search, ArrowRight, Filter, SortAsc, Zap } from "lucide-react"
+import { Battery, Car, MapPin, ArrowRight, Filter, SortAsc, Zap } from "lucide-react"
 import "./VehicleShowcase.css"
 import { useNavigate } from "react-router-dom"
 import { fetchPostProducts, normalizeProduct } from "../../api/productApi"
 import { ProductCard } from "../ProductCard/ProductCard"
 import { GlobalSearch } from "../GlobalSearch/GlobalSearch"
 import { useFavoritesList } from "../../hooks/useFavorite"
+import { PRODUCT_TYPE_FILTERS, matchesProductTypeFilter } from "../../utils/productType"
 
 export function VehicleShowcase() {
-  const [activeTab, setActiveTab] = useState("vehicles")
   const [selectedLocation, setSelectedLocation] = useState("Tất cả khu vực")
   const [sortDate, setSortDate] = useState("newest")
   const [sortPrice, setSortPrice] = useState("none")
+  const [productTypeFilter, setProductTypeFilter] = useState(PRODUCT_TYPE_FILTERS.ALL)
   const navigate = useNavigate()
 
   // Xử lý click xem chi tiết
@@ -48,18 +49,31 @@ export function VehicleShowcase() {
   )
   const allLocations = ["Tất cả khu vực", ...new Set(items.map((i) => i.locationTrading))]
 
+  const handleProductTypeChange = (nextFilter) => {
+    if (nextFilter === PRODUCT_TYPE_FILTERS.ALL) {
+      setProductTypeFilter(PRODUCT_TYPE_FILTERS.ALL)
+      return
+    }
+    setProductTypeFilter((prev) =>
+      prev === nextFilter ? PRODUCT_TYPE_FILTERS.ALL : nextFilter
+    )
+  }
+
   // Lọc dữ liệu
-  const filteredItems = items
-    .filter((item) => {
-      const locationMatch = selectedLocation === "Tất cả khu vực" || item.locationTrading === selectedLocation
-      return locationMatch
-    })
-    .sort((a, b) => (sortDate === "newest" ? new Date(b.createdAt) - new Date(a.createdAt) : new Date(a.createdAt) - new Date(b.createdAt)))
-    .sort((a, b) => {
-      if (sortPrice === "low") return a.price - b.price
-      if (sortPrice === "high") return b.price - a.price
-      return 0
-    })
+  const filteredItems = useMemo(() => {
+    return items
+      .filter((item) => matchesProductTypeFilter(item, productTypeFilter))
+      .filter((item) => {
+        const locationMatch = selectedLocation === "Tất cả khu vực" || item.locationTrading === selectedLocation
+        return locationMatch
+      })
+      .sort((a, b) => (sortDate === "newest" ? new Date(b.createdAt) - new Date(a.createdAt) : new Date(a.createdAt) - new Date(b.createdAt)))
+      .sort((a, b) => {
+        if (sortPrice === "low") return a.price - b.price
+        if (sortPrice === "high") return b.price - a.price
+        return 0
+      })
+  }, [items, productTypeFilter, selectedLocation, sortDate, sortPrice])
 
   return (
     <section className="vehicle-showcase-section" id="vehicles">
@@ -84,6 +98,33 @@ export function VehicleShowcase() {
             placeholder="Tìm kiếm sản phẩm, thương hiệu, model..."
             className="vehicle-search"
           />
+        </div>
+
+        <div className="showcase-tabs">
+          <button
+            type="button"
+            className={`tab-button ${productTypeFilter === PRODUCT_TYPE_FILTERS.ALL ? "tab-active" : ""}`}
+            onClick={() => handleProductTypeChange(PRODUCT_TYPE_FILTERS.ALL)}
+          >
+            <Zap className="tab-icon" />
+            <span>Tất cả</span>
+          </button>
+          <button
+            type="button"
+            className={`tab-button ${productTypeFilter === PRODUCT_TYPE_FILTERS.VEHICLE ? "tab-active" : ""}`}
+            onClick={() => handleProductTypeChange(PRODUCT_TYPE_FILTERS.VEHICLE)}
+          >
+            <Car className="tab-icon" />
+            <span>Xe điện</span>
+          </button>
+          <button
+            type="button"
+            className={`tab-button ${productTypeFilter === PRODUCT_TYPE_FILTERS.BATTERY ? "tab-active" : ""}`}
+            onClick={() => handleProductTypeChange(PRODUCT_TYPE_FILTERS.BATTERY)}
+          >
+            <Battery className="tab-icon" />
+            <span>Pin</span>
+          </button>
         </div>
 
         {/* Thanh lọc */}

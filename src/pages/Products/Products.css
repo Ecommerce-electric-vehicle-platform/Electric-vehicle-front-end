@@ -26,6 +26,48 @@
     flex-wrap: wrap;
 }
 
+.product-type-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin: 24px 0;
+    flex-wrap: wrap;
+}
+
+.product-type-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 28px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(22, 163, 74, 0.12);
+    background: #ffffff;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.product-type-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.product-type-btn:hover {
+    border-color: rgba(22, 163, 74, 0.35);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.product-type-btn.active {
+    background: linear-gradient(135deg, #0ea5e9 0%, #22c55e 50%, #10b981 100%);
+    border-color: transparent;
+    color: #ffffff;
+    box-shadow: 0 15px 40px rgba(16, 185, 129, 0.25);
+}
+
 .tab {
     display: inline-flex;
     align-items: center;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { MapPin, Search, Filter, SortAsc, ArrowRight, ArrowLeft, Grid3x3, List, X, Sparkles } from "lucide-react";
+import { MapPin, Search, Filter, SortAsc, ArrowRight, ArrowLeft, Grid3x3, List, X, Sparkles, Zap, Car, Battery } from "lucide-react";
 import "../../components/VehicleShowcase/VehicleShowcase.css";
 import "./Products.css";
 import { fetchPostProducts, normalizeProduct } from "../../api/productApi";
@@ -11,6 +11,7 @@ import { Breadcrumbs } from "../../components/Breadcrumbs/Breadcrumbs";
 import { searchInProduct, calculateSearchScore } from "../../utils/textUtils";
 import { ProductSkeleton } from "../../components/ProductSkeleton/ProductSkeleton";
 import { useFavoritesList } from "../../hooks/useFavorite";
+import { PRODUCT_TYPE_FILTERS, matchesProductTypeFilter } from "../../utils/productType";
 
 export function Products() {
     const navigate = useNavigate();
@@ -51,6 +52,7 @@ export function Products() {
         return saved === 'list' ? 'list' : 'grid';
     });
     const [priceRange, setPriceRange] = useState(null); // { min: number, max: number } or null
+    const [productTypeFilter, setProductTypeFilter] = useState(PRODUCT_TYPE_FILTERS.ALL);
 
     // Favorite management hook
     const { getFavoriteStatus, toggleFavoriteForProduct } = useFavoritesList();
@@ -149,6 +151,7 @@ export function Products() {
 
     const filtered = useMemo(() => {
         const list = combined
+            .filter((item) => matchesProductTypeFilter(item, productTypeFilter))
             .filter((item) => {
                 // Sử dụng tìm kiếm cải tiến hỗ trợ có dấu và không dấu
                 const searchMatch = searchTerm.trim()
@@ -265,7 +268,7 @@ export function Products() {
                 return 0;
             });
         return list;
-    }, [combined, searchTerm, selectedLocation, sortDate, sortPrice, priceRange]);
+    }, [combined, searchTerm, selectedLocation, sortDate, sortPrice, priceRange, productTypeFilter]);
 
     const totalPages = useMemo(() => serverTotalPages || 1, [serverTotalPages]);
 
@@ -371,6 +374,13 @@ export function Products() {
                 type: 'category'
             });
         }
+        if (productTypeFilter !== PRODUCT_TYPE_FILTERS.ALL) {
+            filters.push({
+                key: 'productType',
+                label: productTypeFilter === PRODUCT_TYPE_FILTERS.BATTERY ? "Loại: Pin" : "Loại: Xe điện",
+                type: 'productType'
+            });
+        }
         if (selectedBatteryType) {
             filters.push({ key: 'batteryType', label: `Pin: ${selectedBatteryType}`, type: 'batteryType' });
         }
@@ -398,7 +408,7 @@ export function Products() {
             });
         }
         return filters;
-    }, [selectedBrand, selectedModel, selectedCategory, selectedBatteryType, selectedCondition, selectedLocation, priceRange, sortDate, sortPrice]);
+    }, [selectedBrand, selectedModel, selectedCategory, selectedBatteryType, selectedCondition, selectedLocation, priceRange, sortDate, sortPrice, productTypeFilter]);
 
     const removeFilter = (filterType) => {
         switch (filterType) {
@@ -426,6 +436,9 @@ export function Products() {
             case 'batteryType':
                 setSelectedBatteryType('');
                 break;
+            case 'productType':
+                setProductTypeFilter(PRODUCT_TYPE_FILTERS.ALL);
+                break;
             case 'condition':
                 setSelectedCondition('');
                 break;
@@ -448,12 +461,21 @@ export function Products() {
         setSelectedBrand('');
         setSelectedModel('');
         setSelectedCategory('');
+        setProductTypeFilter(PRODUCT_TYPE_FILTERS.ALL);
         setSelectedBatteryType('');
         setSelectedCondition('');
         setSelectedLocation("Tất cả khu vực");
         setPriceRange(null);
         setSortDate("newest");
         setSortPrice("none");
+    };
+
+    const handleProductTypeChange = (nextType) => {
+        setProductTypeFilter((prev) => {
+            const updated = prev === nextType ? PRODUCT_TYPE_FILTERS.ALL : nextType;
+            return updated;
+        });
+        setPage(1);
     };
 
     // Quick filter handlers
@@ -520,6 +542,37 @@ export function Products() {
                         </button>
                     </div>
                 )}
+
+                {/* Product Type Filter */}
+                <div className="product-type-toggle">
+                    <button
+                        type="button"
+                        className={`product-type-btn ${productTypeFilter === PRODUCT_TYPE_FILTERS.ALL ? 'active' : ''}`}
+                        onClick={() => handleProductTypeChange(PRODUCT_TYPE_FILTERS.ALL)}
+                        aria-pressed={productTypeFilter === PRODUCT_TYPE_FILTERS.ALL}
+                    >
+                        <Zap size={18} />
+                        <span>Tất cả</span>
+                    </button>
+                    <button
+                        type="button"
+                        className={`product-type-btn ${productTypeFilter === PRODUCT_TYPE_FILTERS.VEHICLE ? 'active' : ''}`}
+                        onClick={() => handleProductTypeChange(PRODUCT_TYPE_FILTERS.VEHICLE)}
+                        aria-pressed={productTypeFilter === PRODUCT_TYPE_FILTERS.VEHICLE}
+                    >
+                        <Car size={18} />
+                        <span>Xe điện</span>
+                    </button>
+                    <button
+                        type="button"
+                        className={`product-type-btn ${productTypeFilter === PRODUCT_TYPE_FILTERS.BATTERY ? 'active' : ''}`}
+                        onClick={() => handleProductTypeChange(PRODUCT_TYPE_FILTERS.BATTERY)}
+                        aria-pressed={productTypeFilter === PRODUCT_TYPE_FILTERS.BATTERY}
+                    >
+                        <Battery size={18} />
+                        <span>Pin</span>
+                    </button>
+                </div>
 
                 {/* Quick Filters */}
                 <div className="quick-filters-section">
