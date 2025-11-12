@@ -9,6 +9,7 @@ import Notifications from "../pages/Admin/Notifications/Notifications";
 import Requests from "../pages/Admin/Requests/Requests";
 import Inbox from "../pages/Admin/Inbox/Inbox";
 import Settings from "../pages/Admin/Settings/Settings";
+import SystemConfig from "../pages/Admin/SystemConfig/SystemConfig";
 import AdminProfile from "../pages/Admin/Profile/AdminProfile";
 
 // Phải dùng React element (có < />)
@@ -23,6 +24,7 @@ const adminViewRoutes = [
   { path: "requests", name: "Requests", element: <Requests /> },
   { path: "inbox", name: "Inbox", element: <Inbox /> },
   { path: "settings", name: "Settings", element: <Settings /> },
+  { path: "system-config", name: "System Config", element: <SystemConfig /> },
   { path: "profile", name: "Profile", element: <AdminProfile /> },
 ];
 

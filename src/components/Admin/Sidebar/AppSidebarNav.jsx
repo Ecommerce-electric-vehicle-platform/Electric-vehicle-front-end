@@ -58,7 +58,27 @@ export const AppSidebarNav = ({ items }) => {
     );
   };
 
-  return <CSidebarNav>{items.map(renderItem)}</CSidebarNav>;
+  // Debug: Log items để kiểm tra
+  console.log("=== AppSidebarNav RENDER ===");
+  console.log("Items count:", items.length);
+  console.log("Items:", items.map(i => ({ name: i.name, component: i.component?.name || i.component })));
+  console.log("===========================");
+  
+  return (
+    <CSidebarNav style={{ 
+      height: "auto", 
+      minHeight: "100%",
+      maxHeight: "none",
+      overflowY: "visible",
+      overflowX: "hidden",
+      display: "block",
+      flex: "none",
+      padding: "0.5rem 0",
+      marginBottom: "1rem"
+    }}>
+      {items.map(renderItem)}
+    </CSidebarNav>
+  );
 };
 
 export default AppSidebarNav;

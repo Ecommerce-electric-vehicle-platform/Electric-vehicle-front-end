@@ -19,6 +19,8 @@ import {
   cilBell,
   cilTask,
   cilEnvelopeOpen,
+  cilCreditCard,
+  cilSettings,
 } from "@coreui/icons";
 
 const AppHeader = () => {
@@ -52,6 +54,22 @@ const AppHeader = () => {
           <AppBreadcrumb />
         </div>
         <CHeaderNav className="ms-auto align-items-center gap-3">
+          <Link
+            to="/admin/system-config"
+            className="btn btn-ghost"
+            aria-label="Cấu hình Escrow"
+            title="Cấu hình Escrow"
+          >
+            <CIcon icon={cilCreditCard} />
+          </Link>
+          <Link
+            to="/admin/settings"
+            className="btn btn-ghost"
+            aria-label="Cài đặt"
+            title="Cài đặt"
+          >
+            <CIcon icon={cilSettings} />
+          </Link>
           <Link
             to="/admin/notifications"
             className="btn btn-ghost"

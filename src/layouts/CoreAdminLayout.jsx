@@ -26,6 +26,7 @@ import {
   MdLogout,
   MdSettings,
   MdAccountCircle,
+  MdCreditCard,
 } from "react-icons/md";
 import { FaLeaf } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -240,7 +241,7 @@ const CoreAdminLayout = () => {
         </div>
 
         {/* Navigation */}
-        <nav style={{ padding: "20px 0" }}>
+        <nav style={{ padding: "20px 0", overflowY: "auto", maxHeight: "calc(100vh - 80px)" }}>
           <div style={{ marginBottom: "8px" }}>
             <a
               href="/admin/dashboard"
@@ -256,6 +257,74 @@ const CoreAdminLayout = () => {
             >
               <MdDashboard style={{ marginRight: "12px", fontSize: "18px" }} />
               Bảng điều khiển
+            </a>
+          </div>
+
+          {/* HỆ THỐNG Section */}
+          <div style={{ marginTop: "20px", marginBottom: "8px" }}>
+            <div
+              style={{
+                padding: "8px 20px",
+                fontSize: "12px",
+                color: "#bdc3c7",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                fontWeight: "600",
+              }}
+            >
+              HỆ THỐNG
+            </div>
+          </div>
+
+          {/* Cấu hình Escrow */}
+          <div style={{ marginBottom: "4px" }}>
+            <a
+              href="/admin/system-config"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "12px 20px",
+                color: "#bdc3c7",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = "rgba(255,255,255,0.05)";
+                e.target.style.color = "#ecf0f1";
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = "transparent";
+                e.target.style.color = "#bdc3c7";
+              }}
+            >
+              <MdCreditCard style={{ marginRight: "12px", fontSize: "18px" }} />
+              Cấu hình Escrow
+            </a>
+          </div>
+
+          {/* Cài đặt */}
+          <div style={{ marginBottom: "4px" }}>
+            <a
+              href="/admin/settings"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "12px 20px",
+                color: "#bdc3c7",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = "rgba(255,255,255,0.05)";
+                e.target.style.color = "#ecf0f1";
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = "transparent";
+                e.target.style.color = "#bdc3c7";
+              }}
+            >
+              <MdSettings style={{ marginRight: "12px", fontSize: "18px" }} />
+              Cài đặt
             </a>
           </div>
 
@@ -471,6 +540,44 @@ const CoreAdminLayout = () => {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+            <a
+              href="/admin/system-config"
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "18px",
+                cursor: "pointer",
+                padding: "8px",
+                borderRadius: "4px",
+                color: "#666",
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              title="Cấu hình Escrow"
+            >
+              <MdCreditCard />
+            </a>
+            <a
+              href="/admin/settings"
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "18px",
+                cursor: "pointer",
+                padding: "8px",
+                borderRadius: "4px",
+                color: "#666",
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              title="Cài đặt"
+            >
+              <MdSettings />
+            </a>
             <button
               style={{
                 background: "none",
