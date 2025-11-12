@@ -17,7 +17,8 @@ import {
     Star,
     MessageSquareWarning
 } from 'lucide-react';
-import { getOrderDetails, getOrderStatus, hasOrderReview } from '../../api/orderApi';
+import { getOrderDetails, getOrderStatus, hasOrderReview, confirmOrderDelivery } from '../../api/orderApi';
+import { Toast } from '../../components/Toast/Toast';
 import './OrderDetail.css';
 
 function OrderDetail() {
@@ -28,6 +29,23 @@ function OrderDetail() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [hasReview, setHasReview] = useState(false); // Trạng thái đánh giá
+    const [confirming, setConfirming] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [showToast, setShowToast] = useState(false);
+
+    const showToastMessage = (message) => {
+        if (!message) return;
+        setToastMessage(message);
+        setShowToast(true);
+    };
+
+    const toastPortal = (
+        <Toast
+            message={toastMessage}
+            show={showToast}
+            onClose={() => setShowToast(false)}
+        />
+    );
 
     useEffect(() => {
         const loadOrderDetail = async () => {
@@ -296,6 +314,8 @@ function OrderDetail() {
             'PROCESSING': 'Đang xử lý',
             'SHIPPED': 'Đã giao cho đơn vị vận chuyển',
             'DELIVERED': 'Đã giao thành công',
+            'COMPLETED': 'Đã hoàn tất',
+            'SUCCESS': 'Đã hoàn tất',
             'CANCELLED': 'Đã hủy',
             'RETURN_REQUESTED': 'Yêu cầu hoàn hàng',
             'REFUNDED': 'Đã hoàn tiền'
@@ -362,6 +382,45 @@ function OrderDetail() {
         });
     };
 
+    const handleConfirmOrder = async () => {
+        const realOrderId = orderData?.id || orderId;
+        if (!realOrderId || confirming) return;
+
+        setConfirming(true);
+        try {
+            const response = await confirmOrderDelivery(realOrderId);
+            const success = response?.success !== false;
+            if (!success) {
+                throw new Error(response?.message || 'Xác nhận đơn hàng thất bại');
+            }
+
+            showToastMessage('Đơn hàng đã được xác nhận thành công!');
+
+            setOrderData(prev => {
+                if (!prev) return prev;
+                const nextRawStatus = response?.rawStatus || 'COMPLETED';
+                return {
+                    ...prev,
+                    order_status: nextRawStatus,
+                    normalized_status: 'delivered',
+                    updated_at: new Date().toISOString(),
+                    _raw: {
+                        ...(prev._raw || {}),
+                        status: nextRawStatus,
+                        orderStatus: nextRawStatus,
+                        rawStatus: nextRawStatus
+                    }
+                };
+            });
+        } catch (err) {
+            const message = err?.response?.data?.message || err?.message || 'Không thể xác nhận đơn hàng.';
+            showToastMessage(message);
+            console.error('[OrderDetail] Failed to confirm order:', err);
+        } finally {
+            setConfirming(false);
+        }
+    };
+
     // Hàm lấy icon trạng thái
     const getStatusIcon = (status) => {
         switch (status) {
@@ -382,61 +441,76 @@ function OrderDetail() {
         }
     };
 
-    const isDelivered = String(orderData?.order_status || '').toUpperCase() === 'DELIVERED';
+    const orderStatusUpper = String(orderData?.order_status || '').toUpperCase();
+    const normalizedStatusLower = String(orderData?.normalized_status || '').toLowerCase();
+    const isOrderCompleted = ['COMPLETED', 'SUCCESS'].includes(orderStatusUpper);
+    const isDelivered = normalizedStatusLower === 'delivered' || ['DELIVERED', 'COMPLETED', 'SUCCESS'].includes(orderStatusUpper);
+    const canConfirmOrder = orderStatusUpper === 'DELIVERED' && !isOrderCompleted;
 
     if (loading) {
         return (
-            <div className="order-detail-page">
-                <div className="order-detail-container">
-                    <div className="loading-state">
-                        <RefreshCw className="loading-icon" />
-                        <p>Đang tải thông tin đơn hàng...</p>
+            <>
+                {toastPortal}
+                <div className="order-detail-page">
+                    <div className="order-detail-container">
+                        <div className="loading-state">
+                            <RefreshCw className="loading-icon" />
+                            <p>Đang tải thông tin đơn hàng...</p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </>
         );
     }
 
     if (error) {
         return (
-            <div className="order-detail-page">
-                <div className="order-detail-container">
-                    <div className="error-state">
-                        <AlertCircle className="error-icon" />
-                        <p>{error}</p>
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => window.location.reload()}
-                        >
-                            Thử lại
-                        </button>
+            <>
+                {toastPortal}
+                <div className="order-detail-page">
+                    <div className="order-detail-container">
+                        <div className="error-state">
+                            <AlertCircle className="error-icon" />
+                            <p>{error}</p>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => window.location.reload()}
+                            >
+                                Thử lại
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </>
         );
     }
 
     if (!orderData) {
         return (
-            <div className="order-detail-page">
-                <div className="order-detail-container">
-                    <div className="not-found-state">
-                        <Package className="not-found-icon" />
-                        <p>Không tìm thấy đơn hàng</p>
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => navigate('/orders')}
-                        >
-                            Quay lại danh sách đơn hàng
-                        </button>
+            <>
+                {toastPortal}
+                <div className="order-detail-page">
+                    <div className="order-detail-container">
+                        <div className="not-found-state">
+                            <Package className="not-found-icon" />
+                            <p>Không tìm thấy đơn hàng</p>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => navigate('/orders')}
+                            >
+                                Quay lại danh sách đơn hàng
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </>
         );
     }
 
     return (
-        <div className="order-detail-page">
+        <>
+            {toastPortal}
+            <div className="order-detail-page">
             <div className="order-detail-container">
                 {/* Header */}
                 <div className="order-detail-header">
@@ -666,6 +740,18 @@ function OrderDetail() {
                     </button>
                     {isDelivered && (
                         <>
+                            {canConfirmOrder && (
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleConfirmOrder();
+                                    }}
+                                    disabled={confirming}
+                                >
+                                    {confirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
+                                </button>
+                            )}
                             <button
                                 className="btn btn-warning"
                                 onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}
@@ -699,7 +785,8 @@ function OrderDetail() {
                     )}
                 </div>
             </div>
-        </div>
+            </div>
+        </>
     );
 }
 

@@ -10,7 +10,6 @@ import {
     Clock3,
     XCircle,
     Search,
-    Download,
     Plus,
     TrendingUp,
     TrendingDown,
@@ -28,9 +27,6 @@ export default function WalletDashboard() {
 
     // Sử dụng hook để lấy số dư ví thật
     const { balance, loading: balanceLoading, formatCurrency: formatWalletCurrency, refreshBalance } = useWalletBalance();
-
-    const [inflow, setInflow] = useState(0);
-    const [outflow, setOutflow] = useState(0);
 
     // Transaction data from API
     const [transactions, setTransactions] = useState([]);
@@ -291,6 +287,17 @@ export default function WalletDashboard() {
 
         const amount = Number(apiTransaction.amount) || 0;
         const status = apiTransaction.status || apiTransaction.transactionStatus;
+        let timestampMs = null;
+
+        if (timestamp) {
+            const parsed =
+                typeof timestamp === 'number'
+                    ? timestamp
+                    : new Date(timestamp).getTime();
+            if (!Number.isNaN(parsed)) {
+                timestampMs = parsed;
+            }
+        }
 
         const mapped = {
             id: transactionId,
@@ -299,6 +306,7 @@ export default function WalletDashboard() {
             time: formatTimestamp(timestamp),
             amount: amount,
             status: mapStatus(status),
+            timestampMs,
             // Keep original fields for filtering
             originalType: transactionType,
             originalStatus: status
@@ -480,19 +488,7 @@ export default function WalletDashboard() {
                 currentPage: page
             });
 
-            // Calculate inflow and outflow from all transactions
-            const allInflow = content
-                .filter(t => (t.transactionType || t.type || "").toUpperCase() === "CREDIT" || (t.amount || 0) > 0)
-                .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
-
-            const allOutflow = content
-                .filter(t => (t.transactionType || t.type || "").toUpperCase() === "DEBIT" || (t.amount || 0) < 0)
-                .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
-
-            setInflow(allInflow);
-            setOutflow(allOutflow);
-
-            console.log('💰 Inflow:', allInflow, 'Outflow:', allOutflow);
+            console.log('💰 Transactions processed');
         } catch (error) {
             console.error('❌ Error fetching transaction history:', error);
             console.error('❌ Error details:', error?.response?.data || error?.message);
@@ -509,6 +505,32 @@ export default function WalletDashboard() {
     useEffect(() => {
         fetchTransactions(currentPage, itemsPerPage);
     }, [currentPage, fetchTransactions, itemsPerPage]);
+
+    const sortedTransactions = useMemo(() => {
+        return [...transactions].sort((a, b) => {
+            const timeA = a?.timestampMs ?? 0;
+            const timeB = b?.timestampMs ?? 0;
+            if (timeA === 0 && timeB === 0) return 0;
+            return timeB - timeA;
+        });
+    }, [transactions]);
+
+    const latestInflowTransaction = useMemo(() => {
+        return sortedTransactions.find((tx) => (tx?.amount ?? 0) > 0) || null;
+    }, [sortedTransactions]);
+
+    const latestOutflowTransaction = useMemo(() => {
+        return sortedTransactions.find((tx) => (tx?.amount ?? 0) < 0) || null;
+    }, [sortedTransactions]);
+
+    const inflowCount = useMemo(
+        () => transactions.filter((tx) => (tx?.amount ?? 0) > 0).length,
+        [transactions]
+    );
+    const outflowCount = useMemo(
+        () => transactions.filter((tx) => (tx?.amount ?? 0) < 0).length,
+        [transactions]
+    );
 
     // Client-side filtering for search and type filters
     const filtered = useMemo(() => {
@@ -639,22 +661,68 @@ export default function WalletDashboard() {
 
             {/* Summary Cards */}
             <div className="summary">
-                <div className="metric in">
+                <div
+                    className={`metric in ${latestInflowTransaction ? '' : 'metric-empty'}`}
+                    onClick={() => latestInflowTransaction && handleOpenModal(latestInflowTransaction)}
+                    role={latestInflowTransaction ? "button" : undefined}
+                    tabIndex={latestInflowTransaction ? 0 : -1}
+                    onKeyDown={(e) => {
+                        if (!latestInflowTransaction) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleOpenModal(latestInflowTransaction);
+                        }
+                    }}
+                >
                     <div className="metric-icon-wrapper">
                         <TrendingUp size={24} className="metric-icon" />
                     </div>
                     <div className="metric-content">
-                        <div className="metric-title">Tiền vào</div>
-                        <div className="metric-value">{fmt(inflow)}</div>
+                        <div className="metric-title">Tiền vào gần nhất</div>
+                        <div className="metric-value">
+                            {latestInflowTransaction ? fmt(Math.abs(latestInflowTransaction.amount)) : "—"}
+                        </div>
+                        {!latestInflowTransaction && (
+                            <div className="metric-meta">
+                                <span className="metric-meta-empty">Chưa có giao dịch nạp</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="metric-aside">
+                        <span className="metric-chip">{inflowCount} giao dịch</span>
+                        {latestInflowTransaction && <ChevronRight size={18} />}
                     </div>
                 </div>
-                <div className="metric out">
+                <div
+                    className={`metric out ${latestOutflowTransaction ? '' : 'metric-empty'}`}
+                    onClick={() => latestOutflowTransaction && handleOpenModal(latestOutflowTransaction)}
+                    role={latestOutflowTransaction ? "button" : undefined}
+                    tabIndex={latestOutflowTransaction ? 0 : -1}
+                    onKeyDown={(e) => {
+                        if (!latestOutflowTransaction) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleOpenModal(latestOutflowTransaction);
+                        }
+                    }}
+                >
                     <div className="metric-icon-wrapper">
                         <TrendingDown size={24} className="metric-icon" />
                     </div>
                     <div className="metric-content">
-                        <div className="metric-title">Tiền ra</div>
-                        <div className="metric-value">{fmt(outflow)}</div>
+                        <div className="metric-title">Tiền ra gần nhất</div>
+                        <div className="metric-value">
+                            {latestOutflowTransaction ? fmt(Math.abs(latestOutflowTransaction.amount)) : "—"}
+                        </div>
+                        {!latestOutflowTransaction && (
+                            <div className="metric-meta">
+                                <span className="metric-meta-empty">Chưa có giao dịch chi</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="metric-aside">
+                        <span className="metric-chip">{outflowCount} giao dịch</span>
+                        {latestOutflowTransaction && <ChevronRight size={18} />}
                     </div>
                 </div>
             </div>
@@ -690,16 +758,19 @@ export default function WalletDashboard() {
                         className="search-input"
                     />
                 </div>
-                <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="filter-select"
-                >
-                    <option>Tất cả loại</option>
-                    <option>Nạp tiền</option>
-                    <option>Thanh toán</option>
-                    <option>Rút tiền</option>
-                </select>
+            </div>
+
+            <div className="filter-chips">
+                {["Tất cả loại", "Nạp tiền", "Thanh toán", "Rút tiền"].map((label) => (
+                    <button
+                        key={label}
+                        type="button"
+                        className={`filter-chip ${typeFilter === label ? "active" : ""}`}
+                        onClick={() => setTypeFilter(label)}
+                    >
+                        {label}
+                    </button>
+                ))}
             </div>
 
             <h2 className="list-title">
@@ -735,32 +806,59 @@ export default function WalletDashboard() {
                         );
                     }
 
-                    return filtered.map((t) => {
-                        console.log('🎨 Rendering transaction:', t);
-                        return (
-                            <div
-                                key={t.id}
-                                className="tx-item"
-                                onClick={() => handleOpenModal(t)}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <div className="tx-left">
-                                    <div className="tx-icon">{typeIcon(t.type)}</div>
-                                    <div className="tx-info">
-                                        <div className="tx-title">{t.type}</div>
-                                        <div className="tx-note">{t.note}</div>
-                                        <div className="tx-time">{t.time}</div>
-                                    </div>
-                                </div>
-                                <div className="tx-right">
-                                    <div className={`tx-amount ${t.amount > 0 ? "positive" : "negative"}`}>
-                                        {t.amount > 0 ? "+" : "-"} {fmt(Math.abs(t.amount))}
-                                    </div>
-                                    <div>{statusPill(t.status)}</div>
-                                </div>
+                    return (
+                        <div className="tx-table">
+                            <div className="tx-table-head">
+                                <div className="tx-col type">Loại</div>
+                                <div className="tx-col note">Nội dung</div>
+                                <div className="tx-col amount">Số tiền</div>
+                                <div className="tx-col status">Trạng thái</div>
+                                <div className="tx-col time">Thời gian</div>
                             </div>
-                        );
-                    });
+                            <div className="tx-table-body">
+                                {filtered.map((t) => (
+                                    <div
+                                        key={t.id}
+                                        className="tx-table-row"
+                                        onClick={() => handleOpenModal(t)}
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                handleOpenModal(t);
+                                            }
+                                        }}
+                                    >
+                                        <div className="tx-col type">
+                                            <div className="tx-type-wrapper">
+                                                <div className="tx-table-icon">{typeIcon(t.type)}</div>
+                                                <div className="tx-type-info">
+                                                    <span className="tx-type-label">{t.type}</span>
+                                                    <span className="tx-type-time">#{t.id}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="tx-col note">
+                                            <div className="tx-note-main">{t.note}</div>
+                                        </div>
+                                        <div className="tx-col amount">
+                                            <span className={`tx-amount-pill ${t.amount > 0 ? "positive" : "negative"}`}>
+                                                {t.amount > 0 ? "+" : "-"} {fmt(Math.abs(t.amount))}
+                                            </span>
+                                        </div>
+                                        <div className="tx-col status">
+                                            {statusPill(t.status)}
+                                        </div>
+                                        <div className="tx-col time">
+                                            <span className="tx-time-label">{t.time}</span>
+                                            <ChevronRight size={16} className="tx-row-chevron" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
                 })()}
             </div>
 
@@ -851,42 +949,36 @@ export default function WalletDashboard() {
 
                         {/* Transaction Details */}
                         <div className="transaction-modal-details">
-                            <div className="transaction-detail-row">
-                                <span className="transaction-detail-label">Loại giao dịch</span>
-                                <span className="transaction-detail-value">{selectedTransaction.type}</span>
-                            </div>
-
-                            <div className="transaction-detail-divider"></div>
-
-                            <div className="transaction-detail-row">
-                                <span className="transaction-detail-label">Mã giao dịch</span>
-                                <div className="transaction-detail-value-with-action">
-                                    <span className="transaction-detail-value">{selectedTransaction.id}</span>
-                                    <button
-                                        className="transaction-copy-btn"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleCopyTransactionId(selectedTransaction.id);
-                                        }}
-                                        title="Sao chép mã giao dịch"
-                                    >
-                                        <Copy size={16} />
-                                    </button>
+                            <div className="transaction-info-grid">
+                                <div className="transaction-info-card">
+                                    <span className="transaction-info-label">Loại giao dịch</span>
+                                    <span className="transaction-info-value">{selectedTransaction.type}</span>
+                                </div>
+                                <div className="transaction-info-card">
+                                    <span className="transaction-info-label">Thời gian</span>
+                                    <span className="transaction-info-value">{selectedTransaction.time}</span>
+                                </div>
+                                <div className="transaction-info-card">
+                                    <span className="transaction-info-label">Mã giao dịch</span>
+                                    <div className="transaction-info-action">
+                                        <span className="transaction-info-value">{selectedTransaction.id}</span>
+                                        <button
+                                            className="transaction-copy-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCopyTransactionId(selectedTransaction.id);
+                                            }}
+                                            title="Sao chép mã giao dịch"
+                                        >
+                                            <Copy size={16} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="transaction-detail-divider"></div>
-
-                            <div className="transaction-detail-row">
-                                <span className="transaction-detail-label">Thời gian</span>
-                                <span className="transaction-detail-value">{selectedTransaction.time}</span>
-                            </div>
-
-                            <div className="transaction-detail-divider"></div>
-
-                            <div className="transaction-detail-row">
-                                <span className="transaction-detail-label">Nội dung</span>
-                                <span className="transaction-detail-value">{selectedTransaction.note}</span>
+                            <div className="transaction-note-card">
+                                <span className="transaction-note-label">Nội dung giao dịch</span>
+                                <p className="transaction-note-text">{selectedTransaction.note}</p>
                             </div>
                         </div>
                     </div>

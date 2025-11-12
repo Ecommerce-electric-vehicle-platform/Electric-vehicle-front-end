@@ -20,13 +20,14 @@ import {
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
 import OrderStatus from '../../components/OrderStatus/OrderStatus';
 import './OrderTracking.css';
-import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview, getOrderPayment, getCancelReasons } from '../../api/orderApi';
+import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview, getOrderPayment, getCancelReasons, confirmOrderDelivery } from '../../api/orderApi';
 import { fetchPostProductById } from '../../api/productApi';
 import profileApi from '../../api/profileApi';
 import { AnimatedButton } from '../../components/ui/AnimatedButton';
 import DisputeForm from '../../components/BuyerRaiseDispute/DisputeForm';
 import DisputeModal from '../../components/ui/DisputeModal';
 import CancelOrderRequest from '../../components/CancelOrderModal/CancelOrderRequest';
+import { Toast } from '../../components/Toast/Toast';
 
 function OrderTracking() {
     const { orderId } = useParams();
@@ -40,6 +41,23 @@ function OrderTracking() {
 
     const [isDisputeFormVisible, setIsDisputeFormVisible] = useState(false);
     const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [showToast, setShowToast] = useState(false);
+
+    const showToastMessage = (message) => {
+        if (!message) return;
+        setToastMessage(message);
+        setShowToast(true);
+    };
+
+    const toastPortal = (
+        <Toast
+            message={toastMessage}
+            show={showToast}
+            onClose={() => setShowToast(false)}
+        />
+    );
     const pickFirstTruthy = (...values) => {
         for (const value of values) {
             if (value === undefined || value === null) continue;
@@ -216,6 +234,45 @@ function OrderTracking() {
                 from: location.pathname // Sử dụng đường dẫn thực tế hiện tại
             }
         });
+    };
+
+    const handleConfirmOrder = async () => {
+        const realId = order?.realId || order?.id || orderId;
+        if (!realId || confirming) return;
+
+        setConfirming(true);
+        try {
+            const response = await confirmOrderDelivery(realId);
+            const success = response?.success !== false;
+            if (!success) {
+                throw new Error(response?.message || 'Xác nhận đơn hàng thất bại');
+            }
+
+            showToastMessage('Đơn hàng đã được xác nhận thành công!');
+
+            setOrder(prev => {
+                if (!prev) return prev;
+                const nextRawStatus = response?.rawStatus || 'COMPLETED';
+                return {
+                    ...prev,
+                    rawStatus: nextRawStatus,
+                    status: 'delivered',
+                    deliveredAt: prev?.deliveredAt || new Date().toISOString(),
+                    _raw: {
+                        ...(prev?._raw || {}),
+                        status: nextRawStatus,
+                        orderStatus: nextRawStatus,
+                        rawStatus: nextRawStatus
+                    }
+                };
+            });
+        } catch (error) {
+            const message = error?.response?.data?.message || error?.message || 'Không thể xác nhận đơn hàng.';
+            showToastMessage(message);
+            console.error('[OrderTracking] Failed to confirm order:', error);
+        } finally {
+            setConfirming(false);
+        }
     };
 
     useEffect(() => {
@@ -859,33 +916,46 @@ function OrderTracking() {
 
     if (loading) {
         return (
-            <div className="order-tracking-loading">
-                <div className="loading-spinner"></div>
-                <p>Đang tải thông tin đơn hàng...</p>
-            </div>
+            <>
+                {toastPortal}
+                <div className="order-tracking-loading">
+                    <div className="loading-spinner"></div>
+                    <p>Đang tải thông tin đơn hàng...</p>
+                </div>
+            </>
         );
     }
 
     if (!order) {
         return (
-            <div className="order-tracking-error">
-                <div className="error-icon">
-                    <AlertCircle size={64} color="#dc3545" />
+            <>
+                {toastPortal}
+                <div className="order-tracking-error">
+                    <div className="error-icon">
+                        <AlertCircle size={64} color="#dc3545" />
+                    </div>
+                    <h3>Không tìm thấy đơn hàng</h3>
+                    <p>Đơn hàng với mã {orderId} không tồn tại hoặc đã bị xóa.</p>
+                    <button className="btn btn-primary" onClick={handleGoHome}>
+                        Về trang chủ
+                    </button>
                 </div>
-                <h3>Không tìm thấy đơn hàng</h3>
-                <p>Đơn hàng với mã {orderId} không tồn tại hoặc đã bị xóa.</p>
-                <button className="btn btn-primary" onClick={handleGoHome}>
-                    Về trang chủ
-                </button>
-            </div>
+            </>
         );
     }
+
+    const rawStatusUpper = String(order?.rawStatus || order?._raw?.status || order?._raw?.orderStatus || '').toUpperCase();
+    const isOrderCompleted = ['COMPLETED', 'SUCCESS'].includes(rawStatusUpper);
+    const canConfirmOrder = rawStatusUpper === 'DELIVERED' && !isOrderCompleted;
+    const isDeliveredStatus = order.status === 'delivered' || rawStatusUpper === 'DELIVERED' || isOrderCompleted;
 
     const paymentStatusInfo = getPaymentStatusInfo(order.paymentMethod, order.rawStatus);
     const isCancelled = order.status === 'cancelled' || order.status === 'canceled';
 
     return (
-        <div className="order-tracking-page">
+        <>
+            {toastPortal}
+            <div className="order-tracking-page">
             <div className="order-tracking-container">
                 {/* Header */}
                 <div className="order-tracking-header">
@@ -916,7 +986,7 @@ function OrderTracking() {
                 </div>
 
                 {/* Delivered Hero (Magic UI style) */}
-                {order.status === 'delivered' && (
+                {isDeliveredStatus && (
                     <div className="delivered-hero">
                         <div className="delivered-glow"></div>
                         <div className="delivered-card shine-border">
@@ -1225,30 +1295,41 @@ function OrderTracking() {
                                 </div>
                             )}
 
-                            {order.status === 'delivered' && (
+                            {isDeliveredStatus && (
                                 <div className="action-buttons">
                                     <div className="status-note success status-note-animated status-note-success">
                                         <CheckCircle className="note-icon" />
                                         <span>Đơn hàng đã được giao thành công</span>
                                     </div>
                                     <div className="delivered-action-buttons">
-                                       {isDisputeFormVisible ? (
-                                         // 1. Hiển thị Form nếu isDisputeFormVisible là true
-                                         <DisputeForm
-                                             initialOrderId={order.realId || order.id || orderId}
-                                             onCancelDispute={handleDisputeFormClose} 
-                                         />
-                                     ) : (
-                                         // 2. Hiển thị nút nếu form chưa mở
-                                         <AnimatedButton
-                                             variant="warning"
-                                             onClick={handleRaiseDisputeClick} 
-                                             size="sm"
-                                         >
-                                             <MessageSquareWarning size={16} />
-                                             Khiếu nại
-                                         </AnimatedButton>
-                                     )}
+                                        {canConfirmOrder && (
+                                            <AnimatedButton
+                                                variant="primary"
+                                                shimmer={true}
+                                                onClick={handleConfirmOrder}
+                                                size="sm"
+                                                disabled={confirming}
+                                            >
+                                                {confirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
+                                            </AnimatedButton>
+                                        )}
+                                        {isDisputeFormVisible ? (
+                                            // 1. Hiển thị Form nếu isDisputeFormVisible là true
+                                            <DisputeForm
+                                                initialOrderId={order.realId || order.id || orderId}
+                                                onCancelDispute={handleDisputeFormClose}
+                                            />
+                                        ) : (
+                                            // 2. Hiển thị nút nếu form chưa mở
+                                            <AnimatedButton
+                                                variant="warning"
+                                                onClick={handleRaiseDisputeClick}
+                                                size="sm"
+                                            >
+                                                <MessageSquareWarning size={16} />
+                                                Khiếu nại
+                                            </AnimatedButton>
+                                        )}
                                         {hasReview ? (
                                             <AnimatedButton
                                                 variant="secondary"
@@ -1301,6 +1382,7 @@ function OrderTracking() {
                     </div>
                 </div>
             </div>
+            </div>
             <DisputeModal // Dùng lại DisputeModal , nếu đổi là CustomModel thì rõ ràng hơn, tại...
                 isOpen={isCancelModalVisible}
                 onClose={handleCancelFormClose} 
@@ -1321,7 +1403,7 @@ function OrderTracking() {
                     onCancelDispute={handleDisputeFormClose} 
                 />
             </DisputeModal>
-        </div>
+        </>
     );
 }
 
