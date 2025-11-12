@@ -905,6 +905,38 @@ export const cancelOrder = async (orderId, cancelData = {}) => {
     }
 };
 
+// Confirm delivered order (buyer confirmation)
+// POST /api/v1/order/confirm-delivery/{orderId}
+export const confirmOrderDelivery = async (orderId) => {
+    if (!orderId) throw new Error('orderId is required to confirm order');
+
+    try {
+        const response = await axiosInstance.post(`/api/v1/order/confirm-delivery/${orderId}`);
+        const raw = response?.data ?? {};
+        const data = raw?.data ?? raw ?? {};
+        const resolvedStatus =
+            data?.status ||
+            data?.orderStatus ||
+            data?.order_status ||
+            data?.order?.status ||
+            raw?.status ||
+            null;
+        const rawStatus = resolvedStatus ? String(resolvedStatus).toUpperCase() : null;
+
+        return {
+            success: raw?.success !== false,
+            message: raw?.message || '',
+            status: resolvedStatus,
+            rawStatus,
+            data,
+            error: raw?.error || null
+        };
+    } catch (error) {
+        console.error(`[orderApi] Error confirming order ${orderId}:`, error);
+        throw error;
+    }
+};
+
 
 // thêm cái này để lấy phương thức thanh toán 
 // Get payment method for an order

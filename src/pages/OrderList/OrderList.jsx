@@ -20,12 +20,13 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
-import { getOrderHistory, hasOrderReview, getOrderStatus, getOrderDetails } from '../../api/orderApi';
+import { getOrderHistory, hasOrderReview, getOrderStatus, getOrderDetails, confirmOrderDelivery } from '../../api/orderApi';
 // tui có thêm phần này
 import DisputeForm from "../../components/BuyerRaiseDispute/DisputeForm";
 import './OrderList.css';
 import CancelOrderRequest from "../../components/CancelOrderModal/CancelOrderRequest";
 import { fetchPostProductById } from "../../api/productApi";
+import { Toast } from '../../components/Toast/Toast';
 
 function OrderList() {
     const navigate = useNavigate();
@@ -44,6 +45,23 @@ function OrderList() {
     // thêm dòng này nữa
     const [selectedDisputeOrderId, setSelectedDisputeOrderId] = useState(null);
     const [selectedCancelOrderId, setSelectedCancelOrderId] = useState(null);
+    const [confirmingOrders, setConfirmingOrders] = useState({});
+    const [toastMessage, setToastMessage] = useState('');
+    const [showToast, setShowToast] = useState(false);
+
+    const showToastMessage = (message) => {
+        if (!message) return;
+        setToastMessage(message);
+        setShowToast(true);
+    };
+
+    const toastPortal = (
+        <Toast
+            message={toastMessage}
+            show={showToast}
+            onClose={() => setShowToast(false)}
+        />
+    );
 
 
     // Kiểm tra đăng nhập (đúng key token thực tế)
@@ -614,6 +632,25 @@ function OrderList() {
         return (isPending || isConfirmed) && !isShipping && !hasCanceledAt && !handedOver;
     };
 
+    const getOrderRawStatus = (order) => {
+        if (!order) return '';
+        const candidates = [
+            order._raw?.rawStatus,
+            order._raw?.status,
+            order._raw?.orderStatus,
+            order._raw?.order_status,
+            order.rawStatus,
+            order.order_status,
+            order.status
+        ];
+        for (const candidate of candidates) {
+            if (typeof candidate === 'string' && candidate.trim()) {
+                return candidate.toUpperCase();
+            }
+        }
+        return '';
+    };
+
     // Lọc theo trạng thái + tìm kiếm
     const filteredOrders = useMemo(() => {
         return orders
@@ -757,6 +794,36 @@ function OrderList() {
     // Xử lý xem chi tiết đơn hàng
     const handleViewOrder = (orderId) => {
         navigate(`/order-tracking/${orderId}`);
+    };
+
+    const handleConfirmDeliveredOrder = async (order) => {
+        if (!order) return;
+        const realOrderId = order._raw?.id ?? order.id;
+        const normalizedId = String(order.id ?? realOrderId ?? '');
+        if (!realOrderId || !normalizedId || confirmingOrders[normalizedId]) return;
+
+        setConfirmingOrders(prev => ({ ...prev, [normalizedId]: true }));
+
+        try {
+            const response = await confirmOrderDelivery(realOrderId);
+            const success = response?.success !== false;
+            if (!success) {
+                throw new Error(response?.message || 'Xác nhận đơn hàng thất bại');
+            }
+
+            showToastMessage('Đơn hàng đã được xác nhận thành công!');
+            await loadOrders(true);
+        } catch (error) {
+            const message = error?.response?.data?.message || error?.message || 'Không thể xác nhận đơn hàng.';
+            showToastMessage(message);
+            console.error('[OrderList] Failed to confirm order:', error);
+        } finally {
+            setConfirmingOrders(prev => {
+                const next = { ...prev };
+                delete next[normalizedId];
+                return next;
+            });
+        }
     };
 
     // Hành động theo trạng thái
@@ -922,45 +989,51 @@ function OrderList() {
     // cái này là của cancel order
     if (selectedCancelOrderId !== null) {
         return (
-            <div className="cancel-order-flow-wrapper">
-                <button
-                    className="btn-back-order-list"
-                    onClick={handleCancelOrderBack}
-                    style={{
-                        marginBottom: "15px",
-                        padding: "8px 15px",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
-                        background: "#f8f9fa"
-                    }}
-                >
-                    <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
-                </button>
-                <CancelOrderRequest
-                    orderId={selectedCancelOrderId}
-                    onCancelSuccess={handleCancelOrderSuccess}
-                    onBack={handleCancelOrderBack}
-                />
-            </div>
+            <>
+                {toastPortal}
+                <div className="cancel-order-flow-wrapper">
+                    <button
+                        className="btn-back-order-list"
+                        onClick={handleCancelOrderBack}
+                        style={{
+                            marginBottom: "15px",
+                            padding: "8px 15px",
+                            border: "1px solid #ccc",
+                            borderRadius: "4px",
+                            background: "#f8f9fa"
+                        }}
+                    >
+                        <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
+                    </button>
+                    <CancelOrderRequest
+                        orderId={selectedCancelOrderId}
+                        onCancelSuccess={handleCancelOrderSuccess}
+                        onBack={handleCancelOrderBack}
+                    />
+                </div>
+            </>
         );
     }
 
 
     if (selectedDisputeOrderId !== null) {
         return (
-            <div className="dispute-flow-wrapper">
-                <button
-                    className="btn-back-order-list"
-                    onClick={handleCancelDispute}
-                    style={{ marginBottom: '15px', padding: '8px 15px', border: '1px solid #ccc', borderRadius: '4px', background: '#f8f9fa' }}
-                >
-                    <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
-                </button>
-                <DisputeForm
-                    initialOrderId={selectedDisputeOrderId}
-                    onCancelDispute={handleCancelDispute} // Thêm prop để form có thể tự thoát
-                />
-            </div>
+            <>
+                {toastPortal}
+                <div className="dispute-flow-wrapper">
+                    <button
+                        className="btn-back-order-list"
+                        onClick={handleCancelDispute}
+                        style={{ marginBottom: '15px', padding: '8px 15px', border: '1px solid #ccc', borderRadius: '4px', background: '#f8f9fa' }}
+                    >
+                        <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
+                    </button>
+                    <DisputeForm
+                        initialOrderId={selectedDisputeOrderId}
+                        onCancelDispute={handleCancelDispute} // Thêm prop để form có thể tự thoát
+                    />
+                </div>
+            </>
         );
     }
 
@@ -987,10 +1060,13 @@ function OrderList() {
 
     if (loading) {
         return (
-            <div className="order-list-loading">
-                <div className="loading-spinner"></div>
-                <p>Đang tải danh sách đơn hàng...</p>
-            </div>
+            <>
+                {toastPortal}
+                <div className="order-list-loading">
+                    <div className="loading-spinner"></div>
+                    <p>Đang tải danh sách đơn hàng...</p>
+                </div>
+            </>
         );
     }
 
@@ -1005,7 +1081,9 @@ function OrderList() {
     // );
 
     return (
-        <div className="order-list-page">
+        <>
+            {toastPortal}
+            <div className="order-list-page">
             <div className="order-list-container">
                 {/* Header */}
                 <div className="order-list-header">
@@ -1152,6 +1230,11 @@ function OrderList() {
                                     const displayStatus = isCancelled ? 'canceled' : order.status;
                                     const displayStatusInfo = getStatusInfo(displayStatus);
                                     const DisplayStatusIcon = displayStatusInfo.icon;
+                                    const rawStatus = getOrderRawStatus(order);
+                                    const isCompleted = rawStatus === 'COMPLETED' || rawStatus === 'SUCCESS';
+                                    const canShowConfirmOrder = rawStatus === 'DELIVERED' && !isCompleted;
+                                    const confirmStateKey = String(order.id ?? order._raw?.id ?? '');
+                                    const isConfirming = Boolean(confirmingOrders[confirmStateKey]);
 
                                     const imgSrc = extractImageFromOrder(order) || '/vite.svg';
 
@@ -1266,6 +1349,15 @@ function OrderList() {
 
                                                             {order.status === 'delivered' && (
                                                                 <>
+                                                                    {canShowConfirmOrder && (
+                                                                        <button
+                                                                            className="btn btn-primary btn-sm btn-animate"
+                                                                            onClick={(e) => { e.stopPropagation(); handleConfirmDeliveredOrder(order); }}
+                                                                            disabled={isConfirming}
+                                                                        >
+                                                                            {isConfirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
+                                                                        </button>
+                                                                    )}
                                                                     {reviewedMap[order.id]?.hasReview ? (
                                                                         <button
                                                                             className="btn btn-secondary btn-sm btn-animate"
@@ -1633,7 +1725,8 @@ function OrderList() {
                     </div>
                 </div>
             </div>
-        </div>
+            </div>
+        </>
     );
 }
 
