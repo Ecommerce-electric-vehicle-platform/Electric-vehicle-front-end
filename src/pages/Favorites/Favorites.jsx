@@ -3,13 +3,14 @@ import { MessageCircle, Trash2, Loader2, Search, CheckSquare, Square, Heart } fr
 import "./Favorites.css";
 import { fetchWishlist, removeFromWishlist } from "../../api/wishlistApi";
 import { ConfirmationDialog } from "../../components/ConfirmationDialog/ConfirmationDialog";
+import { PRODUCT_TYPE_FILTERS, matchesProductTypeFilter } from "../../utils/productType";
 
 export function Favorites() {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [sortBy, setSortBy] = useState("date"); // date | priceLow | priceHigh | batteryType
-    const [priorityFilter, setPriorityFilter] = useState(null); // null | "LOW" | "MEDIUM" | "HIGH"
+    const [sortBy, _setSortBy] = useState("date"); // date | priceLow | priceHigh | batteryType
+    const [priorityFilter, _setPriorityFilter] = useState(null); // null | "LOW" | "MEDIUM" | "HIGH"
     const [displayPage, setDisplayPage] = useState(1); // Client-side pagination (1-indexed)
     const [pageSize] = useState(4); // Fixed page size for display
     const [removingId, setRemovingId] = useState(null);
@@ -19,6 +20,15 @@ export function Favorites() {
     const [selectedItems, setSelectedItems] = useState(new Set()); // Bulk selection
     const [searchQuery, setSearchQuery] = useState(''); // Search filter
     const [showBulkActions, setShowBulkActions] = useState(false);
+    const [productTypeFilter, setProductTypeFilter] = useState(PRODUCT_TYPE_FILTERS.ALL);
+
+    const handleProductTypeFilterChange = (nextFilter) => {
+        setProductTypeFilter((prev) => {
+            const updated = prev === nextFilter ? PRODUCT_TYPE_FILTERS.ALL : nextFilter;
+            return updated;
+        });
+        setDisplayPage(1);
+    };
 
     // Fetch wishlist from API - lấy tất cả items vì cần sort và filter client-side
     useEffect(() => {
@@ -104,6 +114,12 @@ export function Favorites() {
             });
         }
 
+        if (productTypeFilter !== "all") {
+            list = list.filter((item) =>
+                matchesProductTypeFilter(item, productTypeFilter)
+            );
+        }
+
         // Sắp xếp
         if (sortBy === "date") {
             // Sort by addedAt (newest first)
@@ -121,7 +137,7 @@ export function Favorites() {
         }
 
         return list;
-    }, [items, sortBy, searchQuery]);
+    }, [items, sortBy, searchQuery, productTypeFilter]);
 
     // Client-side pagination
     const totalElements = sortedItems.length;
@@ -138,7 +154,7 @@ export function Favorites() {
     useEffect(() => {
         setSelectedItems(new Set());
         setShowBulkActions(false);
-    }, [displayPage, searchQuery]);
+    }, [displayPage, searchQuery, productTypeFilter]);
 
     // Get items for current page
     const pagedItems = useMemo(() => {
@@ -239,26 +255,6 @@ export function Favorites() {
     const handleChatWithSeller = () => {
         // Navigate to chat page
         window.location.href = `/chat`;
-    };
-
-    const getSortLabel = () => {
-        switch (sortBy) {
-            case "date": return "Ngày thêm";
-            case "priceLow": return "Giá: Thấp đến Cao";
-            case "priceHigh": return "Giá: Cao đến Thấp";
-            case "batteryType": return "Loại Pin";
-            default: return "Ngày thêm";
-        }
-    };
-
-    const getPriorityFilterLabel = () => {
-        switch (priorityFilter) {
-            case null: return "Tất cả Ưu tiên";
-            case "LOW": return "Ưu tiên: Thấp";
-            case "MEDIUM": return "Ưu tiên: Trung bình";
-            case "HIGH": return "Ưu tiên: Cao";
-            default: return "Tất cả Ưu tiên";
-        }
     };
 
     // Pagination helpers
@@ -468,6 +464,29 @@ export function Favorites() {
                         )}
 
                         <div className="wishlist-filters">
+                            <div className="wishlist-type-filters" role="group" aria-label="Lọc loại sản phẩm">
+                                <button
+                                    className={`wishlist-type-btn ${productTypeFilter === PRODUCT_TYPE_FILTERS.ALL ? "active" : ""}`}
+                                    onClick={() => handleProductTypeFilterChange(PRODUCT_TYPE_FILTERS.ALL)}
+                                    type="button"
+                                >
+                                    Tất cả
+                                </button>
+                                <button
+                                    className={`wishlist-type-btn ${productTypeFilter === PRODUCT_TYPE_FILTERS.VEHICLE ? "active" : ""}`}
+                                    onClick={() => handleProductTypeFilterChange(PRODUCT_TYPE_FILTERS.VEHICLE)}
+                                    type="button"
+                                >
+                                    Xe điện
+                                </button>
+                                <button
+                                    className={`wishlist-type-btn ${productTypeFilter === PRODUCT_TYPE_FILTERS.BATTERY ? "active" : ""}`}
+                                    onClick={() => handleProductTypeFilterChange(PRODUCT_TYPE_FILTERS.BATTERY)}
+                                    type="button"
+                                >
+                                    Pin
+                                </button>
+                            </div>
                             {/* Select All Checkbox */}
                             {sortedItems.length > 0 && (
                                 <button
