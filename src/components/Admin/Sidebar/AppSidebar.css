@@ -1,0 +1,282 @@
+/* Admin Sidebar CSS - Ensure scrollable navigation */
+/* CRITICAL FIX: Sidebar must be able to scroll to show all items including "Cấu hình Escrow" */
+
+/* Main sidebar container - flexbox layout */
+.c-sidebar.border-end {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+  position: fixed !important;
+  /* Ensure sidebar takes full viewport height */
+  top: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Sidebar header - fixed height, no shrink */
+.c-sidebar .c-sidebar-header.border-bottom {
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  min-height: 60px !important;
+  max-height: 60px !important;
+  height: 60px !important;
+}
+
+/* Sidebar footer - fixed height, no shrink, ensure it doesn't cover content */
+.c-sidebar .c-sidebar-footer.border-top {
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  min-height: 50px !important;
+  max-height: 50px !important;
+  height: 50px !important;
+  z-index: 1 !important;
+  position: relative !important;
+  /* Ensure footer doesn't cover navigation */
+  margin-top: 0 !important;
+}
+
+/* Sidebar scrollable area - takes remaining space, MUST scroll */
+.sidebar-scrollable,
+#admin-sidebar-scrollable,
+.c-sidebar .sidebar-scrollable,
+.c-sidebar #admin-sidebar-scrollable {
+  flex: 1 1 0% !important;
+  overflow-y: scroll !important; /* Force scrollbar to always be visible */
+  overflow-x: hidden !important;
+  min-height: 0 !important; /* CRITICAL: allows flex child to shrink below content size */
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 255, 255, 0.8) rgba(0, 0, 0, 0.5) !important;
+  /* Ensure scrollbar is always visible when needed */
+  padding-right: 0 !important;
+  /* Force scrollbar to always be visible - reserve space for it */
+  scrollbar-gutter: stable !important;
+  /* Explicit height to ensure scrolling works */
+  height: calc(100vh - 60px - 50px) !important;
+  max-height: calc(100vh - 60px - 50px) !important;
+  /* Override any CoreUI styles */
+  display: block !important;
+}
+
+/* Ensure the scrollable area takes the correct space */
+.c-sidebar > .sidebar-scrollable,
+.c-sidebar > #admin-sidebar-scrollable,
+.c-sidebar.border-end > .sidebar-scrollable,
+.c-sidebar.border-end > #admin-sidebar-scrollable {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow-y: scroll !important; /* Force scrollbar to always be visible */
+  overflow-x: hidden !important;
+  height: calc(100vh - 60px - 50px) !important; /* 100vh - header - footer */
+  max-height: calc(100vh - 60px - 50px) !important;
+  /* Force scrollbar to always be visible */
+  scrollbar-gutter: stable !important;
+  /* Override any CoreUI styles that might prevent scrolling */
+  display: block !important;
+}
+
+/* CoreUI Sidebar Navigation - Allow full height, no clipping */
+.sidebar-scrollable .c-sidebar-nav,
+#admin-sidebar-scrollable .c-sidebar-nav,
+.c-sidebar .sidebar-scrollable .c-sidebar-nav,
+.c-sidebar #admin-sidebar-scrollable .c-sidebar-nav {
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  display: block !important;
+  flex: none !important;
+  padding: 0.5rem 0 !important;
+  margin: 0 !important;
+}
+
+/* Navigation list - full height, no clipping */
+.sidebar-scrollable .c-sidebar-nav > ul,
+#admin-sidebar-scrollable .c-sidebar-nav > ul,
+.c-sidebar .sidebar-scrollable .c-sidebar-nav > ul,
+.c-sidebar #admin-sidebar-scrollable .c-sidebar-nav > ul {
+  overflow-y: visible !important;
+  height: auto !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  display: block !important;
+  flex: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  list-style: none !important;
+  /* Add padding at bottom to ensure last items are visible */
+  padding-bottom: 3rem !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Force all nav items to be visible */
+.c-sidebar-nav .nav-item,
+.c-sidebar-nav .nav-title,
+.sidebar-scrollable .c-sidebar-nav .nav-item,
+.sidebar-scrollable .c-sidebar-nav .nav-title,
+#admin-sidebar-scrollable .c-sidebar-nav .nav-item,
+#admin-sidebar-scrollable .c-sidebar-nav .nav-title {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+}
+
+/* Override any CoreUI styles that might hide content */
+.c-sidebar-nav,
+.c-sidebar-nav ul,
+.c-sidebar-nav li,
+.sidebar-scrollable .c-sidebar-nav,
+.sidebar-scrollable .c-sidebar-nav ul,
+.sidebar-scrollable .c-sidebar-nav li {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  display: block !important;
+}
+
+/* Ensure all list items are visible */
+.c-sidebar-nav ul li,
+.sidebar-scrollable .c-sidebar-nav ul li,
+#admin-sidebar-scrollable .c-sidebar-nav ul li {
+  display: list-item !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+}
+
+/* CRITICAL: Ensure the last nav items (including "Cấu hình Escrow") are visible */
+.c-sidebar-nav > ul > li:last-child,
+.c-sidebar-nav > ul > li:nth-last-child(2),
+.c-sidebar-nav > ul > li:nth-last-child(3),
+.c-sidebar-nav > ul > li:nth-last-child(4),
+.c-sidebar-nav > ul > li:nth-last-child(5),
+.sidebar-scrollable .c-sidebar-nav > ul > li:last-child,
+.sidebar-scrollable .c-sidebar-nav > ul > li:nth-last-child(2),
+.sidebar-scrollable .c-sidebar-nav > ul > li:nth-last-child(3),
+#admin-sidebar-scrollable .c-sidebar-nav > ul > li:last-child,
+#admin-sidebar-scrollable .c-sidebar-nav > ul > li:nth-last-child(2),
+#admin-sidebar-scrollable .c-sidebar-nav > ul > li:nth-last-child(3) {
+  display: list-item !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 2 !important;
+  margin-bottom: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+/* Ensure nav links are visible and clickable */
+.c-sidebar-nav a,
+.c-sidebar-nav .nav-link,
+.sidebar-scrollable .c-sidebar-nav a,
+.sidebar-scrollable .c-sidebar-nav .nav-link,
+#admin-sidebar-scrollable .c-sidebar-nav a,
+#admin-sidebar-scrollable .c-sidebar-nav .nav-link {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Make sure all content is visible - no clipping anywhere */
+.sidebar-scrollable *,
+#admin-sidebar-scrollable * {
+  visibility: visible !important;
+}
+
+/* Custom scrollbar for sidebar - Make it VERY visible */
+.sidebar-scrollable::-webkit-scrollbar,
+#admin-sidebar-scrollable::-webkit-scrollbar,
+.c-sidebar .sidebar-scrollable::-webkit-scrollbar,
+.c-sidebar #admin-sidebar-scrollable::-webkit-scrollbar {
+  width: 14px !important; /* Wider for better visibility */
+  display: block !important;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-track,
+#admin-sidebar-scrollable::-webkit-scrollbar-track,
+.c-sidebar .sidebar-scrollable::-webkit-scrollbar-track,
+.c-sidebar #admin-sidebar-scrollable::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.5) !important;
+  border-radius: 7px !important;
+  margin: 4px 0 !important;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-thumb,
+#admin-sidebar-scrollable::-webkit-scrollbar-thumb,
+.c-sidebar .sidebar-scrollable::-webkit-scrollbar-thumb,
+.c-sidebar #admin-sidebar-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.7) !important; /* Very visible */
+  border-radius: 7px !important;
+  border: 2px solid rgba(0, 0, 0, 0.4) !important;
+  min-height: 40px !important;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-thumb:hover,
+#admin-sidebar-scrollable::-webkit-scrollbar-thumb:hover,
+.c-sidebar .sidebar-scrollable::-webkit-scrollbar-thumb:hover,
+.c-sidebar #admin-sidebar-scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Always show scrollbar thumb - even when not hovering */
+.sidebar-scrollable:not(:hover)::-webkit-scrollbar-thumb,
+#admin-sidebar-scrollable:not(:hover)::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+
+.sidebar-scrollable:active::-webkit-scrollbar-thumb,
+#admin-sidebar-scrollable:active::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 1) !important;
+}
+
+/* Force scrollbar to always be visible when content overflows */
+.sidebar-scrollable,
+#admin-sidebar-scrollable {
+  scrollbar-gutter: stable !important;
+}
+
+/* Mobile/Responsive fixes */
+@media (max-width: 768px) {
+  .c-sidebar > .sidebar-scrollable,
+  .c-sidebar > #admin-sidebar-scrollable {
+    height: calc(100vh - 60px - 40px) !important;
+    max-height: calc(100vh - 60px - 40px) !important;
+  }
+  
+  .c-sidebar-footer {
+    min-height: 40px !important;
+    max-height: 40px !important;
+    height: 40px !important;
+  }
+}
+
+/* CRITICAL: Override any CoreUI styles that might prevent scrolling or hide items */
+.c-sidebar .c-sidebar-nav-wrapper,
+.c-sidebar .c-sidebar-nav-wrapper > * {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Ensure the entire navigation list is rendered */
+.c-sidebar-nav ul,
+.sidebar-scrollable .c-sidebar-nav ul,
+#admin-sidebar-scrollable .c-sidebar-nav ul {
+  padding-bottom: 4rem !important; /* Extra padding to ensure last items are visible */
+}
+
+/* Force scrollbar to always be visible - override CoreUI */
+.c-sidebar .sidebar-scrollable,
+.c-sidebar #admin-sidebar-scrollable {
+  overflow-y: scroll !important;
+  -ms-overflow-style: scrollbar !important; /* IE and Edge */
+}

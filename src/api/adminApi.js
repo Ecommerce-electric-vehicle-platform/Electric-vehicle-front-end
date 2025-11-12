@@ -297,3 +297,58 @@ export const getSubscriptionRevenue = async () => {
     throw error;
   }
 };
+
+/**
+ * ================================
+ * SYSTEM CONFIG - ESCROW TRANSFER TIME
+ * ================================
+ */
+
+// GET /api/v1/admin/system-config/ESCROW_TRANSFER_SECONDS - Lấy cấu hình thời gian chuyển tiền
+export const getEscrowTransferConfig = async () => {
+  try {
+    const res = await adminAxios.get(
+      `/api/v1/admin/system-config/ESCROW_TRANSFER_SECONDS`
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy cấu hình Escrow transfer:", error);
+    throw error;
+  }
+};
+
+// PUT /api/v1/admin/system-config/ESCROW_TRANSFER_SECONDS - Cập nhật thời gian chuyển tiền (yêu cầu SUPER_ADMIN)
+export const updateEscrowTransferConfig = async (configValue) => {
+  try {
+    // Đảm bảo configValue là string hoặc number
+    const valueToSend = typeof configValue === 'string' ? configValue : configValue?.toString() || configValue;
+    
+    console.log("Updating Escrow Transfer Config:", {
+      configKey: "ESCROW_TRANSFER_SECONDS",
+      configValue: valueToSend
+    });
+
+    const res = await adminAxios.put(
+      `/api/v1/admin/system-config/ESCROW_TRANSFER_SECONDS`,
+      { configValue: valueToSend }
+    );
+    
+    console.log("Update Escrow Transfer Config Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi cập nhật cấu hình Escrow transfer:", error);
+    
+    // Log chi tiết lỗi để debug
+    if (error.response) {
+      console.error("Error response:", error.response.data);
+      console.error("Error status:", error.response.status);
+      console.error("Error headers:", error.response.headers);
+    } else if (error.request) {
+      console.error("Error request:", error.request);
+    } else {
+      console.error("Error message:", error.message);
+    }
+    
+    throw error;
+  }
+};

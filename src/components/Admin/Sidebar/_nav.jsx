@@ -11,6 +11,7 @@ import {
   cilEnvelopeOpen,
   cilTask,
   cilSettings,
+  cilCreditCard,
 } from "@coreui/icons";
 import { CNavGroup, CNavItem, CNavTitle } from "@coreui/react";
 
@@ -20,6 +21,22 @@ const _nav = [
     name: "Bảng điều khiển",
     to: "/admin/dashboard",
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavTitle,
+    name: "HỆ THỐNG",
+  },
+  {
+    component: CNavItem,
+    name: "Cấu hình Escrow",
+    to: "/admin/system-config",
+    icon: <CIcon icon={cilCreditCard} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: "Cài đặt",
+    to: "/admin/settings",
+    icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
   },
   {
     component: CNavTitle,
@@ -76,16 +93,6 @@ const _nav = [
     name: "Hộp thư đến",
     to: "/admin/inbox",
     icon: <CIcon icon={cilEnvelopeOpen} customClassName="nav-icon" />,
-  },
-  {
-    component: CNavTitle,
-    name: "HỆ THỐNG",
-  },
-  {
-    component: CNavItem,
-    name: "Cài đặt",
-    to: "/admin/settings",
-    icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
   },
 ];
 

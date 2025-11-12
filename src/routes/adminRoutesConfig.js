@@ -10,6 +10,7 @@ const adminRoutesConfig = [
   { path: '/admin/requests', name: 'Requests' },
   { path: '/admin/inbox', name: 'Inbox' },
   { path: '/admin/settings', name: 'Settings' },
+  { path: '/admin/system-config', name: 'System Config' },
 ]
 
 export default adminRoutesConfig
