@@ -341,16 +341,15 @@ export default function SystemConfig() {
       <CCard className="shadow-sm">
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <div>
-            <h4 className="mb-0">Quản lý System Config</h4>
+            <h4 className="mb-0">Quản lý Cấu Hình Hệ Thống</h4>
             <p className="text-muted mb-0 small">
-              Quản lý các cấu hình hệ thống
-            </p>
+            Thiết lập và điều chỉnh các cấu hình chung của hệ thống            </p>
           </div>
           <CButton
-            color="primary"
+            color="secondary"
             onClick={loadConfigs}
             disabled={loading}
-            className="d-flex align-items-center gap-2"
+            className="refresh-btn-compact"
           >
             <RefreshCw size={16} />
             Làm mới
@@ -403,7 +402,7 @@ export default function SystemConfig() {
                     <CTableHeaderCell>Mô tả</CTableHeaderCell>
                     <CTableHeaderCell>Ngày tạo</CTableHeaderCell>
                     <CTableHeaderCell>Ngày cập nhật</CTableHeaderCell>
-                    <CTableHeaderCell>Actions</CTableHeaderCell>
+                    <CTableHeaderCell>Thao tác</CTableHeaderCell>
                   </CTableRow>
                 </CTableHead>
                 <CTableBody>

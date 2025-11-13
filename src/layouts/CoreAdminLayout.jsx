@@ -27,6 +27,9 @@ import {
   MdSettings,
   MdAccountCircle,
   MdCreditCard,
+  MdBuild,
+  MdAccountBalanceWallet,
+  MdCardGiftcard,
 } from "react-icons/md";
 import { FaLeaf } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -297,12 +300,12 @@ const CoreAdminLayout = () => {
                 e.target.style.color = "#bdc3c7";
               }}
             >
-              <MdCreditCard style={{ marginRight: "12px", fontSize: "18px" }} />
-              Cấu hình Escrow
+              <MdBuild style={{ marginRight: "12px", fontSize: "18px" }} />
+              Cấu hình Ký Quỹ chung
             </a>
           </div>
 
-          {/* System Wallets */}
+          {/* Ví Hệ Thống */}
           <div style={{ marginBottom: "4px" }}>
             <a
               href="/admin/system-wallets"
@@ -323,12 +326,12 @@ const CoreAdminLayout = () => {
                 e.target.style.color = "#bdc3c7";
               }}
             >
-              <MdCreditCard style={{ marginRight: "12px", fontSize: "18px" }} />
-              System Wallets
+              <MdAccountBalanceWallet style={{ marginRight: "12px", fontSize: "18px" }} />
+              Ví Hệ Thống
             </a>
           </div>
 
-          {/* Subscription Packages */}
+          {/* Gói Dịch Vụ */}
           <div style={{ marginBottom: "4px" }}>
             <a
               href="/admin/subscription-packages"
@@ -349,8 +352,8 @@ const CoreAdminLayout = () => {
                 e.target.style.color = "#bdc3c7";
               }}
             >
-              <MdCreditCard style={{ marginRight: "12px", fontSize: "18px" }} />
-              Subscription Packages
+              <MdCardGiftcard style={{ marginRight: "12px", fontSize: "18px" }} />
+              Gói Dịch Vụ
             </a>
           </div>
 
@@ -607,9 +610,9 @@ const CoreAdminLayout = () => {
                 alignItems: "center",
                 justifyContent: "center",
               }}
-              title="Cấu hình Escrow"
+              title="Cấu hình Ký Quỹ chung"
             >
-              <MdCreditCard />
+              <MdBuild />
             </a>
             <a
               href="/admin/settings"

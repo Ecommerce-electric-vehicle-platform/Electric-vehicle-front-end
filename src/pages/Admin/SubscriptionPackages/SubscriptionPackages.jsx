@@ -549,9 +549,9 @@ export default function SubscriptionPackages() {
       <CCard className="shadow-sm">
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <div>
-            <h4 className="mb-0">Quản lý Subscription Packages</h4>
+            <h4 className="mb-0">Quản lý Gói Dịch Vụ</h4>
             <p className="text-muted mb-0 small">
-              Quản lý các gói subscription và prices
+              Quản lý các gói dịch vụ và giá
             </p>
           </div>
           <div className="d-flex gap-2">
