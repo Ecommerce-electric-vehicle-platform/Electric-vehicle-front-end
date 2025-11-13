@@ -115,7 +115,10 @@ export const getOrderDetails = async (orderId) => {
             normalizedStatus = 'confirmed';
         } else if (['SHIPPED', 'DELIVERING'].includes(rawStatus)) {
             normalizedStatus = 'shipping';
-        } else if (['DELIVERED', 'COMPLETED', 'SUCCESS'].includes(rawStatus)) {
+        } else if (['COMPLETED', 'SUCCESS'].includes(rawStatus)) {
+            // COMPLETED/SUCCESS should be normalized as 'completed', not 'delivered'
+            normalizedStatus = 'completed';
+        } else if (['DELIVERED'].includes(rawStatus)) {
             normalizedStatus = 'delivered';
         } else if (['CANCELLED', 'CANCELED', 'FAILED'].includes(rawStatus)) {
             normalizedStatus = 'canceled';
@@ -905,38 +908,47 @@ export const cancelOrder = async (orderId, cancelData = {}) => {
     }
 };
 
-// Confirm delivered order (buyer confirmation)
-// POST /api/v1/order/confirm-delivery/{orderId}
+// Buyer confirms order receipt
+// PUT /api/v1/buyer/orders/{orderId}/confirm
+// Updates order status from DELIVERED to COMPLETED
+// Response: { success: true, message: "ORDER CONFIRMED SUCCESSFULLY", data: { id: 123, status: "COMPLETED" } }
 export const confirmOrderDelivery = async (orderId) => {
     if (!orderId) throw new Error('orderId is required to confirm order');
 
     try {
-        const response = await axiosInstance.post(`/api/v1/order/confirm-delivery/${orderId}`);
+        const response = await axiosInstance.put(`/api/v1/buyer/orders/${orderId}/confirm`);
         const raw = response?.data ?? {};
         const data = raw?.data ?? raw ?? {};
-        const resolvedStatus =
-            data?.status ||
-            data?.orderStatus ||
-            data?.order_status ||
-            data?.order?.status ||
-            raw?.status ||
-            null;
+
+        // Extract status from response
+        const resolvedStatus = data?.status || raw?.status || null;
         const rawStatus = resolvedStatus ? String(resolvedStatus).toUpperCase() : null;
 
         return {
             success: raw?.success !== false,
-            message: raw?.message || '',
+            message: raw?.message || 'Order confirmed successfully',
             status: resolvedStatus,
-            rawStatus,
-            data,
+            rawStatus: rawStatus,
+            data: data,
             error: raw?.error || null
         };
     } catch (error) {
         console.error(`[orderApi] Error confirming order ${orderId}:`, error);
+
+        // Handle specific error cases
+        if (error?.response?.status === 400) {
+            throw new Error(error?.response?.data?.message || 'Order status is not DELIVERED or order already completed');
+        }
+        if (error?.response?.status === 403) {
+            throw new Error(error?.response?.data?.message || 'Order does not belong to this buyer');
+        }
+        if (error?.response?.status === 404) {
+            throw new Error(error?.response?.data?.message || 'Order not found');
+        }
+
         throw error;
     }
 };
-
 
 // thêm cái này để lấy phương thức thanh toán 
 // Get payment method for an order

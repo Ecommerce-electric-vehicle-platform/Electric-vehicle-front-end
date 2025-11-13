@@ -58,6 +58,14 @@ function OrderTracking() {
             onClose={() => setShowToast(false)}
         />
     );
+
+    const updateOrderState = (updater) => {
+        setOrder(prev => {
+            const nextValue = typeof updater === 'function' ? updater(prev) : updater;
+            if (nextValue === undefined) return prev;
+            return nextValue;
+        });
+    };
     const pickFirstTruthy = (...values) => {
         for (const value of values) {
             if (value === undefined || value === null) continue;
@@ -240,34 +248,145 @@ function OrderTracking() {
         const realId = order?.realId || order?.id || orderId;
         if (!realId || confirming) return;
 
+        // Get status from multiple possible locations
+        const currentStatus = String(
+            order?.rawStatus || 
+            order?._raw?.status || 
+            order?._raw?.orderStatus || 
+            order?._raw?.rawStatus || 
+            ''
+        ).toUpperCase();
+        
+        // Also check normalized status
+        const normalizedStatus = String(order?.status || '').toLowerCase();
+        
+        console.log('[OrderTracking] handleConfirmOrder - Status check:', {
+            rawStatus: order?.rawStatus,
+            _raw_status: order?._raw?.status,
+            _raw_rawStatus: order?._raw?.rawStatus,
+            status: order?.status,
+            currentStatus,
+            normalizedStatus
+        });
+
+        // Check if order is already COMPLETED
+        if (['COMPLETED', 'SUCCESS'].includes(currentStatus)) {
+            showToastMessage('Đơn hàng đã được xác nhận hoặc đang ở trạng thái hoàn tất.');
+            return;
+        }
+
+        // Check if order is DELIVERED (check both raw status and normalized status)
+        const isDelivered = currentStatus === 'DELIVERED' || normalizedStatus === 'delivered';
+        if (!isDelivered) {
+            showToastMessage('Chỉ có thể xác nhận đơn hàng khi đơn hàng đã được giao thành công (DELIVERED).');
+            return;
+        }
+
         setConfirming(true);
         try {
+            // Call the real API to confirm order
             const response = await confirmOrderDelivery(realId);
-            const success = response?.success !== false;
-            if (!success) {
-                throw new Error(response?.message || 'Xác nhận đơn hàng thất bại');
+            
+            if (!response.success) {
+                throw new Error(response.message || 'Không thể xác nhận đơn hàng.');
             }
 
-            showToastMessage('Đơn hàng đã được xác nhận thành công!');
+            console.log('[OrderTracking] Confirm order response:', {
+                success: response.success,
+                rawStatus: response.rawStatus,
+                status: response.status,
+                data: response.data
+            });
 
-            setOrder(prev => {
+            showToastMessage(response.message || 'Đơn hàng đã được xác nhận thành công!');
+
+            // Use status from confirm response first, then refresh from backend
+            const confirmedRawStatus = response.rawStatus || response.data?.status || 'COMPLETED';
+            const confirmedNormalizedStatus = String(confirmedRawStatus).toUpperCase() === 'COMPLETED' ? 'completed' : 'delivered';
+
+            // Optimistically update UI immediately with confirmed status
+            updateOrderState(prev => {
                 if (!prev) return prev;
-                const nextRawStatus = response?.rawStatus || 'COMPLETED';
                 return {
                     ...prev,
-                    rawStatus: nextRawStatus,
-                    status: 'delivered',
-                    deliveredAt: prev?.deliveredAt || new Date().toISOString(),
+                    rawStatus: confirmedRawStatus,
+                    status: confirmedNormalizedStatus,
+                    updatedAt: new Date().toISOString(),
                     _raw: {
-                        ...(prev?._raw || {}),
-                        status: nextRawStatus,
-                        orderStatus: nextRawStatus,
-                        rawStatus: nextRawStatus
+                        ...(prev._raw || {}),
+                        rawStatus: confirmedRawStatus,
+                        status: confirmedRawStatus,
+                        orderStatus: confirmedRawStatus
                     }
                 };
             });
+
+            // Refresh order data from backend to get the updated status (may take a moment)
+            try {
+                const refreshedRes = await getOrderDetails(realId);
+                if (refreshedRes.success && refreshedRes.data) {
+                    const orderDetailData = refreshedRes.data;
+                    const rawStatus = orderDetailData.rawStatus || confirmedRawStatus;
+                    const normalizedStatus = String(rawStatus).toUpperCase() === 'COMPLETED' ? 'completed' : (orderDetailData.status || confirmedNormalizedStatus);
+                    
+                    console.log('[OrderTracking] Refreshed order data after confirm:', {
+                        rawStatus,
+                        normalizedStatus,
+                        orderDetailDataRawStatus: orderDetailData.rawStatus
+                    });
+                    
+                    // Reconstruct order object similar to loadOrderTracking
+                    // Ensure all required fields are set with proper defaults
+                    const price = Number(orderDetailData.price || order?.price || 0);
+                    const shippingFee = Number(orderDetailData.shippingFee || order?.shippingFee || 0);
+                    const finalPrice = Number(orderDetailData.finalPrice || order?.finalPrice || (price + shippingFee));
+                    const totalPrice = price > 0 ? price : (finalPrice - shippingFee);
+                    
+                    const trackingOrder = {
+                        ...order, // Preserve existing order data
+                        id: orderDetailData.id || realId,
+                        realId: orderDetailData.id || realId,
+                        orderCode: orderDetailData.orderCode || order?.orderCode || String(realId),
+                        status: normalizedStatus,
+                        rawStatus: rawStatus,
+                        createdAt: orderDetailData.createdAt || order?.createdAt,
+                        updatedAt: orderDetailData.updatedAt || new Date().toISOString(),
+                        deliveredAt: orderDetailData.deliveredAt || order?.deliveredAt || new Date().toISOString(),
+                        canceledAt: orderDetailData.canceledAt || order?.canceledAt,
+                        cancelReason: orderDetailData.cancelReason || order?.cancelReason,
+                        price: price,
+                        totalPrice: totalPrice, // Ensure totalPrice is set
+                        shippingFee: shippingFee,
+                        finalPrice: finalPrice,
+                        product: {
+                            ...(order?.product || {}),
+                            price: totalPrice, // Ensure product.price is set
+                            title: order?.product?.title || `Đơn hàng ${orderDetailData.orderCode || realId}`,
+                            image: order?.product?.image || '/vite.svg'
+                        },
+                        buyer: order?.buyer || {},
+                        shipping: {
+                            ...(order?.shipping || {}),
+                            address: orderDetailData.shippingAddress || order?.shipping?.address,
+                            phone: orderDetailData.phoneNumber || order?.shipping?.phone,
+                        },
+                        payment: order?.payment || {},
+                        _raw: {
+                            ...(order?._raw || {}),
+                            ...(orderDetailData._raw || {}),
+                            rawStatus: rawStatus,
+                            status: rawStatus,
+                            orderStatus: rawStatus
+                        }
+                    };
+                    setOrder(trackingOrder);
+                }
+            } catch (refreshError) {
+                console.warn('[OrderTracking] Failed to refresh order data after confirm, using optimistic update:', refreshError);
+                // Keep the optimistic update if refresh fails
+            }
         } catch (error) {
-            const message = error?.response?.data?.message || error?.message || 'Không thể xác nhận đơn hàng.';
+            const message = error?.message || error?.response?.data?.message || 'Không thể xác nhận đơn hàng.';
             showToastMessage(message);
             console.error('[OrderTracking] Failed to confirm order:', error);
         } finally {
@@ -512,7 +631,7 @@ function OrderTracking() {
                         }
 
                         // Cập nhật theo nguyên tắc "không lùi trạng thái"
-                        setOrder(prev => {
+                        updateOrderState(prev => {
                             const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
                             if (prev && prev.status) {
                                 const pr = rank[String(prev.status)] || 0;
@@ -589,7 +708,7 @@ function OrderTracking() {
                         }
 
                         // Cập nhật theo nguyên tắc "không lùi trạng thái"
-                        setOrder(prev => {
+                        updateOrderState(prev => {
                             const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
                             if (prev && prev.status) {
                                 const pr = rank[String(prev.status)] || 0;
@@ -656,7 +775,7 @@ function OrderTracking() {
                         }
 
                         // Cập nhật theo nguyên tắc "không lùi trạng thái"
-                        setOrder(prev => {
+                        updateOrderState(prev => {
                             const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
                             if (prev && prev.status) {
                                 const pr = rank[String(prev.status)] || 0;
@@ -675,10 +794,10 @@ function OrderTracking() {
                 }
 
                 // Không tìm thấy đơn hàng
-                setOrder(null);
+                        updateOrderState(null);
             } catch (error) {
                 console.error('[OrderTracking] Error loading order:', error);
-                setOrder(null);
+                updateOrderState(null);
             } finally {
                 setLoading(false);
             }
@@ -709,7 +828,7 @@ function OrderTracking() {
                         // Cập nhật order với dữ liệu mới
                         const cancelInfo = extractCancelInfo(orderDetailData);
 
-                        setOrder(prevOrder => {
+                        updateOrderState(prevOrder => {
                             if (!prevOrder) return prevOrder;
 
                             const statusChanged = orderDetailData.status !== prevOrder.status;
@@ -763,7 +882,7 @@ function OrderTracking() {
                     const statusResponse = await getOrderStatus(realOrderId);
                     if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
                         console.log(`[OrderTracking] Status updated from shipping API: ${order.status} -> ${statusResponse.status}`);
-                        setOrder(prevOrder => {
+                        updateOrderState(prevOrder => {
                             const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
                             const pr = rank[String(prevOrder?.status)] || 0;
                             const nr = rank[String(statusResponse.status)] || 0;
@@ -805,7 +924,7 @@ function OrderTracking() {
         if (!rawReason) return;
         const normalized = normalizeCancelReason(rawReason);
         if (normalized && normalized !== order.cancelReason) {
-            setOrder(prev => {
+            updateOrderState(prev => {
                 if (!prev) return prev;
                 return { ...prev, cancelReason: normalized };
             });
@@ -836,7 +955,7 @@ function OrderTracking() {
             price: totalPrice,
         };
 
-        return {
+        const trackingOrder = {
             id,
             createdAt,
             estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -869,6 +988,7 @@ function OrderTracking() {
             cancelReasonId: cancelInfo.id || '',
             cancelReasonRaw: cancelInfo.raw || '',
         };
+        return trackingOrder;
     }
     // 👇 HÀM MỞ FORM KHIẾU NẠI
     const handleRaiseDisputeClick = () => {
@@ -901,7 +1021,7 @@ function OrderTracking() {
         setIsCancelModalVisible(false);
         if (canceledSuccessfully) {
             // Nếu hủy thành công, cập nhật trạng thái đơn hàng (từ callback của CancelOrderRequest)
-            setOrder(prev => ({ 
+            updateOrderState(prev => ({
                 ...prev, 
                 status: 'cancelled',
                 canceledAt: new Date().toISOString(), // Cập nhật ngày hủy
@@ -944,10 +1064,41 @@ function OrderTracking() {
         );
     }
 
-    const rawStatusUpper = String(order?.rawStatus || order?._raw?.status || order?._raw?.orderStatus || '').toUpperCase();
-    const isOrderCompleted = ['COMPLETED', 'SUCCESS'].includes(rawStatusUpper);
-    const canConfirmOrder = rawStatusUpper === 'DELIVERED' && !isOrderCompleted;
-    const isDeliveredStatus = order.status === 'delivered' || rawStatusUpper === 'DELIVERED' || isOrderCompleted;
+    // Get status from multiple possible locations (same as in handleConfirmOrder)
+    const rawStatusUpper = String(
+        order?.rawStatus || 
+        order?._raw?.status || 
+        order?._raw?.orderStatus || 
+        order?._raw?.rawStatus || 
+        ''
+    ).toUpperCase();
+    const normalizedStatus = String(order?.status || '').toLowerCase();
+    const realIdForOrder = order?.realId || order?.id || orderId;
+    
+    // Check if order is completed from multiple sources
+    const isOrderCompleted = ['COMPLETED', 'SUCCESS'].includes(rawStatusUpper) || 
+                            normalizedStatus === 'completed' || 
+                            normalizedStatus === 'success';
+    
+    // Only show confirm button if status is DELIVERED and NOT completed
+    const canConfirmOrder = (rawStatusUpper === 'DELIVERED' || normalizedStatus === 'delivered') && !isOrderCompleted;
+
+    // Debug logging for button visibility
+    if (order && (normalizedStatus === 'delivered' || isOrderCompleted)) {
+        console.log('[OrderTracking] Button visibility check:', {
+            orderId: realIdForOrder,
+            rawStatus: order?.rawStatus,
+            status: order?.status,
+            _raw_rawStatus: order?._raw?.rawStatus,
+            _raw_status: order?._raw?.status,
+            _raw_orderStatus: order?._raw?.orderStatus,
+            rawStatusUpper,
+            normalizedStatus,
+            isOrderCompleted,
+            canConfirmOrder
+        });
+    }
+    const isDeliveredStatus = normalizedStatus === 'delivered' || rawStatusUpper === 'DELIVERED' || isOrderCompleted;
 
     const paymentStatusInfo = getPaymentStatusInfo(order.paymentMethod, order.rawStatus);
     const isCancelled = order.status === 'cancelled' || order.status === 'canceled';
@@ -1003,7 +1154,7 @@ function OrderTracking() {
                                     <div className="delivered-meta">
                                         {order.carrier && <span className="chip alt">Đơn vị: {order.carrier}</span>}
                                         {order.trackingNumber && <span className="chip alt">Vận đơn: {order.trackingNumber}</span>}
-                                        <span className="chip success">Tổng: {formatCurrency(order.finalPrice)}</span>
+                                        <span className="chip success">Tổng: {formatCurrency(order.finalPrice || (order.totalPrice || order.price || 0) + (order.shippingFee || 0))}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1026,7 +1177,7 @@ function OrderTracking() {
                                     {order.canceledAt ? ` vào ${formatDate(order.canceledAt)}` : ''}.
                                 </p>
                                 <div className="cancelled-meta">
-                                    <span className="chip danger">Tổng: {formatCurrency(order.finalPrice)}</span>
+                                    <span className="chip danger">Tổng: {formatCurrency(order.finalPrice || (order.totalPrice || order.price || 0) + (order.shippingFee || 0))}</span>
                                     <span className="chip neutral">
                                         Lý do: {order.cancelReason || 'Không có thông tin'}
                                     </span>
@@ -1109,7 +1260,7 @@ function OrderTracking() {
                                                 <div className="i-name">{it.name}</div>
                                                 <div className="i-sub">Số lượng: {it.quantity}</div>
                                             </div>
-                                            <div className="i-price">{formatCurrency(it.price)}</div>
+                                            <div className="i-price">{formatCurrency(it.price || 0)}</div>
                                         </div>
                                     ))
                                 ) : (
@@ -1130,7 +1281,7 @@ function OrderTracking() {
                                             <div className="i-name">{order.product.title}</div>
                                             <div className="i-sub">Số lượng: 1</div>
                                         </div>
-                                        <div className="i-price">{formatCurrency(order.product.price)}</div>
+                                        <div className="i-price">{formatCurrency(order.product?.price || order.totalPrice || order.price || 0)}</div>
                                     </div>
                                 )}
 
@@ -1138,15 +1289,15 @@ function OrderTracking() {
                             <div className="price-breakdown">
                                 <div className="price-item">
                                     <span className="price-label">Tạm tính</span>
-                                    <span className="price-value">{formatCurrency(order.totalPrice)}</span>
+                                    <span className="price-value">{formatCurrency(order.totalPrice || order.price || 0)}</span>
                                 </div>
                                 <div className="price-item">
                                     <span className="price-label">Phí vận chuyển</span>
-                                    <span className="price-value">{formatCurrency(order.shippingFee)}</span>
+                                    <span className="price-value">{formatCurrency(order.shippingFee || 0)}</span>
                                 </div>
                                 <div className="price-item total">
                                     <span className="price-label">Tổng cộng</span>
-                                    <span className="price-value">{formatCurrency(order.finalPrice)}</span>
+                                    <span className="price-value">{formatCurrency(order.finalPrice || (order.totalPrice || order.price || 0) + (order.shippingFee || 0))}</span>
                                 </div>
                             </div>
                         </div>
