@@ -12,34 +12,30 @@ function ManagePostsContent() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filterStatus, setFilterStatus] = useState("all"); // all, displaying, approved, pending, rejected, hidden
+  const [filterStatus, setFilterStatus] = useState("all"); // all, displaying, approved, pending, rejected, hidden, sold
 
   useEffect(() => {
     loadPosts();
   }, []);
+
+  // Xác định sản phẩm đã bán: chỉ kiểm tra field isSold
+  const getIsSold = (post) => {
+    return post.isSold === true || post.isSold === 1 || post.is_sold === true || post.is_sold === 1;
+  };
 
   const loadPosts = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      console.log("Loading posts...");
-
       // BE đã filter theo seller rồi, chỉ cần lấy data
       const response = await sellerApi.getMyPosts(0, 100);
-      console.log("Response:", response);
-      console.log("Response data:", response?.data);
 
       // BE trả về data.content (Spring Boot Pageable format)
       const myPosts = response?.data?.data?.content || [];
-      console.log("My posts:", myPosts);
-      console.log("Total elements:", response?.data?.data?.totalElements);
-      console.log("Total pages:", response?.data?.data?.totalPages);
 
       setPosts(myPosts);
     } catch (err) {
-      console.error(" Error loading posts:", err);
-      console.error("Response error:", err.response?.data);
       setError(err.message || "Không thể tải danh sách tin đăng");
     } finally {
       setLoading(false);
@@ -101,6 +97,8 @@ function ManagePostsContent() {
   };
 
   const filteredPosts = posts.filter((post) => {
+    const isSold = getIsSold(post);
+    
     if (filterStatus === "all") {
       // Hiển thị tất cả tin đăng trừ những tin đã ẩn
       return post.active !== false && post.active !== 0;
@@ -109,18 +107,22 @@ function ManagePostsContent() {
       // Kiểm tra trạng thái active - nếu active === false thì đã bị ẩn
       return post.active === false || post.active === 0;
     }
+    if (filterStatus === "sold") {
+      // Chỉ hiển thị các tin đã bán (isSold === true)
+      return isSold;
+    }
     if (filterStatus === "displaying") {
       // Đang hiển thị: active, chưa bán, và không bị từ chối
       // Bao gồm: APPROVED (đã duyệt - có tem xác minh), PENDING (chờ duyệt - vẫn hiển thị), null/undefined
-      // Loại trừ: REJECTED (bị từ chối - không hiển thị)
+      // Loại trừ: REJECTED (bị từ chối - không hiển thị) và các tin đã bán
       const isActive = post.active !== false && post.active !== 0;
-      const isNotSold = !post.isSold && post.status?.toLowerCase() !== "sold";
+      const isNotSold = !isSold;
       const isNotRejected = post.verifiedDecisionStatus !== "REJECTED";
       return isActive && isNotSold && isNotRejected;
     }
-    // Đối với các filter khác (approved, pending, rejected), chỉ hiển thị tin chưa bị ẩn
+    // Đối với các filter khác (approved, pending, rejected), chỉ hiển thị tin chưa bị ẩn và chưa bán
     const isHidden = post.active === false || post.active === 0;
-    if (isHidden) return false;
+    if (isHidden || isSold) return false;
     return (
       post.verifiedDecisionStatus?.toLowerCase() === filterStatus.toLowerCase()
     );
@@ -208,11 +210,20 @@ function ManagePostsContent() {
             >
               Đang hiển thị (
               {posts.filter((p) => {
+                const isSold = getIsSold(p);
                 const isActive = p.active !== false && p.active !== 0;
-                const isNotSold = !p.isSold && p.status?.toLowerCase() !== "sold";
+                const isNotSold = !isSold;
                 const isNotRejected = p.verifiedDecisionStatus !== "REJECTED";
                 return isActive && isNotSold && isNotRejected;
               }).length}
+              )
+            </button>
+            <button
+              className={filterStatus === "sold" ? "active" : ""}
+              onClick={() => setFilterStatus("sold")}
+            >
+              Đã bán (
+              {posts.filter((p) => getIsSold(p)).length}
               )
             </button>
             <button
