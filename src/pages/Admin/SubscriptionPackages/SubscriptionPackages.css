@@ -23,7 +23,87 @@
 
 .subscription-packages-page .badge {
   font-size: 0.875rem;
-  padding: 0.375rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Badge "Yes" - màu xanh (blue) */
+.subscription-packages-page .badge.badge-yes,
+.subscription-packages-page .badge[class*="badge-yes"],
+.subscription-packages-page .badge[class*="info"].badge-yes,
+.subscription-packages-page .badge.bg-info.badge-yes,
+.subscription-packages-page table .badge.badge-yes {
+  background-color: #3b82f6 !important;
+  background: #3b82f6 !important;
+  color: white !important;
+  border-color: #3b82f6 !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Badge "No" - secondary (xám) */
+.subscription-packages-page .badge.badge-no,
+.subscription-packages-page .badge[class*="badge-no"],
+.subscription-packages-page .badge[class*="secondary"].badge-no,
+.subscription-packages-page .badge.bg-secondary.badge-no,
+.subscription-packages-page table .badge.badge-no {
+  background-color: #6c757d !important;
+  background: #6c757d !important;
+  color: white !important;
+  border-color: #6c757d !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(108, 117, 125, 0.2) !important;
+}
+
+/* Badge "Active" - xanh lá (green) */
+.subscription-packages-page .badge.badge-active,
+.subscription-packages-page .badge[class*="badge-active"],
+.subscription-packages-page .badge[class*="success"].badge-active,
+.subscription-packages-page .badge.bg-success.badge-active,
+.subscription-packages-page table .badge.badge-active {
+  background-color: #22c55e !important;
+  background: #22c55e !important;
+  color: white !important;
+  border-color: #22c55e !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(34, 197, 94, 0.3) !important;
+}
+
+/* Badge "Inactive" - đỏ (red) */
+.subscription-packages-page .badge.badge-inactive,
+.subscription-packages-page .badge[class*="badge-inactive"],
+.subscription-packages-page .badge[class*="danger"].badge-inactive,
+.subscription-packages-page .badge.bg-danger.badge-inactive,
+.subscription-packages-page table .badge.badge-inactive {
+  background-color: #ef4444 !important;
+  background: #ef4444 !important;
+  color: white !important;
+  border-color: #ef4444 !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Badge combo - xanh lá nhạt */
+.subscription-packages-page .badge.badge-combo,
+.subscription-packages-page .badge[class*="badge-combo"]:not(.badge-combo-empty) {
+  background-color: #d1fae5 !important;
+  color: #166534 !important;
+  border-color: #d1fae5 !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(34, 197, 94, 0.15) !important;
+}
+
+/* Badge combo empty - xám nhạt */
+.subscription-packages-page .badge.badge-combo-empty,
+.subscription-packages-page .badge[class*="badge-combo-empty"] {
+  background-color: #f3f4f6 !important;
+  color: #6b7280 !important;
+  border-color: #f3f4f6 !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
 }
 
 .subscription-packages-page .pagination {

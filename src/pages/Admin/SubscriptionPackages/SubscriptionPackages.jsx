@@ -208,9 +208,9 @@ export default function SubscriptionPackages() {
   // Get status badge
   const getStatusBadge = (isActive) => {
     return isActive ? (
-      <CBadge color="success">Active</CBadge>
+      <CBadge color="success" className="badge-active">Active</CBadge>
     ) : (
-      <CBadge color="secondary">Inactive</CBadge>
+      <CBadge color="danger" className="badge-inactive">Inactive</CBadge>
     );
   };
 
@@ -384,23 +384,25 @@ export default function SubscriptionPackages() {
 
   // Handle select price to edit
   const handleSelectPriceToEdit = (priceIdOrString) => {
-    // Nếu là string dạng "new-30", parse thành number
-    let priceId = priceIdOrString;
-    if (typeof priceIdOrString === 'string' && priceIdOrString.startsWith('new-')) {
-      priceId = parseInt(priceIdOrString.replace('new-', ''));
-    }
+    // e.target.value luôn là string, cần xử lý đúng
+    const valueStr = String(priceIdOrString);
     
-    const price = form.prices.find((p) => {
-      if (p.id) {
-        return p.id === priceId;
-      } else {
-        // Nếu là price mới chưa có id, so sánh bằng durationByDay
-        return p.durationByDay === priceId;
+    // Nếu là string dạng "new-30", parse thành number để so sánh với durationByDay
+    if (valueStr.startsWith('new-')) {
+      const durationByDay = parseInt(valueStr.replace('new-', ''));
+      const price = form.prices.find((p) => !p.id && p.durationByDay === durationByDay);
+      if (price) {
+        setSelectedEditPriceId(`new-${price.durationByDay}`);
+        setEditingPrice({ ...price });
       }
-    });
-    if (price) {
-      setSelectedEditPriceId(price.id || `new-${price.durationByDay}`);
-      setEditingPrice({ ...price });
+    } else {
+      // Nếu là id (number dạng string), convert sang number để so sánh
+      const priceId = parseInt(valueStr);
+      const price = form.prices.find((p) => p.id && Number(p.id) === priceId);
+      if (price) {
+        setSelectedEditPriceId(price.id);
+        setEditingPrice({ ...price });
+      }
     }
   };
 
@@ -490,7 +492,10 @@ export default function SubscriptionPackages() {
       const packageData = {
         name: form.name,
         description: form.description,
-        isActive: form.isActive,
+        // Backend: isActive is optional - if null when updating, keep existing value
+        // Nếu form.isActive là boolean (true/false), gửi giá trị đó
+        // Nếu undefined, gửi null để backend giữ nguyên giá trị hiện tại
+        isActive: form.isActive !== undefined ? form.isActive : null,
         maxProduct: parseInt(form.maxProduct),
         maxImgPerPost: parseInt(form.maxImgPerPost),
         canSendVerifyRequest: form.canSendVerifyRequest,
@@ -500,7 +505,8 @@ export default function SubscriptionPackages() {
             return {
               id: p.id,
               price: p.price,
-              isActive: p.isActive,
+              // Backend: isActive is optional - if null when updating, keep existing value
+              isActive: p.isActive !== undefined ? p.isActive : null,
               durationByDay: p.durationByDay,
               currency: p.currency,
               discountPercent: p.discountPercent || 0,
@@ -509,7 +515,8 @@ export default function SubscriptionPackages() {
           // Không có id → tạo mới
           return {
             price: p.price,
-            isActive: p.isActive,
+            // Khi tạo mới, nếu isActive là undefined/null thì default là true
+            isActive: p.isActive !== undefined && p.isActive !== null ? p.isActive : true,
             durationByDay: p.durationByDay,
             currency: p.currency,
             discountPercent: p.discountPercent || 0,
@@ -603,14 +610,14 @@ export default function SubscriptionPackages() {
                 <CTableHead>
                   <CTableRow>
                     <CTableHeaderCell>ID</CTableHeaderCell>
-                    <CTableHeaderCell>Name</CTableHeaderCell>
-                    <CTableHeaderCell>Description</CTableHeaderCell>
-                    <CTableHeaderCell>Max Product</CTableHeaderCell>
-                    <CTableHeaderCell>Max Img/Post</CTableHeaderCell>
-                    <CTableHeaderCell>Can Verify</CTableHeaderCell>
-                    <CTableHeaderCell>Status</CTableHeaderCell>
-                    <CTableHeaderCell>Prices</CTableHeaderCell>
-                    <CTableHeaderCell>Actions</CTableHeaderCell>
+                    <CTableHeaderCell>Tên gói</CTableHeaderCell>
+                    <CTableHeaderCell>Mô tả</CTableHeaderCell>
+                    <CTableHeaderCell>Số bài đăng tối đa</CTableHeaderCell>
+                    <CTableHeaderCell>Số ảnh tối đa/Bài đăng</CTableHeaderCell>
+                    <CTableHeaderCell>Được gửi yêu cầu xác minh</CTableHeaderCell>
+                    <CTableHeaderCell>Trạng thái</CTableHeaderCell>
+                    <CTableHeaderCell>Giá</CTableHeaderCell>
+                    <CTableHeaderCell>Thao tác</CTableHeaderCell>
                   </CTableRow>
                 </CTableHead>
                 <CTableBody>
@@ -630,15 +637,15 @@ export default function SubscriptionPackages() {
                       <CTableDataCell>{pkg.maxImgPerPost}</CTableDataCell>
                       <CTableDataCell>
                         {pkg.canSendVerifyRequest ? (
-                          <CBadge color="info">Yes</CBadge>
+                          <CBadge color="info" className="badge-yes">Yes</CBadge>
                         ) : (
-                          <CBadge color="secondary">No</CBadge>
+                          <CBadge color="secondary" className="badge-no">No</CBadge>
                         )}
                       </CTableDataCell>
                       <CTableDataCell>{getStatusBadge(pkg.isActive)}</CTableDataCell>
                       <CTableDataCell>
                         <div>
-                          <span className="badge bg-primary">
+                          <span className={`badge ${(pkg.prices?.length || 0) > 0 ? 'bg-success badge-combo' : 'bg-secondary badge-combo-empty'}`}>
                             {pkg.prices?.length || 0} combo
                           </span>
                           {pkg.prices && pkg.prices.length > 0 && (

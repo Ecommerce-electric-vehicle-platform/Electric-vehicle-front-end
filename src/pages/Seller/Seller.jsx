@@ -18,44 +18,67 @@ export function Seller() {
     const [wishlistItems, setWishlistItems] = useState(new Set()); // Set chứa postId đã có trong wishlist
     const [wishlistLoading, setWishlistLoading] = useState({}); // Track loading state cho từng sản phẩm
     
-    // Kiểm tra xem seller có đang xem chính profile của mình không
-    // QUAN TRỌNG: Chỉ hiển thị button seller khi user thực sự là seller
-    const currentSellerIdFromStorage = localStorage.getItem("sellerId");
-    const currentSellerIdFromData = seller?.sellerId || seller?.id;
-    const userRole = localStorage.getItem("userRole"); // "buyer" hoặc "seller"
+    // State để lưu buyerId của user hiện tại (từ localStorage)
+    const currentUserBuyerId = localStorage.getItem("buyerId");
     
-    // Chỉ lấy sellerId từ storage hoặc data (KHÔNG dùng buyerId làm fallback)
-    // Vì buyer không nên thấy button seller ngay cả khi buyerId trùng với sellerId
-    const currentSellerId = currentSellerIdFromStorage || currentSellerIdFromData;
+    // State để lưu buyerId của seller đang được xem (từ seller profile)
+    const [viewedSellerBuyerId, setViewedSellerBuyerId] = useState(null);
     
-    // Kiểm tra user có phải seller không
-    const isCurrentUserSeller = userRole === "seller" || !!currentSellerIdFromStorage;
-    
-    // So sánh sellerId từ URL với sellerId hiện tại
-    // VÀ chỉ true khi user thực sự là seller
-    const isViewingOwnProfile = isCurrentUserSeller && currentSellerId && sellerId && (
-        String(sellerId) === String(currentSellerId) || 
-        Number(sellerId) === Number(currentSellerId) ||
-        sellerId === currentSellerId
+    // Kiểm tra xem user có đang xem chính profile của mình không
+    // So sánh buyerId vì seller được nâng cấp từ buyer và sellerId có thể khác buyerId
+    // QUAN TRỌNG: Chỉ true khi cả hai buyerId đều tồn tại và khớp nhau
+    const isViewingOwnProfile = !!(
+        currentUserBuyerId && 
+        viewedSellerBuyerId && 
+        (String(currentUserBuyerId) === String(viewedSellerBuyerId) || 
+         Number(currentUserBuyerId) === Number(viewedSellerBuyerId))
     );
     
+    console.log("[Seller] sellerId from URL:", sellerId);
+    console.log("[Seller] currentUserBuyerId:", currentUserBuyerId);
+    console.log("[Seller] viewedSellerBuyerId:", viewedSellerBuyerId);
+    console.log("[Seller] isViewingOwnProfile (based on buyerId):", isViewingOwnProfile);
 
     // Bước 1: Lấy sản phẩm của seller
-    // Sử dụng pagination để lấy TẤT CẢ sản phẩm (giống ManagePosts)
+    // QUAN TRỌNG: Luôn dùng getProductsBySeller() dựa trên sellerId từ URL
+    // Không dùng getMyPosts() vì có thể gây nhầm lẫn khi xem cửa hàng người khác
     useEffect(() => {
         let mounted = true;
         if (sellerId) {
+            console.log("[Seller] Fetching products for sellerId from URL:", sellerId);
             setProductsLoading(true);
-            // Thêm pagination để lấy tất cả sản phẩm (0-100 tương tự ManagePosts)
+            
+            // Luôn dùng getProductsBySeller() để lấy posts theo sellerId từ URL
+            // Điều này đảm bảo luôn hiển thị đúng posts của seller được chỉ định trong URL
             sellerApi.getProductsBySeller(sellerId, { page: 0, size: 100 })
                 .then(items => {
                     if (!mounted) return;
-                    const list = Array.isArray(items) ? items : [];
-                    setProducts(list);
+                    const allItems = Array.isArray(items) ? items : [];
+                    console.log("[Seller] Received products from API:", allItems.length, "items");
+                    
+                    // QUAN TRỌNG: Filter để chỉ lấy posts của sellerId đúng (phòng trường hợp backend trả về sai)
+                    const filteredProducts = allItems.filter(post => {
+                        const postSellerId = post.sellerId || post.seller_id || post.seller?.id || post.seller?.sellerId;
+                        const matches = String(postSellerId) === String(sellerId) || Number(postSellerId) === Number(sellerId);
+                        
+                        if (!matches) {
+                            console.warn("[Seller] Filtered out post with wrong sellerId:", {
+                                postId: post.postId || post.id,
+                                postSellerId,
+                                expectedSellerId: sellerId
+                            });
+                        }
+                        return matches;
+                    });
+                    
+                    console.log("[Seller] Filtered products for sellerId", sellerId, ":", filteredProducts.length, "items");
+                    console.log("[Seller] Products data:", filteredProducts);
+                    setProducts(filteredProducts);
                     setProductsError(null);
                 })
-                .catch(() => {
+                .catch((error) => {
                     if (!mounted) return;
+                    console.error("[Seller] Error fetching products:", error);
                     setProducts([]);
                     setProductsError("Không tải được danh sách sản phẩm.");
                 })
@@ -69,25 +92,55 @@ export function Seller() {
 
 
     // Bước 3: Khi có post đầu tiên: lấy info seller từ postId đó
+    // Và lấy buyerId của seller để so sánh với buyerId của user hiện tại
     useEffect(() => {
         let mounted = true;
         if (Array.isArray(products) && products.length > 0) {
-            const postId = products[0].postId || products[0].id;
+            const firstPost = products[0];
+            const postId = firstPost.postId || firstPost.id;
+            
+            // KHÔNG lấy buyerId từ post data vì có thể sai
+            // Chỉ lấy buyerId từ API getSellerByProductId để đảm bảo chính xác
+            console.log("[Seller] Will get buyerId from seller API, not from post data");
+            
             if (postId) {
                 setSellerLoading(true);
                 sellerApi.getSellerByProductId(postId)
                     .then(data => {
                         if (!mounted) return;
                         if (data) {
+                            console.log("[Seller] Seller data from API:", data);
                             setSeller(data);
+                            
+                            // Lấy buyerId của seller từ seller profile
+                            // QUAN TRỌNG: Chỉ lấy buyerId thực sự từ API, không dùng fallback
+                            const sellerBuyerId = data.buyerId || data.buyer_id || 
+                                                 data.seller?.buyerId || data.seller?.buyer_id;
+                            
+                            console.log("[Seller] Seller buyerId from API:", sellerBuyerId);
+                            console.log("[Seller] Current user buyerId:", currentUserBuyerId);
+                            
+                            if (sellerBuyerId && !isNaN(Number(sellerBuyerId))) {
+                                setViewedSellerBuyerId(sellerBuyerId);
+                                console.log("[Seller] Set viewedSellerBuyerId to:", sellerBuyerId);
+                            } else {
+                                console.warn("[Seller] No valid buyerId found in API response, assuming viewing other seller");
+                                setViewedSellerBuyerId(null); // Set null để isViewingOwnProfile = false
+                            }
                             setSellerError(null);
                         } else {
+                            // Nếu không lấy được từ API, mặc định là xem cửa hàng người khác
+                            console.warn("[Seller] Cannot get seller info from API, assuming viewing other seller's profile");
+                            setViewedSellerBuyerId(null); // Set null để isViewingOwnProfile = false
                             setSeller(null);
                             setSellerError("Không tìm thấy seller.");
                         }
                     })
                     .catch(() => {
                         if (!mounted) return;
+                        // Nếu API lỗi, mặc định là xem cửa hàng người khác
+                        console.warn("[Seller] API error, assuming viewing other seller's profile");
+                        setViewedSellerBuyerId(null); // Set null để isViewingOwnProfile = false
                         setSeller(null);
                         setSellerError("Không tìm thấy seller.");
                     })
@@ -95,12 +148,17 @@ export function Seller() {
                         if (!mounted) return;
                         setSellerLoading(false);
                     });
+            } else {
+                // Không có postId, không thể lấy buyerId, mặc định là xem cửa hàng người khác
+                console.warn("[Seller] No postId available, cannot determine buyerId, assuming viewing other seller");
+                setViewedSellerBuyerId(null);
             }
         } else if (!productsLoading) {
             setSeller(null);
+            setViewedSellerBuyerId(null);
         }
         return () => { mounted = false; };
-    }, [products, productsLoading]);
+    }, [products, productsLoading, currentUserBuyerId]);
 
     // Load wishlist để check sản phẩm nào đã có trong wishlist
     useEffect(() => {
