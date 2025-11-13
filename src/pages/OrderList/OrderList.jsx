@@ -20,13 +20,14 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
-import { getOrderHistory, hasOrderReview, getOrderStatus, getOrderDetails } from '../../api/orderApi';
+import { getOrderHistory, hasOrderReview, getOrderStatus, getOrderDetails, confirmOrderDelivery } from '../../api/orderApi';
 // tui có thêm phần này
 import DisputeForm from "../../components/BuyerRaiseDispute/DisputeForm";
 import './OrderList.css';
 import CancelOrderRequest from "../../components/CancelOrderModal/CancelOrderRequest";
 import { fetchPostProductById } from "../../api/productApi";
 import ViewDisputeResult from '../../components/ProfileUser/ViewDisputeResult';
+import { Toast } from '../../components/Toast/Toast';
 
 function OrderList() {
     const navigate = useNavigate();
@@ -46,6 +47,25 @@ function OrderList() {
     const [selectedDisputeOrderId, setSelectedDisputeOrderId] = useState(null);
     const [selectedCancelOrderId, setSelectedCancelOrderId] = useState(null);
     const [viewingDisputeResultId, setViewingDisputeResultId] = useState(null);
+    const [confirmingOrders, setConfirmingOrders] = useState({});
+    const [toastMessage, setToastMessage] = useState('');
+    const [showToast, setShowToast] = useState(false);
+
+    const showToastMessage = (message) => {
+        if (!message) return;
+        setToastMessage(message);
+        setShowToast(true);
+    };
+
+    const toastPortal = (
+        <Toast
+            message={toastMessage}
+            show={showToast}
+            onClose={() => setShowToast(false)}
+        />
+    );
+
+
     // Kiểm tra đăng nhập (đúng key token thực tế)
     useEffect(() => {
         const accessToken = localStorage.getItem('accessToken');
@@ -331,7 +351,8 @@ function OrderList() {
             }
 
             // tải trạng thái đánh giá cho các đơn đã giao (check theo id thực từ BE)
-            const delivered = reversed.filter(o => o.status === 'delivered');
+            // Bao gồm cả delivered và completed
+            const delivered = reversed.filter(o => o.status === 'delivered' || o.status === 'completed');
             const tasks = delivered.map(async (o) => {
                 const realId = o._raw?.id ?? o.id; // ưu tiên id thực từ BE
                 const ok = await hasOrderReview(realId);
@@ -614,16 +635,91 @@ function OrderList() {
         return (isPending || isConfirmed) && !isShipping && !hasCanceledAt && !handedOver;
     };
 
+    const getOrderRawStatus = useCallback((order) => {
+        if (!order) return '';
+        const candidates = [
+            order._raw?.rawStatus,
+            order._raw?.status,
+            order._raw?.orderStatus,
+            order._raw?.order_status,
+            order.rawStatus,
+            order.order_status,
+            order.status
+        ];
+        for (const candidate of candidates) {
+            if (typeof candidate === 'string' && candidate.trim()) {
+                return candidate.toUpperCase();
+            }
+        }
+        return '';
+    }, []);
+
+    // Helper function để normalize status từ order (dùng chung cho cả filter và display)
+    const getNormalizedOrderStatus = useCallback((order) => {
+        if (!order) return 'pending';
+        const isCancelled = isOrderCancelled(order);
+        if (isCancelled) return 'canceled';
+
+        const rawStatus = getOrderRawStatus(order);
+        const normalizedStatus = String(order?.status || '').toLowerCase();
+
+        // Normalize status từ rawStatus nếu có
+        if (rawStatus) {
+            const upperRaw = rawStatus.toUpperCase();
+            if (upperRaw === 'PENDING_PAYMENT' || upperRaw === 'PENDING') {
+                return 'pending';
+            } else if (upperRaw === 'PAID' || upperRaw === 'PROCESSING' || upperRaw === 'CONFIRMED' || upperRaw === 'VERIFIED' || upperRaw === 'PICKED') {
+                return 'confirmed';
+            } else if (upperRaw === 'SHIPPED' || upperRaw === 'DELIVERING') {
+                return 'shipping';
+            } else if (upperRaw === 'DELIVERED' || upperRaw === 'COMPLETED' || upperRaw === 'SUCCESS') {
+                return 'delivered';
+            } else if (upperRaw === 'CANCELLED' || upperRaw === 'CANCELED' || upperRaw === 'FAILED') {
+                return 'canceled';
+            }
+        }
+
+        // Fallback về order.status nếu không có rawStatus
+        return normalizedStatus || 'pending';
+    }, [getOrderRawStatus]);
+
+    // Memoize số lượng đơn hàng theo từng trạng thái để tránh tính toán lại mỗi lần render
+    const orderCounts = useMemo(() => {
+        const counts = {
+            all: orders.length,
+            pending: 0,
+            confirmed: 0,
+            shipping: 0,
+            delivered: 0,
+            canceled: 0
+        };
+
+        orders.forEach(order => {
+            const normalizedStatus = getNormalizedOrderStatus(order);
+            if (normalizedStatus === 'pending') counts.pending++;
+            else if (normalizedStatus === 'confirmed') counts.confirmed++;
+            else if (normalizedStatus === 'shipping') counts.shipping++;
+            else if (normalizedStatus === 'delivered' || normalizedStatus === 'completed') counts.delivered++;
+            else if (normalizedStatus === 'canceled' || normalizedStatus === 'cancelled') counts.canceled++;
+        });
+
+        return counts;
+    }, [orders, getNormalizedOrderStatus]);
+
     // Lọc theo trạng thái + tìm kiếm
     const filteredOrders = useMemo(() => {
         return orders
             .filter(order => {
                 if (filter === 'all') return true;
+                const normalizedStatus = getNormalizedOrderStatus(order);
                 if (filter === 'cancelled' || filter === 'canceled') {
-                    // Logic: Đơn bị hủy nếu có canceledAt hoặc status là cancelled/canceled
-                    return isOrderCancelled(order);
+                    return normalizedStatus === 'canceled' || normalizedStatus === 'cancelled';
                 }
-                return order.status === filter;
+                if (filter === 'delivered') {
+                    // Tab "Đã giao" hiển thị cả đơn hàng delivered và completed
+                    return normalizedStatus === 'delivered' || normalizedStatus === 'completed';
+                }
+                return normalizedStatus === filter;
             })
             .filter(order => {
                 if (!query.trim()) return true;
@@ -633,7 +729,7 @@ function OrderList() {
                 const code = String(order.orderCode || order._raw?.orderCode || '').toLowerCase();
                 return idStr.includes(q) || title.includes(q) || code.includes(q);
             });
-    }, [orders, filter, query]);
+    }, [orders, filter, query, getNormalizedOrderStatus]);
 
     const totalPages = filteredOrders.length === 0 ? 0 : Math.ceil(filteredOrders.length / pageSize);
 
@@ -746,7 +842,7 @@ function OrderList() {
 
     // Stats
     const totalOrders = orders.length;
-    const totalDelivered = orders.filter(o => o.status === 'delivered').length;
+    const totalDelivered = orders.filter(o => o.status === 'delivered' || o.status === 'completed').length;
     const totalSpent = orders.reduce((sum, o) => sum + Number(o.finalPrice || 0), 0);
 
     // Xử lý về trang chủ
@@ -757,6 +853,106 @@ function OrderList() {
     // Xử lý xem chi tiết đơn hàng
     const handleViewOrder = (orderId) => {
         navigate(`/order-tracking/${orderId}`);
+    };
+
+    const handleConfirmDeliveredOrder = async (order) => {
+        if (!order) return;
+        const realOrderId = order._raw?.id ?? order.id;
+        const normalizedId = String(order.id ?? realOrderId ?? '');
+        if (!realOrderId || !normalizedId || confirmingOrders[normalizedId]) return;
+
+        // Get status from multiple possible locations
+        const currentStatus = String(
+            order?._raw?.rawStatus ||
+            order?._raw?.status ||
+            order?._raw?.orderStatus ||
+            order?.order_status ||
+            ''
+        ).toUpperCase();
+
+        // Also check normalized status
+        const normalizedStatus = String(order?.status || '').toLowerCase();
+
+        console.log('[OrderList] handleConfirmDeliveredOrder - Status check:', {
+            _raw_rawStatus: order?._raw?.rawStatus,
+            _raw_status: order?._raw?.status,
+            order_status: order?.order_status,
+            status: order?.status,
+            currentStatus,
+            normalizedStatus
+        });
+
+        // Check if order is already COMPLETED
+        if (['COMPLETED', 'SUCCESS'].includes(currentStatus)) {
+            showToastMessage('Đơn hàng đã được xác nhận hoặc đang ở trạng thái hoàn tất.');
+            return;
+        }
+
+        // Check if order is DELIVERED (check both raw status and normalized status)
+        const isDelivered = currentStatus === 'DELIVERED' || normalizedStatus === 'delivered';
+        if (!isDelivered) {
+            showToastMessage('Chỉ có thể xác nhận đơn hàng khi đơn hàng đã được giao thành công (DELIVERED).');
+            return;
+        }
+
+        setConfirmingOrders(prev => ({ ...prev, [normalizedId]: true }));
+
+        try {
+            // Call the real API to confirm order
+            const response = await confirmOrderDelivery(realOrderId);
+
+            if (!response.success) {
+                throw new Error(response.message || 'Không thể xác nhận đơn hàng.');
+            }
+
+            console.log('[OrderList] Confirm order response:', {
+                success: response.success,
+                rawStatus: response.rawStatus,
+                status: response.status,
+                data: response.data,
+                orderId: realOrderId
+            });
+
+            showToastMessage(response.message || 'Đơn hàng đã được xác nhận thành công!');
+
+            // Use status from confirm response first
+            const confirmedRawStatus = response.rawStatus || response.data?.status || 'COMPLETED';
+
+            // Optimistically update the order in the list immediately
+            setOrders(prev => prev.map(o => {
+                const oId = String(o.id ?? o._raw?.id ?? '');
+                if (oId !== normalizedId) return o;
+
+                return {
+                    ...o,
+                    status: String(confirmedRawStatus).toUpperCase() === 'COMPLETED' ? 'completed' : o.status,
+                    _raw: {
+                        ...(o._raw || {}),
+                        rawStatus: confirmedRawStatus,
+                        status: confirmedRawStatus,
+                        orderStatus: confirmedRawStatus
+                    }
+                };
+            }));
+
+            // Refresh orders list to get updated status from backend (may take a moment)
+            try {
+                await loadOrders(true);
+            } catch (refreshError) {
+                console.warn('[OrderList] Failed to refresh orders list after confirm, using optimistic update:', refreshError);
+                // Keep the optimistic update if refresh fails
+            }
+        } catch (error) {
+            const message = error?.message || error?.response?.data?.message || 'Không thể xác nhận đơn hàng.';
+            showToastMessage(message);
+            console.error('[OrderList] Failed to confirm order:', error);
+        } finally {
+            setConfirmingOrders(prev => {
+                const next = { ...prev };
+                delete next[normalizedId];
+                return next;
+            });
+        }
     };
 
     // Hành động theo trạng thái
@@ -785,16 +981,17 @@ function OrderList() {
     const handleCancelOrderSuccess = async (orderId, reasonName) => { // <-- CHÚ Ý CHỖ NÀY
         // 1. Cập nhật ngay trạng thái local để UI phản ứng tức thì
         setOrders(prev =>
-            prev.map(o =>
-                String(o.id) === String(orderId)
+            prev.map(o => {
+                const updated = String(o.id) === String(orderId)
                     ? {
                         ...o,
                         status: 'canceled', // status chuẩn FE để khớp với filter
                         canceledAt: new Date().toISOString(), // Set tạm để đảm bảo đồng bộ
                         cancelReason: reasonName // Cập nhật lý do để hiển thị và xác nhận hủy
                     }
-                    : o
-            )
+                    : o;
+                return updated;
+            })
         );
 
         // 2. Tự động chuyển sang tab “Đã hủy”
@@ -946,7 +1143,8 @@ function OrderList() {
                 return [
                     { key: 'track', label: 'Theo dõi vận đơn', className: 'btn btn-primary btn-sm btn-animate', onClick: () => handleTrackShipment(orderId) }
                 ];
-            case 'delivered': {
+            case 'delivered':
+            case 'completed': {
                 const isReviewed = reviewedMap[orderId]?.hasReview === true;
                 return [
                     { key: 'dispute', label: 'Khiếu nại', className: 'btn btn-warning btn-sm btn-animate', onClick: () => handleRaiseDispute(orderId) },
@@ -1019,45 +1217,51 @@ function OrderList() {
 
     if (selectedCancelOrderId !== null) {
         return (
-            <div className="cancel-order-flow-wrapper">
-                <button
-                    className="btn-back-order-list"
-                    onClick={handleCancelOrderBack}
-                    style={{
-                        marginBottom: "15px",
-                        padding: "8px 15px",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
-                        background: "#f8f9fa"
-                    }}
-                >
-                    <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
-                </button>
-                <CancelOrderRequest
-                    orderId={selectedCancelOrderId}
-                    onCancelSuccess={handleCancelOrderSuccess}
-                    onBack={handleCancelOrderBack}
-                />
-            </div>
+            <>
+                {toastPortal}
+                <div className="cancel-order-flow-wrapper">
+                    <button
+                        className="btn-back-order-list"
+                        onClick={handleCancelOrderBack}
+                        style={{
+                            marginBottom: "15px",
+                            padding: "8px 15px",
+                            border: "1px solid #ccc",
+                            borderRadius: "4px",
+                            background: "#f8f9fa"
+                        }}
+                    >
+                        <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
+                    </button>
+                    <CancelOrderRequest
+                        orderId={selectedCancelOrderId}
+                        onCancelSuccess={handleCancelOrderSuccess}
+                        onBack={handleCancelOrderBack}
+                    />
+                </div>
+            </>
         );
     }
 
 
     if (selectedDisputeOrderId !== null) {
         return (
-            <div className="dispute-flow-wrapper">
-                <button
-                    className="btn-back-order-list"
-                    onClick={handleCancelDispute}
-                    style={{ marginBottom: '15px', padding: '8px 15px', border: '1px solid #ccc', borderRadius: '4px', background: '#f8f9fa' }}
-                >
-                    <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
-                </button>
-                <DisputeForm
-                    initialOrderId={selectedDisputeOrderId}
-                    onCancelDispute={handleCancelDispute} // Thêm prop để form có thể tự thoát
-                />
-            </div>
+            <>
+                {toastPortal}
+                <div className="dispute-flow-wrapper">
+                    <button
+                        className="btn-back-order-list"
+                        onClick={handleCancelDispute}
+                        style={{ marginBottom: '15px', padding: '8px 15px', border: '1px solid #ccc', borderRadius: '4px', background: '#f8f9fa' }}
+                    >
+                        <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
+                    </button>
+                    <DisputeForm
+                        initialOrderId={selectedDisputeOrderId}
+                        onCancelDispute={handleCancelDispute} // Thêm prop để form có thể tự thoát
+                    />
+                </div>
+            </>
         );
     }
 
@@ -1084,10 +1288,13 @@ function OrderList() {
 
     if (loading) {
         return (
-            <div className="order-list-loading">
-                <div className="loading-spinner"></div>
-                <p>Đang tải danh sách đơn hàng...</p>
-            </div>
+            <>
+                {toastPortal}
+                <div className="order-list-loading">
+                    <div className="loading-spinner"></div>
+                    <p>Đang tải danh sách đơn hàng...</p>
+                </div>
+            </>
         );
     }
 
@@ -1102,281 +1309,350 @@ function OrderList() {
     // );
 
     return (
-        <div className="order-list-page">
-            <div className="order-list-container">
-                {/* Header */}
-                <div className="order-list-header">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <h1 className="page-title" style={{ margin: 0 }}>Lịch sử đơn hàng</h1>
-                        <button
-                            onClick={() => {
-                                console.log('[OrderList] Manual refresh triggered');
-                                loadOrders(true);
-                            }}
-                            disabled={loading}
-                            style={{
-                                padding: '8px 16px',
-                                borderRadius: 8,
-                                border: '1px solid #0d6efd',
-                                background: loading ? '#e9ecef' : '#0d6efd',
-                                color: 'white',
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                fontSize: 14,
-                                fontWeight: 500
-                            }}
-                        >
-                            <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-                            {loading ? 'Đang tải...' : 'Làm mới'}
-                        </button>
-                    </div>
-
-                    {/* Search */}
-                    <div style={{ marginBottom: 16 }}>
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm đơn hàng theo mã hoặc sản phẩm..."
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '10px 14px',
-                                borderRadius: 10,
-                                border: '2px solid #e9ecef',
-                                outline: 'none',
-                                fontSize: 14
-                            }}
-                        />
-                    </div>
-
-                    {/* Filter Tabs */}
-                    <div className="filter-tabs">
-                        <button
-                            className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
-                            onClick={() => setFilter('all')}
-                        >
-                            Tất cả ({orders.length})
-                        </button>
-                        <button
-                            className={`filter-tab ${filter === 'pending' ? 'active' : ''}`}
-                            onClick={() => setFilter('pending')}
-                        >
-                            Chờ xác nhận ({orders.filter(o => o.status === 'pending').length})
-                        </button>
-                        <button
-                            className={`filter-tab ${filter === 'confirmed' ? 'active' : ''}`}
-                            onClick={() => setFilter('confirmed')}
-                        >
-                            Đã xác nhận ({orders.filter(o => o.status === 'confirmed').length})
-                        </button>
-                        <button
-                            className={`filter-tab ${filter === 'shipping' ? 'active' : ''}`}
-                            onClick={() => setFilter('shipping')}
-                        >
-                            Đang giao ({orders.filter(o => o.status === 'shipping').length})
-                        </button>
-                        <button
-                            className={`filter-tab ${filter === 'delivered' ? 'active' : ''}`}
-                            onClick={() => setFilter('delivered')}
-                        >
-                            Đã giao ({orders.filter(o => o.status === 'delivered').length})
-                        </button>
-
-                        <button
-                            className={`filter-tab ${filter === 'canceled' ? 'active' : ''}`}
-                            onClick={() => setFilter('canceled')}
-                        >
-                            Đã hủy ({orders.filter(isOrderCancelled).length})
-                        </button>
-
-
-
-                    </div>
-                </div>
-
-                {/* Orders List */}
-                <div className="orders-content">
-                    {filteredOrders.length === 0 ? (
-                        <div className="empty-orders">
-                            <div className="empty-hero">
-                                <div className="empty-hero-glow"></div>
-                                <div className="empty-hero-icon">
-                                    <ShoppingBag className="empty-hero-svg" />
-                                </div>
-                            </div>
-                            <h3 className="empty-title">Chưa có đơn hàng nào</h3>
-                            <p className="empty-subtitle">Bạn chưa có đơn hàng nào. Hãy khám phá và mua sắm sản phẩm yêu thích!</p>
-                            <button className="btn btn-primary" onClick={handleGoHome}>Bắt đầu mua sắm</button>
+        <>
+            {toastPortal}
+            <div className="order-list-page">
+                <div className="order-list-container">
+                    {/* Header */}
+                    <div className="order-list-header">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <h1 className="page-title" style={{ margin: 0 }}>Lịch sử đơn hàng</h1>
+                            <button
+                                onClick={() => {
+                                    console.log('[OrderList] Manual refresh triggered');
+                                    loadOrders(true);
+                                }}
+                                disabled={loading}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: 8,
+                                    border: '1px solid #0d6efd',
+                                    background: loading ? '#e9ecef' : '#0d6efd',
+                                    color: 'white',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    fontSize: 14,
+                                    fontWeight: 500
+                                }}
+                            >
+                                <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+                                {loading ? 'Đang tải...' : 'Làm mới'}
+                            </button>
                         </div>
-                    ) : (
-                        <>
-                            <div className="orders-toolbar">
-                                <div className="orders-toolbar-info">
-                                    Đang hiển thị <strong>{paginatedOrders.length}</strong> / {filteredOrders.length} đơn
-                                    {filter !== 'all' && (
-                                        <span className="orders-toolbar-filter">• Bộ lọc: {filter === 'canceled' ? 'Đã hủy' : filter}</span>
-                                    )}
+
+                        {/* Search */}
+                        <div style={{ marginBottom: 16 }}>
+                            <input
+                                type="text"
+                                placeholder="Tìm kiếm đơn hàng theo mã hoặc sản phẩm..."
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 14px',
+                                    borderRadius: 10,
+                                    border: '2px solid #e9ecef',
+                                    outline: 'none',
+                                    fontSize: 14
+                                }}
+                            />
+                        </div>
+
+                        {/* Filter Tabs */}
+                        <div className="filter-tabs">
+                            <button
+                                className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
+                                onClick={() => setFilter('all')}
+                            >
+                                Tất cả ({orderCounts.all})
+                            </button>
+                            <button
+                                className={`filter-tab ${filter === 'pending' ? 'active' : ''}`}
+                                onClick={() => setFilter('pending')}
+                            >
+                                Chờ xác nhận ({orderCounts.pending})
+                            </button>
+                            <button
+                                className={`filter-tab ${filter === 'confirmed' ? 'active' : ''}`}
+                                onClick={() => setFilter('confirmed')}
+                            >
+                                Đã xác nhận ({orderCounts.confirmed})
+                            </button>
+                            <button
+                                className={`filter-tab ${filter === 'shipping' ? 'active' : ''}`}
+                                onClick={() => setFilter('shipping')}
+                            >
+                                Đang giao ({orderCounts.shipping})
+                            </button>
+                            <button
+                                className={`filter-tab ${filter === 'delivered' ? 'active' : ''}`}
+                                onClick={() => setFilter('delivered')}
+                            >
+                                Đã giao ({orderCounts.delivered})
+                            </button>
+
+                            <button
+                                className={`filter-tab ${filter === 'canceled' ? 'active' : ''}`}
+                                onClick={() => setFilter('canceled')}
+                            >
+                                Đã hủy ({orderCounts.canceled})
+                            </button>
+
+
+
+                        </div>
+                    </div>
+
+                    {/* Orders List */}
+                    <div className="orders-content">
+                        {filteredOrders.length === 0 ? (
+                            <div className="empty-orders">
+                                <div className="empty-hero">
+                                    <div className="empty-hero-glow"></div>
+                                    <div className="empty-hero-icon">
+                                        <ShoppingBag className="empty-hero-svg" />
+                                    </div>
                                 </div>
-                                <div className="orders-toolbar-actions">
-                                    <label htmlFor="order-page-size">Đơn mỗi trang</label>
-                                    <select
-                                        id="order-page-size"
-                                        value={pageSize}
-                                        onChange={handlePageSizeChange}
-                                    >
-                                        {pageSizeOptions.map(size => (
-                                            <option key={size} value={size}>{size}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <h3 className="empty-title">Chưa có đơn hàng nào</h3>
+                                <p className="empty-subtitle">Bạn chưa có đơn hàng nào. Hãy khám phá và mua sắm sản phẩm yêu thích!</p>
+                                <button className="btn btn-primary" onClick={handleGoHome}>Bắt đầu mua sắm</button>
                             </div>
-
-                            <div className="orders-list">
-                                {paginatedOrders.map(order => {
-                                    const orderCode = order.orderCode || order._raw?.orderCode || order.id;
-                                    const productCount = Number(order._raw?.quantity || 1);
-                                    const shippingAddress = order.shippingAddress || order._raw?.shippingAddress || '';
-                                    const phoneNumber = order.phoneNumber || order._raw?.phoneNumber || '';
-                                    const canceledAt = order.canceledAt || order._raw?.canceledAt || null;
-                                    const cancelReason = order.cancelReason || order._raw?.cancelReason || '';
-
-                                    // Xác định xem đơn có bị hủy không sử dụng helper thống nhất
-                                    const isCancelled = isOrderCancelled(order);
-
-                                    // Xác định status để hiển thị (ưu tiên canceled nếu đơn đã bị hủy)
-                                    const displayStatus = isCancelled ? 'canceled' : order.status;
-                                    const displayStatusInfo = getStatusInfo(displayStatus);
-                                    const DisplayStatusIcon = displayStatusInfo.icon;
-
-                                    const imgSrc = extractImageFromOrder(order) || '/vite.svg';
-
-                                    return (
-                                        <div
-                                            key={order.id}
-                                            className={`order-card ${isCancelled ? 'order-cancelled' : ''}`}
-                                            onClick={() => handleViewOrder(order.id)}
+                        ) : (
+                            <>
+                                <div className="orders-toolbar">
+                                    <div className="orders-toolbar-info">
+                                        Đang hiển thị <strong>{paginatedOrders.length}</strong> / {filteredOrders.length} đơn
+                                        {filter !== 'all' && (
+                                            <span className="orders-toolbar-filter">• Bộ lọc: {filter === 'canceled' ? 'Đã hủy' : filter}</span>
+                                        )}
+                                    </div>
+                                    <div className="orders-toolbar-actions">
+                                        <label htmlFor="order-page-size">Đơn mỗi trang</label>
+                                        <select
+                                            id="order-page-size"
+                                            value={pageSize}
+                                            onChange={handlePageSizeChange}
                                         >
-                                            <div className="order-header">
-                                                <div className="order-info">
-                                                    <h3 className="order-id">Đơn hàng #{orderCode}</h3>
-                                                    <div className="order-date">
-                                                        <Calendar className="date-icon" />
-                                                        <span>{formatDate(order.createdAt)}</span>
-                                                        {isCancelled && canceledAt && (
-                                                            <span style={{ marginLeft: '8px', color: '#dc3545', fontSize: '12px' }}>
-                                                                • Hủy: {formatDate(canceledAt)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="order-status">
-                                                    <div
-                                                        className="status-badge"
-                                                        style={{ backgroundColor: displayStatusInfo.color }}
-                                                    >
-                                                        <DisplayStatusIcon size={16} color="white" />
-                                                        <span>{displayStatusInfo.label}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            {pageSizeOptions.map(size => (
+                                                <option key={size} value={size}>{size}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
 
-                                            <div className="order-content">
-                                                <div className="order-product-row">
-                                                    <div className="thumb">
-                                                        <img src={imgSrc} alt={order.product?.title || 'product'} />
-                                                    </div>
-                                                    <div className="info-rows">
-                                                        <div className="info-row">
-                                                            <span className="label">Số lượng sản phẩm:</span>
-                                                            <span className="value">{productCount} sản phẩm</span>
-                                                        </div>
-                                                        <div className="info-row">
-                                                            <span className="label">Tổng cộng:</span>
-                                                            <span className="value total-price-blue">{formatCurrency(order.finalPrice)}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                <div className="orders-list">
+                                    {paginatedOrders.map(order => {
+                                        const orderCode = order.orderCode || order._raw?.orderCode || order.id;
+                                        const productCount = Number(order._raw?.quantity || 1);
+                                        const shippingAddress = order.shippingAddress || order._raw?.shippingAddress || '';
+                                        const phoneNumber = order.phoneNumber || order._raw?.phoneNumber || '';
+                                        const canceledAt = order.canceledAt || order._raw?.canceledAt || null;
+                                        const cancelReason = order.cancelReason || order._raw?.cancelReason || '';
 
-                                            <div className="expand-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                {/* Chỉ giữ action trái cho trạng thái cần thiết (ví dụ: shipping: theo dõi vận đơn) */}
-                                                {order.status === 'shipping' && getActionsForStatus(order.status, order.id).map(action => (
-                                                    <button
-                                                        key={action.key}
-                                                        className={action.className}
-                                                        onClick={(e) => { e.stopPropagation(); action.onClick(); }}
-                                                    >
-                                                        {action.label}
-                                                    </button>
-                                                ))}
-                                                {/* Nút xem chi tiết */}
-                                                <button
-                                                    className="btn btn-soft-primary btn-sm btn-animate"
-                                                    onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === order.id ? null : order.id); }}
-                                                >
-                                                    {expandedId === order.id ? (
-                                                        <>
-                                                            Thu gọn <ChevronUp className="btn-icon" />
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            Xem chi tiết <ChevronDown className="btn-icon" />
-                                                        </>
-                                                    )}
-                                                </button>
-                                                {/* Nút theo dõi đơn hàng */}
-                                                <button
-                                                    className="btn btn-primary btn-sm btn-animate"
-                                                    onClick={(e) => { e.stopPropagation(); handleViewOrder(order.id); }}
-                                                >
-                                                    <Eye className="btn-icon" />
-                                                    Theo dõi đơn hàng
-                                                </button>
-                                                {/* Nhóm bên phải: Actions theo trạng thái */}
-                                                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                                                    {/* Actions cho đơn đã hủy */}
-                                                    {isCancelled && (
-                                                        <button
-                                                            className="btn btn-secondary btn-sm btn-animate"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleReorder(order.id);
-                                                            }}
-                                                        >
-                                                            Đặt lại
-                                                        </button>
-                                                    )}
-                                                    {/* Actions cho đơn chưa hủy */}
-                                                    {!isCancelled && (
-                                                        <>
-                                                            {/* Cho phép hủy khi pending hoặc confirmed và chưa handed-over */}
-                                                            {canCancelOrder(order) && (
-                                                                <button
-                                                                    className="btn btn-danger btn-sm btn-animate"
-                                                                    onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id, order); }}
-                                                                >
-                                                                    Hủy đơn
-                                                                </button>
+                                        // Xác định xem đơn có bị hủy không sử dụng helper thống nhất
+                                        const isCancelled = isOrderCancelled(order);
+
+                                        // Get status from multiple possible locations
+                                        const rawStatus = getOrderRawStatus(order);
+                                        const normalizedStatus = String(order?.status || '').toLowerCase();
+
+                                        // Normalize status từ rawStatus nếu order.status không đúng
+                                        // Ưu tiên rawStatus từ backend để đảm bảo hiển thị đúng
+                                        let actualStatus = order.status || 'pending';
+                                        if (rawStatus) {
+                                            const upperRaw = rawStatus.toUpperCase();
+                                            if (upperRaw === 'PENDING_PAYMENT' || upperRaw === 'PENDING') {
+                                                actualStatus = 'pending';
+                                            } else if (upperRaw === 'PAID' || upperRaw === 'PROCESSING' || upperRaw === 'CONFIRMED' || upperRaw === 'VERIFIED' || upperRaw === 'PICKED') {
+                                                actualStatus = 'confirmed';
+                                            } else if (upperRaw === 'SHIPPED' || upperRaw === 'DELIVERING') {
+                                                actualStatus = 'shipping';
+                                            } else if (upperRaw === 'DELIVERED' || upperRaw === 'COMPLETED' || upperRaw === 'SUCCESS') {
+                                                actualStatus = 'delivered';
+                                            } else if (upperRaw === 'CANCELLED' || upperRaw === 'CANCELED' || upperRaw === 'FAILED') {
+                                                actualStatus = 'canceled';
+                                            }
+                                        }
+
+                                        // Xác định status để hiển thị (ưu tiên canceled nếu đơn đã bị hủy)
+                                        const displayStatus = isCancelled ? 'canceled' : actualStatus;
+                                        const displayStatusInfo = getStatusInfo(displayStatus);
+                                        const DisplayStatusIcon = displayStatusInfo.icon;
+
+                                        // Check if order is completed from multiple sources
+                                        const isCompleted = rawStatus === 'COMPLETED' ||
+                                            rawStatus === 'SUCCESS' ||
+                                            normalizedStatus === 'completed' ||
+                                            normalizedStatus === 'success' ||
+                                            actualStatus === 'delivered' ||
+                                            actualStatus === 'completed';
+
+                                        // Only show confirm button if status is DELIVERED and NOT completed
+                                        const canShowConfirmOrder = (rawStatus === 'DELIVERED' || normalizedStatus === 'delivered') && !isCompleted;
+
+                                        // Debug logging for button visibility
+                                        if (order && (normalizedStatus === 'delivered' || isCompleted)) {
+                                            console.log('[OrderList] Button visibility check:', {
+                                                orderId: order.id,
+                                                orderCode: orderCode,
+                                                status: order.status,
+                                                _raw_rawStatus: order._raw?.rawStatus,
+                                                _raw_status: order._raw?.status,
+                                                rawStatus,
+                                                normalizedStatus,
+                                                isCompleted,
+                                                canShowConfirmOrder
+                                            });
+                                        }
+                                        const confirmStateKey = String(order.id ?? order._raw?.id ?? '');
+                                        const isConfirming = Boolean(confirmingOrders[confirmStateKey]);
+
+                                        const imgSrc = extractImageFromOrder(order) || '/vite.svg';
+
+                                        return (
+                                            <div
+                                                key={order.id}
+                                                className={`order-card ${isCancelled ? 'order-cancelled' : ''}`}
+                                                onClick={() => handleViewOrder(order.id)}
+                                            >
+                                                <div className="order-header">
+                                                    <div className="order-info">
+                                                        <h3 className="order-id">Đơn hàng #{orderCode}</h3>
+                                                        <div className="order-date">
+                                                            <Calendar className="date-icon" />
+                                                            <span>{formatDate(order.createdAt)}</span>
+                                                            {isCancelled && canceledAt && (
+                                                                <span style={{ marginLeft: '8px', color: '#dc3545', fontSize: '12px' }}>
+                                                                    • Hủy: {formatDate(canceledAt)}
+                                                                </span>
                                                             )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="order-status">
+                                                        <div
+                                                            className="status-badge"
+                                                            style={{ backgroundColor: displayStatusInfo.color }}
+                                                        >
+                                                            <DisplayStatusIcon size={16} color="white" />
+                                                            <span>{displayStatusInfo.label}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
-                                                            {order.status === 'delivered' && (
-                                                                <>
-                                                                    {reviewedMap[order.id]?.hasReview ? (
+                                                <div className="order-content">
+                                                    <div className="order-product-row">
+                                                        <div className="thumb">
+                                                            <img src={imgSrc} alt={order.product?.title || 'product'} />
+                                                        </div>
+                                                        <div className="info-rows">
+                                                            <div className="info-row">
+                                                                <span className="label">Số lượng sản phẩm:</span>
+                                                                <span className="value">{productCount} sản phẩm</span>
+                                                            </div>
+                                                            <div className="info-row">
+                                                                <span className="label">Tổng cộng:</span>
+                                                                <span className="value total-price-blue">{formatCurrency(order.finalPrice)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="expand-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    {/* Chỉ giữ action trái cho trạng thái cần thiết (ví dụ: shipping: theo dõi vận đơn) */}
+                                                    {actualStatus === 'shipping' && getActionsForStatus(actualStatus, order.id).map(action => (
+                                                        <button
+                                                            key={action.key}
+                                                            className={action.className}
+                                                            onClick={(e) => { e.stopPropagation(); action.onClick(); }}
+                                                        >
+                                                            {action.label}
+                                                        </button>
+                                                    ))}
+                                                    {/* Nút xem chi tiết */}
+                                                    <button
+                                                        className="btn btn-soft-primary btn-sm btn-animate"
+                                                        onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === order.id ? null : order.id); }}
+                                                    >
+                                                        {expandedId === order.id ? (
+                                                            <>
+                                                                Thu gọn <ChevronUp className="btn-icon" />
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                Xem chi tiết <ChevronDown className="btn-icon" />
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    {/* Nút theo dõi đơn hàng */}
+                                                    <button
+                                                        className="btn btn-primary btn-sm btn-animate"
+                                                        onClick={(e) => { e.stopPropagation(); handleViewOrder(order.id); }}
+                                                    >
+                                                        <Eye className="btn-icon" />
+                                                        Theo dõi đơn hàng
+                                                    </button>
+                                                    {/* Nhóm bên phải: Actions theo trạng thái */}
+                                                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                                                        {/* Actions cho đơn đã hủy */}
+                                                        {isCancelled && (
+                                                            <button
+                                                                className="btn btn-secondary btn-sm btn-animate"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleReorder(order.id);
+                                                                }}
+                                                            >
+                                                                Đặt lại
+                                                            </button>
+                                                        )}
+                                                        {/* Actions cho đơn chưa hủy */}
+                                                        {!isCancelled && (
+                                                            <>
+                                                                {/* Cho phép hủy khi pending hoặc confirmed và chưa handed-over */}
+                                                                {canCancelOrder(order) && (
+                                                                    <button
+                                                                        className="btn btn-danger btn-sm btn-animate"
+                                                                        onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id, order); }}
+                                                                    >
+                                                                        Hủy đơn
+                                                                    </button>
+                                                                )}
+
+                                                                {(actualStatus === 'delivered' || actualStatus === 'completed') && (
+                                                                    <>
+                                                                        {canShowConfirmOrder && (
+                                                                            <button
+                                                                                className="btn btn-primary btn-sm btn-animate"
+                                                                                onClick={(e) => { e.stopPropagation(); handleConfirmDeliveredOrder(order); }}
+                                                                                disabled={isConfirming}
+                                                                            >
+                                                                                {isConfirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
+                                                                            </button>
+                                                                        )}
+                                                                        {reviewedMap[order.id]?.hasReview ? (
+                                                                            <button
+                                                                                className="btn btn-secondary btn-sm btn-animate"
+                                                                                onClick={(e) => { e.stopPropagation(); handleViewReview(order.id, order); }}
+                                                                            >
+                                                                                Xem đánh giá
+                                                                            </button>
+                                                                        ) : (
+                                                                            <button
+                                                                                className="btn btn-success btn-sm btn-animate"
+                                                                                style={{ backgroundColor: '#28a745', boxShadow: '0 0 0 0 rgba(0,0,0,0)', filter: 'drop-shadow(0 0 8px rgba(40,167,69,0.45))' }}
+                                                                                onClick={(e) => { e.stopPropagation(); handleRateOrder(order.id, order); }}
+                                                                            >
+                                                                                Đánh giá
+                                                                            </button>
+                                                                        )}
                                                                         <button
-                                                                            className="btn btn-secondary btn-sm btn-animate"
-                                                                            onClick={(e) => { e.stopPropagation(); handleViewReview(order.id, order); }}
+                                                                            className="btn btn-warning btn-sm btn-animate"
+                                                                            style={{ backgroundColor: '#ffc107', color: '#212529', filter: 'drop-shadow(0 0 8px rgba(255,193,7,0.45))' }}
+                                                                            onClick={(e) => { e.stopPropagation(); handleRaiseDispute(order.id); }}
                                                                         >
-                                                                            Xem đánh giá
-                                                                        </button>
-                                                                    ) : (
-                                                                        <button
-                                                                            className="btn btn-success btn-sm btn-animate"
-                                                                            style={{ backgroundColor: '#28a745', boxShadow: '0 0 0 0 rgba(0,0,0,0)', filter: 'drop-shadow(0 0 8px rgba(40,167,69,0.45))' }}
-                                                                            onClick={(e) => { e.stopPropagation(); handleRateOrder(order.id, order); }}
-                                                                        >
-                                                                            Đánh giá
+                                                                            Khiếu nại
                                                                         </button>
                                                                     )}
                                                                     {order._raw?.disputeStatus || viewingDisputeResultId === order.id ? (
@@ -1401,347 +1677,363 @@ function OrderList() {
                                                             )}
                                                         </>
                                                     )}
+                                                               //    </>
+                                                               // )}
+                                                          //  </>
+                                                       // )}
+                                                   // </div>
                                                 </div>
-                                            </div>
 
-                                            {expandedId === order.id && (
-                                                <div className="order-expanded">
-                                                    {/* Status-specific information */}
-                                                    {order.status === 'pending' && (
-                                                        <>
-                                                            <div className="expanded-status-info pending-info">
-                                                                <Clock size={18} />
-                                                                <div>
-                                                                    <div className="status-info-title">Đơn hàng đang chờ xác nhận</div>
-                                                                    <div className="status-info-desc">Chúng tôi đang xử lý đơn hàng của bạn. Vui lòng đợi trong giây lát.</div>
-                                                                </div>
-                                                            </div>
-                                                        </>
-                                                    )}
-
-                                                    {order.status === 'confirmed' && (
-                                                        <>
-                                                            <div className="expanded-status-info confirmed-info">
-                                                                <CheckCircle size={18} />
-                                                                <div>
-                                                                    <div className="status-info-title">Đơn hàng đã được xác nhận</div>
-                                                                    <div className="status-info-desc">Đơn hàng đang được chuẩn bị để giao đến bạn.</div>
-                                                                </div>
-                                                            </div>
-                                                        </>
-                                                    )}
-
-                                                    {order.status === 'shipping' && (
-                                                        <>
-                                                            <div className="expanded-status-info shipping-info">
-                                                                <Truck size={18} />
-                                                                <div>
-                                                                    <div className="status-info-title">Đơn hàng đang trên đường</div>
-                                                                    <div className="status-info-desc">Đơn hàng đã được giao cho đơn vị vận chuyển và đang trên đường đến bạn.</div>
-                                                                </div>
-                                                            </div>
-                                                            {order._raw?.trackingNumber && (
-                                                                <div className="expanded-section tracking-section">
-                                                                    <h4>
-                                                                        <Package className="section-icon" />
-                                                                        Thông tin vận đơn
-                                                                    </h4>
-                                                                    <div className="expanded-row">
-                                                                        <div className="expanded-info-group">
-                                                                            <div className="expanded-label">Mã vận đơn</div>
-                                                                            <div className="expanded-text tracking-code">{order._raw.trackingNumber}</div>
-                                                                        </div>
-                                                                        {order._raw?.carrier && (
-                                                                            <div className="expanded-info-group">
-                                                                                <div className="expanded-label">Đơn vị vận chuyển</div>
-                                                                                <div className="expanded-text">{order._raw.carrier}</div>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </>
-                                                    )}
-
-                                                    {order.status === 'delivered' && (
-                                                        <>
-                                                            <div className="expanded-status-info delivered-info">
-                                                                <CheckCircle size={18} />
-                                                                <div>
-                                                                    <div className="status-info-title">Đơn hàng đã được giao thành công</div>
-                                                                    <div className="status-info-desc">
-                                                                        {order._raw?.deliveredAt
-                                                                            ? `Giao hàng vào ${formatDate(order._raw.deliveredAt)}`
-                                                                            : 'Đơn hàng đã được giao đến bạn thành công.'
-                                                                        }
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            {order._raw?.trackingNumber && (
-                                                                <div className="expanded-section tracking-section">
-                                                                    <h4>
-                                                                        <Package className="section-icon" />
-                                                                        Thông tin vận đơn
-                                                                    </h4>
-                                                                    <div className="expanded-row">
-                                                                        <div className="expanded-info-group">
-                                                                            <div className="expanded-label">Mã vận đơn</div>
-                                                                            <div className="expanded-text tracking-code">{order._raw.trackingNumber}</div>
-                                                                        </div>
-                                                                        {order._raw?.carrier && (
-                                                                            <div className="expanded-info-group">
-                                                                                <div className="expanded-label">Đơn vị vận chuyển</div>
-                                                                                <div className="expanded-text">{order._raw.carrier}</div>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </>
-                                                    )}
-
-                                                    {isCancelled && (
-                                                        <>
-                                                            <div className="expanded-status-info cancelled-info">
-                                                                <AlertCircle size={18} />
-                                                                <div>
-                                                                    <div className="status-info-title">Đơn hàng đã bị hủy</div>
-                                                                    <div className="status-info-desc">
-                                                                        {cancelReason ? (
-                                                                            <>
-                                                                                <strong>Lý do hủy:</strong> {cancelReason}
-                                                                                {canceledAt && ` - ${formatDate(canceledAt)}`}
-                                                                            </>
-                                                                        ) : (
-                                                                            <>
-                                                                                Đơn hàng này đã bị hủy.
-                                                                                {canceledAt && ` (${formatDate(canceledAt)})`}
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </>
-                                                    )}
-
-                                                    {/* Common information */}
-                                                    <div className="expanded-sections-grid">
-                                                        <div className="expanded-section">
-                                                            <h4>
-                                                                <MapPin className="section-icon" />
-                                                                Thông tin giao hàng
-                                                            </h4>
-                                                            <div className="expanded-details">
-                                                                {phoneNumber && (
-                                                                    <div className="expanded-detail-row">
-                                                                        <Phone className="expanded-icon" />
-                                                                        <div>
-                                                                            <div className="expanded-label">Số điện thoại</div>
-                                                                            <div className="expanded-text">{phoneNumber}</div>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                                {shippingAddress ? (
-                                                                    <div className="expanded-detail-row">
-                                                                        <MapPin className="expanded-icon" />
-                                                                        <div>
-                                                                            <div className="expanded-label">Địa chỉ giao hàng</div>
-                                                                            <div className="expanded-text">{shippingAddress}</div>
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="expanded-detail-row">
-                                                                        <MapPin className="expanded-icon" />
-                                                                        <div className="expanded-text text-muted">Chưa cập nhật địa chỉ</div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="expanded-section">
-                                                            <h4>
-                                                                <CreditCard className="section-icon" />
-                                                                Thanh toán
-                                                            </h4>
-                                                            <div className="expanded-details">
-                                                                <div className="expanded-detail-row">
-                                                                    <CreditCard className="expanded-icon" />
+                                                {expandedId === order.id && (
+                                                    <div className="order-expanded">
+                                                        {/* Status-specific information */}
+                                                        {actualStatus === 'pending' && (
+                                                            <>
+                                                                <div className="expanded-status-info pending-info">
+                                                                    <Clock size={18} />
                                                                     <div>
-                                                                        <div className="expanded-label">Phương thức thanh toán</div>
-                                                                        <div className="expanded-text">
-                                                                            {order._raw?.paymentMethod || (order.status === 'confirmed' ? 'Ví điện tử' : order.status === 'delivered' ? 'Ví điện tử' : 'Thanh toán khi nhận hàng (COD)')}
-                                                                        </div>
+                                                                        <div className="status-info-title">Đơn hàng đang chờ xác nhận</div>
+                                                                        <div className="status-info-desc">Chúng tôi đang xử lý đơn hàng của bạn. Vui lòng đợi trong giây lát.</div>
                                                                     </div>
                                                                 </div>
-                                                                <div className="expanded-detail-row">
-                                                                    <div className="expanded-label">Tổng tiền</div>
-                                                                    <div className="expanded-text price-highlight">{formatCurrency(order.finalPrice)}</div>
-                                                                </div>
-                                                                <div className="expanded-detail-row price-breakdown">
-                                                                    <div className="expanded-label">Tạm tính</div>
-                                                                    <div className="expanded-text">{formatCurrency(order.price || order.finalPrice - order.shippingFee)}</div>
-                                                                </div>
-                                                                <div className="expanded-detail-row price-breakdown">
-                                                                    <div className="expanded-label">Phí vận chuyển</div>
-                                                                    <div className="expanded-text">{formatCurrency(order.shippingFee)}</div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                            </>
+                                                        )}
 
-                                                    <div className="expanded-section timeline-section">
-                                                        <h4>
-                                                            <Calendar className="section-icon" />
-                                                            Mốc thời gian
-                                                        </h4>
-                                                        <div className="timeline">
-                                                            <div className="timeline-item active">
-                                                                <div className="timeline-dot"></div>
-                                                                <div className="timeline-content">
-                                                                    <div className="timeline-label">Đặt hàng</div>
-                                                                    <div className="timeline-date">{formatDate(order.createdAt)}</div>
-                                                                </div>
-                                                            </div>
-                                                            {order.status !== 'pending' && !isCancelled && (
-                                                                <div className="timeline-item active">
-                                                                    <div className="timeline-dot"></div>
-                                                                    <div className="timeline-content">
-                                                                        <div className="timeline-label">Xác nhận đơn hàng</div>
-                                                                        <div className="timeline-date">{formatDate(order.updatedAt || order.createdAt)}</div>
+                                                        {actualStatus === 'confirmed' && (
+                                                            <>
+                                                                <div className="expanded-status-info confirmed-info">
+                                                                    <CheckCircle size={18} />
+                                                                    <div>
+                                                                        <div className="status-info-title">Đơn hàng đã được xác nhận</div>
+                                                                        <div className="status-info-desc">Đơn hàng đang được chuẩn bị để giao đến bạn.</div>
                                                                     </div>
                                                                 </div>
-                                                            )}
-                                                            {(order.status === 'shipping' || order.status === 'delivered') && (
-                                                                <div className="timeline-item active">
-                                                                    <div className="timeline-dot"></div>
-                                                                    <div className="timeline-content">
-                                                                        <div className="timeline-label">Đang vận chuyển</div>
-                                                                        <div className="timeline-date">{formatDate(order._raw?.shippedAt || order.updatedAt || order.createdAt)}</div>
+                                                            </>
+                                                        )}
+
+                                                        {actualStatus === 'shipping' && (
+                                                            <>
+                                                                <div className="expanded-status-info shipping-info">
+                                                                    <Truck size={18} />
+                                                                    <div>
+                                                                        <div className="status-info-title">Đơn hàng đang trên đường</div>
+                                                                        <div className="status-info-desc">Đơn hàng đã được giao cho đơn vị vận chuyển và đang trên đường đến bạn.</div>
                                                                     </div>
                                                                 </div>
-                                                            )}
-                                                            {order.status === 'delivered' && (
-                                                                <div className="timeline-item active">
-                                                                    <div className="timeline-dot delivered"></div>
-                                                                    <div className="timeline-content">
-                                                                        <div className="timeline-label">Giao hàng thành công</div>
-                                                                        <div className="timeline-date">{formatDate(order._raw?.deliveredAt || order.updatedAt)}</div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            {isCancelled && (
-                                                                <div className="timeline-item cancelled">
-                                                                    <div className="timeline-dot cancelled"></div>
-                                                                    <div className="timeline-content">
-                                                                        <div className="timeline-label">Đơn hàng bị hủy</div>
-                                                                        <div className="timeline-date">
-                                                                            {formatDate(canceledAt || order.updatedAt || order.createdAt)}
-                                                                        </div>
-                                                                        {cancelReason && (
-                                                                            <div className="timeline-reason" style={{
-                                                                                marginTop: '4px',
-                                                                                fontSize: '12px',
-                                                                                color: '#dc3545',
-                                                                                fontStyle: 'italic'
-                                                                            }}>
-                                                                                {cancelReason}
+                                                                {order._raw?.trackingNumber && (
+                                                                    <div className="expanded-section tracking-section">
+                                                                        <h4>
+                                                                            <Package className="section-icon" />
+                                                                            Thông tin vận đơn
+                                                                        </h4>
+                                                                        <div className="expanded-row">
+                                                                            <div className="expanded-info-group">
+                                                                                <div className="expanded-label">Mã vận đơn</div>
+                                                                                <div className="expanded-text tracking-code">{order._raw.trackingNumber}</div>
                                                                             </div>
-                                                                        )}
+                                                                            {order._raw?.carrier && (
+                                                                                <div className="expanded-info-group">
+                                                                                    <div className="expanded-label">Đơn vị vận chuyển</div>
+                                                                                    <div className="expanded-text">{order._raw.carrier}</div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        )}
+
+                                                        {(actualStatus === 'delivered' || actualStatus === 'completed') && (
+                                                            <>
+                                                                <div className="expanded-status-info delivered-info">
+                                                                    <CheckCircle size={18} />
+                                                                    <div>
+                                                                        <div className="status-info-title">
+                                                                            {actualStatus === 'completed' ? 'Đơn hàng đã được xác nhận hoàn tất' : 'Đơn hàng đã được giao thành công'}
+                                                                        </div>
+                                                                        <div className="status-info-desc">
+                                                                            {order._raw?.deliveredAt
+                                                                                ? `Giao hàng vào ${formatDate(order._raw.deliveredAt)}`
+                                                                                : 'Đơn hàng đã được giao đến bạn thành công.'
+                                                                            }
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            )}
+                                                                {order._raw?.trackingNumber && (
+                                                                    <div className="expanded-section tracking-section">
+                                                                        <h4>
+                                                                            <Package className="section-icon" />
+                                                                            Thông tin vận đơn
+                                                                        </h4>
+                                                                        <div className="expanded-row">
+                                                                            <div className="expanded-info-group">
+                                                                                <div className="expanded-label">Mã vận đơn</div>
+                                                                                <div className="expanded-text tracking-code">{order._raw.trackingNumber}</div>
+                                                                            </div>
+                                                                            {order._raw?.carrier && (
+                                                                                <div className="expanded-info-group">
+                                                                                    <div className="expanded-label">Đơn vị vận chuyển</div>
+                                                                                    <div className="expanded-text">{order._raw.carrier}</div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        )}
+
+                                                        {isCancelled && (
+                                                            <>
+                                                                <div className="expanded-status-info cancelled-info">
+                                                                    <AlertCircle size={18} />
+                                                                    <div>
+                                                                        <div className="status-info-title">Đơn hàng đã bị hủy</div>
+                                                                        <div className="status-info-desc">
+                                                                            {cancelReason ? (
+                                                                                <>
+                                                                                    <strong>Lý do hủy:</strong> {cancelReason}
+                                                                                    {canceledAt && ` - ${formatDate(canceledAt)}`}
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    Đơn hàng này đã bị hủy.
+                                                                                    {canceledAt && ` (${formatDate(canceledAt)})`}
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        )}
+
+                                                        {/* Common information */}
+                                                        <div className="expanded-sections-grid">
+                                                            <div className="expanded-section">
+                                                                <h4>
+                                                                    <MapPin className="section-icon" />
+                                                                    Thông tin giao hàng
+                                                                </h4>
+                                                                <div className="expanded-details">
+                                                                    {phoneNumber && (
+                                                                        <div className="expanded-detail-row">
+                                                                            <Phone className="expanded-icon" />
+                                                                            <div>
+                                                                                <div className="expanded-label">Số điện thoại</div>
+                                                                                <div className="expanded-text">{phoneNumber}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {shippingAddress ? (
+                                                                        <div className="expanded-detail-row">
+                                                                            <MapPin className="expanded-icon" />
+                                                                            <div>
+                                                                                <div className="expanded-label">Địa chỉ giao hàng</div>
+                                                                                <div className="expanded-text">{shippingAddress}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="expanded-detail-row">
+                                                                            <MapPin className="expanded-icon" />
+                                                                            <div className="expanded-text text-muted">Chưa cập nhật địa chỉ</div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="expanded-section">
+                                                                <h4>
+                                                                    <CreditCard className="section-icon" />
+                                                                    Thanh toán
+                                                                </h4>
+                                                                <div className="expanded-details">
+                                                                    <div className="expanded-detail-row">
+                                                                        <CreditCard className="expanded-icon" />
+                                                                        <div>
+                                                                            <div className="expanded-label">Phương thức thanh toán</div>
+                                                                            <div className="expanded-text">
+                                                                                {order._raw?.paymentMethod || (order.status === 'confirmed' ? 'Ví điện tử' : order.status === 'delivered' ? 'Ví điện tử' : 'Thanh toán khi nhận hàng (COD)')}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="expanded-detail-row">
+                                                                        <div className="expanded-label">Tổng tiền</div>
+                                                                        <div className="expanded-text price-highlight">{formatCurrency(order.finalPrice)}</div>
+                                                                    </div>
+                                                                    <div className="expanded-detail-row price-breakdown">
+                                                                        <div className="expanded-label">Tạm tính</div>
+                                                                        <div className="expanded-text">{formatCurrency(order.price || order.finalPrice - order.shippingFee)}</div>
+                                                                    </div>
+                                                                    <div className="expanded-detail-row price-breakdown">
+                                                                        <div className="expanded-label">Phí vận chuyển</div>
+                                                                        <div className="expanded-text">{formatCurrency(order.shippingFee)}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="expanded-section timeline-section">
+                                                            <h4>
+                                                                <Calendar className="section-icon" />
+                                                                Mốc thời gian
+                                                            </h4>
+                                                            <div className="timeline">
+                                                                <div className="timeline-item active">
+                                                                    <div className="timeline-dot"></div>
+                                                                    <div className="timeline-content">
+                                                                        <div className="timeline-label">Đặt hàng</div>
+                                                                        <div className="timeline-date">{formatDate(order.createdAt)}</div>
+                                                                    </div>
+                                                                </div>
+                                                                {actualStatus !== 'pending' && !isCancelled && (
+                                                                    <div className="timeline-item active">
+                                                                        <div className="timeline-dot"></div>
+                                                                        <div className="timeline-content">
+                                                                            <div className="timeline-label">Xác nhận đơn hàng</div>
+                                                                            <div className="timeline-date">{formatDate(order.updatedAt || order.createdAt)}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {(actualStatus === 'shipping' || actualStatus === 'delivered' || actualStatus === 'completed') && (
+                                                                    <div className="timeline-item active">
+                                                                        <div className="timeline-dot"></div>
+                                                                        <div className="timeline-content">
+                                                                            <div className="timeline-label">Đang vận chuyển</div>
+                                                                            <div className="timeline-date">{formatDate(order._raw?.shippedAt || order.updatedAt || order.createdAt)}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {(actualStatus === 'delivered' || actualStatus === 'completed') && (
+                                                                    <div className="timeline-item active">
+                                                                        <div className="timeline-dot delivered"></div>
+                                                                        <div className="timeline-content">
+                                                                            <div className="timeline-label">Giao hàng thành công</div>
+                                                                            <div className="timeline-date">{formatDate(order._raw?.deliveredAt || order.updatedAt)}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {actualStatus === 'completed' && (
+                                                                    <div className="timeline-item active">
+                                                                        <div className="timeline-dot delivered"></div>
+                                                                        <div className="timeline-content">
+                                                                            <div className="timeline-label">Đã xác nhận hoàn tất</div>
+                                                                            <div className="timeline-date">{formatDate(order.updatedAt)}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {isCancelled && (
+                                                                    <div className="timeline-item cancelled">
+                                                                        <div className="timeline-dot cancelled"></div>
+                                                                        <div className="timeline-content">
+                                                                            <div className="timeline-label">Đơn hàng bị hủy</div>
+                                                                            <div className="timeline-date">
+                                                                                {formatDate(canceledAt || order.updatedAt || order.createdAt)}
+                                                                            </div>
+                                                                            {cancelReason && (
+                                                                                <div className="timeline-reason" style={{
+                                                                                    marginTop: '4px',
+                                                                                    fontSize: '12px',
+                                                                                    color: '#dc3545',
+                                                                                    fontStyle: 'italic'
+                                                                                }}>
+                                                                                    {cancelReason}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {totalPages > 1 && (
-                                <div className="order-pagination">
-                                    <button
-                                        type="button"
-                                        className="pagination-btn"
-                                        onClick={handleFirstPage}
-                                        disabled={currentPage === 1}
-                                    >
-                                        Đầu
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="pagination-btn"
-                                        onClick={handlePrevPage}
-                                        disabled={currentPage === 1}
-                                    >
-                                        Trước
-                                    </button>
-                                    {visiblePages.map((item, index) => (
-                                        item === 'ellipsis' ? (
-                                            <span key={`ellipsis-${index}`} className="pagination-ellipsis">...</span>
-                                        ) : (
-                                            <button
-                                                key={item}
-                                                type="button"
-                                                className={`pagination-btn ${currentPage === item ? 'active' : ''}`}
-                                                onClick={() => handlePageChange(item)}
-                                            >
-                                                {item}
-                                            </button>
-                                        )
-                                    ))}
-                                    <button
-                                        type="button"
-                                        className="pagination-btn"
-                                        onClick={handleNextPage}
-                                        disabled={currentPage === totalPages}
-                                    >
-                                        Sau
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="pagination-btn"
-                                        onClick={handleLastPage}
-                                        disabled={currentPage === totalPages}
-                                    >
-                                        Cuối
-                                    </button>
-                                    <form className="pagination-go-form" onSubmit={handlePageInputSubmit}>
-                                        <span>Đi tới</span>
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            value={pageInputValue}
-                                            onChange={handlePageInputChange}
-                                            placeholder={`${currentPage}/${totalPages}`}
-                                        />
-                                        <button type="submit" className="pagination-btn go-button">Đi</button>
-                                    </form>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            )}
-                        </>
-                    )}
-                </div>
-                {/* Summary Footer */}
-                <div className="order-card" style={{ marginTop: 20 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', textAlign: 'center' }}>
-                        <div>
-                            <div style={{ color: '#6c757d', marginBottom: 6 }}>Tổng đơn hàng</div>
-                            <div style={{ fontWeight: 700, color: '#0d6efd' }}>{totalOrders}</div>
-                        </div>
-                        <div>
-                            <div style={{ color: '#6c757d', marginBottom: 6 }}>Đã giao thành công</div>
-                            <div style={{ fontWeight: 700, color: '#28a745' }}>{totalDelivered}</div>
-                        </div>
-                        <div>
-                            <div style={{ color: '#6c757d', marginBottom: 6 }}>Tổng chi tiêu</div>
-                            <div style={{ fontWeight: 700, color: '#0d6efd' }}>{formatCurrency(totalSpent)}</div>
+
+                                {totalPages > 1 && (
+                                    <div className="order-pagination">
+                                        <button
+                                            type="button"
+                                            className="pagination-btn"
+                                            onClick={handleFirstPage}
+                                            disabled={currentPage === 1}
+                                        >
+                                            Đầu
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="pagination-btn"
+                                            onClick={handlePrevPage}
+                                            disabled={currentPage === 1}
+                                        >
+                                            Trước
+                                        </button>
+                                        {visiblePages.map((item, index) => (
+                                            item === 'ellipsis' ? (
+                                                <span key={`ellipsis-${index}`} className="pagination-ellipsis">...</span>
+                                            ) : (
+                                                <button
+                                                    key={item}
+                                                    type="button"
+                                                    className={`pagination-btn ${currentPage === item ? 'active' : ''}`}
+                                                    onClick={() => handlePageChange(item)}
+                                                >
+                                                    {item}
+                                                </button>
+                                            )
+                                        ))}
+                                        <button
+                                            type="button"
+                                            className="pagination-btn"
+                                            onClick={handleNextPage}
+                                            disabled={currentPage === totalPages}
+                                        >
+                                            Sau
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="pagination-btn"
+                                            onClick={handleLastPage}
+                                            disabled={currentPage === totalPages}
+                                        >
+                                            Cuối
+                                        </button>
+                                        <form className="pagination-go-form" onSubmit={handlePageInputSubmit}>
+                                            <span>Đi tới</span>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                value={pageInputValue}
+                                                onChange={handlePageInputChange}
+                                                placeholder={`${currentPage}/${totalPages}`}
+                                            />
+                                            <button type="submit" className="pagination-btn go-button">Đi</button>
+                                        </form>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                    {/* Summary Footer */}
+                    <div className="order-card" style={{ marginTop: 20 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', textAlign: 'center' }}>
+                            <div>
+                                <div style={{ color: '#6c757d', marginBottom: 6 }}>Tổng đơn hàng</div>
+                                <div style={{ fontWeight: 700, color: '#0d6efd' }}>{totalOrders}</div>
+                            </div>
+                            <div>
+                                <div style={{ color: '#6c757d', marginBottom: 6 }}>Đã giao thành công</div>
+                                <div style={{ fontWeight: 700, color: '#28a745' }}>{totalDelivered}</div>
+                            </div>
+                            <div>
+                                <div style={{ color: '#6c757d', marginBottom: 6 }}>Tổng chi tiêu</div>
+                                <div style={{ fontWeight: 700, color: '#0d6efd' }}>{formatCurrency(totalSpent)}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }
 

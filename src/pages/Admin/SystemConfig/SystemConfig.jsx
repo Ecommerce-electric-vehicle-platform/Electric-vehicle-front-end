@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   CCard,
   CCardBody,
@@ -10,21 +10,49 @@ import {
   CSpinner,
   CRow,
   CCol,
+  CTable,
+  CTableHead,
+  CTableRow,
+  CTableHeaderCell,
+  CTableBody,
+  CTableDataCell,
+  CPagination,
+  CPaginationItem,
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CFormSelect,
 } from "@coreui/react";
 import {
-  getEscrowTransferConfig,
-  updateEscrowTransferConfig,
+  updateSystemConfig,
+  getAllSystemConfigs,
 } from "../../../api/adminApi";
-import { Save, RefreshCw, Info } from "lucide-react";
+import { Save, RefreshCw, Edit } from "lucide-react";
 import "./SystemConfig.css";
 
 export default function SystemConfig() {
-  const [config, setConfig] = useState(null);
+  // States cho danh sách configs
+  const [configs, setConfigs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [size] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [searchKey, setSearchKey] = useState("");
+
+  // States cho modal edit config
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedConfig, setSelectedConfig] = useState(null);
+  const [configValue, setConfigValue] = useState("");
+  const [inputType, setInputType] = useState("seconds"); // "seconds", "hoursMinutes", "datetime"
+  const [hours, setHours] = useState(0);
+  const [minutes, setMinutes] = useState(0);
+  const [datetimeValue, setDatetimeValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [configValue, setConfigValue] = useState("");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   // Kiểm tra quyền Super Admin - kiểm tra cả adminRole và adminProfile
@@ -75,32 +103,30 @@ export default function SystemConfig() {
     };
   }, []);
 
-  // Load cấu hình khi component mount
-  useEffect(() => {
-    loadConfig();
-  }, []);
-
-  const loadConfig = async () => {
+  // Load danh sách configs
+  const loadConfigs = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
       setSuccess("");
-      const response = await getEscrowTransferConfig();
+      const response = await getAllSystemConfigs(page, size);
       
-      if (response?.success && response?.data) {
-        setConfig(response.data);
-        setConfigValue(response.data.configValue || "");
-      } else {
-        setError("Không thể tải cấu hình. Vui lòng thử lại.");
-      }
+      // Xử lý response theo cấu trúc pagination
+      const responseData = response?.data?.data || response?.data || response;
+      const content = responseData?.content || responseData?.list || [];
+      const totalPagesData = responseData?.totalPages || 0;
+      const totalElementsData = responseData?.totalElements || responseData?.total || 0;
+
+      setConfigs(Array.isArray(content) ? content : []);
+      setTotalPages(totalPagesData);
+      setTotalElements(totalElementsData);
     } catch (err) {
-      console.error("Lỗi khi load cấu hình:", err);
+      console.error("Lỗi khi load danh sách cấu hình:", err);
       
-      // Provide more detailed error messages
-      let errorMessage = "Không thể tải cấu hình. Vui lòng thử lại.";
+      let errorMessage = "Không thể tải danh sách cấu hình. Vui lòng thử lại.";
       
       if (err?.response?.status === 500) {
-        errorMessage = "Lỗi server: Backend không thể xử lý yêu cầu. Vui lòng kiểm tra xem endpoint API có tồn tại không.";
+        errorMessage = "Lỗi server: Backend không thể xử lý yêu cầu.";
       } else if (err?.response?.status === 404) {
         errorMessage = "Không tìm thấy endpoint API. Vui lòng kiểm tra cấu hình backend.";
       } else if (err?.response?.status === 403) {
@@ -115,30 +141,126 @@ export default function SystemConfig() {
     } finally {
       setLoading(false);
     }
+  }, [page, size]);
+
+  // Load danh sách configs khi component mount hoặc page thay đổi
+  useEffect(() => {
+    loadConfigs();
+  }, [loadConfigs]);
+
+  // Mở modal edit config
+  const handleOpenEditModal = async (config) => {
+    if (!isSuperAdmin) {
+      alert("Chỉ Super Admin mới có thể cập nhật cấu hình!");
+      return;
+    }
+
+    setSelectedConfig(config);
+    const currentValue = config.configValue || "";
+    setConfigValue(currentValue);
+    
+    // Khởi tạo giá trị cho các loại input
+    if (currentValue) {
+      const seconds = parseInt(currentValue);
+      if (!isNaN(seconds)) {
+        // Tính giờ và phút từ giây
+        const totalMinutes = Math.floor(seconds / 60);
+        setHours(Math.floor(totalMinutes / 60));
+        setMinutes(totalMinutes % 60);
+      }
+    } else {
+      setHours(0);
+      setMinutes(0);
+    }
+    
+    setInputType("seconds");
+    setDatetimeValue("");
+    setError("");
+    setSuccess("");
+    setShowEditModal(true);
   };
 
+  // Đóng modal
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setSelectedConfig(null);
+    setConfigValue("");
+    setInputType("seconds");
+    setHours(0);
+    setMinutes(0);
+    setDatetimeValue("");
+    setError("");
+    setSuccess("");
+  };
+
+  // Chuyển đổi giờ/phút thành giây
+  const convertHoursMinutesToSeconds = (hrs, mins) => {
+    return (parseInt(hrs) || 0) * 3600 + (parseInt(mins) || 0) * 60;
+  };
+
+  // Chuyển đổi datetime thành giây (từ thời điểm hiện tại)
+  const convertDatetimeToSeconds = (datetimeStr) => {
+    if (!datetimeStr) return 0;
+    try {
+      const selectedDate = new Date(datetimeStr);
+      const now = new Date();
+      const diffMs = selectedDate.getTime() - now.getTime();
+      const diffSeconds = Math.floor(diffMs / 1000);
+      return diffSeconds > 0 ? diffSeconds : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  // Lấy giá trị config value dựa trên input type
+  const getConfigValueFromInput = () => {
+    switch (inputType) {
+      case "seconds":
+        return configValue;
+      case "hoursMinutes":
+        return convertHoursMinutesToSeconds(hours, minutes).toString();
+      case "datetime":
+        return convertDatetimeToSeconds(datetimeValue).toString();
+      default:
+        return configValue;
+    }
+  };
+
+  // Lưu cấu hình
   const handleSave = async () => {
+    if (!selectedConfig) return;
+
+    // Lấy giá trị dựa trên input type
+    const finalValue = getConfigValueFromInput();
+
     // Validate input
-    if (!configValue || configValue.trim() === "") {
-      setError("Vui lòng nhập số giây.");
+    if (!finalValue || finalValue.trim() === "" || finalValue === "0") {
+      setError("Vui lòng nhập giá trị cấu hình hợp lệ.");
       return;
     }
 
-    const seconds = parseInt(configValue);
-    if (isNaN(seconds) || seconds <= 0) {
-      setError("Số giây phải là một số nguyên dương.");
-      return;
-    }
-
-    // Tối thiểu 1 ngày (86400 giây), tối đa 90 ngày (7776000 giây)
-    if (seconds < 86400) {
-      setError("Thời gian chuyển tiền tối thiểu là 1 ngày (86400 giây).");
-      return;
-    }
-
-    if (seconds > 7776000) {
-      setError("Thời gian chuyển tiền tối đa là 90 ngày (7776000 giây).");
-      return;
+    // Validate theo từng loại input
+    if (inputType === "hoursMinutes") {
+      if ((!hours || hours <= 0) && (!minutes || minutes <= 0)) {
+        setError("Vui lòng nhập ít nhất giờ hoặc phút.");
+        return;
+      }
+    } else if (inputType === "datetime") {
+      if (!datetimeValue) {
+        setError("Vui lòng chọn ngày giờ.");
+        return;
+      }
+      const seconds = convertDatetimeToSeconds(datetimeValue);
+      if (seconds <= 0) {
+        setError("Ngày giờ phải sau thời điểm hiện tại.");
+        return;
+      }
+    } else if (inputType === "seconds") {
+      const seconds = parseInt(finalValue);
+      if (isNaN(seconds) || seconds <= 0) {
+        setError("Số giây phải là một số nguyên dương.");
+        return;
+      }
     }
 
     try {
@@ -146,41 +268,25 @@ export default function SystemConfig() {
       setError("");
       setSuccess("");
       
-      const response = await updateEscrowTransferConfig(configValue);
+      const response = await updateSystemConfig(selectedConfig.configKey, finalValue);
       
-      if (response?.success && response?.data) {
-        // Lưu giá trị cũ để hiển thị trong thông báo
-        const oldValue = config?.configValue || config?.configValue?.toString() || "";
-        const oldSeconds = oldValue ? parseInt(oldValue) : 0;
-        const newSeconds = parseInt(configValue);
-        
-        // Cập nhật config với dữ liệu mới từ server
-        setConfig(response.data);
-        setConfigValue(response.data.configValue || response.data.configValue?.toString() || "");
-        
-        // Hiển thị thông báo thành công với thông tin chi tiết
-        const successMsg = oldValue 
-          ? `Cập nhật cấu hình thành công! Đã thay đổi từ ${oldSeconds.toLocaleString()} giây (${convertSecondsToDays(oldValue)} ngày) thành ${newSeconds.toLocaleString()} giây (${convertSecondsToDays(configValue)} ngày).`
-          : `Cập nhật cấu hình thành công! Giá trị mới: ${newSeconds.toLocaleString()} giây (${convertSecondsToDays(configValue)} ngày).`;
-        
-        setSuccess(successMsg);
-        // Clear success message after 7 seconds
-        setTimeout(() => setSuccess(""), 7000);
-        // Clear error nếu có
-        setError("");
+      if (response?.success !== false) {
+        setSuccess(`Cập nhật cấu hình ${selectedConfig.configKey} thành công!`);
+        setTimeout(() => setSuccess(""), 5000);
+        handleCloseEditModal();
+        loadConfigs(); // Reload danh sách
       } else {
         setError("Không thể cập nhật cấu hình. Vui lòng thử lại.");
       }
     } catch (err) {
       console.error("Lỗi khi cập nhật cấu hình:", err);
       
-      // Provide more detailed error messages
       let errorMessage = "Không thể cập nhật cấu hình. Vui lòng thử lại.";
       
       if (err?.response?.status === 500) {
-        errorMessage = "Lỗi server: Backend không thể xử lý yêu cầu. Vui lòng kiểm tra xem endpoint API có tồn tại không.";
+        errorMessage = "Lỗi server: Backend không thể xử lý yêu cầu.";
       } else if (err?.response?.status === 404) {
-        errorMessage = "Không tìm thấy endpoint API. Vui lòng kiểm tra cấu hình backend.";
+        errorMessage = "Không tìm thấy endpoint API.";
       } else if (err?.response?.status === 403) {
         errorMessage = "Không có quyền cập nhật. Chỉ Super Admin mới có quyền cập nhật cấu hình này.";
       } else if (err?.response?.status === 401) {
@@ -197,48 +303,55 @@ export default function SystemConfig() {
     }
   };
 
-  // Chuyển đổi giây thành ngày để hiển thị
-  const convertSecondsToDays = (seconds) => {
-    const sec = typeof seconds === 'string' ? parseInt(seconds) : seconds;
-    if (isNaN(sec)) return '0';
-    return (sec / 86400).toFixed(1);
+  // Xử lý thay đổi trang
+  const handlePageChange = (newPage) => {
+    if (newPage >= 0 && newPage < totalPages) {
+      setPage(newPage);
+    }
   };
 
-  // Chuyển đổi giây thành giờ để hiển thị
-  const convertSecondsToHours = (seconds) => {
-    const sec = typeof seconds === 'string' ? parseInt(seconds) : seconds;
-    if (isNaN(sec)) return '0';
-    return (sec / 3600).toFixed(1);
+  // Filter configs theo search key
+  const filteredConfigs = searchKey
+    ? configs.filter((config) =>
+        config.configKey?.toLowerCase().includes(searchKey.toLowerCase())
+      )
+    : configs;
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch {
+      return dateString;
+    }
   };
 
-  // Chuyển đổi giây thành phút để hiển thị
-  const convertSecondsToMinutes = (seconds) => {
-    const sec = typeof seconds === 'string' ? parseInt(seconds) : seconds;
-    if (isNaN(sec)) return '0';
-    return (sec / 60).toFixed(0);
-  };
-
-  if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
-        <CSpinner color="primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="system-config-container">
       <CCard className="shadow-sm">
         <CCardHeader className="d-flex justify-content-between align-items-center">
-          <h5 className="mb-0">Cấu hình Escrow Transfer Time</h5>
+          <div>
+            <h4 className="mb-0">Quản lý Cấu Hình Hệ Thống</h4>
+            <p className="text-muted mb-0 small">
+            Thiết lập và điều chỉnh các cấu hình chung của hệ thống            </p>
+          </div>
           <CButton
             color="secondary"
-            variant="outline"
-            size="sm"
-            onClick={loadConfig}
+            onClick={loadConfigs}
             disabled={loading}
+            className="refresh-btn-compact"
           >
-            <RefreshCw size={16} className="me-2" />
+            <RefreshCw size={16} />
             Làm mới
           </CButton>
         </CCardHeader>
@@ -257,126 +370,319 @@ export default function SystemConfig() {
             </CAlert>
           )}
 
-          {/* Thông tin cấu hình hiện tại */}
-          {config && (
-            <div className="mb-4">
-              <CAlert color="info" className="d-flex align-items-center">
-                <Info size={20} className="me-2" />
-                <div>
-                  <strong>Cấu hình hiện tại:</strong>
-                  <ul className="mb-0 mt-2">
-                    <li>
-                      <strong>Số giây:</strong> {config.seconds ? config.seconds.toLocaleString() : (config.configValue ? parseInt(config.configValue).toLocaleString() : '0')}
-                    </li>
-                    <li>
-                      <strong>Số ngày:</strong> {config.days ? config.days.toFixed(1) : convertSecondsToDays(config.seconds || config.configValue)}
-                    </li>
-                    <li>
-                      <strong>Số giờ:</strong> {config.hours ? config.hours.toFixed(1) : convertSecondsToHours(config.seconds || config.configValue)}
-                    </li>
-                    <li>
-                      <strong>Số phút:</strong> {config.minutes ? config.minutes.toLocaleString() : convertSecondsToMinutes(config.seconds || config.configValue)}
-                    </li>
-                  </ul>
-                  {config.description && (
-                    <div className="mt-2">
-                      <small>{config.description}</small>
-                    </div>
-                  )}
-                </div>
-              </CAlert>
-            </div>
-          )}
+          {/* Tìm kiếm */}
+          <CRow className="mb-3">
+            <CCol md={6}>
+              <CFormInput
+                type="text"
+                placeholder="Tìm kiếm theo config key..."
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+                className="d-flex align-items-center"
+              />
+            </CCol>
+          </CRow>
 
-          {/* Form cập nhật cấu hình */}
-          {isSuperAdmin ? (
+          {loading ? (
+            <div className="text-center p-5">
+              <CSpinner color="primary" />
+              <p className="mt-3 text-muted">Đang tải dữ liệu...</p>
+            </div>
+          ) : filteredConfigs.length === 0 ? (
+            <div className="text-center p-5">
+              <p className="text-muted">Không có cấu hình nào.</p>
+            </div>
+          ) : (
+            <>
+              <CTable hover responsive>
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell>Config Key</CTableHeaderCell>
+                    <CTableHeaderCell>Config Value</CTableHeaderCell>
+                    <CTableHeaderCell>Mô tả</CTableHeaderCell>
+                    <CTableHeaderCell>Ngày tạo</CTableHeaderCell>
+                    <CTableHeaderCell>Ngày cập nhật</CTableHeaderCell>
+                    <CTableHeaderCell>Thao tác</CTableHeaderCell>
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {filteredConfigs.map((config) => (
+                    <CTableRow key={config.configKey || config.id}>
+                      <CTableDataCell>
+                        <strong>{config.configKey || "-"}</strong>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <span className="text-break fw-semibold text-primary">
+                          {config.configValue || "-"}
+                        </span>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <small className="text-muted">
+                          {config.description || "-"}
+                        </small>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <small>{formatDate(config.createdAt)}</small>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <small>{formatDate(config.updatedAt)}</small>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        {isSuperAdmin ? (
+                          <CButton
+                            color="primary"
+                            size="sm"
+                            onClick={() => handleOpenEditModal(config)}
+                            className="d-flex align-items-center gap-1"
+                          >
+                            <Edit size={14} />
+                            Chỉnh sửa
+                          </CButton>
+                        ) : (
+                          <span className="text-muted">-</span>
+                        )}
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))}
+                </CTableBody>
+              </CTable>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="d-flex justify-content-center mt-4">
+                  <CPagination>
+                    <CPaginationItem
+                      disabled={page === 0}
+                      onClick={() => handlePageChange(page - 1)}
+                    >
+                      Trước
+                    </CPaginationItem>
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <CPaginationItem
+                        key={i}
+                        active={i === page}
+                        onClick={() => handlePageChange(i)}
+                      >
+                        {i + 1}
+                      </CPaginationItem>
+                    ))}
+                    <CPaginationItem
+                      disabled={page === totalPages - 1}
+                      onClick={() => handlePageChange(page + 1)}
+                    >
+                      Sau
+                    </CPaginationItem>
+                  </CPagination>
+                </div>
+              )}
+
+              <div className="mt-3 text-muted small text-center">
+                Hiển thị {filteredConfigs.length} / {totalElements} records
+              </div>
+            </>
+          )}
+        </CCardBody>
+      </CCard>
+
+      {/* Modal Edit Config */}
+      <CModal
+        visible={showEditModal}
+        onClose={handleCloseEditModal}
+        backdrop="static"
+      >
+        <CModalHeader>
+          <CModalTitle>Cập nhật System Config</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {selectedConfig && (
             <div>
-              <CRow className="mb-3">
-                <CCol md={6}>
+              <div className="mb-3">
+                <CFormLabel>
+                  <strong>Config Key:</strong>
+                </CFormLabel>
+                <CFormInput
+                  type="text"
+                  value={selectedConfig.configKey || ""}
+                  disabled
+                  readOnly
+                />
+              </div>
+              {selectedConfig.description && (
+                <div className="mb-3">
                   <CFormLabel>
-                    <strong>Số giây chuyển tiền (configValue)</strong>
+                    <strong>Mô tả:</strong>
+                  </CFormLabel>
+                  <div className="p-2 bg-light rounded">
+                    <small className="text-muted">{selectedConfig.description}</small>
+                  </div>
+                </div>
+              )}
+
+              {/* Chọn loại input */}
+              <div className="mb-3">
+                <CFormLabel>
+                  <strong>Chọn cách nhập:</strong>
+                </CFormLabel>
+                <CFormSelect
+                  value={inputType}
+                  onChange={(e) => {
+                    setInputType(e.target.value);
+                    setError("");
+                  }}
+                >
+                  <option value="seconds">Nhập giây</option>
+                  <option value="hoursMinutes">Nhập giờ/phút</option>
+                  <option value="datetime">Chọn ngày giờ</option>
+                </CFormSelect>
+              </div>
+
+              {/* Input theo loại đã chọn */}
+              {inputType === "seconds" && (
+                <div className="mb-3">
+                  <CFormLabel>
+                    <strong>Config Value (giây):</strong>
                   </CFormLabel>
                   <CFormInput
                     type="number"
                     value={configValue}
-                    onChange={(e) => setConfigValue(e.target.value)}
-                    placeholder="Nhập số giây (ví dụ: 604800 cho 7 ngày)"
-                    min="86400"
-                    max="7776000"
-                    disabled={saving}
-                  />
-                  <small className="text-muted">
-                    Tối thiểu: 1 ngày (86400 giây) | Tối đa: 90 ngày (7776000 giây)
-                  </small>
-                </CCol>
-              </CRow>
-
-              {/* Hiển thị preview khi nhập */}
-              {configValue && !isNaN(parseInt(configValue)) && parseInt(configValue) > 0 && (
-                <CRow className="mb-3">
-                  <CCol md={12}>
-                    <div className="preview-box p-3 bg-light rounded">
-                      <strong>Preview:</strong>
-                      <ul className="mb-0 mt-2">
-                        <li>
-                          <strong>Số giây:</strong> {parseInt(configValue).toLocaleString()}
-                        </li>
-                        <li>
-                          <strong>Số ngày:</strong> {convertSecondsToDays(configValue)}
-                        </li>
-                        <li>
-                          <strong>Số giờ:</strong> {convertSecondsToHours(configValue)}
-                        </li>
-                        <li>
-                          <strong>Số phút:</strong> {convertSecondsToMinutes(configValue)}
-                        </li>
-                      </ul>
-                    </div>
-                  </CCol>
-                </CRow>
-              )}
-
-              <div className="d-flex gap-2 align-items-center mt-3">
-                <CButton
-                  color="primary"
-                  onClick={handleSave}
-                  disabled={saving || !configValue || configValue.toString().trim() === "" || 
-                           configValue.toString() === (config?.configValue?.toString() || "")}
-                >
-                  {saving ? (
-                    <>
-                      <CSpinner size="sm" className="me-2" />
-                      Đang lưu...
-                    </>
-                  ) : (
-                    <>
-                      <Save size={16} className="me-2" />
-                      Lưu cấu hình
-                    </>
-                  )}
-                </CButton>
-                {configValue && configValue.toString() !== (config?.configValue?.toString() || "") && (
-                  <CButton
-                    color="secondary"
-                    variant="outline"
-                    onClick={() => {
-                      setConfigValue(config?.configValue || config?.configValue?.toString() || "");
+                    onChange={(e) => {
+                      setConfigValue(e.target.value);
                       setError("");
                     }}
-                    disabled={saving}
-                  >
-                    Hủy thay đổi
-                  </CButton>
-                )}
+                    placeholder="Nhập số giây"
+                    min="1"
+                    invalid={!!error}
+                  />
+                  {configValue && !isNaN(parseInt(configValue)) && (
+                    <small className="text-muted d-block mt-1">
+                      Tương đương: {Math.floor(parseInt(configValue) / 3600)} giờ {Math.floor((parseInt(configValue) % 3600) / 60)} phút ({Math.floor(parseInt(configValue) / 86400)} ngày)
+                    </small>
+                  )}
+                </div>
+              )}
+
+              {inputType === "hoursMinutes" && (
+                <div className="mb-3">
+                  <CRow>
+                    <CCol md={6}>
+                      <CFormLabel>
+                        <strong>Giờ:</strong>
+                      </CFormLabel>
+                      <CFormInput
+                        type="number"
+                        value={hours}
+                        onChange={(e) => {
+                          setHours(e.target.value);
+                          setError("");
+                        }}
+                        placeholder="0"
+                        min="0"
+                        invalid={!!error}
+                      />
+                    </CCol>
+                    <CCol md={6}>
+                      <CFormLabel>
+                        <strong>Phút:</strong>
+                      </CFormLabel>
+                      <CFormInput
+                        type="number"
+                        value={minutes}
+                        onChange={(e) => {
+                          setMinutes(e.target.value);
+                          setError("");
+                        }}
+                        placeholder="0"
+                        min="0"
+                        max="59"
+                        invalid={!!error}
+                      />
+                    </CCol>
+                  </CRow>
+                  {(hours || minutes) && (
+                    <small className="text-muted d-block mt-2">
+                      Tương đương: {convertHoursMinutesToSeconds(hours, minutes).toLocaleString()} giây ({Math.floor(convertHoursMinutesToSeconds(hours, minutes) / 86400)} ngày)
+                    </small>
+                  )}
+                </div>
+              )}
+
+              {inputType === "datetime" && (
+                <div className="mb-3">
+                  <CFormLabel>
+                    <strong>Chọn ngày giờ:</strong>
+                  </CFormLabel>
+                  <CFormInput
+                    type="datetime-local"
+                    value={datetimeValue}
+                    onChange={(e) => {
+                      setDatetimeValue(e.target.value);
+                      setError("");
+                    }}
+                    invalid={!!error}
+                  />
+                  {datetimeValue && (
+                    <small className="text-muted d-block mt-2">
+                      Tương đương: {convertDatetimeToSeconds(datetimeValue).toLocaleString()} giây từ bây giờ ({Math.floor(convertDatetimeToSeconds(datetimeValue) / 86400)} ngày)
+                    </small>
+                  )}
+                </div>
+              )}
+
+              {error && (
+                <div className="alert alert-danger d-block mb-3">{error}</div>
+              )}
+
+              {/* Hiển thị giá trị hiện tại */}
+              <div className="mb-3 p-2 bg-light rounded">
+                <small>
+                  <strong>Giá trị hiện tại:</strong> {selectedConfig.configValue || "-"} giây
+                  {selectedConfig.configValue && !isNaN(parseInt(selectedConfig.configValue)) && (
+                    <span className="ms-2">
+                      ({Math.floor(parseInt(selectedConfig.configValue) / 86400)} ngày, {Math.floor((parseInt(selectedConfig.configValue) % 86400) / 3600)} giờ, {Math.floor((parseInt(selectedConfig.configValue) % 3600) / 60)} phút)
+                    </span>
+                  )}
+                </small>
+              </div>
+              <div className="mb-2">
+                <small className="text-muted">
+                  <strong>Ngày tạo:</strong> {formatDate(selectedConfig.createdAt)}
+                </small>
+              </div>
+              <div className="mb-2">
+                <small className="text-muted">
+                  <strong>Ngày cập nhật:</strong> {formatDate(selectedConfig.updatedAt)}
+                </small>
               </div>
             </div>
-          ) : (
-            <CAlert color="warning">
-              <strong>Lưu ý:</strong> Chỉ Super Admin mới có quyền cập nhật cấu hình này.
-            </CAlert>
           )}
-        </CCardBody>
-      </CCard>
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={handleCloseEditModal}
+            disabled={saving}
+          >
+            Hủy
+          </CButton>
+          <CButton
+            color="primary"
+            onClick={handleSave}
+            disabled={saving || !getConfigValueFromInput() || getConfigValueFromInput().trim() === "" || getConfigValueFromInput() === "0"}
+          >
+            {saving ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Đang lưu...
+              </>
+            ) : (
+              <>
+                <Save size={16} className="me-2" />
+                Lưu
+              </>
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
     </div>
   );
 }

@@ -27,6 +27,9 @@ import {
   MdSettings,
   MdAccountCircle,
   MdCreditCard,
+  MdBuild,
+  MdAccountBalanceWallet,
+  MdCardGiftcard,
 } from "react-icons/md";
 import { FaLeaf } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -297,8 +300,60 @@ const CoreAdminLayout = () => {
                 e.target.style.color = "#bdc3c7";
               }}
             >
-              <MdCreditCard style={{ marginRight: "12px", fontSize: "18px" }} />
-              Cấu hình Escrow
+              <MdBuild style={{ marginRight: "12px", fontSize: "18px" }} />
+              Cấu hình Ký Quỹ chung
+            </a>
+          </div>
+
+          {/* Ví Hệ Thống */}
+          <div style={{ marginBottom: "4px" }}>
+            <a
+              href="/admin/system-wallets"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "12px 20px",
+                color: "#bdc3c7",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = "rgba(255,255,255,0.05)";
+                e.target.style.color = "#ecf0f1";
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = "transparent";
+                e.target.style.color = "#bdc3c7";
+              }}
+            >
+              <MdAccountBalanceWallet style={{ marginRight: "12px", fontSize: "18px" }} />
+              Ví Hệ Thống
+            </a>
+          </div>
+
+          {/* Gói Dịch Vụ */}
+          <div style={{ marginBottom: "4px" }}>
+            <a
+              href="/admin/subscription-packages"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "12px 20px",
+                color: "#bdc3c7",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = "rgba(255,255,255,0.05)";
+                e.target.style.color = "#ecf0f1";
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = "transparent";
+                e.target.style.color = "#bdc3c7";
+              }}
+            >
+              <MdCardGiftcard style={{ marginRight: "12px", fontSize: "18px" }} />
+              Gói Dịch Vụ
             </a>
           </div>
 
@@ -555,9 +610,9 @@ const CoreAdminLayout = () => {
                 alignItems: "center",
                 justifyContent: "center",
               }}
-              title="Cấu hình Escrow"
+              title="Cấu hình Ký Quỹ chung"
             >
-              <MdCreditCard />
+              <MdBuild />
             </a>
             <a
               href="/admin/settings"
