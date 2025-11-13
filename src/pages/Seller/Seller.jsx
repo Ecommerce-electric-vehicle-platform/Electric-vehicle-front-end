@@ -14,7 +14,6 @@ export function Seller() {
     const [productsLoading, setProductsLoading] = useState(false);
     const [productsError, setProductsError] = useState(null);
     const [postFilter, setPostFilter] = useState("displaying"); // displaying | sold
-    const [soldPostIds, setSoldPostIds] = useState([]); // Danh sách postId đã bán (từ đơn hàng COMPLETED)
     
     // Kiểm tra xem seller có đang xem chính profile của mình không
     // QUAN TRỌNG: Chỉ hiển thị button seller khi user thực sự là seller
@@ -37,39 +36,18 @@ export function Seller() {
         sellerId === currentSellerId
     );
     
-    // Debug: Log để kiểm tra
-    useEffect(() => {
-        console.log("[Seller Profile] Debug:", {
-            sellerIdFromURL: sellerId,
-            currentSellerIdFromStorage: currentSellerIdFromStorage,
-            currentSellerIdFromData: currentSellerIdFromData,
-            currentSellerId: currentSellerId,
-            userRole: userRole,
-            isCurrentUserSeller: isCurrentUserSeller,
-            isViewingOwnProfile: isViewingOwnProfile,
-            sellerData: seller
-        });
-    }, [sellerId, currentSellerIdFromStorage, currentSellerIdFromData, currentSellerId, userRole, isCurrentUserSeller, isViewingOwnProfile, seller]);
 
     // Bước 1: Lấy sản phẩm của seller
+    // Sử dụng pagination để lấy TẤT CẢ sản phẩm (giống ManagePosts)
     useEffect(() => {
         let mounted = true;
         if (sellerId) {
             setProductsLoading(true);
-            sellerApi.getProductsBySeller(sellerId)
+            // Thêm pagination để lấy tất cả sản phẩm (0-100 tương tự ManagePosts)
+            sellerApi.getProductsBySeller(sellerId, { page: 0, size: 100 })
                 .then(items => {
                     if (!mounted) return;
                     const list = Array.isArray(items) ? items : [];
-                    // Debug: Log để kiểm tra dữ liệu ngày đăng
-                    if (list.length > 0) {
-                        console.log('[Seller] Sample product data:', {
-                            createdAt: list[0].createdAt,
-                            created_at: list[0].created_at,
-                            postDate: list[0].postDate,
-                            post_date: list[0].post_date,
-                            allKeys: Object.keys(list[0])
-                        });
-                    }
                     setProducts(list);
                     setProductsError(null);
                 })
@@ -86,137 +64,6 @@ export function Seller() {
         return () => { mounted = false; };
     }, [sellerId]);
 
-    // Bước 2: Lấy danh sách đơn hàng COMPLETED để xác định sản phẩm đã bán
-    // Theo DB: Chỉ COMPLETED được coi là "đã bán"
-    // Các trạng thái khác: CANCELED, CONFIRMED, DELIVERED, IN_TRANSIT, PAID, PENDING, PROCESSING, REFUNDED, RETURN_REQUESTED, SHIPPED, VERIFIED
-    useEffect(() => {
-        let mounted = true;
-        if (sellerId) {
-            // Chỉ lấy đơn hàng có status COMPLETED (trạng thái chính cho "đã bán")
-            sellerApi.getSellerOrders(0, 100, 'COMPLETED')
-                .then(response => {
-                    if (!mounted) return;
-                    
-                    console.log('[Seller] Raw API response for COMPLETED orders:', {
-                        fullResponse: response,
-                        responseData: response?.data,
-                        responseDataData: response?.data?.data,
-                        responseStructure: {
-                            hasData: !!response?.data,
-                            hasDataData: !!response?.data?.data,
-                            hasContent: !!response?.data?.data?.content,
-                            isArray: Array.isArray(response?.data?.data)
-                        }
-                    });
-                    
-                    // Lấy danh sách đơn hàng từ response - thử nhiều cách
-                    const orders = response?.data?.data?.content || 
-                                  response?.data?.data?.items ||
-                                  response?.data?.data?.list ||
-                                  response?.data?.data ||
-                                  response?.data?.content ||
-                                  response?.data?.items ||
-                                  response?.data ||
-                                  (Array.isArray(response?.data) ? response?.data : []);
-                    
-                    console.log('[Seller] Extracted orders from response:', {
-                        ordersCount: orders.length,
-                        orders: orders,
-                        allOrdersStatus: orders.map(o => ({
-                            id: o.id || o.orderId,
-                            status: o.status,
-                            postId: o.postId || o.postProductId,
-                            allKeys: Object.keys(o)
-                        }))
-                    });
-                    
-                    // Lọc lại để chỉ lấy đơn hàng có status COMPLETED (case-insensitive)
-                    // (vì API có thể trả về tất cả orders nếu không filter đúng)
-                    const completedOrders = orders.filter(o => {
-                        const status = String(o.status || '').toUpperCase();
-                        const isCompleted = status === 'COMPLETED';
-                        if (!isCompleted) {
-                            console.log('[Seller] Order filtered out (not COMPLETED):', {
-                                orderId: o.id || o.orderId,
-                                status: o.status,
-                                statusUpper: status
-                            });
-                        }
-                        return isCompleted;
-                    });
-                    
-                    console.log('[Seller] Filtered COMPLETED orders:', {
-                        completedCount: completedOrders.length,
-                        completedOrders: completedOrders.map(o => ({
-                            id: o.id || o.orderId,
-                            status: o.status,
-                            postId: o.postId || o.postProductId,
-                            allKeys: Object.keys(o)
-                        }))
-                    });
-                    
-                    // Lấy danh sách postId từ các đơn hàng đã completed
-                    const soldPostIdsSet = new Set();
-                    completedOrders.forEach(order => {
-                        // Thử nhiều field names để tìm postId
-                        const postId = order.postId || 
-                                     order.postProductId || 
-                                     order.post_product_id || 
-                                     order.postProductId || 
-                                     order.postProduct?.postId || 
-                                     order.postProduct?.id ||
-                                     order.productId ||
-                                     order.product_id;
-                        
-                        console.log('[Seller] Processing order for postId:', {
-                            orderId: order.id || order.orderId,
-                            status: order.status,
-                            foundPostId: postId,
-                            orderKeys: Object.keys(order),
-                            orderPostProduct: order.postProduct
-                        });
-                        
-                        if (postId) {
-                            soldPostIdsSet.add(String(postId));
-                        } else {
-                            console.warn('[Seller] Order has no postId:', {
-                                orderId: order.id || order.orderId,
-                                status: order.status,
-                                allKeys: Object.keys(order)
-                            });
-                        }
-                    });
-                    
-                    const soldPostIdsArray = Array.from(soldPostIdsSet);
-                    setSoldPostIds(soldPostIdsArray);
-                    
-                    console.log('[Seller] Final result - Loaded sold products from COMPLETED orders:', {
-                        totalOrdersFromAPI: orders.length,
-                        filteredCompletedOrders: completedOrders.length,
-                        soldPostIds: soldPostIdsArray,
-                        sampleOrder: completedOrders[0] ? {
-                            orderId: completedOrders[0].id || completedOrders[0].orderId,
-                            postId: completedOrders[0].postId || completedOrders[0].postProductId,
-                            status: completedOrders[0].status,
-                            allKeys: Object.keys(completedOrders[0]),
-                            fullOrder: completedOrders[0]
-                        } : null
-                    });
-                })
-                .catch(error => {
-                    if (!mounted) return;
-                    console.error('[Seller] Error loading COMPLETED orders:', error);
-                    console.error('[Seller] Error details:', {
-                        message: error?.message,
-                        response: error?.response?.data,
-                        status: error?.response?.status,
-                        statusText: error?.response?.statusText
-                    });
-                    setSoldPostIds([]);
-                });
-        }
-        return () => { mounted = false; };
-    }, [sellerId]);
 
     // Bước 3: Khi có post đầu tiên: lấy info seller từ postId đó
     useEffect(() => {
@@ -255,24 +102,20 @@ export function Seller() {
     // Filter theo loại sản phẩm (luôn hiển thị tất cả)
     const typeFiltered = products;
     
-    // Xác định sản phẩm đã bán: kiểm tra postId có trong danh sách đơn hàng COMPLETED
+    // Xác định sản phẩm đã bán: chỉ kiểm tra field isSold
     const getIsSold = (product) => {
-        const postId = String(product.postId || product.id || '');
-        // Kiểm tra trong danh sách đơn hàng COMPLETED
-        if (soldPostIds.includes(postId)) {
-            return true;
-        }
-        // Fallback: kiểm tra field isSold hoặc status (nếu backend set)
-        return product.isSold || product.is_sold || product.status?.toLowerCase() === 'sold';
+        return product.isSold === true || product.isSold === 1 || product.is_sold === true || product.is_sold === 1;
     };
     
     // Filter theo trạng thái (đang hiển thị / đã bán)
+    // Logic đồng bộ với ManagePosts.jsx
     const filtered = typeFiltered.filter(p => {
         const isSold = getIsSold(p);
         if (postFilter === 'sold') {
             return isSold;
         } else {
             // Đang hiển thị: active + not sold + not rejected
+            // Logic giống ManagePosts.jsx
             const isActive = p.active !== false && p.active !== 0;
             const isNotSold = !isSold;
             const isNotRejected = p.verifiedDecisionStatus !== "REJECTED";
@@ -280,7 +123,7 @@ export function Seller() {
         }
     });
     
-    // Đếm số lượng
+    // Đếm số lượng - logic đồng bộ với ManagePosts.jsx
     const displayingCount = typeFiltered.filter(p => {
         const isSold = getIsSold(p);
         const isActive = p.active !== false && p.active !== 0;
@@ -354,26 +197,34 @@ export function Seller() {
                             </div>
                             
                             {/* Rating */}
-                            <div className="profile-rating">
-                                <div className="rating-stars">
-                                    {[1, 2, 3, 4, 5].map(i => (
-                                        <Star key={i} size={16} fill={i <= 3.7 ? "#fbbf24" : "#e5e7eb"} stroke={i <= 3.7 ? "#fbbf24" : "#e5e7eb"} />
-                                    ))}
+                            {seller.rating && (
+                                <div className="profile-rating">
+                                    <div className="rating-stars">
+                                        {[1, 2, 3, 4, 5].map(i => (
+                                            <Star key={i} size={16} fill={i <= (seller.rating || 0) ? "#fbbf24" : "#e5e7eb"} stroke={i <= (seller.rating || 0) ? "#fbbf24" : "#e5e7eb"} />
+                                        ))}
+                                    </div>
+                                    <span className="rating-text">{seller.rating?.toFixed(1) || '0.0'} ({seller.reviewCount || 0} đánh giá)</span>
                                 </div>
-                                <span className="rating-text">3.7 (6 đánh giá)</span>
-                            </div>
+                            )}
 
                             {/* Followers */}
-                            <div className="profile-stats">
-                                <div className="stat-item">
-                                    <Users size={16} />
-                                    <span>Người theo dõi: <strong>7</strong></span>
+                            {(seller.followerCount !== undefined || seller.followingCount !== undefined) && (
+                                <div className="profile-stats">
+                                    {seller.followerCount !== undefined && (
+                                        <div className="stat-item">
+                                            <Users size={16} />
+                                            <span>Người theo dõi: <strong>{seller.followerCount}</strong></span>
+                                        </div>
+                                    )}
+                                    {seller.followingCount !== undefined && (
+                                        <div className="stat-item">
+                                            <Users size={16} />
+                                            <span>Đang theo dõi: <strong>{seller.followingCount}</strong></span>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="stat-item">
-                                    <Users size={16} />
-                                    <span>Đang theo dõi: <strong>0</strong></span>
-                                </div>
-                            </div>
+                            )}
 
                             {/* Follow Button (nếu không phải seller xem chính mình) */}
                             {!isViewingOwnProfile && (
@@ -384,16 +235,20 @@ export function Seller() {
                             )}
 
                             {/* Chat Response */}
-                            <div className="profile-info-item">
-                                <MessageCircle size={16} />
-                                <span>Phản hồi chat: <strong>Thỉnh thoảng</strong> (Phản hồi chậm)</span>
-                            </div>
+                            {seller.chatResponseTime && (
+                                <div className="profile-info-item">
+                                    <MessageCircle size={16} />
+                                    <span>Phản hồi chat: <strong>{seller.chatResponseTime}</strong></span>
+                                </div>
+                            )}
 
                             {/* Join Date */}
-                            <div className="profile-info-item">
-                                <Calendar size={16} />
-                                <span>Đã tham gia: <strong>6 năm 6 tháng</strong></span>
-                            </div>
+                            {seller.joinDate && (
+                                <div className="profile-info-item">
+                                    <Calendar size={16} />
+                                    <span>Đã tham gia: <strong>{seller.joinDate}</strong></span>
+                                </div>
+                            )}
 
                             {/* Address */}
                             <div className="profile-info-item">
