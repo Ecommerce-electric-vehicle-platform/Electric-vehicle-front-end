@@ -1654,7 +1654,7 @@ function OrderList() {
                                                                         >
                                                                             Khiếu nại
                                                                         </button>
-                                                                    )}
+                                                                  
                                                                     {order._raw?.disputeStatus || viewingDisputeResultId === order.id ? (
                                                                         // HIỂN THỊ: Xem khiếu nại (Đơn đã được khiếu nại)
                                                                         <button
@@ -1677,11 +1677,8 @@ function OrderList() {
                                                             )}
                                                         </>
                                                     )}
-                                                               //    </>
-                                                               // )}
-                                                          //  </>
-                                                       // )}
-                                                   // </div>
+                                                              
+                                                    </div>
                                                 </div>
 
                                                 {expandedId === order.id && (
