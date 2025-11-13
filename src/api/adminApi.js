@@ -300,43 +300,43 @@ export const getSubscriptionRevenue = async () => {
 
 /**
  * ================================
- * SYSTEM CONFIG - ESCROW TRANSFER TIME
+ * SYSTEM CONFIG MANAGEMENT
  * ================================
  */
 
-// GET /api/v1/admin/system-config/ESCROW_TRANSFER_SECONDS - Lấy cấu hình thời gian chuyển tiền
-export const getEscrowTransferConfig = async () => {
+// GET /api/v1/admin/system-config/{configKey} - Lấy cấu hình theo key
+export const getSystemConfig = async (configKey) => {
   try {
     const res = await adminAxios.get(
-      `/api/v1/admin/system-config/ESCROW_TRANSFER_SECONDS`
+      `/api/v1/admin/system-config/${configKey}`
     );
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi lấy cấu hình Escrow transfer:", error);
+    console.error(`Lỗi khi lấy cấu hình ${configKey}:`, error);
     throw error;
   }
 };
 
-// PUT /api/v1/admin/system-config/ESCROW_TRANSFER_SECONDS - Cập nhật thời gian chuyển tiền (yêu cầu SUPER_ADMIN)
-export const updateEscrowTransferConfig = async (configValue) => {
+// PUT /api/v1/admin/system-config/{configKey} - Cập nhật cấu hình theo key (yêu cầu SUPER_ADMIN)
+export const updateSystemConfig = async (configKey, configValue) => {
   try {
     // Đảm bảo configValue là string hoặc number
     const valueToSend = typeof configValue === 'string' ? configValue : configValue?.toString() || configValue;
     
-    console.log("Updating Escrow Transfer Config:", {
-      configKey: "ESCROW_TRANSFER_SECONDS",
+    console.log("Updating System Config:", {
+      configKey,
       configValue: valueToSend
     });
 
     const res = await adminAxios.put(
-      `/api/v1/admin/system-config/ESCROW_TRANSFER_SECONDS`,
+      `/api/v1/admin/system-config/${configKey}`,
       { configValue: valueToSend }
     );
     
-    console.log("Update Escrow Transfer Config Response:", res.data);
+    console.log("Update System Config Response:", res.data);
     return res.data;
   } catch (error) {
-    console.error("Lỗi khi cập nhật cấu hình Escrow transfer:", error);
+    console.error(`Lỗi khi cập nhật cấu hình ${configKey}:`, error);
     
     // Log chi tiết lỗi để debug
     if (error.response) {
@@ -349,6 +349,136 @@ export const updateEscrowTransferConfig = async (configValue) => {
       console.error("Error message:", error.message);
     }
     
+    throw error;
+  }
+};
+
+// GET /api/v1/admin/system-config/all-config?page=0&size=10 - Lấy tất cả cấu hình (có phân trang)
+export const getAllSystemConfigs = async (page = 0, size = 10) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/system-config/all-config`, {
+      params: { page, size },
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách cấu hình:", error);
+    throw error;
+  }
+};
+
+/**
+ * ================================
+ * SYSTEM WALLET (ESCROW) MANAGEMENT
+ * ================================
+ */
+
+// GET /api/v1/admin/system-wallets?page=0&size=10 - Lấy danh sách escrow records
+export const getEscrowRecords = async (page = 0, size = 10) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/system-wallets`, {
+      params: { page, size },
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách escrow records:", error);
+    throw error;
+  }
+};
+
+// PUT /api/v1/admin/system-wallets/{systemWalletId}/end-at - Cập nhật endAt của escrow record (yêu cầu SUPER_ADMIN)
+export const updateEscrowEndAt = async (systemWalletId, endAt) => {
+  try {
+    console.log("Updating Escrow EndAt:", {
+      systemWalletId,
+      endAt,
+    });
+    const res = await adminAxios.put(
+      `/api/v1/admin/system-wallets/${systemWalletId}/end-at`,
+      { endAt }
+    );
+    console.log("Update Escrow EndAt Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi cập nhật endAt của escrow record:", error);
+    if (error.response) {
+      console.error("Error response:", error.response.data);
+      console.error("Error status:", error.response.status);
+    }
+    throw error;
+  }
+};
+
+/**
+ * ================================
+ * SUBSCRIPTION PACKAGE MANAGEMENT
+ * ================================
+ */
+
+// GET /api/v1/packages/active - Lấy danh sách active subscription packages (public hoặc admin)
+export const getSubscriptionPackages = async (page = 0, size = 10) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/packages/active`, {
+      params: { page, size },
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách subscription packages:", error);
+    throw error;
+  }
+};
+
+// GET /api/v1/admin/subscription-packages/{packageId} - Lấy chi tiết subscription package
+export const getSubscriptionPackageById = async (packageId) => {
+  try {
+    const res = await adminAxios.get(
+      `/api/v1/admin/subscription-packages/${packageId}`
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy chi tiết subscription package:", error);
+    throw error;
+  }
+};
+
+// POST /api/v1/admin/subscription-packages - Tạo subscription package mới (yêu cầu SUPER_ADMIN)
+export const createSubscriptionPackage = async (packageData) => {
+  try {
+    console.log("Creating Subscription Package:", packageData);
+    const res = await adminAxios.post(
+      `/api/v1/admin/subscription-packages`,
+      packageData
+    );
+    console.log("Create Subscription Package Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi tạo subscription package:", error);
+    if (error.response) {
+      console.error("Error response:", error.response.data);
+      console.error("Error status:", error.response.status);
+    }
+    throw error;
+  }
+};
+
+// PUT /api/v1/admin/subscription-packages/{packageId} - Cập nhật subscription package (yêu cầu SUPER_ADMIN)
+export const updateSubscriptionPackage = async (packageId, packageData) => {
+  try {
+    console.log("Updating Subscription Package:", {
+      packageId,
+      packageData,
+    });
+    const res = await adminAxios.put(
+      `/api/v1/admin/subscription-packages/${packageId}`,
+      packageData
+    );
+    console.log("Update Subscription Package Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi cập nhật subscription package:", error);
+    if (error.response) {
+      console.error("Error response:", error.response.data);
+      console.error("Error status:", error.response.status);
+    }
     throw error;
   }
 };
