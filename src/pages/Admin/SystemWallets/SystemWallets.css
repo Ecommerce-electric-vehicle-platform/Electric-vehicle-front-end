@@ -65,3 +65,14 @@
   color: #198754 !important;
 }
 
+/* Compact refresh button - nhỏ lại và dịch về bên phải */
+.refresh-btn-compact {
+  padding: 0.375rem 0.5rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.375rem !important;
+  min-width: auto !important;
+  white-space: nowrap !important;
+  margin-left: 34rem !important;
+}
+

@@ -282,16 +282,16 @@ export default function SystemWallets() {
       <CCard className="shadow-sm">
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <div>
-            <h4 className="mb-0">Quản lý System Wallets (Escrow)</h4>
+            <h4 className="mb-0">Quản lý Ví Hệ Thống (Ký quỹ)</h4>
             <p className="text-muted mb-0 small">
-              Quản lý các escrow records đang chờ chuyển tiền
+            Quản lý các giao dịch đang được hệ thống giữ tiền chờ giải ngân
             </p>
           </div>
           <CButton
-            color="primary"
+            color="secondary"
             onClick={handleRefresh}
             disabled={loading}
-            className="d-flex align-items-center gap-2"
+            className="refresh-btn-compact"
           >
             <RefreshCw size={16} />
             Làm mới

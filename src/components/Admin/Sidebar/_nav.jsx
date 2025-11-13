@@ -11,7 +11,9 @@ import {
   cilEnvelopeOpen,
   cilTask,
   cilSettings,
-  cilCreditCard,
+  cilCog,
+  cilWallet,
+  cilLayers,
 } from "@coreui/icons";
 import { CNavGroup, CNavItem, CNavTitle } from "@coreui/react";
 
@@ -28,21 +30,21 @@ const _nav = [
   },
   {
     component: CNavItem,
-    name: "Cấu hình Escrow",
+    name: "Cấu hình Ký Quỹ chung",
     to: "/admin/system-config",
-    icon: <CIcon icon={cilCreditCard} customClassName="nav-icon" />,
+    icon: <CIcon icon={cilCog} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
-    name: "System Wallets",
+    name: "Ví Hệ Thống",
     to: "/admin/system-wallets",
-    icon: <CIcon icon={cilCreditCard} customClassName="nav-icon" />,
+    icon: <CIcon icon={cilWallet} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
-    name: "Subscription Packages",
+    name: "Gói Dịch Vụ",
     to: "/admin/subscription-packages",
-    icon: <CIcon icon={cilCreditCard} customClassName="nav-icon" />,
+    icon: <CIcon icon={cilLayers} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
