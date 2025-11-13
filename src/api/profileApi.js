@@ -107,6 +107,18 @@ const profileApi = {
     });
   },
 
+  // api này để lấy các dispute và show cho người mua
+  getDisputeByOrderId: (orderId) => {
+        return axiosInstance.get(`/api/v1/dispute/order/${orderId}`);
+    },
+
+    getAllBuyerDisputes: (buyerId) => {
+        if (!buyerId) {
+             throw new Error("Missing buyerId for dispute fetch.");
+        }
+        return axiosInstance.get(`/api/v1/dispute/buyer/${buyerId}`);
+    },
+
   getSellerKycDocuments: () => {
     // API này trả về tất cả thông tin KYC đã được duyệt
     return axiosInstance.get('/api/v1/seller/profile');

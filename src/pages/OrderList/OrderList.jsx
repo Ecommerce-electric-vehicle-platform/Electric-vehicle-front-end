@@ -26,6 +26,7 @@ import DisputeForm from "../../components/BuyerRaiseDispute/DisputeForm";
 import './OrderList.css';
 import CancelOrderRequest from "../../components/CancelOrderModal/CancelOrderRequest";
 import { fetchPostProductById } from "../../api/productApi";
+import ViewDisputeResult from '../../components/ProfileUser/ViewDisputeResult';
 import { Toast } from '../../components/Toast/Toast';
 
 function OrderList() {
@@ -45,6 +46,7 @@ function OrderList() {
     // thêm dòng này nữa
     const [selectedDisputeOrderId, setSelectedDisputeOrderId] = useState(null);
     const [selectedCancelOrderId, setSelectedCancelOrderId] = useState(null);
+    const [viewingDisputeResultId, setViewingDisputeResultId] = useState(null);
     const [confirmingOrders, setConfirmingOrders] = useState({});
     const [toastMessage, setToastMessage] = useState('');
     const [showToast, setShowToast] = useState(false);
@@ -1007,15 +1009,63 @@ function OrderList() {
         navigate(`/order-tracking/${orderId}`);
     };
     // ******
-    const handleRaiseDispute = (orderId) => {
-        setSelectedDisputeOrderId(orderId);  // thêm dòng này thay thế cho cái alert nha Vy
+
+
+    const handleDisputeSuccess = (submittedOrderId) => {
+        // 1. Thoát khỏi DisputeForm và chuyển sang chế độ xem kết quả
+        setSelectedDisputeOrderId(null);
+        setViewingDisputeResultId(submittedOrderId);
+
+        // 2. Tải lại Orders (tùy chọn)
+        setTimeout(() => { loadOrders(true); }, 500);
     };
 
     const handleCancelDispute = () => {
         setSelectedDisputeOrderId(null);
-        // Sau khi gửi/hủy dispute, ta cũng nên tải lại danh sách orders (tùy chọn)
-        // load(); // Có thể uncomment nếu muốn refresh list sau khi gửi khiếu nại
+        setViewingDisputeResultId(null);
     };
+
+    const handleViewDisputeResult = (orderId) => {
+        // Hàm này được gọi khi nhấp vào nút "Xem khiếu nại"
+        setSelectedDisputeOrderId(null);
+        setViewingDisputeResultId(orderId);
+    }
+
+
+    const handleRaiseDispute = (orderId, order) => {
+        const realOrderId = order?._raw?.id ?? orderId;
+        setSelectedDisputeOrderId(realOrderId); // Mở form Dispute
+        setViewingDisputeResultId(null);  // thêm dòng này thay thế cho cái alert nha Vy
+    };
+
+
+
+    // // HÀM MỚI: Xử lý khi gửi khiếu nại thành công từ DisputeForm
+    // const handleDisputeSuccess = (submittedOrderId) => {
+    //     console.log(`[Dispute] Success for order ID: ${submittedOrderId}. Showing result...`);
+
+    //     // 1. Thoát khỏi DisputeForm
+    //     setSelectedDisputeOrderId(null);
+
+    //     // 2. Chuyển sang chế độ xem kết quả khiếu nại (ViewDisputeResult)
+    //     setViewingDisputeResultId(submittedOrderId); // Bật chế độ xem kết quả
+
+    //     // 3. Tải lại danh sách đơn hàng sau một chút để BE kịp cập nhật
+    //     setTimeout(() => {
+    //         loadOrders(true);
+    //     }, 500);
+    // };
+
+    // const handleCancelDispute = () => {
+    //     setSelectedDisputeOrderId(null);
+    //     // Khi nhấn Quay lại từ form Dispute, chuyển về list, tắt chế độ xem kết quả
+    //     setViewingDisputeResultId(null);
+    // };
+
+    // const handleViewDisputeResult = (orderId) => {
+    //     setSelectedDisputeOrderId(null); // Tắt form Dispute (nếu có)
+    //     setViewingDisputeResultId(orderId); // Bật chế độ xem kết quả
+    // }
 
     const handleRateOrder = (orderId, order) => {
         // Truyền kèm id thực từ BE nếu có để BE nhận diện đúng đơn hàng
@@ -1112,10 +1162,59 @@ function OrderList() {
         }
     };
 
+
+    if (viewingDisputeResultId !== null) {
+        return (
+            <div className="dispute-flow-wrapper">
+                <button
+                    className="btn-back-order-list"
+                    onClick={() => setViewingDisputeResultId(null)} // Quay lại danh sách Order
+                    style={{
+                        marginBottom: "15px",
+                        padding: "8px 15px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        background: "#f8f9fa"
+                    }}
+                >
+                    <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
+                </button>
+                <ViewDisputeResult
+                    orderId={viewingDisputeResultId} // Truyền orderId để component gọi API chi tiết
+                />
+            </div>
+        );
+    }
+
+    // === HIỂN THỊ FORM TẠO KHIẾU NẠI (DisputeForm) ===
+    if (selectedDisputeOrderId !== null) {
+        return (
+            <div className="dispute-flow-wrapper">
+                <button
+                    className="btn-back-order-list"
+                    onClick={handleCancelDispute}
+                    style={{ marginBottom: '15px', padding: '8px 15px', border: '1px solid #ccc', borderRadius: '4px', background: '#f8f9fa' }}
+                >
+                    <ArrowLeft size={16} style={{ marginRight: 5 }} /> Quay lại danh sách đơn hàng
+                </button>
+                <DisputeForm
+                    initialOrderId={selectedDisputeOrderId}
+                    onCancelDispute={handleCancelDispute}
+                    onDisputeSuccess={handleDisputeSuccess} // <<< QUAN TRỌNG: Gửi thành công sẽ chuyển sang View Result
+                />
+            </div>
+        );
+    }
+
+
+
     // Xử lý liên hệ người bán (không dùng ở layout mới)
 
     // Lấy icon và màu sắc cho trạng thái (label theo mockup)
     // cái này là của cancel order
+
+
+
     if (selectedCancelOrderId !== null) {
         return (
             <>
@@ -1555,11 +1654,34 @@ function OrderList() {
                                                                         >
                                                                             Khiếu nại
                                                                         </button>
-                                                                    </>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </div>
+                                                                    )}
+                                                                    {order._raw?.disputeStatus || viewingDisputeResultId === order.id ? (
+                                                                        // HIỂN THỊ: Xem khiếu nại (Đơn đã được khiếu nại)
+                                                                        <button
+                                                                            className="btn btn-secondary btn-sm btn-animate"
+                                                                            onClick={(e) => { e.stopPropagation(); handleViewDisputeResult(order.id); }}
+                                                                        >
+                                                                            Xem khiếu nại
+                                                                        </button>
+                                                                    ) : (
+                                                                        // HIỂN THỊ: Khiếu nại (Chưa khiếu nại)
+                                                                        <button
+                                                                            className="btn btn-warning btn-sm btn-animate"
+                                                                            style={{ backgroundColor: '#ffc107', color: '#212529', filter: 'drop-shadow(0 0 8px rgba(255,193,7,0.45))' }}
+                                                                            onClick={(e) => { e.stopPropagation(); handleRaiseDispute(order.id, order); }} // <<< ĐÃ TRUYỀN 'order'
+                                                                        >
+                                                                            Khiếu nại
+                                                                        </button>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                               //    </>
+                                                               // )}
+                                                          //  </>
+                                                       // )}
+                                                   // </div>
                                                 </div>
 
                                                 {expandedId === order.id && (

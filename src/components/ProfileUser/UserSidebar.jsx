@@ -40,7 +40,7 @@ export default function UserSidebar({ activeItem, onItemClick, username, userRol
         "Đổi mật khẩu",
         "Đơn hàng của tôi",
         "Ví điện tử",
-       
+        "Xem khiếu nại"
     ];
    
     // Đảm bảo tạo một bản sao mới để không thay đổi baseItems
@@ -78,7 +78,7 @@ export default function UserSidebar({ activeItem, onItemClick, username, userRol
                 </div>
                 <div className="profile-info">
                     <div className="profile-name">{localName || "Người dùng"}</div>
-                    <div className="profile-role">{userRole === "seller" ? "Seller" : "Buyer"}</div>
+                    <div className="profile-role">{userRole === "seller" ? "Người Bán" : "Người Mua"}</div>
                 </div>
             </div>
             <nav className="sidebar-nav">

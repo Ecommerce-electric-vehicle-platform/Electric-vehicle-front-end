@@ -10,7 +10,7 @@ import SellerBuyPackage from "./SellerBuyPackage";
 import SellerDocumentView from "./SellerDocumentView";
 //THÊM IMPORT OrderList 
 import OrderList from "../../pages/OrderList/OrderList.jsx";
-
+import ViewDisputeResult from "./ViewDisputeResult.jsx";
 
 
 
@@ -93,6 +93,7 @@ export default function PersonalProfilePage() {
       case "buy-seller-package": setActiveSection("Mua gói dịch vụ"); break;
       // Thêm case cho tab quản lý giấy tờ
       case "seller-docs": setActiveSection("Quản lý giấy tờ kinh doanh"); break;
+      case "disputes": setActiveSection("Xem khiếu nại"); break;
       // XÓA case "dispute" (Logic xử lý Dispute giờ nằm trong OrderList)
       default: break; // Giữ nguyên nếu tab không hợp lệ
     }
@@ -157,7 +158,7 @@ export default function PersonalProfilePage() {
           {activeSection === "Quản lý giấy tờ kinh doanh" && (
             <SellerDocumentView />
           )}
-
+          {activeSection === "Xem khiếu nại" && <ViewDisputeResult /> }
 
           {activeSection === "Ví điện tử" && <PersonalEWallet />}
           {activeSection === "Nâng cấp thành người bán" && (
