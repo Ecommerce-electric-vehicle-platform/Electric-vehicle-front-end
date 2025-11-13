@@ -30,6 +30,7 @@ import {
   MdBuild,
   MdAccountBalanceWallet,
   MdCardGiftcard,
+  MdBarChart,
 } from "react-icons/md";
 import { FaLeaf } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -354,6 +355,32 @@ const CoreAdminLayout = () => {
             >
               <MdCardGiftcard style={{ marginRight: "12px", fontSize: "18px" }} />
               Gói Dịch Vụ
+            </a>
+          </div>
+
+          {/* Thống kê mua gói */}
+          <div style={{ marginBottom: "4px" }}>
+            <a
+              href="/admin/package-statistics"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "12px 20px",
+                color: "#bdc3c7",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = "rgba(255,255,255,0.05)";
+                e.target.style.color = "#ecf0f1";
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = "transparent";
+                e.target.style.color = "#bdc3c7";
+              }}
+            >
+              <MdBarChart style={{ marginRight: "12px", fontSize: "18px" }} />
+              Thống kê mua gói
             </a>
           </div>
 
