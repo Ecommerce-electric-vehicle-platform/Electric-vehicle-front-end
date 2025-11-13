@@ -34,6 +34,18 @@ const _nav = [
   },
   {
     component: CNavItem,
+    name: "System Wallets",
+    to: "/admin/system-wallets",
+    icon: <CIcon icon={cilCreditCard} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: "Subscription Packages",
+    to: "/admin/subscription-packages",
+    icon: <CIcon icon={cilCreditCard} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
     name: "Cài đặt",
     to: "/admin/settings",
     icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,

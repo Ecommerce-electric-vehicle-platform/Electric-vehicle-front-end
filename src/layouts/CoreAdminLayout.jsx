@@ -302,6 +302,58 @@ const CoreAdminLayout = () => {
             </a>
           </div>
 
+          {/* System Wallets */}
+          <div style={{ marginBottom: "4px" }}>
+            <a
+              href="/admin/system-wallets"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "12px 20px",
+                color: "#bdc3c7",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = "rgba(255,255,255,0.05)";
+                e.target.style.color = "#ecf0f1";
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = "transparent";
+                e.target.style.color = "#bdc3c7";
+              }}
+            >
+              <MdCreditCard style={{ marginRight: "12px", fontSize: "18px" }} />
+              System Wallets
+            </a>
+          </div>
+
+          {/* Subscription Packages */}
+          <div style={{ marginBottom: "4px" }}>
+            <a
+              href="/admin/subscription-packages"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "12px 20px",
+                color: "#bdc3c7",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = "rgba(255,255,255,0.05)";
+                e.target.style.color = "#ecf0f1";
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = "transparent";
+                e.target.style.color = "#bdc3c7";
+              }}
+            >
+              <MdCreditCard style={{ marginRight: "12px", fontSize: "18px" }} />
+              Subscription Packages
+            </a>
+          </div>
+
           {/* Cài đặt */}
           <div style={{ marginBottom: "4px" }}>
             <a
