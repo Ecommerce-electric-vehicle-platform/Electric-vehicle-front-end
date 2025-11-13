@@ -12,6 +12,7 @@ import Settings from "../pages/Admin/Settings/Settings";
 import SystemConfig from "../pages/Admin/SystemConfig/SystemConfig";
 import SystemWallets from "../pages/Admin/SystemWallets/SystemWallets";
 import SubscriptionPackages from "../pages/Admin/SubscriptionPackages/SubscriptionPackages";
+import PackageStatistics from "../pages/Admin/PackageStatistics/PackageStatistics";
 import AdminProfile from "../pages/Admin/Profile/AdminProfile";
 
 // Phải dùng React element (có < />)
@@ -29,6 +30,7 @@ const adminViewRoutes = [
   { path: "system-config", name: "System Config", element: <SystemConfig /> },
   { path: "system-wallets", name: "System Wallets", element: <SystemWallets /> },
   { path: "subscription-packages", name: "Subscription Packages", element: <SubscriptionPackages /> },
+  { path: "package-statistics", name: "Package Statistics", element: <PackageStatistics /> },
   { path: "profile", name: "Profile", element: <AdminProfile /> },
 ];
 
