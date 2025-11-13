@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { MessageCircle, Trash2, Loader2, Search, CheckSquare, Square, Heart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ShoppingCart, Trash2, Loader2, Search, CheckSquare, Square, Heart } from "lucide-react";
 import "./Favorites.css";
 import { fetchWishlist, removeFromWishlist } from "../../api/wishlistApi";
 import { ConfirmationDialog } from "../../components/ConfirmationDialog/ConfirmationDialog";
 import { PRODUCT_TYPE_FILTERS, matchesProductTypeFilter } from "../../utils/productType";
 
 export function Favorites() {
+    const navigate = useNavigate();
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -252,9 +254,14 @@ export function Favorites() {
         }
     };
 
-    const handleChatWithSeller = () => {
-        // Navigate to chat page
-        window.location.href = `/chat`;
+    const handleBuyNow = (product) => {
+        // Navigate to place order page
+        const productId = product.postId || product.id;
+        if (!productId) {
+            alert("Không tìm thấy thông tin sản phẩm");
+            return;
+        }
+        navigate(`/place-order/${productId}`, { state: { product } });
     };
 
     // Pagination helpers
@@ -616,11 +623,12 @@ export function Favorites() {
                                                 <div className="wishlist-card-actions">
                                                     <button
                                                         className="wishlist-btn-chat"
-                                                        onClick={() => handleChatWithSeller()}
-                                                        disabled={!sellerId}
+                                                        onClick={() => handleBuyNow(product)}
+                                                        disabled={product.isSold}
+                                                        title={product.isSold ? "Sản phẩm đã bán" : "Mua ngay"}
                                                     >
-                                                        <MessageCircle size={14} />
-                                                        Chat
+                                                        <ShoppingCart size={14} />
+                                                        Mua ngay
                                                     </button>
                                                     <button
                                                         className="wishlist-btn-delete"

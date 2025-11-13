@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "./Seller.css";
 import sellerApi from '../../api/sellerApi';
+import { addToWishlist, fetchWishlist } from '../../api/wishlistApi';
 import { Package, Plus, BarChart3, Star, MapPin, Calendar, Clock, MessageCircle, Users, Heart, Shield } from "lucide-react";
 
 export function Seller() {
@@ -14,6 +15,8 @@ export function Seller() {
     const [productsLoading, setProductsLoading] = useState(false);
     const [productsError, setProductsError] = useState(null);
     const [postFilter, setPostFilter] = useState("displaying"); // displaying | sold
+    const [wishlistItems, setWishlistItems] = useState(new Set()); // Set chứa postId đã có trong wishlist
+    const [wishlistLoading, setWishlistLoading] = useState({}); // Track loading state cho từng sản phẩm
     
     // Kiểm tra xem seller có đang xem chính profile của mình không
     // QUAN TRỌNG: Chỉ hiển thị button seller khi user thực sự là seller
@@ -98,6 +101,83 @@ export function Seller() {
         }
         return () => { mounted = false; };
     }, [products, productsLoading]);
+
+    // Load wishlist để check sản phẩm nào đã có trong wishlist
+    useEffect(() => {
+        const isAuthenticated = localStorage.getItem("accessToken");
+        if (!isAuthenticated) {
+            setWishlistItems(new Set());
+            return;
+        }
+
+        let mounted = true;
+        fetchWishlist({ page: 0, size: 100 })
+            .then(result => {
+                if (!mounted) return;
+                const items = result.items || [];
+                const postIds = new Set(items.map(item => String(item.postId || item.id)));
+                setWishlistItems(postIds);
+            })
+            .catch(() => {
+                if (!mounted) return;
+                setWishlistItems(new Set());
+            });
+
+        return () => { mounted = false; };
+    }, []);
+
+    // Handle click vào nút trái tim để thêm vào wishlist
+    const handleToggleWishlist = async (e, product) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const isAuthenticated = localStorage.getItem("accessToken");
+        if (!isAuthenticated) {
+            alert("Vui lòng đăng nhập để thêm vào danh sách yêu thích");
+            return;
+        }
+
+        const postId = product.postId || product.id;
+        if (!postId) return;
+
+        const postIdStr = String(postId);
+        const isInWishlist = wishlistItems.has(postIdStr);
+
+        // Set loading state
+        setWishlistLoading(prev => ({ ...prev, [postIdStr]: true }));
+
+        try {
+            if (isInWishlist) {
+                // Nếu đã có trong wishlist, có thể cần remove (nhưng theo yêu cầu chỉ cần add)
+                // Ở đây chỉ thông báo
+                alert("Sản phẩm đã có trong danh sách yêu thích");
+            } else {
+                // Thêm vào wishlist
+                const result = await addToWishlist({
+                    postId: Number(postId),
+                    priority: "LOW",
+                    note: ""
+                });
+
+                if (result.success) {
+                    // Cập nhật state
+                    setWishlistItems(prev => {
+                        const newSet = new Set(prev);
+                        newSet.add(postIdStr);
+                        return newSet;
+                    });
+                } else {
+                    alert(result.message || "Không thể thêm vào danh sách yêu thích");
+                }
+            }
+        } catch (error) {
+            console.error('[Seller] Error toggling wishlist:', error);
+            const errorMsg = error?.response?.data?.message || error?.message || "Không thể thêm vào danh sách yêu thích";
+            alert(errorMsg);
+        } finally {
+            setWishlistLoading(prev => ({ ...prev, [postIdStr]: false }));
+        }
+    };
 
     // Filter theo loại sản phẩm (luôn hiển thị tất cả)
     const typeFiltered = products;
@@ -224,14 +304,6 @@ export function Seller() {
                                         </div>
                                     )}
                                 </div>
-                            )}
-
-                            {/* Follow Button (nếu không phải seller xem chính mình) */}
-                            {!isViewingOwnProfile && (
-                                <button className="follow-btn">
-                                    <Plus size={16} />
-                                    Theo dõi
-                                </button>
                             )}
 
                             {/* Chat Response */}
@@ -383,8 +455,17 @@ export function Seller() {
                                                 {isSold && <div className="sold-overlay">
                                                     <span className="sold-badge">Đã bán</span>
                                                 </div>}
-                                                <button className="heart-btn" onClick={(e) => { e.preventDefault(); }}>
-                                                    <Heart size={18} fill="transparent" stroke="#fff" />
+                                                <button 
+                                                    className="heart-btn" 
+                                                    onClick={(e) => handleToggleWishlist(e, p)}
+                                                    disabled={wishlistLoading[String(p.postId || p.id)]}
+                                                    title={wishlistItems.has(String(p.postId || p.id)) ? "Đã có trong danh sách yêu thích" : "Thêm vào danh sách yêu thích"}
+                                                >
+                                                    <Heart 
+                                                        size={18} 
+                                                        fill={wishlistItems.has(String(p.postId || p.id)) ? "#ef4444" : "transparent"} 
+                                                        stroke={wishlistItems.has(String(p.postId || p.id)) ? "#ef4444" : "#fff"} 
+                                                    />
                                                 </button>
                                             </div>
                                         </div>
