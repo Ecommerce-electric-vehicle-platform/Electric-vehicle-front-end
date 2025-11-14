@@ -35,17 +35,23 @@ import {
 } from "lucide-react";
 import {
   getEscrowRecords,
+  getSolvedSystemWallets,
   updateEscrowEndAt,
 } from "../../../api/adminApi";
 import "./SystemWallets.css";
 
 export default function SystemWallets() {
+  const [activeTab, setActiveTab] = useState("hold"); // "hold" hoặc "solved"
   const [records, setRecords] = useState([]);
+  const [solvedRecords, setSolvedRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
+  const [solvedPage, setSolvedPage] = useState(0);
   const [size] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  const [solvedTotalPages, setSolvedTotalPages] = useState(0);
+  const [solvedTotalElements, setSolvedTotalElements] = useState(0);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -85,7 +91,7 @@ export default function SystemWallets() {
     checkSuperAdmin();
   }, []);
 
-  // Fetch escrow records
+  // Fetch escrow records (hold)
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -111,9 +117,40 @@ export default function SystemWallets() {
     }
   }, [page, size]);
 
+  // Fetch solved system wallets
+  const fetchSolvedData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await getSolvedSystemWallets(solvedPage, size);
+      const responseData = response?.data?.data || response?.data || response;
+      const content = responseData?.content || [];
+      const totalPagesData = responseData?.totalPages || 0;
+      const totalElementsData = responseData?.totalElements || 0;
+
+      setSolvedRecords(Array.isArray(content) ? content : []);
+      setSolvedTotalPages(totalPagesData);
+      setSolvedTotalElements(totalElementsData);
+    } catch (err) {
+      console.error("Error fetching solved system wallets:", err);
+      setError(
+        err?.response?.data?.message ||
+          "Không thể tải danh sách solved wallets. Vui lòng thử lại sau."
+      );
+      setSolvedRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [solvedPage, size]);
+
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (activeTab === "hold") {
+      fetchData();
+    } else {
+      fetchSolvedData();
+    }
+  }, [activeTab, fetchData, fetchSolvedData]);
 
   // Format date
   const formatDate = (dateString) => {
@@ -267,14 +304,34 @@ export default function SystemWallets() {
 
   // Handle page change
   const handlePageChange = (newPage) => {
-    if (newPage >= 0 && newPage < totalPages) {
-      setPage(newPage);
+    if (activeTab === "hold") {
+      if (newPage >= 0 && newPage < totalPages) {
+        setPage(newPage);
+      }
+    } else {
+      if (newPage >= 0 && newPage < solvedTotalPages) {
+        setSolvedPage(newPage);
+      }
     }
   };
 
   // Handle refresh
   const handleRefresh = () => {
-    fetchData();
+    if (activeTab === "hold") {
+      fetchData();
+    } else {
+      fetchSolvedData();
+    }
+  };
+
+  // Handle tab change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === "hold") {
+      setPage(0);
+    } else {
+      setSolvedPage(0);
+    }
   };
 
   return (
@@ -298,6 +355,40 @@ export default function SystemWallets() {
           </CButton>
         </CCardHeader>
         <CCardBody>
+          {/* Tabs */}
+          <div className="d-flex mb-4 border-bottom">
+            <button
+              className={`btn btn-link text-decoration-none px-3 py-2 ${
+                activeTab === "hold" ? "active border-bottom border-primary border-2" : "text-muted"
+              }`}
+              onClick={() => handleTabChange("hold")}
+              style={{
+                border: "none",
+                background: "none",
+                borderBottom: activeTab === "hold" ? "2px solid #0d6efd" : "none",
+                color: activeTab === "hold" ? "#0d6efd" : "#6c757d",
+                fontWeight: activeTab === "hold" ? "600" : "400",
+              }}
+            >
+              Đang giữ ({totalElements})
+            </button>
+            <button
+              className={`btn btn-link text-decoration-none px-3 py-2 ${
+                activeTab === "solved" ? "active border-bottom border-primary border-2" : "text-muted"
+              }`}
+              onClick={() => handleTabChange("solved")}
+              style={{
+                border: "none",
+                background: "none",
+                borderBottom: activeTab === "solved" ? "2px solid #0d6efd" : "none",
+                color: activeTab === "solved" ? "#0d6efd" : "#6c757d",
+                fontWeight: activeTab === "solved" ? "600" : "400",
+              }}
+            >
+              Đã giải quyết ({solvedTotalElements})
+            </button>
+          </div>
+
           {error && (
             <CAlert color="danger" dismissible onClose={() => setError("")}>
               {error}
@@ -314,28 +405,29 @@ export default function SystemWallets() {
               <CSpinner color="primary" />
               <p className="mt-3 text-muted">Đang tải dữ liệu...</p>
             </div>
-          ) : records.length === 0 ? (
-            <div className="text-center p-5">
-              <p className="text-muted">Không có escrow records nào.</p>
-            </div>
-          ) : (
-            <>
-              <CTable hover responsive>
-                <CTableHead>
-                  <CTableRow>
-                    <CTableHeaderCell>ID</CTableHeaderCell>
-                    <CTableHeaderCell>Order Code</CTableHeaderCell>
-                    <CTableHeaderCell>Balance</CTableHeaderCell>
-                    <CTableHeaderCell>Status</CTableHeaderCell>
-                    <CTableHeaderCell>Created At</CTableHeaderCell>
-                    <CTableHeaderCell>End At</CTableHeaderCell>
-                    <CTableHeaderCell>Buyer Wallet ID</CTableHeaderCell>
-                    <CTableHeaderCell>Seller Wallet ID</CTableHeaderCell>
-                    <CTableHeaderCell>Actions</CTableHeaderCell>
-                  </CTableRow>
-                </CTableHead>
-                <CTableBody>
-                  {records.map((record) => (
+          ) : activeTab === "hold" ? (
+            records.length === 0 ? (
+              <div className="text-center p-5">
+                <p className="text-muted">Không có escrow records nào.</p>
+              </div>
+            ) : (
+              <>
+                <CTable hover responsive>
+                  <CTableHead>
+                    <CTableRow>
+                      <CTableHeaderCell>ID</CTableHeaderCell>
+                      <CTableHeaderCell>Order Code</CTableHeaderCell>
+                      <CTableHeaderCell>Balance</CTableHeaderCell>
+                      <CTableHeaderCell>Status</CTableHeaderCell>
+                      <CTableHeaderCell>Created At</CTableHeaderCell>
+                      <CTableHeaderCell>End At</CTableHeaderCell>
+                      <CTableHeaderCell>Buyer Wallet ID</CTableHeaderCell>
+                      <CTableHeaderCell>Seller Wallet ID</CTableHeaderCell>
+                      <CTableHeaderCell>Actions</CTableHeaderCell>
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    {records.map((record) => (
                     <CTableRow key={record.id}>
                       <CTableDataCell>{record.id}</CTableDataCell>
                       <CTableDataCell>
@@ -415,6 +507,91 @@ export default function SystemWallets() {
 
               <div className="mt-3 text-muted small text-center">
                 Hiển thị {records.length} / {totalElements} records
+              </div>
+            </>
+            )
+          ) : solvedRecords.length === 0 ? (
+            <div className="text-center p-5">
+              <p className="text-muted">Không có solved wallets nào.</p>
+            </div>
+          ) : (
+            <>
+              <CTable hover responsive>
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell>ID</CTableHeaderCell>
+                    <CTableHeaderCell>Order Code</CTableHeaderCell>
+                    <CTableHeaderCell>Balance</CTableHeaderCell>
+                    <CTableHeaderCell>Status</CTableHeaderCell>
+                    <CTableHeaderCell>Created At</CTableHeaderCell>
+                    <CTableHeaderCell>End At</CTableHeaderCell>
+                    <CTableHeaderCell>Buyer Wallet ID</CTableHeaderCell>
+                    <CTableHeaderCell>Seller Wallet ID</CTableHeaderCell>
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {solvedRecords.map((record) => (
+                    <CTableRow key={record.id}>
+                      <CTableDataCell>{record.id}</CTableDataCell>
+                      <CTableDataCell>
+                        {record.orderCode || "-"}
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <span className="fw-bold text-success">
+                          {formatCurrency(record.balance)}
+                        </span>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        {getStatusBadge(record.status)}
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        {formatDate(record.createdAt)}
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        {formatDate(record.endAt)}
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        {record.buyerWalletId || "-"}
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        {record.sellerWalletId || "-"}
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))}
+                </CTableBody>
+              </CTable>
+
+              {/* Pagination for solved */}
+              {solvedTotalPages > 1 && (
+                <div className="d-flex justify-content-center mt-4">
+                  <CPagination>
+                    <CPaginationItem
+                      disabled={solvedPage === 0}
+                      onClick={() => handlePageChange(solvedPage - 1)}
+                    >
+                      Trước
+                    </CPaginationItem>
+                    {Array.from({ length: solvedTotalPages }, (_, i) => (
+                      <CPaginationItem
+                        key={i}
+                        active={i === solvedPage}
+                        onClick={() => handlePageChange(i)}
+                      >
+                        {i + 1}
+                      </CPaginationItem>
+                    ))}
+                    <CPaginationItem
+                      disabled={solvedPage === solvedTotalPages - 1}
+                      onClick={() => handlePageChange(solvedPage + 1)}
+                    >
+                      Sau
+                    </CPaginationItem>
+                  </CPagination>
+                </div>
+              )}
+
+              <div className="mt-3 text-muted small text-center">
+                Hiển thị {solvedRecords.length} / {solvedTotalElements} records
               </div>
             </>
           )}
