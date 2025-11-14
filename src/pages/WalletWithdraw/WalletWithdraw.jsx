@@ -89,18 +89,6 @@ export default function WalletWithdraw() {
             </div>
 
             <div className="wallet-deposit-card wallet-withdraw-card">
-                <div className="payment-method-section">
-                    <div className="payment-method-header">
-                        <div className="vnpay-icon-wrapper">
-                            <span className="vnpay-text">VNPAY</span>
-                        </div>
-                        <div className="payment-method-info">
-                            <div className="payment-method-title">Rút tiền qua VNPAY</div>
-                            <div className="no-fee-badge">Miễn phí giao dịch</div>
-                        </div>
-                    </div>
-                </div>
-
                 <form className="wallet-deposit-form" onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label className="form-label">Nhập số tiền rút</label>

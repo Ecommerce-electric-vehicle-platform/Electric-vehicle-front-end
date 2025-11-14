@@ -46,11 +46,89 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
+/* Payment Method Selector */
+.payment-method-selector {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.payment-method-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.payment-method-option:hover {
+    border-color: #d1d5db;
+    background: #f9fafb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.payment-method-option.active {
+    border-color: #059669;
+    background: #f0fdf4;
+    color: #059669;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+}
+
+/* MoMo active state - using data attribute approach for better browser support */
+.payment-method-option[data-method="momo"].active {
+    border-color: #A50064;
+    background: #fff0f5;
+    color: #A50064;
+    box-shadow: 0 4px 12px rgba(165, 0, 100, 0.2);
+}
+
+.payment-method-option-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    transition: all 0.3s ease;
+}
+
+.payment-method-option-icon.vnpay {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.payment-method-option-icon.momo {
+    background: linear-gradient(135deg, #A50064 0%, #E91E63 100%);
+}
+
+.payment-method-option.active .payment-method-option-icon {
+    transform: scale(1.1);
+}
+
 /* Payment Method Section */
 .payment-method-section {
     margin-bottom: 32px;
     padding-bottom: 24px;
     border-bottom: 1px solid #e5e7eb;
+}
+
+.payment-method-section.momo {
+    border-bottom-color: rgba(165, 0, 100, 0.2);
 }
 
 .payment-method-header {
@@ -59,6 +137,34 @@
     gap: 12px;
 }
 
+.payment-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.payment-icon-wrapper.vnpay {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.payment-icon-wrapper.momo {
+    background: linear-gradient(135deg, #A50064 0%, #E91E63 100%);
+    box-shadow: 0 4px 12px rgba(165, 0, 100, 0.3);
+}
+
+.payment-text {
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* Legacy support */
 .vnpay-icon-wrapper {
     width: 48px;
     height: 48px;
@@ -88,10 +194,18 @@
     margin-bottom: 4px;
 }
 
+.payment-method-section.momo .payment-method-title {
+    color: #A50064;
+}
+
 .no-fee-badge {
     font-size: 14px;
     color: #059669;
     font-weight: 500;
+}
+
+.payment-method-section.momo .no-fee-badge {
+    color: #A50064;
 }
 
 /* Form */
@@ -151,6 +265,11 @@
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
+.payment-method-section.momo ~ .wallet-deposit-form .amount-input:focus {
+    border-color: #A50064;
+    box-shadow: 0 0 0 3px rgba(165, 0, 100, 0.1);
+}
+
 .amount-input::placeholder {
     color: #9ca3af;
 }
@@ -187,6 +306,12 @@
     font-weight: 600;
 }
 
+.payment-method-section.momo ~ .wallet-deposit-form .quick-amount-btn.active {
+    background: #fff0f5;
+    border-color: #A50064;
+    color: #A50064;
+}
+
 /* Error Message */
 .error-message {
     color: #dc2626;
@@ -210,22 +335,42 @@
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: all 0.3s ease;
     margin-top: 8px;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
 }
 
 .continue-button:hover:not(:disabled) {
     background: #047857;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(5, 150, 105, 0.3);
 }
 
 .continue-button:active {
     background: #047857;
+    transform: translateY(0);
+}
+
+.continue-button.momo {
+    background: linear-gradient(135deg, #A50064 0%, #E91E63 100%);
+    box-shadow: 0 4px 12px rgba(165, 0, 100, 0.3);
+}
+
+.continue-button.momo:hover:not(:disabled) {
+    background: linear-gradient(135deg, #8B0054 0%, #D81B60 100%);
+    box-shadow: 0 6px 16px rgba(165, 0, 100, 0.4);
+}
+
+.continue-button.momo:active {
+    background: linear-gradient(135deg, #8B0054 0%, #D81B60 100%);
 }
 
 .continue-button:disabled {
     background: #9ca3af;
     cursor: not-allowed;
     opacity: 0.6;
+    transform: none;
+    box-shadow: none;
 }
 
 /* Security Info */
@@ -257,6 +402,20 @@
 
     .page-title {
         font-size: 24px;
+    }
+
+    .payment-method-selector {
+        gap: 8px;
+    }
+
+    .payment-method-option {
+        padding: 12px;
+    }
+
+    .payment-method-option-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 10px;
     }
 
     .quick-amount-section {
