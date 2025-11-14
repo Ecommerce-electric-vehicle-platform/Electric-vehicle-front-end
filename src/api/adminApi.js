@@ -385,6 +385,19 @@ export const getEscrowRecords = async (page = 0, size = 10) => {
   }
 };
 
+// GET /api/v1/admin/system-wallets/solved?page=0&size=10 - Lấy danh sách solved system wallets
+export const getSolvedSystemWallets = async (page = 0, size = 10) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/system-wallets/solved`, {
+      params: { page, size },
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách solved system wallets:", error);
+    throw error;
+  }
+};
+
 // PUT /api/v1/admin/system-wallets/{systemWalletId}/end-at - Cập nhật endAt của escrow record (yêu cầu SUPER_ADMIN)
 export const updateEscrowEndAt = async (systemWalletId, endAt) => {
   try {

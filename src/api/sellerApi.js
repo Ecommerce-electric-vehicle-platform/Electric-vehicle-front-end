@@ -554,26 +554,32 @@ unhidePostById: async (postId) => {
         productsCount: Array.isArray(products) ? products.length : 0
       });
       
-      // Normalize products để đảm bảo có field isSold
-      // API trả về is_sold (snake_case), normalize thành isSold (camelCase)
+      // Normalize products để đảm bảo có field sold và isSold
+      // API có thể trả về sold, isSold, hoặc is_sold
       const normalizedProducts = Array.isArray(products) ? products.map(product => {
-        // Đảm bảo có field isSold từ is_sold hoặc isSold
-        const isSold = product.isSold !== undefined ? product.isSold : 
-                      product.is_sold !== undefined ? product.is_sold : 
-                      false;
+        // Ưu tiên trường sold từ backend, fallback về isSold/is_sold
+        const soldValue = product.sold !== undefined ? product.sold :
+                         product.isSold !== undefined ? product.isSold : 
+                         product.is_sold !== undefined ? product.is_sold : 
+                         false;
+        
+        const soldBoolean = Boolean(soldValue === true || soldValue === 1 || soldValue === "true");
         
         return {
           ...product,
-          isSold: Boolean(isSold), // Normalize thành boolean
-          is_sold: Boolean(isSold) // Giữ lại cả snake_case để tương thích
+          sold: soldBoolean, // Trường sold chính (ưu tiên)
+          isSold: soldBoolean, // Giữ lại để tương thích
+          is_sold: soldBoolean // Giữ lại cả snake_case để tương thích
         };
       }) : [];
       
       if (normalizedProducts.length > 0) {
         console.log('[sellerApi.getProductsBySeller] First product sellerId:', normalizedProducts[0].sellerId || normalizedProducts[0].seller_id || 'N/A');
-        console.log('[sellerApi.getProductsBySeller] First product isSold fields:', {
+        console.log('[sellerApi.getProductsBySeller] First product sold fields:', {
+          sold: normalizedProducts[0].sold,
           isSold: normalizedProducts[0].isSold,
           is_sold: normalizedProducts[0].is_sold,
+          originalSold: products[0]?.sold,
           originalIsSold: products[0]?.isSold,
           originalIs_sold: products[0]?.is_sold
         });

@@ -40,39 +40,101 @@ export function Seller() {
     console.log("[Seller] isViewingOwnProfile (based on buyerId):", isViewingOwnProfile);
 
     // Bước 1: Lấy sản phẩm của seller
-    // QUAN TRỌNG: Luôn dùng getProductsBySeller() dựa trên sellerId từ URL
-    // Không dùng getMyPosts() vì có thể gây nhầm lẫn khi xem cửa hàng người khác
+    // Luôn dùng getProductsBySeller, sau đó merge dữ liệu sold từ getMyPosts nếu đang xem profile của chính mình
     useEffect(() => {
         let mounted = true;
         if (sellerId) {
             console.log("[Seller] Fetching products for sellerId from URL:", sellerId);
             setProductsLoading(true);
             
-            // Luôn dùng getProductsBySeller() để lấy posts theo sellerId từ URL
-            // Điều này đảm bảo luôn hiển thị đúng posts của seller được chỉ định trong URL
-            sellerApi.getProductsBySeller(sellerId, { page: 0, size: 100 })
-                .then(items => {
+            // Lấy products từ getProductsBySeller
+            const productsPromise = sellerApi.getProductsBySeller(sellerId, { page: 0, size: 100 });
+            
+            // Luôn gọi getMyPosts nếu có accessToken (đang đăng nhập) để merge dữ liệu sold
+            // getMyPosts chỉ trả về posts của user hiện tại, nên chỉ merge khi đúng seller
+            const accessToken = localStorage.getItem("accessToken");
+            const shouldFetchMyPosts = !!accessToken;
+            
+            console.log("[Seller] Checking if should fetch myPosts:", {
+                hasAccessToken: !!accessToken,
+                shouldFetchMyPosts,
+                sellerId
+            });
+            
+            // Gọi getMyPosts để lấy dữ liệu sold chính xác
+            const myPostsPromise = shouldFetchMyPosts ? sellerApi.getMyPosts(0, 100).catch((err) => {
+                console.error("[Seller] Error fetching myPosts for merge:", err);
+                return null;
+            }) : Promise.resolve(null);
+            
+            Promise.all([productsPromise, myPostsPromise])
+                .then(([items, myPostsResponse]) => {
                     if (!mounted) return;
+                    
                     const allItems = Array.isArray(items) ? items : [];
                     console.log("[Seller] Received products from API:", allItems.length, "items");
                     
-                    // QUAN TRỌNG: Filter để chỉ lấy posts của sellerId đúng (phòng trường hợp backend trả về sai)
-                    const filteredProducts = allItems.filter(post => {
+                    // Filter để chỉ lấy posts của sellerId đúng
+                    let filteredProducts = allItems.filter(post => {
                         const postSellerId = post.sellerId || post.seller_id || post.seller?.id || post.seller?.sellerId;
                         const matches = String(postSellerId) === String(sellerId) || Number(postSellerId) === Number(sellerId);
-                        
-                        if (!matches) {
-                            console.warn("[Seller] Filtered out post with wrong sellerId:", {
-                                postId: post.postId || post.id,
-                                postSellerId,
-                                expectedSellerId: sellerId
-                            });
-                        }
                         return matches;
                     });
                     
-                    console.log("[Seller] Filtered products for sellerId", sellerId, ":", filteredProducts.length, "items");
-                    console.log("[Seller] Products data:", filteredProducts);
+                    // Nếu có dữ liệu từ getMyPosts, merge trường sold vào products dựa trên postId
+                    // getMyPosts chỉ trả về posts của user hiện tại, nên nếu có data thì merge
+                    if (myPostsResponse) {
+                        const myPosts = myPostsResponse?.data?.data?.content || [];
+                        console.log("[Seller] Merging sold data from getMyPosts:", myPosts.length, "posts");
+                        console.log("[Seller] Sample myPost sold:", myPosts[0] ? {
+                            postId: myPosts[0].postId || myPosts[0].id,
+                            sold: myPosts[0].sold,
+                            soldType: typeof myPosts[0].sold
+                        } : "No posts");
+                        
+                        // Tạo map từ postId -> sold
+                        const soldMap = new Map();
+                        myPosts.forEach(post => {
+                            const postId = post.postId || post.id;
+                            if (postId) {
+                                const sold = post.sold === true || post.sold === 1 || post.sold === "true" || String(post.sold).toLowerCase() === "true";
+                                soldMap.set(String(postId), sold);
+                                console.log("[Seller] Added to soldMap:", { postId: String(postId), sold });
+                            }
+                        });
+                        
+                        console.log("[Seller] soldMap size:", soldMap.size);
+                        console.log("[Seller] soldMap entries:", Array.from(soldMap.entries()));
+                        
+                        // Merge sold vào filteredProducts
+                        filteredProducts = filteredProducts.map(product => {
+                            const postId = product.postId || product.id;
+                            const postIdStr = postId ? String(postId) : null;
+                            const soldFromMyPosts = postIdStr ? soldMap.get(postIdStr) : undefined;
+                            
+                            if (soldFromMyPosts !== undefined) {
+                                console.log("[Seller] Merging sold for postId:", postIdStr, "sold:", soldFromMyPosts);
+                                return {
+                                    ...product,
+                                    sold: soldFromMyPosts,
+                                    isSold: soldFromMyPosts,
+                                    is_sold: soldFromMyPosts
+                                };
+                            } else if (postIdStr) {
+                                console.log("[Seller] No sold data found for postId:", postIdStr, "in soldMap");
+                            }
+                            return product;
+                        });
+                        
+                        console.log("[Seller] After merge - Sample products sold:", filteredProducts.slice(0, 3).map(p => ({
+                            postId: p.postId || p.id,
+                            sold: p.sold
+                        })));
+                    } else {
+                        console.log("[Seller] Not merging sold data - shouldFetchMyPosts:", shouldFetchMyPosts, "myPostsResponse:", !!myPostsResponse);
+                    }
+                    
+                    console.log("[Seller] Final filtered products:", filteredProducts.length, "items");
                     setProducts(filteredProducts);
                     setProductsError(null);
                 })
@@ -240,22 +302,32 @@ export function Seller() {
     // Filter theo loại sản phẩm (luôn hiển thị tất cả)
     const typeFiltered = products;
     
-    // Xác định sản phẩm đã bán: chỉ kiểm tra field isSold
-    const getIsSold = (product) => {
-        return product.isSold === true || product.isSold === 1 || product.is_sold === true || product.is_sold === 1;
+    // Xác định sản phẩm đã bán: chỉ kiểm tra trường sold từ backend
+    const getSold = (product) => {
+        // Kiểm tra nhiều định dạng có thể có
+        return product.sold === true || 
+               product.sold === 1 || 
+               product.sold === "true" ||
+               String(product.sold).toLowerCase() === "true";
     };
     
     // Filter theo trạng thái (đang hiển thị / đã bán)
     // Logic đồng bộ với ManagePosts.jsx
     const filtered = typeFiltered.filter(p => {
-        const isSold = getIsSold(p);
+        const sold = getSold(p);
+        
+        // Debug log để kiểm tra
         if (postFilter === 'sold') {
-            return isSold;
+            console.log("[Seller] Filtering sold posts - postId:", p.postId || p.id, "sold:", p.sold, "getSold result:", sold);
+        }
+        
+        if (postFilter === 'sold') {
+            return sold;
         } else {
             // Đang hiển thị: active + not sold + not rejected
             // Logic giống ManagePosts.jsx
             const isActive = p.active !== false && p.active !== 0;
-            const isNotSold = !isSold;
+            const isNotSold = !sold;
             const isNotRejected = p.verifiedDecisionStatus !== "REJECTED";
             return isActive && isNotSold && isNotRejected;
         }
@@ -263,15 +335,15 @@ export function Seller() {
     
     // Đếm số lượng - logic đồng bộ với ManagePosts.jsx
     const displayingCount = typeFiltered.filter(p => {
-        const isSold = getIsSold(p);
+        const sold = getSold(p);
         const isActive = p.active !== false && p.active !== 0;
-        const isNotSold = !isSold;
+        const isNotSold = !sold;
         const isNotRejected = p.verifiedDecisionStatus !== "REJECTED";
         return isActive && isNotSold && isNotRejected;
     }).length;
     
     const soldCount = typeFiltered.filter(p => {
-        return getIsSold(p);
+        return getSold(p);
     }).length;
 
     // Format date - giống ProductCard trên homepage
@@ -443,7 +515,7 @@ export function Seller() {
                     ) : (
                         <div className="product-grid">
                             {filtered && filtered.length > 0 ? filtered.map(p => {
-                                const isSold = getIsSold(p);
+                                const sold = getSold(p);
                                 const isVerified = p.verifiedDecisionStatus === 'APPROVED';
                                 
                                 // Ưu tiên: images (mảng) > image > imageUrls (mảng) > thumbnail > fallback
@@ -481,7 +553,7 @@ export function Seller() {
                                 return (
                                     <a 
                                         key={p.id || p.postId} 
-                                        className={`product-card ${isSold ? 'sold' : ''}`} 
+                                        className={`product-card ${sold ? 'sold' : ''}`} 
                                         href={`/product/${p.postId || p.id}`}
                                     >
                                         <div className="product-card-header">
@@ -510,7 +582,7 @@ export function Seller() {
                                                         <span>Đã xác minh</span>
                                                     </div>
                                                 )}
-                                                {isSold && <div className="sold-overlay">
+                                                {sold && <div className="sold-overlay">
                                                     <span className="sold-badge">Đã bán</span>
                                                 </div>}
                                                 <button 

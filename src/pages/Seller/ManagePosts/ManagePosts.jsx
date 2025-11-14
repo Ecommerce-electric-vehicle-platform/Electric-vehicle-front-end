@@ -18,9 +18,13 @@ function ManagePostsContent() {
     loadPosts();
   }, []);
 
-  // Xác định sản phẩm đã bán: chỉ kiểm tra field isSold
-  const getIsSold = (post) => {
-    return post.isSold === true || post.isSold === 1 || post.is_sold === true || post.is_sold === 1;
+  // Xác định sản phẩm đã bán: chỉ kiểm tra trường sold từ backend
+  const getSold = (post) => {
+    // Kiểm tra nhiều định dạng có thể có
+    return post.sold === true || 
+           post.sold === 1 || 
+           post.sold === "true" ||
+           String(post.sold).toLowerCase() === "true";
   };
 
   const loadPosts = async () => {
@@ -97,7 +101,7 @@ function ManagePostsContent() {
   };
 
   const filteredPosts = posts.filter((post) => {
-    const isSold = getIsSold(post);
+    const sold = getSold(post);
     
     if (filterStatus === "all") {
       // Hiển thị tất cả tin đăng trừ những tin đã ẩn
@@ -108,21 +112,21 @@ function ManagePostsContent() {
       return post.active === false || post.active === 0;
     }
     if (filterStatus === "sold") {
-      // Chỉ hiển thị các tin đã bán (isSold === true)
-      return isSold;
+      // Chỉ hiển thị các tin đã bán (sold === true), không quan tâm đến trạng thái active
+      return sold;
     }
     if (filterStatus === "displaying") {
       // Đang hiển thị: active, chưa bán, và không bị từ chối
       // Bao gồm: APPROVED (đã duyệt - có tem xác minh), PENDING (chờ duyệt - vẫn hiển thị), null/undefined
       // Loại trừ: REJECTED (bị từ chối - không hiển thị) và các tin đã bán
       const isActive = post.active !== false && post.active !== 0;
-      const isNotSold = !isSold;
+      const isNotSold = !sold;
       const isNotRejected = post.verifiedDecisionStatus !== "REJECTED";
       return isActive && isNotSold && isNotRejected;
     }
     // Đối với các filter khác (approved, pending, rejected), chỉ hiển thị tin chưa bị ẩn và chưa bán
     const isHidden = post.active === false || post.active === 0;
-    if (isHidden || isSold) return false;
+    if (isHidden || sold) return false;
     return (
       post.verifiedDecisionStatus?.toLowerCase() === filterStatus.toLowerCase()
     );
@@ -210,9 +214,9 @@ function ManagePostsContent() {
             >
               Đang hiển thị (
               {posts.filter((p) => {
-                const isSold = getIsSold(p);
+                const sold = getSold(p);
                 const isActive = p.active !== false && p.active !== 0;
-                const isNotSold = !isSold;
+                const isNotSold = !sold;
                 const isNotRejected = p.verifiedDecisionStatus !== "REJECTED";
                 return isActive && isNotSold && isNotRejected;
               }).length}
@@ -223,7 +227,7 @@ function ManagePostsContent() {
               onClick={() => setFilterStatus("sold")}
             >
               Đã bán (
-              {posts.filter((p) => getIsSold(p)).length}
+              {posts.filter((p) => getSold(p)).length}
               )
             </button>
             <button
