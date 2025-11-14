@@ -145,7 +145,7 @@ export default function SystemWallets() {
   const getStatusBadge = (status) => {
     switch (status) {
       case "ESCROW_HOLD":
-        return <CBadge color="warning">Đang giữ</CBadge>;
+        return <CBadge className="status-holding-badge">Đang giữ</CBadge>;
       case "IS_SOLVED":
         return <CBadge color="success">Đã giải quyết</CBadge>;
       default:

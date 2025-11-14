@@ -26,13 +26,13 @@ import {
   Users,
   DollarSign,
   Eye,
-  X,
   ChevronLeft,
   ChevronRight,
   Package,
   Calendar,
   CheckCircle,
   XCircle,
+  RefreshCw,
 } from "lucide-react";
 import {
   getPackageStatistics,
@@ -188,8 +188,12 @@ export default function PackageStatistics() {
             <h4 className="mb-0">Thống kê mua gói dịch vụ</h4>
             <p className="text-muted mb-0">Xem chi tiết thống kê theo từng nhóm gói</p>
           </div>
-          <CButton color="secondary" onClick={loadPackages} disabled={loading}>
-            <BarChart3 size={16} style={{ marginRight: "8px" }} />
+          <CButton 
+            className="refresh-btn" 
+            onClick={loadPackages} 
+            disabled={loading}
+          >
+            <RefreshCw size={16} className={loading ? "spinning" : ""} />
             Làm mới
           </CButton>
         </CCardHeader>
@@ -253,9 +257,9 @@ export default function PackageStatistics() {
                     </CTableDataCell>
                     <CTableDataCell>
                       {pkg.isActive ? (
-                        <CBadge color="success">Đang hoạt động</CBadge>
+                        <CBadge color="success">Active</CBadge>
                       ) : (
-                        <CBadge color="secondary">Không hoạt động</CBadge>
+                        <CBadge color="danger">Inactive</CBadge>
                       )}
                     </CTableDataCell>
                     <CTableDataCell>
@@ -290,14 +294,12 @@ export default function PackageStatistics() {
         onClose={handleCloseModal}
         size="xl"
         backdrop="static"
+        centered
       >
         <CModalHeader>
           <CModalTitle>
             Chi tiết gói: {selectedPackage?.packageName || "N/A"}
           </CModalTitle>
-          <CButton color="secondary" onClick={handleCloseModal}>
-            <X size={16} />
-          </CButton>
         </CModalHeader>
         <CModalBody>
           {loadingDetail ? (
@@ -317,9 +319,9 @@ export default function PackageStatistics() {
                   <div>
                     <strong>Trạng thái:</strong>{" "}
                     {packageDetail.isActive ? (
-                      <CBadge color="success">Đang hoạt động</CBadge>
+                      <CBadge color="success">Active</CBadge>
                     ) : (
-                      <CBadge color="secondary">Không hoạt động</CBadge>
+                      <CBadge color="danger">Inactive</CBadge>
                     )}
                   </div>
                   <div>
@@ -375,12 +377,12 @@ export default function PackageStatistics() {
                               {sub.isActive ? (
                                 <CBadge color="success">
                                   <CheckCircle size={12} style={{ marginRight: "4px" }} />
-                                  Đang hoạt động
+                                  Active
                                 </CBadge>
                               ) : (
-                                <CBadge color="secondary">
+                                <CBadge color="danger">
                                   <XCircle size={12} style={{ marginRight: "4px" }} />
-                                  Hết hạn
+                                  Inactive
                                 </CBadge>
                               )}
                             </CTableDataCell>
