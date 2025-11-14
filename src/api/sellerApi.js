@@ -474,7 +474,7 @@ unhidePostById: async (postId) => {
       throw error;
     }
   },
-//=======================LẤY SỐ LƯỢNG SẢN PHẨM ĐANG BÁN========================
+//=======================LẤY SỐ LƯỢNG SẢN PHẨM ĐANG BÁN - SELLER DASHBOARD LUÔN========================
   // Lấy tổng số sản phẩm đang bán (active posts) của seller hiện tại
   // API: GET /api/v1/seller/active-post
   getActivePosts: async () => {

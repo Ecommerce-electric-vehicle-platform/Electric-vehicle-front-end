@@ -65,6 +65,32 @@
   color: #198754 !important;
 }
 
+/* Badge "Đang giữ" màu cam với chữ trắng */
+.status-holding-badge,
+.badge.status-holding-badge,
+span.badge.status-holding-badge,
+.system-wallets-page .status-holding-badge,
+.system-wallets-page .badge.status-holding-badge,
+.system-wallets-page span.badge.status-holding-badge {
+  background-color: #ee6e13bd !important; /* Màu cam (orange-500) */
+  background-image: none !important; /* Bỏ linear-gradient của CoreUI */
+  color: #ffffff !important; /* Chữ trắng */
+  border-color: #f97316 !important;
+  border: none !important;
+  padding: 0.375rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  border-radius: 0.375rem !important;
+  display: inline-block !important;
+}
+
+.status-holding-badge:hover,
+.badge.status-holding-badge:hover,
+span.badge.status-holding-badge:hover {
+  background-color: #ea580c !important; /* Cam đậm hơn khi hover */
+  border-color: #ea580c !important;
+}
+
 /* Compact refresh button - nhỏ lại và dịch về bên phải */
 .refresh-btn-compact {
   padding: 0.375rem 0.5rem !important;

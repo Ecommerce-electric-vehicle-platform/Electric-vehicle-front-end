@@ -2,6 +2,111 @@
   padding: 1rem;
 }
 
+/* Button làm mới - style màu xám với icon và text trắng */
+.refresh-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem !important;
+  border-radius: 0.375rem !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+  transition: background 0.15s, color 0.15s !important;
+  letter-spacing: 0.01em !important;
+  border: none !important;
+  background: #6b7280 !important; /* Màu xám đậm */
+  color: #ffffff !important; /* Text trắng */
+  min-width: 0 !important;
+  width: auto !important;
+  justify-content: center !important;
+}
+
+/* Override tất cả style của CoreUI */
+.refresh-btn.btn,
+.refresh-btn[class*="btn"] {
+  background: #6b7280 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 600px) {
+  .refresh-btn {
+    padding: 0.27rem 0.65rem !important;
+    font-size: 0.95rem !important;
+    max-width: 120px !important;
+  }
+}
+
+.refresh-btn:hover,
+.refresh-btn:focus {
+  background: #4b5563 !important; /* Xám đậm hơn khi hover */
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.refresh-btn.btn:hover,
+.refresh-btn[class*="btn"]:hover {
+  background: #4b5563 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.refresh-btn:hover svg,
+.refresh-btn:focus svg {
+  color: #fff !important;
+  stroke: #fff !important;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.65 !important;
+  color: #ffffff !important;
+  background: #9ca3af !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.refresh-btn.btn:disabled,
+.refresh-btn[class*="btn"]:disabled {
+  background: #9ca3af !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.refresh-btn svg {
+  vertical-align: middle;
+  color: #ffffff !important; /* Icon trắng */
+  stroke-width: 2;
+  display: inline-block !important;
+  flex-shrink: 0;
+}
+
+.refresh-btn:not(:disabled) {
+  color: #ffffff !important; /* Text trắng */
+}
+
+.refresh-btn:not(:disabled) svg {
+  color: #ffffff !important; /* Icon trắng */
+  fill: none;
+  stroke: currentColor;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .statistics-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -10,24 +115,57 @@
 }
 
 .summary-card {
-  background: white;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   padding: 1.5rem;
   display: flex;
   align-items: center;
   gap: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.summary-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #3b82f6 0%, #22c55e 100%);
+  transition: width 0.3s ease;
 }
 
 .summary-card:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+}
+
+.summary-card:hover::before {
+  width: 6px;
 }
 
 .summary-card svg {
   color: #3b82f6;
   flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.2));
+}
+
+/* Màu sắc riêng cho từng card */
+.summary-card:nth-child(1) svg {
+  color: #3b82f6; /* Xanh dương cho Tổng số gói */
+}
+
+.summary-card:nth-child(2) svg {
+  color: #22c55e; /* Xanh lá cho Tổng người mua */
+}
+
+.summary-card:nth-child(3) svg {
+  color: #f59e0b; /* Vàng cam cho Tổng doanh thu */
 }
 
 .summary-label {
@@ -103,14 +241,102 @@
   border-radius: 0.375rem;
 }
 
+/* Badge "Đang hoạt động" màu xanh lá */
+.badge-success,
+.badge[class*="success"],
+span.badge[class*="success"],
+.package-statistics-page .badge-success,
+.package-statistics-page .badge[class*="success"],
+.package-statistics-page span.badge[class*="success"],
+.package-detail-info .badge-success,
+.package-detail-info .badge[class*="success"],
+.package-detail-info span.badge[class*="success"] {
+  background-color: #22c55e !important; /* Màu xanh lá đẹp */
+  background-image: none !important; /* Bỏ linear-gradient của CoreUI */
+  color: #ffffff !important;
+  border-color: #22c55e !important;
+  border: none !important;
+}
+
+.badge-success:hover,
+.badge[class*="success"]:hover,
+span.badge[class*="success"]:hover {
+  background-color: #16a34a !important; /* Xanh lá đậm hơn khi hover */
+  border-color: #16a34a !important;
+}
+
+/* Badge "Inactive" màu đỏ */
+.badge-danger,
+.badge[class*="danger"],
+span.badge[class*="danger"],
+.package-statistics-page .badge-danger,
+.package-statistics-page .badge[class*="danger"],
+.package-statistics-page span.badge[class*="danger"],
+.package-detail-info .badge-danger,
+.package-detail-info .badge[class*="danger"],
+.package-detail-info span.badge[class*="danger"] {
+  background-color: #ef4444 !important; /* Màu đỏ */
+  background-image: none !important; /* Bỏ linear-gradient của CoreUI */
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+  border: none !important;
+}
+
+.badge-danger:hover,
+.badge[class*="danger"]:hover,
+span.badge[class*="danger"]:hover {
+  background-color: #dc2626 !important; /* Đỏ đậm hơn khi hover */
+  border-color: #dc2626 !important;
+}
+
 /* Modal styles */
 .modal-xl {
-  max-width: 1200px;
+  max-width: 95% !important;
+  width: 95% !important;
+}
+
+@media (min-width: 1400px) {
+  .modal-xl {
+    max-width: 1400px !important;
+    width: 1400px !important;
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1399px) {
+  .modal-xl {
+    max-width: 1300px !important;
+    width: 1300px !important;
+  }
 }
 
 .modal-body {
   max-height: 70vh;
   overflow-y: auto;
+}
+
+/* Căn giữa modal */
+.modal {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal-dialog {
+  margin: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  min-height: calc(100% - 3.5rem);
+}
+
+.modal-dialog-centered {
+  display: flex !important;
+  align-items: center !important;
+  min-height: calc(100% - 3.5rem);
+}
+
+.modal-content {
+  margin: auto;
+  position: relative;
 }
 
 /* Pagination styles */

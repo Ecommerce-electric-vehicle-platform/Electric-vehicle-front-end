@@ -414,10 +414,10 @@ export const updateEscrowEndAt = async (systemWalletId, endAt) => {
  * ================================
  */
 
-// GET /api/v1/packages/active - Lấy danh sách active subscription packages (public hoặc admin)
+// GET /api/v1/admin/subscription-packages - Lấy danh sách subscription packages (admin only)
 export const getSubscriptionPackages = async (page = 0, size = 10) => {
   try {
-    const res = await adminAxios.get(`/api/v1/packages/active`, {
+    const res = await adminAxios.get(`/api/v1/admin/subscription-packages`, {
       params: { page, size },
     });
     return res.data;
@@ -483,7 +483,7 @@ export const updateSubscriptionPackage = async (packageId, packageData) => {
   }
 };
 
-
+//===============================CHI TIẾT DOANH THU CỦA TỪNG PACKAGE===============================
 // GET /api/v1/admin/subscription-packages/statistics - Lấy thống kê tất cả packages
 export const getPackageStatistics = async () => {
   try {
