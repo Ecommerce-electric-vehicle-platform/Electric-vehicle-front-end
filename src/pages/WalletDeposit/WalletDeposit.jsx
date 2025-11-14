@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Lock } from "lucide-react";
+import { Lock, AlertCircle } from "lucide-react";
 import vnpayApi from "../../api/vnpayApi";
 import momoApi from "../../api/momoApi";
 import { useWalletBalance } from "../../hooks/useWalletBalance";
@@ -203,7 +203,10 @@ export default function WalletDeposit() {
                     </div>
 
                     {error && (
-                        <div className="error-message">{error}</div>
+                        <div className="error-message">
+                            <AlertCircle size={18} />
+                            <span>{error}</span>
+                        </div>
                     )}
 
                     <button
