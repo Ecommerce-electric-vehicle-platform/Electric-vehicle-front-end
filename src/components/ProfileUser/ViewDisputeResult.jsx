@@ -14,9 +14,15 @@ const STATUS_TYPES = {
 };
 
 
-// --- DISPUTECARD COMPONENT (GIỮ NGUYÊN) ---
+// --- DISPUTECARD 
 const DisputeCard = ({ dispute, orderId }) => {
     const [selectedImage, setSelectedImage] = useState(null);
+
+  const formatCurrency = (amount) =>
+        new Intl.NumberFormat("vi-VN", {
+            style: "currency",
+            currency: "VND",
+        }).format(amount || 0);
 
     const getStatusConfig = (status) => {
         switch(status) {
@@ -90,6 +96,30 @@ const DisputeCard = ({ dispute, orderId }) => {
                         <p className="resolution">{dispute.resolution}</p>
                     </div>
                 )}
+
+                {dispute.status === STATUS_TYPES.ACCEPTED && dispute.refundAmount > 0 && (
+                    <div className="info-section refund-details">
+                        <h3 className="section-title" style={{ color: '#28a745' }}>
+                            Thông tin hoàn lại (Đã chấp nhận)
+                        </h3>
+                        
+                        <div className="refund-line">
+                            <span className="label">Số tiền hoàn lại:</span>
+                            <span className="value">
+                                <strong>{formatCurrency(dispute.refundAmount)}</strong>
+                            </span>
+                        </div>
+
+                        {dispute.refundPercent !== null && (
+                            <div className="refund-line">
+                                <span className="label">Phần trăm hoàn lại:</span>
+                                <span className="value">{dispute.refundPercent}%</span>
+                            </div>
+                        )}
+                       
+                    </div>
+                )}
+
                 {/* Bằng chứng */}
                 {dispute.evidences && dispute.evidences.length > 0 && (
                     <div className="info-section">

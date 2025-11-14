@@ -50,6 +50,7 @@ import DisputeForm from '../../components/BuyerRaiseDispute/DisputeForm';
 import DisputeModal from '../../components/ui/DisputeModal';
 import CancelOrderRequest from '../../components/CancelOrderModal/CancelOrderRequest';
 import { Toast } from '../../components/Toast/Toast';
+import ViewDisputeResult from '../../components/ProfileUser/ViewDisputeResult';
 
 function OrderTracking() {
     const { orderId } = useParams();
@@ -66,6 +67,10 @@ function OrderTracking() {
     const [confirming, setConfirming] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [showToast, setShowToast] = useState(false);
+
+    const [hasAnyDispute, setHasAnyDispute] = useState(false);
+    const [isDisputePending, setIsDisputePending] = useState(false);
+    const [isViewingDisputeResult, setIsViewingDisputeResult] = useState(false);
 
     const showToastMessage = (message) => {
         if (!message) return;
@@ -241,6 +246,15 @@ function OrderTracking() {
         }
     };
 
+    const handleViewDisputeResult = () => {
+    // Mở component ViewDisputeResult (cần import nó nếu chưa có, hoặc dùng modal/nav)
+    setIsViewingDisputeResult(true); 
+};
+
+// 👇 HÀM ĐÓNG KẾT QUẢ KHIẾU NẠI (Khi người dùng muốn quay lại chi tiết đơn hàng)
+const handleCloseDisputeResult = () => {
+    setIsViewingDisputeResult(false);
+};
     // Xử lý đánh giá đơn hàng
     const handleRateOrder = () => {
         const realId = order?.realId || order?.id || orderId;
@@ -470,6 +484,54 @@ function OrderTracking() {
             return;
         }
     }, [navigate]);
+
+    // === LOGIC FETCH TRẠNG THÁI KHIẾU NẠI ===
+useEffect(() => {
+    let isMounted = true;
+    const checkDisputeStatus = async () => {
+        const realId = order?.realId || order?.id || orderId;
+        if (!realId) return;
+
+        try {
+            // 1. Kiểm tra đã có khiếu nại nào chưa (Dùng API lấy danh sách)
+            const disputeListRes = await profileApi.getDisputeByOrderId(realId);
+            const data = disputeListRes.data?.data;
+            const disputesArray = Array.isArray(data) ? data : (data ? [data] : []);
+            
+            if (!isMounted) return;
+            
+            const hasDispute = disputesArray.length > 0;
+            setHasAnyDispute(hasDispute);
+
+            if (hasDispute) {
+                // 2. Nếu đã có, kiểm tra có đang Pending không (Dùng API mới)
+                const pendingRes = await profileApi.checkOrderDisputePendingStatus(realId);
+                const isPending = pendingRes.data?.data === true;
+                
+                if (!isMounted) return;
+                setIsDisputePending(isPending);
+            } else {
+                setIsDisputePending(false);
+            }
+
+        } catch (error) {
+            if (isMounted) {
+                // Nếu API trả lỗi (vd: 404/không tìm thấy), coi như chưa có khiếu nại
+                console.warn('[OrderTracking] Failed to check dispute status:', error);
+                setHasAnyDispute(false);
+                setIsDisputePending(false);
+            }
+        }
+    };
+
+    if (orderId) {
+        checkDisputeStatus();
+    }
+
+    return () => { isMounted = false; };
+}, [orderId, order?.realId, order?.id]); 
+
+
 
     // Tải thông tin đơn hàng - ưu tiên Order Detail API, fallback order history hoặc localStorage
     useEffect(() => {
@@ -1225,15 +1287,25 @@ function OrderTracking() {
     }
     // 👇 HÀM MỞ FORM KHIẾU NẠI
     const handleRaiseDisputeClick = () => {
+        if (isDisputePending) {
+            showToastMessage("Đơn khiếu nại của bạn đang trong quá trình xử lý. Vui lòng quay lại sau.");
+            return;
+        }
         setIsDisputeFormVisible(true);
     };
 
     // 👇 HÀM ĐÓNG FORM (Dùng khi Submit thành công hoặc nhấn Hủy)
-    const handleDisputeFormClose = () => {
-        setIsDisputeFormVisible(false);
-        // Có thể thêm logic reload order details để thấy trạng thái khiếu nại (nếu cần)
-        // loadOrder(); 
-    };
+    const handleDisputeFormClose = (submittedSuccessfully = false) => {
+    setIsDisputeFormVisible(false);
+    
+    if (submittedSuccessfully) {
+        showToastMessage("Đơn khiếu nại đã được gửi thành công!");
+        
+        // CẬP NHẬT TRẠNG THÁI UI:
+        setHasAnyDispute(true);    // Kích hoạt nút "Xem khiếu nại đã gửi"
+        setIsDisputePending(true); // Kích hoạt logic chặn trên nút "Gửi khiếu nại"
+    }
+};
     // Xử lý về trang chủ
     const handleGoHome = () => {
         navigate('/');
@@ -1279,7 +1351,7 @@ function OrderTracking() {
         );
     }
 
-    if (!order) {
+   if (!order)  {
         return (
             <>
                 {toastPortal}
@@ -1297,6 +1369,24 @@ function OrderTracking() {
         );
     }
 
+if (isViewingDisputeResult) {
+    return (
+        <div className="order-tracking-page">
+            <div className="order-tracking-container">
+                <button 
+                    className="btn btn-secondary back-to-tracking-btn"
+                    onClick={handleCloseDisputeResult}
+                    style={{ marginBottom: '20px' }}
+                >
+                    <ArrowLeft size={18} style={{ marginRight: '8px' }} />
+                    Quay lại chi tiết đơn hàng #{order.id}
+                </button>
+                {/* Sử dụng ViewDisputeResult component */}
+                <ViewDisputeResult orderId={realIdForOrder} /> 
+            </div>
+        </div>
+    );
+}
     // Get status from multiple possible locations (same as in handleConfirmOrder)
     const rawStatusUpper = String(
         order?.rawStatus ||
@@ -1344,7 +1434,7 @@ function OrderTracking() {
     const isDeliveredStatus = normalizedStatus === 'delivered' || rawStatusUpper === 'DELIVERED' || isOrderCompleted;
 
     // Chỉ hiển thị nút đánh giá và khiếu nại khi đơn hàng đã completed (sau khi xác nhận)
-    const canRateOrDispute = isOrderCompleted;
+    //const canRateOrDispute = isOrderCompleted;
 
     const paymentStatusInfo = getPaymentStatusInfo(order.paymentMethod, order.rawStatus);
     const isCancelled = order.status === 'cancelled' || order.status === 'canceled';
@@ -1596,6 +1686,9 @@ function OrderTracking() {
                                     {order.trackingNumber && (
                                         <div className="info-line"><Package size={16} /> Mã vận đơn: {order.trackingNumber}</div>
                                     )}
+                                    {completedAt && (
+                                        <div className="info-line"><CheckCircle size={16} /> Xác nhận hoàn thành: {formatDateTime(completedAt)}</div>
+                                    )}
                                 </div>
                                 <div className="info-card">
                                     <div className="card-head">
@@ -1742,47 +1835,58 @@ function OrderTracking() {
                                                     {confirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
                                                 </AnimatedButton>
                                             )}
-                                            {/* Chỉ hiển thị nút đánh giá và khiếu nại khi đơn hàng đã completed (sau khi xác nhận) */}
-                                            {canRateOrDispute && (
+                                            {isDisputeFormVisible ? (
+                                                <DisputeForm
+                                                    initialOrderId={order.realId || order.id || orderId}
+                                                    onCancelDispute={handleDisputeFormClose}
+                                                    onDisputeSubmitted={() => handleDisputeFormClose(true)}
+                                                />
+                                            ) : (
+                                                // Nếu Form KHÔNG mở, hiển thị các nút hành động
                                                 <>
-                                                    {isDisputeFormVisible ? (
-                                                        // 1. Hiển thị Form nếu isDisputeFormVisible là true
-                                                        <DisputeForm
-                                                            initialOrderId={order.realId || order.id || orderId}
-                                                            onCancelDispute={handleDisputeFormClose}
-                                                        />
-                                                    ) : (
-                                                        // 2. Hiển thị nút nếu form chưa mở
+                                                    {/* NÚT 1: Gửi khiếu nại (Luôn hiển thị khi Form đóng) */}
+                                                    
+                                                    <AnimatedButton
+                                                        variant="warning"
+                                                        onClick={handleRaiseDisputeClick}
+                                                        size="sm"
+                                                    >
+                                                        <MessageSquareWarning size={16} />
+                                                        Gửi khiếu nại
+                                                    </AnimatedButton>
+
+                                                    {/* NÚT 2: Xem khiếu nại đã gửi (Chỉ hiển thị khi đã có dispute) */}
+                                                    {hasAnyDispute && (
                                                         <AnimatedButton
-                                                            variant="warning"
-                                                            onClick={handleRaiseDisputeClick}
+                                                            variant="secondary" // Có thể dùng màu khác để phân biệt
+                                                            onClick={handleViewDisputeResult}
                                                             size="sm"
                                                         >
                                                             <MessageSquareWarning size={16} />
-                                                            Khiếu nại
-                                                        </AnimatedButton>
-                                                    )}
-                                                    {hasReview ? (
-                                                        <AnimatedButton
-                                                            variant="secondary"
-                                                            onClick={handleViewReview}
-                                                            size="sm"
-                                                        >
-                                                            <Star size={16} />
-                                                            Xem đánh giá
-                                                        </AnimatedButton>
-                                                    ) : (
-                                                        <AnimatedButton
-                                                            variant="success"
-                                                            shimmer={true}
-                                                            onClick={handleRateOrder}
-                                                            size="sm"
-                                                        >
-                                                            <Star size={16} />
-                                                            Đánh giá
+                                                            Xem khiếu nại đã gửi
                                                         </AnimatedButton>
                                                     )}
                                                 </>
+                                            )}
+                                            {hasReview ? (
+                                                <AnimatedButton
+                                                    variant="secondary"
+                                                    onClick={handleViewReview}
+                                                    size="sm"
+                                                >
+                                                    <Star size={16} />
+                                                    Xem đánh giá
+                                                </AnimatedButton>
+                                            ) : (
+                                                <AnimatedButton
+                                                    variant="success"
+                                                    shimmer={true}
+                                                    onClick={handleRateOrder}
+                                                    size="sm"
+                                                >
+                                                    <Star size={16} />
+                                                    Đánh giá
+                                                </AnimatedButton>
                                             )}
                                         </div>
                                     </div>
