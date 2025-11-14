@@ -1144,7 +1144,10 @@ function OrderList() {
                     { key: 'track', label: 'Theo dõi vận đơn', className: 'btn btn-primary btn-sm btn-animate', onClick: () => handleTrackShipment(orderId) }
                 ];
             case 'delivered':
+                // Đơn hàng đã giao nhưng chưa xác nhận - không hiển thị nút đánh giá/khiếu nại
+                return [];
             case 'completed': {
+                // Chỉ hiển thị nút đánh giá và khiếu nại khi đơn hàng đã completed (đã xác nhận)
                 const isReviewed = reviewedMap[orderId]?.hasReview === true;
                 return [
                     { key: 'dispute', label: 'Khiếu nại', className: 'btn btn-warning btn-sm btn-animate', onClick: () => handleRaiseDispute(orderId) },
@@ -1469,8 +1472,11 @@ function OrderList() {
                                                 actualStatus = 'confirmed';
                                             } else if (upperRaw === 'SHIPPED' || upperRaw === 'DELIVERING') {
                                                 actualStatus = 'shipping';
-                                            } else if (upperRaw === 'DELIVERED' || upperRaw === 'COMPLETED' || upperRaw === 'SUCCESS') {
+                                            } else if (upperRaw === 'DELIVERED') {
                                                 actualStatus = 'delivered';
+                                            } else if (upperRaw === 'COMPLETED' || upperRaw === 'SUCCESS') {
+                                                // QUAN TRỌNG: COMPLETED và SUCCESS phải là 'completed', không phải 'delivered'
+                                                actualStatus = 'completed';
                                             } else if (upperRaw === 'CANCELLED' || upperRaw === 'CANCELED' || upperRaw === 'FAILED') {
                                                 actualStatus = 'canceled';
                                             }
@@ -1482,11 +1488,11 @@ function OrderList() {
                                         const DisplayStatusIcon = displayStatusInfo.icon;
 
                                         // Check if order is completed from multiple sources
+                                        // QUAN TRỌNG: Chỉ coi là completed khi thực sự là completed, không phải delivered
                                         const isCompleted = rawStatus === 'COMPLETED' ||
                                             rawStatus === 'SUCCESS' ||
                                             normalizedStatus === 'completed' ||
                                             normalizedStatus === 'success' ||
-                                            actualStatus === 'delivered' ||
                                             actualStatus === 'completed';
 
                                         // Only show confirm button if status is DELIVERED and NOT completed
@@ -1620,17 +1626,21 @@ function OrderList() {
                                                                     </button>
                                                                 )}
 
-                                                                {(actualStatus === 'delivered' || actualStatus === 'completed') && (
+                                                                {/* Nút xác nhận đơn hàng - chỉ hiển thị khi delivered và chưa completed */}
+                                                                {actualStatus === 'delivered' && canShowConfirmOrder && (
+                                                                    <button
+                                                                        className="btn btn-primary btn-sm btn-animate"
+                                                                        onClick={(e) => { e.stopPropagation(); handleConfirmDeliveredOrder(order); }}
+                                                                        disabled={isConfirming}
+                                                                    >
+                                                                        {isConfirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
+                                                                    </button>
+                                                                )}
+                                                                
+                                                                {/* Nút đánh giá và khiếu nại - chỉ hiển thị khi đơn hàng đã completed */}
+                                                                {/* Hiển thị khi actualStatus là completed HOẶC isCompleted là true */}
+                                                                {(actualStatus === 'completed' || isCompleted) && (
                                                                     <>
-                                                                        {canShowConfirmOrder && (
-                                                                            <button
-                                                                                className="btn btn-primary btn-sm btn-animate"
-                                                                                onClick={(e) => { e.stopPropagation(); handleConfirmDeliveredOrder(order); }}
-                                                                                disabled={isConfirming}
-                                                                            >
-                                                                                {isConfirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
-                                                                            </button>
-                                                                        )}
                                                                         {reviewedMap[order.id]?.hasReview ? (
                                                                             <button
                                                                                 className="btn btn-secondary btn-sm btn-animate"
@@ -1647,34 +1657,28 @@ function OrderList() {
                                                                                 Đánh giá
                                                                             </button>
                                                                         )}
-                                                                        <button
-                                                                            className="btn btn-warning btn-sm btn-animate"
-                                                                            style={{ backgroundColor: '#ffc107', color: '#212529', filter: 'drop-shadow(0 0 8px rgba(255,193,7,0.45))' }}
-                                                                            onClick={(e) => { e.stopPropagation(); handleRaiseDispute(order.id); }}
-                                                                        >
-                                                                            Khiếu nại
-                                                                        </button>
-                                                                  
-                                                                    {order._raw?.disputeStatus || viewingDisputeResultId === order.id ? (
-                                                                        // HIỂN THỊ: Xem khiếu nại (Đơn đã được khiếu nại)
-                                                                        <button
-                                                                            className="btn btn-secondary btn-sm btn-animate"
-                                                                            onClick={(e) => { e.stopPropagation(); handleViewDisputeResult(order.id); }}
-                                                                        >
-                                                                            Xem khiếu nại
-                                                                        </button>
-                                                                    ) : (
-                                                                        // HIỂN THỊ: Khiếu nại (Chưa khiếu nại)
-                                                                        <button
-                                                                            className="btn btn-warning btn-sm btn-animate"
-                                                                            style={{ backgroundColor: '#ffc107', color: '#212529', filter: 'drop-shadow(0 0 8px rgba(255,193,7,0.45))' }}
-                                                                            onClick={(e) => { e.stopPropagation(); handleRaiseDispute(order.id, order); }} // <<< ĐÃ TRUYỀN 'order'
-                                                                        >
-                                                                            Khiếu nại
-                                                                        </button>
-                                                                    )}
-                                                                </>
-                                                            )}
+                                                                        
+                                                                        {/* Chỉ hiển thị 1 nút khiếu nại - kiểm tra xem đã có khiếu nại chưa */}
+                                                                        {order._raw?.disputeStatus || viewingDisputeResultId === order.id ? (
+                                                                            // HIỂN THỊ: Xem khiếu nại (Đơn đã được khiếu nại)
+                                                                            <button
+                                                                                className="btn btn-secondary btn-sm btn-animate"
+                                                                                onClick={(e) => { e.stopPropagation(); handleViewDisputeResult(order.id); }}
+                                                                            >
+                                                                                Xem khiếu nại
+                                                                            </button>
+                                                                        ) : (
+                                                                            // HIỂN THỊ: Khiếu nại (Chưa khiếu nại)
+                                                                            <button
+                                                                                className="btn btn-warning btn-sm btn-animate"
+                                                                                style={{ backgroundColor: '#ffc107', color: '#212529', filter: 'drop-shadow(0 0 8px rgba(255,193,7,0.45))' }}
+                                                                                onClick={(e) => { e.stopPropagation(); handleRaiseDispute(order.id, order); }}
+                                                                            >
+                                                                                Khiếu nại
+                                                                            </button>
+                                                                        )}
+                                                                    </>
+                                                                )}
                                                         </>
                                                     )}
                                                               
