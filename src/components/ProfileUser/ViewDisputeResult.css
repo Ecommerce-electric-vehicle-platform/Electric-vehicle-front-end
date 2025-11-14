@@ -205,6 +205,36 @@
   line-height: 1.5;
 }
 
+/* Styling cho Refund Details */
+.refund-details {
+    border: 1px solid #bbf7d0; /* Màu viền xanh nhạt */
+    background-color: #f0fdf4; /* Nền xanh rất nhạt */
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+}
+
+.refund-details .section-title {
+    color: #15803d !important; /* Màu xanh lá đậm */
+    font-size: 0.9rem;
+}
+
+.refund-line {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-size: 0.95rem;
+}
+
+.refund-line .label {
+    font-weight: 500;
+    color: #374151;
+}
+
+.refund-line .value strong {
+    color: #15803d; /* Highlight số tiền hoàn lại */
+}
+
 /* Evidence Grid */
 .evidence-grid {
   display: grid;

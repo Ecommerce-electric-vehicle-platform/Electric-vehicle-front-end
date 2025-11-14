@@ -119,13 +119,19 @@ const profileApi = {
         return axiosInstance.get(`/api/v1/dispute/buyer/${buyerId}`);
     },
 
+checkOrderDisputePendingStatus: (orderId) => { 
+       
+        return axiosInstance.get(`/api/v1/dispute/order/${orderId}/pending-status`); 
+    },
+
+
   getSellerKycDocuments: () => {
     // API này trả về tất cả thông tin KYC đã được duyệt
     return axiosInstance.get('/api/v1/seller/profile');
   },
 
   updateSellerKyc: (formData) => {
-    // Endpoint: POST /api/v1/kyc/update (Dạng multipart/form-data)
+    
     // Nhận: store_name, business_license (file), store_policy (file)
     return axiosInstance.post('/api/v1/kyc/update', formData, {
       headers: { "Content-Type": "multipart/form-data" },

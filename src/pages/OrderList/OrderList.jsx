@@ -28,7 +28,7 @@ import CancelOrderRequest from "../../components/CancelOrderModal/CancelOrderReq
 import { fetchPostProductById } from "../../api/productApi";
 import ViewDisputeResult from '../../components/ProfileUser/ViewDisputeResult';
 import { Toast } from '../../components/Toast/Toast';
-
+import profileApi from '../../api/profileApi';
 function OrderList() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -48,6 +48,8 @@ function OrderList() {
     const [selectedCancelOrderId, setSelectedCancelOrderId] = useState(null);
     const [viewingDisputeResultId, setViewingDisputeResultId] = useState(null);
     const [confirmingOrders, setConfirmingOrders] = useState({});
+    // Khai báo cờ để kiểm soát nút 'Xem khiếu nại'
+    //const disputeExistsLocally = order.disputeExists || false;
     const [toastMessage, setToastMessage] = useState('');
     const [showToast, setShowToast] = useState(false);
 
@@ -151,10 +153,36 @@ function OrderList() {
             // Không merge dữ liệu localStorage. Chỉ hiển thị đơn từ backend để đảm bảo tính chính xác.
 
             const reversed = list.reverse();
-            if (isMounted) setOrders(reversed);
+            const ordersWithDisputeFlags = await Promise.all(reversed.map(async (order) => {
+                const realOrderId = order._raw?.id ?? order.id;
+
+                // Bỏ qua nếu không có id hợp lệ (logic đã có trong code của bạn)
+                const isNumericId = /^\d+$/.test(String(realOrderId));
+                if (!realOrderId || !isNumericId) return order;
+
+                let updatedOrder = { ...order };
+
+                // Gọi API chi tiết để kiểm tra sự tồn tại của khiếu nại
+                try {
+                    const disputeRes = await profileApi.getDisputeByOrderId(realOrderId);
+                    const disputes = disputeRes.data?.data;
+                    const latest = Array.isArray(disputes) ? disputes[0] : disputes;
+
+                    if (latest) {
+                        updatedOrder.disputeExists = true;
+                        updatedOrder.disputeStatus = latest.status; // <-- QUAN TRỌNG
+                    }
+                } catch (error) {
+                    // Lỗi 404 (Chưa có dispute) hoặc lỗi khác -> Không cần làm gì, cờ vẫn là false (hoặc undefined)
+                    console.log('[Dispute Check Error]', error);
+                }
+                return updatedOrder;
+            }));
+
+            if (isMounted) setOrders(ordersWithDisputeFlags); // <--- CHỈ GỌI SETORDERS SAU KHI CÓ CỜ DISPUTE
 
             // Cập nhật trạng thái đơn hàng từ API order detail và shipping status
-            if (isMounted && reversed.length > 0) {
+            if (isMounted && ordersWithDisputeFlags.length > 0) {
                 console.log('[OrderList] Updating order statuses from API...');
                 const statusUpdateTasks = reversed.map(async (order) => {
                     try {
@@ -1012,11 +1040,24 @@ function OrderList() {
 
 
     const handleDisputeSuccess = (submittedOrderId) => {
-        // 1. Thoát khỏi DisputeForm và chuyển sang chế độ xem kết quả
+        // 1. Thoát khỏi DisputeForm
         setSelectedDisputeOrderId(null);
+
+        // 2. Chuyển sang chế độ xem kết quả khiếu nại
         setViewingDisputeResultId(submittedOrderId);
 
-        // 2. Tải lại Orders (tùy chọn)
+        // 3. Cập nhật order trong danh sách để hiển thị nút "Xem khiếu nại"
+        setOrders(prevOrders => prevOrders.map(o => {
+            if (String(o.id) === String(submittedOrderId)) {
+                // THIẾT LẬP CỜ TỒN TẠI DISPUTE LÊN ORDER OBJECT
+                return { ...o, disputeExists: true };
+            }
+            return o;
+        }));
+
+        showToastMessage("Đơn khiếu nại đã được gửi thành công!");
+
+        // 4. Tải lại danh sách đơn hàng để cập nhật trạng thái
         setTimeout(() => { loadOrders(true); }, 500);
     };
 
@@ -1032,10 +1073,50 @@ function OrderList() {
     }
 
 
-    const handleRaiseDispute = (orderId, order) => {
+    const handleRaiseDispute = async (orderId, order) => {
         const realOrderId = order?._raw?.id ?? orderId;
-        setSelectedDisputeOrderId(realOrderId); // Mở form Dispute
-        setViewingDisputeResultId(null);  // thêm dòng này thay thế cho cái alert nha Vy
+        if (!realOrderId) return;
+
+        // Lần gọi API đầu tiên: Dùng API chi tiết để kiểm tra TẤT CẢ trạng thái (ACCEPTED, REJECTED, PENDING)
+        try {
+            const disputeDetailRes = await profileApi.getDisputeByOrderId(realOrderId);
+            const disputes = disputeDetailRes.data?.data;
+            const latestDispute = Array.isArray(disputes) ? disputes[0] : disputes; // Lấy dispute mới nhất
+
+            if (latestDispute && latestDispute.disputeId) {
+                const status = latestDispute.status;
+
+                // 1. Nếu đang xử lý → Không cho gửi
+                if (status === 'PENDING') {
+                    showToastMessage("Đơn khiếu nại của bạn đang được xử lý.");
+                    return;
+                }
+
+                // 2. Nếu đã ACCEPTED → Chỉ cho xem kết quả
+                if (status === 'ACCEPTED') {
+                    showToastMessage("Đơn khiếu nại của bạn đã được giải quyết.");
+                    setViewingDisputeResultId(realOrderId);
+                    return;
+                }
+
+                // 3. Nếu REJECTED → CHO GỬI LẠI (không return)
+                if (status === 'REJECTED') {
+                    // KHÔNG return — cho mở form khiếu nại
+                    // Không bật ViewDisputeResult
+                }
+            }
+
+
+            // 2. Nếu không tìm thấy dispute (API 404) hoặc dispute đã quá cũ và không có trạng thái terminal (ACCEPTED/REJECTED), MỞ FORM GỬI MỚI.
+            setSelectedDisputeOrderId(realOrderId);
+            setViewingDisputeResultId(null);
+
+        } catch (error) {
+            // Nếu API chi tiết thất bại (thường là 404 nếu chưa có dispute nào) -> Cho phép gửi lần đầu
+            setSelectedDisputeOrderId(realOrderId);
+            setViewingDisputeResultId(null);
+            console.warn(`[Dispute Check] No existing dispute found or API failed. Allowing new dispute.`, error);
+        }
     };
 
 
@@ -1259,6 +1340,7 @@ function OrderList() {
                     <DisputeForm
                         initialOrderId={selectedDisputeOrderId}
                         onCancelDispute={handleCancelDispute} // Thêm prop để form có thể tự thoát
+                        onDisputeSuccess={handleDisputeSuccess}
                     />
                 </div>
             </>
@@ -1510,6 +1592,22 @@ function OrderList() {
                                         const isConfirming = Boolean(confirmingOrders[confirmStateKey]);
 
                                         const imgSrc = extractImageFromOrder(order) || '/vite.svg';
+                                        const disputeStatus = order.disputeStatus || null; // ACCEPTED / REJECTED / PENDING / null
+                                        const hasDispute = Boolean(order.disputeExists);
+
+                                        // Chỉ cho gửi khiếu nại khi:
+                                        // - đơn delivered hoặc completed
+                                        // - chưa bị hủy
+                                        // - chưa có dispute hoặc dispute bị REJECTED
+                                        const canDispute =
+                                            (displayStatus === "delivered" || displayStatus === "completed") &&
+                                            !isCancelled &&
+                                            (disputeStatus === null || disputeStatus === "REJECTED");
+
+                                        // Chỉ cho xem khiếu nại khi đã tồn tại dispute hoặc status nằm trong 3 trạng thái
+                                        const canViewDispute =
+                                            hasDispute || ["PENDING", "ACCEPTED", "REJECTED"].includes(disputeStatus);
+
 
                                         return (
                                             <div
@@ -1594,90 +1692,67 @@ function OrderList() {
                                                         Theo dõi đơn hàng
                                                     </button>
                                                     {/* Nhóm bên phải: Actions theo trạng thái */}
-                                                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                                                        {/* Actions cho đơn đã hủy */}
-                                                        {isCancelled && (
+
+                                                    <div style={{ marginLeft: 'auto', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+
+                                                        {/* 1. NÚT XÁC NHẬN ĐƠN HÀNG (Nếu cần) */}
+                                                        {canShowConfirmOrder && (
                                                             <button
-                                                                className="btn btn-secondary btn-sm btn-animate"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleReorder(order.id);
-                                                                }}
+                                                                className="btn btn-primary btn-sm btn-animate"
+                                                                onClick={(e) => { e.stopPropagation(); handleConfirmDeliveredOrder(order); }}
+                                                                disabled={isConfirming}
                                                             >
-                                                                Đặt lại
+                                                                {isConfirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
                                                             </button>
                                                         )}
-                                                        {/* Actions cho đơn chưa hủy */}
-                                                        {!isCancelled && (
-                                                            <>
-                                                                {/* Cho phép hủy khi pending hoặc confirmed và chưa handed-over */}
-                                                                {canCancelOrder(order) && (
-                                                                    <button
-                                                                        className="btn btn-danger btn-sm btn-animate"
-                                                                        onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id, order); }}
-                                                                    >
-                                                                        Hủy đơn
-                                                                    </button>
-                                                                )}
 
-                                                                {(actualStatus === 'delivered' || actualStatus === 'completed') && (
-                                                                    <>
-                                                                        {canShowConfirmOrder && (
-                                                                            <button
-                                                                                className="btn btn-primary btn-sm btn-animate"
-                                                                                onClick={(e) => { e.stopPropagation(); handleConfirmDeliveredOrder(order); }}
-                                                                                disabled={isConfirming}
-                                                                            >
-                                                                                {isConfirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
-                                                                            </button>
-                                                                        )}
-                                                                        {reviewedMap[order.id]?.hasReview ? (
-                                                                            <button
-                                                                                className="btn btn-secondary btn-sm btn-animate"
-                                                                                onClick={(e) => { e.stopPropagation(); handleViewReview(order.id, order); }}
-                                                                            >
-                                                                                Xem đánh giá
-                                                                            </button>
-                                                                        ) : (
-                                                                            <button
-                                                                                className="btn btn-success btn-sm btn-animate"
-                                                                                style={{ backgroundColor: '#28a745', boxShadow: '0 0 0 0 rgba(0,0,0,0)', filter: 'drop-shadow(0 0 8px rgba(40,167,69,0.45))' }}
-                                                                                onClick={(e) => { e.stopPropagation(); handleRateOrder(order.id, order); }}
-                                                                            >
-                                                                                Đánh giá
-                                                                            </button>
-                                                                        )}
-                                                                        <button
-                                                                            className="btn btn-warning btn-sm btn-animate"
-                                                                            style={{ backgroundColor: '#ffc107', color: '#212529', filter: 'drop-shadow(0 0 8px rgba(255,193,7,0.45))' }}
-                                                                            onClick={(e) => { e.stopPropagation(); handleRaiseDispute(order.id); }}
-                                                                        >
-                                                                            Khiếu nại
-                                                                        </button>
-                                                                  
-                                                                    {order._raw?.disputeStatus || viewingDisputeResultId === order.id ? (
-                                                                        // HIỂN THỊ: Xem khiếu nại (Đơn đã được khiếu nại)
-                                                                        <button
-                                                                            className="btn btn-secondary btn-sm btn-animate"
-                                                                            onClick={(e) => { e.stopPropagation(); handleViewDisputeResult(order.id); }}
-                                                                        >
-                                                                            Xem khiếu nại
-                                                                        </button>
-                                                                    ) : (
-                                                                        // HIỂN THỊ: Khiếu nại (Chưa khiếu nại)
-                                                                        <button
-                                                                            className="btn btn-warning btn-sm btn-animate"
-                                                                            style={{ backgroundColor: '#ffc107', color: '#212529', filter: 'drop-shadow(0 0 8px rgba(255,193,7,0.45))' }}
-                                                                            onClick={(e) => { e.stopPropagation(); handleRaiseDispute(order.id, order); }} // <<< ĐÃ TRUYỀN 'order'
-                                                                        >
-                                                                            Khiếu nại
-                                                                        </button>
-                                                                    )}
-                                                                </>
-                                                            )}
-                                                        </>
-                                                    )}
-                                                              
+                                                        {/* 2. NÚT ĐÁNH GIÁ / XEM ĐÁNH GIÁ */}
+                                                        {reviewedMap[order.id]?.hasReview ? (
+                                                            <button
+                                                                className="btn btn-secondary btn-sm btn-animate"
+                                                                onClick={(e) => { e.stopPropagation(); handleViewReview(order.id, order); }}
+                                                            >
+                                                                Xem đánh giá
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                className="btn btn-success btn-sm btn-animate"
+                                                                onClick={(e) => { e.stopPropagation(); handleRateOrder(order.id, order); }}
+                                                            >
+                                                                Đánh giá
+                                                            </button>
+                                                        )}
+
+                                                        {/* 3. NÚT KHIẾU NẠI (Vàng) - Cổng kiểm tra Pending */}
+                                                        {/* Nút này luôn hiện khi không có Form mở */}
+                                                        {canDispute && (
+                                                            <button
+                                                                className="btn btn-warning btn-sm btn-animate"
+                                                                onClick={(e) => { e.stopPropagation(); handleRaiseDispute(order.id, order); }}
+                                                            >
+                                                                Khiếu nại
+                                                            </button>
+                                                        )}
+
+                                                        {canViewDispute && (
+                                                            <button
+                                                                className="btn btn-outline-secondary btn-sm btn-animate"
+                                                                onClick={(e) => { e.stopPropagation(); handleViewDisputeResult(order.id); }}
+                                                            >
+                                                                Xem khiếu nại
+                                                            </button>
+                                                        )}
+
+                                                        {/* 5. ACTIONS CHUNG: HỦY ĐƠN (Nếu đang Pending/Confirmed và chưa Handed-over) */}
+                                                        {canCancelOrder(order) && (
+                                                            <button
+                                                                className="btn btn-danger btn-sm btn-animate"
+                                                                onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id, order); }}
+                                                            >
+                                                                Hủy đơn
+                                                            </button>
+                                                        )}
+
                                                     </div>
                                                 </div>
 
