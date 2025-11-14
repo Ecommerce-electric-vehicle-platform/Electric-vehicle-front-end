@@ -18,6 +18,28 @@ import {
     MessageSquareWarning
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../test-mock-data/data/productsData';
+
+// Hàm format ngày và giờ
+const formatDateTime = (dateString) => {
+    if (!dateString) return '—';
+    try {
+        const date = new Date(dateString);
+        const dateStr = date.toLocaleDateString("vi-VN", {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        const timeStr = date.toLocaleTimeString("vi-VN", {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        return `${dateStr} ${timeStr}`;
+    } catch (error) {
+        console.warn('[OrderTracking] formatDateTime error:', error);
+        return formatDate(dateString);
+    }
+};
 import OrderStatus from '../../components/OrderStatus/OrderStatus';
 import './OrderTracking.css';
 import { getOrderHistory, getOrderStatus, getOrderDetails, hasOrderReview, getOrderPayment, getCancelReasons, confirmOrderDelivery } from '../../api/orderApi';
@@ -317,20 +339,24 @@ const handleCloseDisputeResult = () => {
             // Use status from confirm response first, then refresh from backend
             const confirmedRawStatus = response.rawStatus || response.data?.status || 'COMPLETED';
             const confirmedNormalizedStatus = String(confirmedRawStatus).toUpperCase() === 'COMPLETED' ? 'completed' : 'delivered';
+            const completedAtTime = new Date().toISOString(); // Thời điểm xác nhận hoàn thành
 
             // Optimistically update UI immediately with confirmed status
+            // completedAt sẽ được lấy từ updatedAt khi backend trả về, nhưng tạm thời set để UI cập nhật ngay
             updateOrderState(prev => {
                 if (!prev) return prev;
                 return {
                     ...prev,
                     rawStatus: confirmedRawStatus,
                     status: confirmedNormalizedStatus,
-                    updatedAt: new Date().toISOString(),
+                    completedAt: completedAtTime, // Tạm thời set, sẽ được cập nhật từ backend updatedAt
+                    updatedAt: completedAtTime,
                     _raw: {
                         ...(prev._raw || {}),
                         rawStatus: confirmedRawStatus,
                         status: confirmedRawStatus,
-                        orderStatus: confirmedRawStatus
+                        orderStatus: confirmedRawStatus,
+                        updatedAt: completedAtTime // Backend sẽ trả về updatedAt, đó chính là completedAt
                     }
                 };
             });
@@ -366,6 +392,14 @@ const handleCloseDisputeResult = () => {
                         createdAt: orderDetailData.createdAt || order?.createdAt,
                         updatedAt: orderDetailData.updatedAt || new Date().toISOString(),
                         deliveredAt: orderDetailData.deliveredAt || order?.deliveredAt || new Date().toISOString(),
+                        // completedAt: thời điểm đơn hàng được xác nhận hoàn thành
+                        // completedAt chính là updatedAt khi đơn hàng ở trạng thái COMPLETED
+                        completedAt: (normalizedStatus === 'completed' || rawStatus === 'COMPLETED'
+                            ? (orderDetailData.completedAt ||
+                                orderDetailData._raw?.completedAt ||
+                                orderDetailData.updatedAt ||
+                                order?.completedAt)
+                            : order?.completedAt),
                         canceledAt: orderDetailData.canceledAt || order?.canceledAt,
                         cancelReason: orderDetailData.cancelReason || order?.cancelReason,
                         price: price,
@@ -591,6 +625,15 @@ useEffect(() => {
                                 try { return JSON.stringify(rawCarrier); } catch { return ''; }
                             })(),
 
+                            // Completed info: thời điểm đơn hàng được xác nhận hoàn thành
+                            // completedAt chính là updatedAt khi đơn hàng ở trạng thái COMPLETED
+                            completedAt: (orderDetailData.rawStatus === 'COMPLETED' || orderDetailData.status === 'completed'
+                                ? (orderDetailData.completedAt ||
+                                    orderDetailData._raw?.completedAt ||
+                                    orderDetailData.updatedAt ||
+                                    null)
+                                : null),
+
                             // Invoice
                             needInvoice: Boolean(orderDetailData._raw?.needInvoice || false),
 
@@ -693,13 +736,32 @@ useEffect(() => {
                         }
 
                         // Cập nhật theo nguyên tắc "không lùi trạng thái"
+                        // Thêm "completed" vào rank với giá trị cao nhất (6) để không bao giờ lùi từ completed
                         updateOrderState(prev => {
-                            const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
+                            const rank = {
+                                pending: 1,
+                                confirmed: 2,
+                                shipping: 3,
+                                delivered: 4,
+                                completed: 6,  // Completed là trạng thái cuối cùng, không được lùi
+                                success: 6,    // Success tương đương completed
+                                canceled: 5,
+                                cancelled: 5
+                            };
                             if (prev && prev.status) {
                                 const pr = rank[String(prev.status)] || 0;
                                 const nr = rank[String(mappedOrder.status)] || 0;
+                                // Không cho phép lùi trạng thái, đặc biệt là từ completed về delivered/pending
                                 const isBackward = nr > 0 && pr > 0 && nr < pr && mappedOrder.status !== 'canceled' && mappedOrder.status !== 'cancelled';
-                                if (isBackward) return prev;
+                                if (isBackward) {
+                                    console.log('[OrderTracking] Preventing backward status update:', {
+                                        from: prev.status,
+                                        to: mappedOrder.status,
+                                        prevRank: pr,
+                                        newRank: nr
+                                    });
+                                    return prev;
+                                }
                                 return { ...prev, ...mappedOrder };
                             }
                             return mappedOrder;
@@ -761,8 +823,8 @@ useEffect(() => {
                             }
                         }
 
-                        // Nếu order đã delivered nhưng chưa check review, check ngay
-                        if (mapped.status === 'delivered') {
+                        // Nếu order đã delivered hoặc completed, check review status
+                        if (mapped.status === 'delivered' || mapped.status === 'completed') {
                             const realIdForReview = beOrder._raw?.id ?? beOrder.id;
                             if (realIdForReview) {
                                 hasOrderReview(realIdForReview).then(setHasReview).catch(console.warn);
@@ -771,12 +833,27 @@ useEffect(() => {
 
                         // Cập nhật theo nguyên tắc "không lùi trạng thái"
                         updateOrderState(prev => {
-                            const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
+                            const rank = {
+                                pending: 1,
+                                confirmed: 2,
+                                shipping: 3,
+                                delivered: 4,
+                                completed: 6,
+                                success: 6,
+                                canceled: 5,
+                                cancelled: 5
+                            };
                             if (prev && prev.status) {
                                 const pr = rank[String(prev.status)] || 0;
                                 const nr = rank[String(mapped.status)] || 0;
                                 const isBackward = nr > 0 && pr > 0 && nr < pr && mapped.status !== 'canceled' && mapped.status !== 'cancelled';
-                                if (isBackward) return prev;
+                                if (isBackward) {
+                                    console.log('[OrderTracking] Preventing backward status update from history:', {
+                                        from: prev.status,
+                                        to: mapped.status
+                                    });
+                                    return prev;
+                                }
                                 return { ...prev, ...mapped };
                             }
                             return mapped;
@@ -828,8 +905,8 @@ useEffect(() => {
                             mapped.buyerName = buyerName;
                         }
 
-                        // Nếu order đã delivered, check review status
-                        if (mapped.status === 'delivered') {
+                        // Nếu order đã delivered hoặc completed, check review status
+                        if (mapped.status === 'delivered' || mapped.status === 'completed') {
                             const realIdForReview = foundOrder._raw?.id ?? foundOrder.id ?? orderId;
                             if (realIdForReview) {
                                 hasOrderReview(realIdForReview).then(setHasReview).catch(console.warn);
@@ -838,12 +915,27 @@ useEffect(() => {
 
                         // Cập nhật theo nguyên tắc "không lùi trạng thái"
                         updateOrderState(prev => {
-                            const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
+                            const rank = {
+                                pending: 1,
+                                confirmed: 2,
+                                shipping: 3,
+                                delivered: 4,
+                                completed: 6,
+                                success: 6,
+                                canceled: 5,
+                                cancelled: 5
+                            };
                             if (prev && prev.status) {
                                 const pr = rank[String(prev.status)] || 0;
                                 const nr = rank[String(mapped.status)] || 0;
                                 const isBackward = nr > 0 && pr > 0 && nr < pr && mapped.status !== 'canceled' && mapped.status !== 'cancelled';
-                                if (isBackward) return prev;
+                                if (isBackward) {
+                                    console.log('[OrderTracking] Preventing backward status update from localStorage:', {
+                                        from: prev.status,
+                                        to: mapped.status
+                                    });
+                                    return prev;
+                                }
                                 return { ...prev, ...mapped };
                             }
                             return mapped;
@@ -893,11 +985,57 @@ useEffect(() => {
                         updateOrderState(prevOrder => {
                             if (!prevOrder) return prevOrder;
 
+                            // Kiểm tra nếu đơn hàng hiện tại đã completed, không cho phép lùi về trạng thái cũ
+                            const currentRawStatus = String(prevOrder?.rawStatus || prevOrder?._raw?.status || '').toUpperCase();
+                            const currentNormalizedStatus = String(prevOrder?.status || '').toLowerCase();
+                            const isCurrentlyCompleted = ['COMPLETED', 'SUCCESS'].includes(currentRawStatus) ||
+                                currentNormalizedStatus === 'completed' ||
+                                currentNormalizedStatus === 'success';
+
+                            // Nếu đơn hàng đã completed, chỉ cập nhật các thông tin khác, không cập nhật status
+                            if (isCurrentlyCompleted) {
+                                const newRawStatus = String(orderDetailData.rawStatus || '').toUpperCase();
+                                const newNormalizedStatus = String(orderDetailData.status || '').toLowerCase();
+                                const newIsCompleted = ['COMPLETED', 'SUCCESS'].includes(newRawStatus) ||
+                                    newNormalizedStatus === 'completed' ||
+                                    newNormalizedStatus === 'success';
+
+                                // Chỉ cập nhật nếu backend trả về completed, không cho phép lùi về delivered
+                                if (!newIsCompleted) {
+                                    console.log('[OrderTracking] Order is completed, preventing status downgrade in auto-refresh');
+                                    // Vẫn cập nhật các thông tin khác nhưng giữ nguyên status completed
+                                    return {
+                                        ...prevOrder,
+                                        // Giữ nguyên status và rawStatus
+                                        canceledAt: orderDetailData.canceledAt || prevOrder.canceledAt,
+                                        cancelReason: (() => {
+                                            const fromApi = cancelInfo.text || cancelInfo.raw || prevOrder.cancelReason;
+                                            if (fromApi) return fromApi;
+                                            try {
+                                                const map = JSON.parse(localStorage.getItem('cancel_reason_map') || '{}');
+                                                return map[String(prevOrder.realId)] || map[String(prevOrder.id)] || '';
+                                            } catch {
+                                                return fromApi;
+                                            }
+                                        })(),
+                                        cancelReasonId: cancelInfo.id || prevOrder.cancelReasonId,
+                                        cancelReasonRaw: cancelInfo.raw || prevOrder.cancelReasonRaw,
+                                        estimatedDelivery: orderDetailData.updatedAt || prevOrder.estimatedDelivery,
+                                        totalPrice: orderDetailData.price ?? prevOrder.totalPrice,
+                                        shippingFee: orderDetailData.shippingFee ?? prevOrder.shippingFee,
+                                        finalPrice: orderDetailData.finalPrice ?? prevOrder.finalPrice,
+                                        deliveryAddress: orderDetailData.shippingAddress || prevOrder.deliveryAddress,
+                                        buyerPhone: orderDetailData.phoneNumber || prevOrder.buyerPhone
+                                    };
+                                }
+                            }
+
                             const statusChanged = orderDetailData.status !== prevOrder.status;
                             const cancelChanged = Boolean(orderDetailData.canceledAt) !== Boolean(prevOrder.canceledAt);
 
-                            // Nếu đơn hàng đã giao, luôn kiểm tra review status (ngay cả khi không có thay đổi)
-                            if (orderDetailData.status === 'delivered' || prevOrder.status === 'delivered') {
+                            // Nếu đơn hàng đã giao hoặc completed, luôn kiểm tra review status
+                            if (orderDetailData.status === 'delivered' || prevOrder.status === 'delivered' ||
+                                orderDetailData.status === 'completed' || prevOrder.status === 'completed') {
                                 hasOrderReview(realOrderId).then(setHasReview).catch(console.warn);
                             } else {
                                 setHasReview(false);
@@ -906,10 +1044,66 @@ useEffect(() => {
                             if (statusChanged || cancelChanged || orderDetailData.updatedAt !== prevOrder.estimatedDelivery) {
                                 console.log(`[OrderTracking] Order updated: status=${orderDetailData.status}, canceledAt=${orderDetailData.canceledAt}`);
 
+                                // Áp dụng logic "không lùi trạng thái" khi cập nhật
+                                const rank = {
+                                    pending: 1,
+                                    confirmed: 2,
+                                    shipping: 3,
+                                    delivered: 4,
+                                    completed: 6,
+                                    success: 6,
+                                    canceled: 5,
+                                    cancelled: 5
+                                };
+                                const pr = rank[String(prevOrder?.status)] || 0;
+                                const nr = rank[String(orderDetailData.status)] || 0;
+                                const isBackward = nr > 0 && pr > 0 && nr < pr &&
+                                    orderDetailData.status !== 'canceled' &&
+                                    orderDetailData.status !== 'cancelled';
+
+                                if (isBackward) {
+                                    console.log('[OrderTracking] Preventing backward status update in auto-refresh:', {
+                                        from: prevOrder.status,
+                                        to: orderDetailData.status
+                                    });
+                                    // Vẫn cập nhật các thông tin khác nhưng giữ nguyên status
+                                    return {
+                                        ...prevOrder,
+                                        canceledAt: orderDetailData.canceledAt || prevOrder.canceledAt,
+                                        cancelReason: (() => {
+                                            const fromApi = cancelInfo.text || cancelInfo.raw || prevOrder.cancelReason;
+                                            if (fromApi) return fromApi;
+                                            try {
+                                                const map = JSON.parse(localStorage.getItem('cancel_reason_map') || '{}');
+                                                return map[String(prevOrder.realId)] || map[String(prevOrder.id)] || '';
+                                            } catch {
+                                                return fromApi;
+                                            }
+                                        })(),
+                                        cancelReasonId: cancelInfo.id || prevOrder.cancelReasonId,
+                                        cancelReasonRaw: cancelInfo.raw || prevOrder.cancelReasonRaw,
+                                        estimatedDelivery: orderDetailData.updatedAt || prevOrder.estimatedDelivery,
+                                        totalPrice: orderDetailData.price ?? prevOrder.totalPrice,
+                                        shippingFee: orderDetailData.shippingFee ?? prevOrder.shippingFee,
+                                        finalPrice: orderDetailData.finalPrice ?? prevOrder.finalPrice,
+                                        deliveryAddress: orderDetailData.shippingAddress || prevOrder.deliveryAddress,
+                                        buyerPhone: orderDetailData.phoneNumber || prevOrder.buyerPhone
+                                    };
+                                }
+
                                 return {
                                     ...prevOrder,
                                     status: orderDetailData.status || prevOrder.status,
                                     rawStatus: orderDetailData.rawStatus || prevOrder.rawStatus,
+                                    // completedAt chính là updatedAt khi đơn hàng ở trạng thái COMPLETED
+                                    completedAt: (orderDetailData.rawStatus === 'COMPLETED' || orderDetailData.status === 'completed'
+                                        ? (orderDetailData.completedAt ||
+                                            orderDetailData._raw?.completedAt ||
+                                            orderDetailData.updatedAt ||
+                                            prevOrder.completedAt)
+                                        : prevOrder.completedAt),
+                                    deliveredAt: orderDetailData.deliveredAt || orderDetailData._raw?.deliveredAt || prevOrder.deliveredAt,
+                                    shippedAt: orderDetailData.shippedAt || orderDetailData._raw?.shippedAt || prevOrder.shippedAt,
                                     canceledAt: orderDetailData.canceledAt || prevOrder.canceledAt,
                                     cancelReason: (() => {
                                         const fromApi = cancelInfo.text || cancelInfo.raw || prevOrder.cancelReason;
@@ -940,16 +1134,45 @@ useEffect(() => {
                 }
 
                 // Sau đó cập nhật status từ shipping API
+                // QUAN TRỌNG: Không cập nhật nếu đơn hàng đã completed (đã xác nhận)
                 try {
                     const statusResponse = await getOrderStatus(realOrderId);
                     if (statusResponse.success && statusResponse.status && statusResponse.status !== order.status) {
+                        // Kiểm tra nếu đơn hàng hiện tại đã completed, không cho phép lùi về delivered
+                        const currentRawStatus = String(order?.rawStatus || order?._raw?.status || '').toUpperCase();
+                        const currentNormalizedStatus = String(order?.status || '').toLowerCase();
+                        const isCurrentlyCompleted = ['COMPLETED', 'SUCCESS'].includes(currentRawStatus) ||
+                            currentNormalizedStatus === 'completed' ||
+                            currentNormalizedStatus === 'success';
+
+                        // Nếu đơn hàng đã completed, không cập nhật về trạng thái cũ hơn
+                        if (isCurrentlyCompleted) {
+                            console.log('[OrderTracking] Order is already completed, skipping status update from shipping API');
+                            return;
+                        }
+
                         console.log(`[OrderTracking] Status updated from shipping API: ${order.status} -> ${statusResponse.status}`);
                         updateOrderState(prevOrder => {
-                            const rank = { pending: 1, confirmed: 2, shipping: 3, delivered: 4, canceled: 5, cancelled: 5 };
+                            const rank = {
+                                pending: 1,
+                                confirmed: 2,
+                                shipping: 3,
+                                delivered: 4,
+                                completed: 6,
+                                success: 6,
+                                canceled: 5,
+                                cancelled: 5
+                            };
                             const pr = rank[String(prevOrder?.status)] || 0;
                             const nr = rank[String(statusResponse.status)] || 0;
                             const isBackward = nr > 0 && pr > 0 && nr < pr && statusResponse.status !== 'canceled' && statusResponse.status !== 'cancelled';
-                            if (isBackward) return prevOrder;
+                            if (isBackward) {
+                                console.log('[OrderTracking] Preventing backward status update from shipping API:', {
+                                    from: prevOrder?.status,
+                                    to: statusResponse.status
+                                });
+                                return prevOrder;
+                            }
                             return {
                                 ...prevOrder,
                                 status: statusResponse.status,
@@ -1010,6 +1233,15 @@ useEffect(() => {
         const carrier = item._raw?.shippingPartner || item._raw?.carrier || '';
         const paymentMethod = normalizePaymentMethod(item._raw?.paymentMethod) || (status === 'confirmed' ? 'ewallet' : 'cod');
         const needInvoice = Boolean(item._raw?.needInvoice || item._raw?.invoiceRequired);
+        // completedAt: thời điểm đơn hàng được xác nhận hoàn thành
+        // completedAt chính là updatedAt khi đơn hàng ở trạng thái completed
+        const completedAt = (status === 'completed'
+            ? (item._raw?.completedAt ||
+                item._raw?.completed_at ||
+                item._raw?.updatedAt ||
+                item.updatedAt ||
+                null)
+            : null);
 
         const product = {
             image: item.product?.image || '/vite.svg',
@@ -1033,6 +1265,7 @@ useEffect(() => {
             paymentMethod,
             deliveredAt,
             shippedAt,
+            completedAt,
             trackingNumber,
             carrier,
             needInvoice,
@@ -1170,6 +1403,15 @@ if (isViewingDisputeResult) {
         normalizedStatus === 'completed' ||
         normalizedStatus === 'success';
 
+    // Đảm bảo completedAt luôn được set khi đơn hàng ở trạng thái completed
+    // completedAt chính là updatedAt khi đơn hàng ở trạng thái COMPLETED
+    const completedAt = isOrderCompleted
+        ? (order?.completedAt ||
+            order?._raw?.completedAt ||
+            order?.updatedAt ||
+            null)
+        : null;
+
     // Only show confirm button if status is DELIVERED and NOT completed
     const canConfirmOrder = (rawStatusUpper === 'DELIVERED' || normalizedStatus === 'delivered') && !isOrderCompleted;
 
@@ -1188,7 +1430,11 @@ if (isViewingDisputeResult) {
             canConfirmOrder
         });
     }
+    // isDeliveredStatus: hiển thị banner "Đã giao thành công" cho cả delivered và completed
     const isDeliveredStatus = normalizedStatus === 'delivered' || rawStatusUpper === 'DELIVERED' || isOrderCompleted;
+
+    // Chỉ hiển thị nút đánh giá và khiếu nại khi đơn hàng đã completed (sau khi xác nhận)
+    //const canRateOrDispute = isOrderCompleted;
 
     const paymentStatusInfo = getPaymentStatusInfo(order.paymentMethod, order.rawStatus);
     const isCancelled = order.status === 'cancelled' || order.status === 'canceled';
@@ -1209,8 +1455,15 @@ if (isViewingDisputeResult) {
                                 </span>
                                 <span className="chip">
                                     <Calendar size={14} />
-                                    Đặt: {formatDate(order.createdAt)}
+                                    Đặt: {formatDateTime(order.createdAt)}
                                 </span>
+                                {/* Hiển thị thời gian hoàn thành khi đơn hàng đã completed */}
+                                {completedAt && (
+                                    <span className="chip">
+                                        <CheckCircle size={14} />
+                                        Hoàn thành: {formatDateTime(completedAt)}
+                                    </span>
+                                )}
                                 <span className="chip">
                                     <Clock size={14} />
                                     Dự kiến: {formatDate(order.estimatedDelivery)}
@@ -1239,7 +1492,10 @@ if (isViewingDisputeResult) {
                                         <h2>Đã giao thành công</h2>
                                         <p>
                                             Mã đơn <span className="badge-code">#{order.id}</span> đã được giao tới bạn
-                                            {order.deliveredAt ? ` vào ${formatDate(order.deliveredAt)}` : ''}.
+                                            {order.deliveredAt ? ` vào ${formatDateTime(order.deliveredAt)}` : ''}
+                                            {completedAt && (
+                                                <span> và đã được xác nhận hoàn thành vào {formatDateTime(completedAt)}</span>
+                                            )}
                                         </p>
                                         <div className="delivered-meta">
                                             {order.carrier && <span className="chip alt">Đơn vị: {order.carrier}</span>}
@@ -1293,29 +1549,39 @@ if (isViewingDisputeResult) {
 
                             <div className={`progress-card ${isCancelled ? 'is-cancelled' : ''}`}>
                                 <div className="progress-steps">
-                                    <div className={`p-step ${['pending', 'confirmed', 'shipping', 'delivered'].indexOf(order.status) >= 0 ? 'active' : ''}`}>
+                                    <div className={`p-step ${['pending', 'confirmed', 'shipping', 'delivered', 'completed', 'success'].indexOf(order.status) >= 0 ? 'active' : ''}`}>
                                         <div className="p-dot"><CheckCircle size={16} color="#fff" /></div>
                                         <div className="p-label">Đã đặt hàng</div>
-                                        <div className="p-time">{formatDate(order.createdAt)}</div>
+                                        <div className="p-time">{formatDateTime(order.createdAt)}</div>
                                     </div>
-                                    <div className={`p-sep ${['confirmed', 'shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}></div>
-                                    <div className={`p-step ${['confirmed', 'shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}>
+                                    <div className={`p-sep ${['confirmed', 'shipping', 'delivered', 'completed', 'success'].includes(order.status) ? 'active' : ''}`}></div>
+                                    <div className={`p-step ${['confirmed', 'shipping', 'delivered', 'completed', 'success'].includes(order.status) ? 'active' : ''}`}>
                                         <div className="p-dot"><CheckCircle size={16} color="#fff" /></div>
                                         <div className="p-label">Đơn vị vận chuyển đã lấy hàng</div>
-                                        <div className="p-time">{formatDate(order.createdAt)}</div>
+                                        <div className="p-time">{order.shippedAt ? formatDateTime(order.shippedAt) : formatDateTime(order.createdAt)}</div>
                                     </div>
-                                    <div className={`p-sep ${['shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}></div>
-                                    <div className={`p-step ${['shipping', 'delivered'].includes(order.status) ? 'active' : ''}`}>
+                                    <div className={`p-sep ${['shipping', 'delivered', 'completed', 'success'].includes(order.status) ? 'active' : ''}`}></div>
+                                    <div className={`p-step ${['shipping', 'delivered', 'completed', 'success'].includes(order.status) ? 'active' : ''}`}>
                                         <div className="p-dot"><Truck size={16} color="#fff" /></div>
                                         <div className="p-label">Đang vận chuyển</div>
-                                        <div className="p-time">{formatDate(order.estimatedDelivery)}</div>
+                                        <div className="p-time">{order.shippedAt ? formatDateTime(order.shippedAt) : formatDate(order.estimatedDelivery)}</div>
                                     </div>
-                                    <div className={`p-sep ${order.status === 'delivered' ? 'active' : ''}`}></div>
-                                    <div className={`p-step ${order.status === 'delivered' ? 'active' : ''}`}>
+                                    <div className={`p-sep ${['delivered', 'completed', 'success'].includes(order.status) ? 'active' : ''}`}></div>
+                                    <div className={`p-step ${['delivered', 'completed', 'success'].includes(order.status) ? 'active' : ''}`}>
                                         <div className="p-dot"><Package size={16} color="#fff" /></div>
                                         <div className="p-label">Đã giao hàng</div>
-                                        <div className="p-time">{formatDate(order.deliveredAt || order.estimatedDelivery)}</div>
+                                        <div className="p-time">{order.deliveredAt ? formatDateTime(order.deliveredAt) : formatDate(order.estimatedDelivery)}</div>
                                     </div>
+                                    {completedAt && (
+                                        <>
+                                            <div className={`p-sep active`}></div>
+                                            <div className={`p-step active`}>
+                                                <div className="p-dot"><CheckCircle size={16} color="#fff" /></div>
+                                                <div className="p-label">Đã xác nhận hoàn thành</div>
+                                                <div className="p-time">{formatDateTime(completedAt)}</div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 {isCancelled && (
                                     <div className="cancelled-progress-note">
@@ -1404,14 +1670,24 @@ if (isViewingDisputeResult) {
                                     <div className="info-line"><User size={16} /> {order.buyerName}</div>
                                     <div className="info-line"><Phone size={16} /> {order.buyerPhone}</div>
                                     <div className="info-line"><MapPin size={16} /> {order.deliveryAddress}</div>
+                                    <div className="info-line"><Calendar size={16} /> Đặt hàng: {formatDateTime(order.createdAt)}</div>
+                                    {order.shippedAt && (
+                                        <div className="info-line"><Truck size={16} /> Đã lấy hàng: {formatDateTime(order.shippedAt)}</div>
+                                    )}
+                                    {order.deliveredAt && (
+                                        <div className="info-line"><Package size={16} /> Giao hàng: {formatDateTime(order.deliveredAt)}</div>
+                                    )}
+                                    {completedAt && (
+                                        <div className="info-line"><CheckCircle size={16} /> Xác nhận hoàn thành: {formatDateTime(completedAt)}</div>
+                                    )}
                                     {order.carrier && (
                                         <div className="info-line"><Truck size={16} /> Đơn vị: {order.carrier}</div>
                                     )}
                                     {order.trackingNumber && (
                                         <div className="info-line"><Package size={16} /> Mã vận đơn: {order.trackingNumber}</div>
                                     )}
-                                    {order.deliveredAt && (
-                                        <div className="info-line"><CheckCircle size={16} /> Giao thành công: {formatDate(order.deliveredAt)}</div>
+                                    {completedAt && (
+                                        <div className="info-line"><CheckCircle size={16} /> Xác nhận hoàn thành: {formatDateTime(completedAt)}</div>
                                     )}
                                 </div>
                                 <div className="info-card">
@@ -1540,9 +1816,14 @@ if (isViewingDisputeResult) {
                                     <div className="action-buttons">
                                         <div className="status-note success status-note-animated status-note-success">
                                             <CheckCircle className="note-icon" />
-                                            <span>Đơn hàng đã được giao thành công</span>
+                                            <span>
+                                                {isOrderCompleted
+                                                    ? 'Đơn hàng đã được xác nhận và hoàn tất'
+                                                    : 'Đơn hàng đã được giao thành công'}
+                                            </span>
                                         </div>
                                         <div className="delivered-action-buttons">
+                                            {/* Chỉ hiển thị nút xác nhận khi đơn hàng ở trạng thái delivered và chưa completed */}
                                             {canConfirmOrder && (
                                                 <AnimatedButton
                                                     variant="primary"

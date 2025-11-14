@@ -20,6 +20,7 @@ const publicEndpoints = [
   "/api/v1/auth/admin/signin",
   "/api/v1/auth/admin/refresh-token",
   "/api/v1/vnpay/return",
+  "/api/v1/momo/return",
   // Post product public endpoints
   //"/api/v1/post-product",
   // Seller public endpoints (view only)

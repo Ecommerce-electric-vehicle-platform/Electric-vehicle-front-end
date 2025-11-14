@@ -14,6 +14,7 @@ import {
   cilCog,
   cilWallet,
   cilLayers,
+  cilChart,
 } from "@coreui/icons";
 import { CNavGroup, CNavItem, CNavTitle } from "@coreui/react";
 
@@ -45,6 +46,12 @@ const _nav = [
     name: "Gói Dịch Vụ",
     to: "/admin/subscription-packages",
     icon: <CIcon icon={cilLayers} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: "Thống kê mua gói",
+    to: "/admin/package-statistics",
+    icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,

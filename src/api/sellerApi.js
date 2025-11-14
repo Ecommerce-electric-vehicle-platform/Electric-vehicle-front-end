@@ -90,6 +90,7 @@ const sellerApi = {
   getMyPosts: async (page = 0, size = 10, sortBy = 'postId', sortDirection = 'desc') => {
     try {
       const accessToken = localStorage.getItem("accessToken");
+      console.log('[sellerApi.getMyPosts] Calling API /api/v1/seller/seller-post with params:', { page, size, sort: `${sortBy},${sortDirection}` });
       const response = await axiosInstance.get('/api/v1/seller/seller-post', {
         params: {
           page,
@@ -99,6 +100,12 @@ const sellerApi = {
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
+      });
+      const posts = response?.data?.data?.content || [];
+      console.log('[sellerApi.getMyPosts] Response received:', {
+        totalPosts: posts.length,
+        sellerIds: posts.map(p => p.sellerId || p.seller_id || 'N/A').filter((v, i, a) => a.indexOf(v) === i), // Unique sellerIds
+        firstPostSellerId: posts[0]?.sellerId || posts[0]?.seller_id || 'N/A'
       });
       return response;
     } catch (error) {
@@ -281,6 +288,8 @@ unhidePostById: async (postId) => {
     }
   },
 
+
+  //============= HIỂN THỊ ĐƠN HÀNG BÊN PHÍA SELLER ============================
   // Lấy danh sách đơn hàng của seller
   getSellerOrders: async (page = 0, size = 10, status = '') => {
     try {
@@ -353,13 +362,74 @@ unhidePostById: async (postId) => {
       throw error;
     }
   },
+
+
+  //=======================LẤY REVIEW TỪ BUYER ĐỂ SELLER XEM========================
+
+  // Lấy tất cả reviews cho orders của seller hiện tại
+  // API: GET /api/v1/seller/reviews?page=0&size=10
+  getSellerReviews: async (page = 0, size = 10) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/seller/reviews', {
+        params: { page, size },
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching seller reviews:", error);
+      throw error;
+    }
+  },
+
+  //=======================CÁC TRẠNG THÁI CỦA ĐƠN HÀNG========================
+  // Lấy các đơn hàng đang giao (DELIVERING status)
+  // API: GET /api/v1/seller/delivering-orders?page=0&size=10
+  getDeliveringOrders: async (page = 0, size = 10) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/seller/delivering-orders', {
+        params: { page, size },
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching delivering orders:", error);
+      throw error;
+    }
+  },
+
+  // Lấy các đơn hàng đã hoàn thành (COMPLETED status)
+  // API: GET /api/v1/seller/completed-orders?page=0&size=10
+  getCompletedOrders: async (page = 0, size = 10) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get('/api/v1/seller/completed-orders', {
+        params: { page, size },
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error fetching completed orders:", error);
+      throw error;
+    }
+  },
 //==============SELLER DASHBOARD=====================================
-  // Lấy tổng số đơn hàng của seller hiện tại
-  // API: GET /api/v1/seller/total-order
-  getTotalOrders: async () => {
+
+  // Lấy tổng số đơn hàng của seller hiện tại (tất cả status)
+  // API: GET /api/v1/seller/total-order?page=0&size=10
+  // Response: { success: true, data: { orders: [...], totalOrders: 27, currentPage: 0, totalPages: 3, pageSize: 10 } }
+  getTotalOrders: async (page = 0, size = 10) => {
     try {
       const accessToken = localStorage.getItem("accessToken");
       const response = await axiosInstance.get('/api/v1/seller/total-order', {
+        params: { page, size },
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
@@ -404,7 +474,7 @@ unhidePostById: async (postId) => {
       throw error;
     }
   },
-
+//=======================LẤY SỐ LƯỢNG SẢN PHẨM ĐANG BÁN - SELLER DASHBOARD LUÔN========================
   // Lấy tổng số sản phẩm đang bán (active posts) của seller hiện tại
   // API: GET /api/v1/seller/active-post
   getActivePosts: async () => {
@@ -421,8 +491,6 @@ unhidePostById: async (postId) => {
       throw error;
     }
   },
-
-
 
   //==============POST PRODUCT API==============
   // Lấy seller theo postId
@@ -445,13 +513,17 @@ unhidePostById: async (postId) => {
       const response = await axiosInstance.get(`/api/v1/post-product/${pidNum}/seller`);
       if (!response?.data?.success || !response.data?.data) return null;
       const raw = response.data.data;
+      console.log('[sellerApi.getSellerByProductId] Raw response data:', raw);
       return {
-        sellerId: raw.sellerId,
+        sellerId: raw.sellerId || raw.id,
+        buyerId: raw.buyerId || raw.buyer_id, // Thêm buyerId nếu có
         storeName: raw.storeName,
         sellerName: raw.sellerName,
         status: raw.status,
         home: raw.home,
-        nationality: raw.nationality
+        nationality: raw.nationality,
+        // Giữ nguyên tất cả các field khác để tránh mất dữ liệu
+        ...raw
       };
     } catch (error) {
       if ([401, 403, 404].includes(error?.response?.status)) {
@@ -464,16 +536,56 @@ unhidePostById: async (postId) => {
   },
   // (Tuỳ chọn) Lấy sản phẩm theo sellerId
   getProductsBySeller: async (sellerId, params = {}) => {
-    if (!sellerId) return [];
+    if (!sellerId) {
+      console.warn('[sellerApi.getProductsBySeller] No sellerId provided');
+      return [];
+    }
     try {
-      const response = await axiosInstance.get(`/api/v1/post-product`, { params: { sellerId, ...params } });
+      const requestParams = { sellerId, ...params };
+      console.log('[sellerApi.getProductsBySeller] Request params:', requestParams);
+      const response = await axiosInstance.get(`/api/v1/post-product`, { params: requestParams });
       // Tìm array phù hợp
       const data = response?.data?.data || response?.data || {};
       const products = data.postList || data.content || data.items || data.list || (Array.isArray(data) ? data : []);
-      return Array.isArray(products) ? products : [];
+      console.log('[sellerApi.getProductsBySeller] Response data structure:', {
+        hasData: !!data,
+        hasPostList: !!data.postList,
+        hasContent: !!data.content,
+        productsCount: Array.isArray(products) ? products.length : 0
+      });
+      
+      // Normalize products để đảm bảo có field isSold
+      // API trả về is_sold (snake_case), normalize thành isSold (camelCase)
+      const normalizedProducts = Array.isArray(products) ? products.map(product => {
+        // Đảm bảo có field isSold từ is_sold hoặc isSold
+        const isSold = product.isSold !== undefined ? product.isSold : 
+                      product.is_sold !== undefined ? product.is_sold : 
+                      false;
+        
+        return {
+          ...product,
+          isSold: Boolean(isSold), // Normalize thành boolean
+          is_sold: Boolean(isSold) // Giữ lại cả snake_case để tương thích
+        };
+      }) : [];
+      
+      if (normalizedProducts.length > 0) {
+        console.log('[sellerApi.getProductsBySeller] First product sellerId:', normalizedProducts[0].sellerId || normalizedProducts[0].seller_id || 'N/A');
+        console.log('[sellerApi.getProductsBySeller] First product isSold fields:', {
+          isSold: normalizedProducts[0].isSold,
+          is_sold: normalizedProducts[0].is_sold,
+          originalIsSold: products[0]?.isSold,
+          originalIs_sold: products[0]?.is_sold
+        });
+      }
+      
+      return normalizedProducts;
     } catch (error) {
-      if ([401, 403, 404].includes(error?.response?.status)) return [];
-      console.error('[sellerApi] Error in getProductsBySeller', error);
+      if ([401, 403, 404].includes(error?.response?.status)) {
+        console.warn('[sellerApi.getProductsBySeller] Auth error:', error?.response?.status);
+        return [];
+      }
+      console.error('[sellerApi.getProductsBySeller] Error:', error);
       return [];
     }
   },

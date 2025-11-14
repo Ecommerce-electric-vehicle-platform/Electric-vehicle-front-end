@@ -18,6 +18,7 @@ import OrderTracking from "./pages/OrderTracking/OrderTracking";
 import WalletDeposit from "./pages/WalletDeposit/WalletDeposit";
 import WalletWithdraw from "./pages/WalletWithdraw/WalletWithdraw";
 import VnPayReturn from "./pages/WalletDeposit/VnPayReturn";
+import MoMoReturn from "./pages/WalletDeposit/MoMoReturn";
 import OrderList from "./pages/OrderList/OrderList";
 import OrderReview from "./pages/OrderReview/OrderReview";
 import PersonalProfilePage from "./components/ProfileUser/PersonalProfilePage";
@@ -279,6 +280,14 @@ function AppContent() {
           element={
             <PageTransition className="fade-up">
               <VnPayReturn />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/momo/return"
+          element={
+            <PageTransition className="fade-up">
+              <MoMoReturn />
             </PageTransition>
           }
         />

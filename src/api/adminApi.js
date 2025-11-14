@@ -414,10 +414,10 @@ export const updateEscrowEndAt = async (systemWalletId, endAt) => {
  * ================================
  */
 
-// GET /api/v1/packages/active - Lấy danh sách active subscription packages (public hoặc admin)
+// GET /api/v1/admin/subscription-packages - Lấy danh sách subscription packages (admin only)
 export const getSubscriptionPackages = async (page = 0, size = 10) => {
   try {
-    const res = await adminAxios.get(`/api/v1/packages/active`, {
+    const res = await adminAxios.get(`/api/v1/admin/subscription-packages`, {
       params: { page, size },
     });
     return res.data;
@@ -479,6 +479,50 @@ export const updateSubscriptionPackage = async (packageId, packageData) => {
       console.error("Error response:", error.response.data);
       console.error("Error status:", error.response.status);
     }
+    throw error;
+  }
+};
+
+//===============================CHI TIẾT DOANH THU CỦA TỪNG PACKAGE===============================
+// GET /api/v1/admin/subscription-packages/statistics - Lấy thống kê tất cả packages
+export const getPackageStatistics = async () => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/subscription-packages/statistics`);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy thống kê packages:", error);
+    throw error;
+  }
+};
+
+// GET /api/v1/admin/subscription-packages/{packageId}/statistics - Lấy thống kê chi tiết một package
+export const getPackageStatisticsById = async (packageId, includeSubscribers = false) => {
+  try {
+    const res = await adminAxios.get(
+      `/api/v1/admin/subscription-packages/${packageId}/statistics`,
+      {
+        params: { includeSubscribers }
+      }
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy thống kê package:", error);
+    throw error;
+  }
+};
+
+// GET /api/v1/admin/subscription-packages/{packageId}/subscribers - Lấy danh sách subscribers của một package
+export const getPackageSubscribers = async (packageId, page = 0, size = 10) => {
+  try {
+    const res = await adminAxios.get(
+      `/api/v1/admin/subscription-packages/${packageId}/subscribers`,
+      {
+        params: { page, size }
+      }
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách subscribers:", error);
     throw error;
   }
 };

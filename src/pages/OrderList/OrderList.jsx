@@ -1225,7 +1225,10 @@ function OrderList() {
                     { key: 'track', label: 'Theo dõi vận đơn', className: 'btn btn-primary btn-sm btn-animate', onClick: () => handleTrackShipment(orderId) }
                 ];
             case 'delivered':
+                // Đơn hàng đã giao nhưng chưa xác nhận - không hiển thị nút đánh giá/khiếu nại
+                return [];
             case 'completed': {
+                // Chỉ hiển thị nút đánh giá và khiếu nại khi đơn hàng đã completed (đã xác nhận)
                 const isReviewed = reviewedMap[orderId]?.hasReview === true;
                 return [
                     { key: 'dispute', label: 'Khiếu nại', className: 'btn btn-warning btn-sm btn-animate', onClick: () => handleRaiseDispute(orderId) },
@@ -1551,8 +1554,11 @@ function OrderList() {
                                                 actualStatus = 'confirmed';
                                             } else if (upperRaw === 'SHIPPED' || upperRaw === 'DELIVERING') {
                                                 actualStatus = 'shipping';
-                                            } else if (upperRaw === 'DELIVERED' || upperRaw === 'COMPLETED' || upperRaw === 'SUCCESS') {
+                                            } else if (upperRaw === 'DELIVERED') {
                                                 actualStatus = 'delivered';
+                                            } else if (upperRaw === 'COMPLETED' || upperRaw === 'SUCCESS') {
+                                                // QUAN TRỌNG: COMPLETED và SUCCESS phải là 'completed', không phải 'delivered'
+                                                actualStatus = 'completed';
                                             } else if (upperRaw === 'CANCELLED' || upperRaw === 'CANCELED' || upperRaw === 'FAILED') {
                                                 actualStatus = 'canceled';
                                             }
@@ -1564,11 +1570,11 @@ function OrderList() {
                                         const DisplayStatusIcon = displayStatusInfo.icon;
 
                                         // Check if order is completed from multiple sources
+                                        // QUAN TRỌNG: Chỉ coi là completed khi thực sự là completed, không phải delivered
                                         const isCompleted = rawStatus === 'COMPLETED' ||
                                             rawStatus === 'SUCCESS' ||
                                             normalizedStatus === 'completed' ||
                                             normalizedStatus === 'success' ||
-                                            actualStatus === 'delivered' ||
                                             actualStatus === 'completed';
 
                                         // Only show confirm button if status is DELIVERED and NOT completed
