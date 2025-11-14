@@ -21,6 +21,8 @@ import {
   CFormTextarea,
   CSpinner,
   CAlert,
+  CPagination,
+  CPaginationItem,
 } from "@coreui/react";
 import {
   Eye,
@@ -36,16 +38,22 @@ import {
 } from "lucide-react";
 import {
   getDisputes,
+  getResolvedDisputes,
   getDisputeDetail,
   resolveDispute,
 } from "../../../api/adminApi";
 import "./ManageDisputes.css";
 
 export default function ManageDisputes() {
+  const [activeTab, setActiveTab] = useState("pending"); // "pending" hoặc "resolved"
   const [disputes, setDisputes] = useState([]);
+  const [resolvedDisputes, setResolvedDisputes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
+  const [resolvedPage, setResolvedPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [resolvedTotalPages, setResolvedTotalPages] = useState(0);
+  const [resolvedTotalElements, setResolvedTotalElements] = useState(0);
   const [size] = useState(10);
   const [error, setError] = useState(null);
 
@@ -89,9 +97,37 @@ export default function ManageDisputes() {
     }
   }, [page, size]);
 
+  const fetchResolvedData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getResolvedDisputes(resolvedPage, size);
+
+      // Xử lý response từ BE: response.data.data.disputes
+      const responseData = response?.data?.data || response?.data || response;
+      const disputesData = responseData?.disputes || [];
+      const totalPagesData = responseData?.totalPages || 0;
+      const totalElementsData = responseData?.totalElements || 0;
+
+      setResolvedDisputes(Array.isArray(disputesData) ? disputesData : []);
+      setResolvedTotalPages(totalPagesData);
+      setResolvedTotalElements(totalElementsData);
+    } catch (e) {
+      console.error("Error fetching resolved disputes:", e);
+      setError("Không thể tải danh sách tranh chấp đã giải quyết. Vui lòng thử lại sau.");
+      setResolvedDisputes([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [resolvedPage, size]);
+
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (activeTab === "pending") {
+      fetchData();
+    } else {
+      fetchResolvedData();
+    }
+  }, [activeTab, fetchData, fetchResolvedData]);
 
   const handleViewDetail = async (disputeId) => {
     setShowDetailModal(true);
@@ -229,7 +265,13 @@ export default function ManageDisputes() {
           className="refresh-btn"
           color="primary"
           variant="outline"
-          onClick={fetchData}
+          onClick={() => {
+            if (activeTab === "pending") {
+              fetchData();
+            } else {
+              fetchResolvedData();
+            }
+          }}
           disabled={loading}
         >
           <RefreshCw size={16} className={loading ? "spinning" : ""} />
@@ -245,20 +287,61 @@ export default function ManageDisputes() {
 
       <CCard className="shadow-sm">
         <CCardBody>
-          {loading && disputes.length === 0 ? (
+          {/* Tabs */}
+          <div className="d-flex mb-4 border-bottom">
+            <button
+              className={`btn btn-link text-decoration-none px-3 py-2 ${
+                activeTab === "pending" ? "active border-bottom border-primary border-2" : "text-muted"
+              }`}
+              onClick={() => {
+                setActiveTab("pending");
+                setPage(0);
+              }}
+              style={{
+                border: "none",
+                background: "none",
+                borderBottom: activeTab === "pending" ? "2px solid #0d6efd" : "none",
+                color: activeTab === "pending" ? "#0d6efd" : "#6c757d",
+                fontWeight: activeTab === "pending" ? "600" : "400",
+              }}
+            >
+              Đang chờ xử lý
+            </button>
+            <button
+              className={`btn btn-link text-decoration-none px-3 py-2 ${
+                activeTab === "resolved" ? "active border-bottom border-primary border-2" : "text-muted"
+              }`}
+              onClick={() => {
+                setActiveTab("resolved");
+                setResolvedPage(0);
+              }}
+              style={{
+                border: "none",
+                background: "none",
+                borderBottom: activeTab === "resolved" ? "2px solid #0d6efd" : "none",
+                color: activeTab === "resolved" ? "#0d6efd" : "#6c757d",
+                fontWeight: activeTab === "resolved" ? "600" : "400",
+              }}
+            >
+              Đã giải quyết ({resolvedTotalElements})
+            </button>
+          </div>
+
+          {loading && (activeTab === "pending" ? disputes.length === 0 : resolvedDisputes.length === 0) ? (
             <div className="text-center py-5">
               <CSpinner />
               <p className="mt-3">Đang tải danh sách tranh chấp...</p>
             </div>
-          ) : disputes.length === 0 ? (
-            <div className="text-center py-5">
-              <FileText size={64} className="text-muted mb-3" />
-              <h5>Chưa có tranh chấp nào</h5>
-              <p className="text-muted">
-                Hiện tại không có tranh chấp đang chờ xử lý.
-              </p>
-            </div>
-          ) : (
+          ) : activeTab === "pending" ? (
+            disputes.length === 0 ? (
+              <div className="text-center py-5">
+                <FileText size={64} className="text-muted mb-3" />
+                <h5>Chưa có tranh chấp nào</h5>
+                <p className="text-muted">
+                  Hiện tại không có tranh chấp đang chờ xử lý.
+                </p>
+              </div>
+            ) : (
             <>
               <CTable hover responsive>
                 <CTableHead>
@@ -353,34 +436,159 @@ export default function ManageDisputes() {
               </CTable>
 
               {totalPages > 1 && (
-                <div className="d-flex justify-content-between align-items-center mt-3">
-                  <div>
-                    <span className="text-muted">
-                      Trang {page + 1} / {totalPages}
-                    </span>
-                  </div>
-                  <div className="d-flex gap-2">
-                    <CButton
-                      size="sm"
-                      color="secondary"
-                      variant="outline"
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                      disabled={page === 0 || loading}
+                <div className="d-flex justify-content-center mt-4">
+                  <CPagination>
+                    <CPaginationItem
+                      disabled={page === 0}
+                      onClick={() => setPage(page - 1)}
                     >
                       Trước
-                    </CButton>
-                    <CButton
-                      size="sm"
-                      color="secondary"
-                      variant="outline"
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={page >= totalPages - 1 || loading}
+                    </CPaginationItem>
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <CPaginationItem
+                        key={i}
+                        active={i === page}
+                        onClick={() => setPage(i)}
+                      >
+                        {i + 1}
+                      </CPaginationItem>
+                    ))}
+                    <CPaginationItem
+                      disabled={page === totalPages - 1}
+                      onClick={() => setPage(page + 1)}
                     >
                       Sau
-                    </CButton>
-                  </div>
+                    </CPaginationItem>
+                  </CPagination>
                 </div>
               )}
+            </>
+            )
+          ) : resolvedDisputes.length === 0 ? (
+            <div className="text-center py-5">
+              <FileText size={64} className="text-muted mb-3" />
+              <h5>Chưa có tranh chấp đã giải quyết</h5>
+              <p className="text-muted">
+                Hiện tại không có tranh chấp nào đã được giải quyết.
+              </p>
+            </div>
+          ) : (
+            <>
+              <CTable hover responsive>
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell>ID</CTableHeaderCell>
+                    <CTableHeaderCell>Mã đơn hàng</CTableHeaderCell>
+                    <CTableHeaderCell>Lý do</CTableHeaderCell>
+                    <CTableHeaderCell>Ngày tạo</CTableHeaderCell>
+                    <CTableHeaderCell>Ngày giải quyết</CTableHeaderCell>
+                    <CTableHeaderCell>Trạng thái</CTableHeaderCell>
+                    <CTableHeaderCell>Thao tác</CTableHeaderCell>
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {resolvedDisputes.map((dispute) => (
+                    <CTableRow key={dispute.disputeId}>
+                      <CTableDataCell>
+                        <strong>#{dispute.disputeId}</strong>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        {dispute.orderCode || dispute.orderId || "N/A"}
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <div
+                          className="text-truncate"
+                          style={{ maxWidth: "200px" }}
+                          title={
+                            dispute.disputeCategoryName ||
+                            dispute.description ||
+                            ""
+                          }
+                        >
+                          {dispute.disputeCategoryName ||
+                            dispute.description ||
+                            "N/A"}
+                        </div>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <small className="text-muted">
+                          {formatDate(
+                            dispute.createdAt || dispute.submissionDate
+                          )}
+                        </small>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <small className="text-muted">
+                          {formatDate(dispute.resolvedAt || dispute.resolutionDate)}
+                        </small>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <span 
+                          className={`badge status-${getStatusColor(dispute.status)}-badge`}
+                          style={{
+                            backgroundColor: getStatusColor(dispute.status) === "warning" ? '#f59e0b' :
+                                           getStatusColor(dispute.status) === "info" ? '#3b82f6' :
+                                           getStatusColor(dispute.status) === "success" ? '#22c55e' :
+                                           getStatusColor(dispute.status) === "danger" ? '#ef4444' : '#6b7280',
+                            backgroundImage: 'none',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '0.35em 0.65em',
+                            fontSize: '0.875em',
+                            fontWeight: 600,
+                            borderRadius: '0.375rem'
+                          }}
+                        >
+                          {getStatusText(dispute.status)}
+                        </span>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <CButton
+                          size="sm"
+                          color="info"
+                          variant="outline"
+                          onClick={() => handleViewDetail(dispute.disputeId)}
+                        >
+                          <Eye size={14} className="me-1" />
+                          Chi tiết
+                        </CButton>
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))}
+                </CTableBody>
+              </CTable>
+
+              {resolvedTotalPages > 1 && (
+                <div className="d-flex justify-content-center mt-4">
+                  <CPagination>
+                    <CPaginationItem
+                      disabled={resolvedPage === 0}
+                      onClick={() => setResolvedPage(resolvedPage - 1)}
+                    >
+                      Trước
+                    </CPaginationItem>
+                    {Array.from({ length: resolvedTotalPages }, (_, i) => (
+                      <CPaginationItem
+                        key={i}
+                        active={i === resolvedPage}
+                        onClick={() => setResolvedPage(i)}
+                      >
+                        {i + 1}
+                      </CPaginationItem>
+                    ))}
+                    <CPaginationItem
+                      disabled={resolvedPage === resolvedTotalPages - 1}
+                      onClick={() => setResolvedPage(resolvedPage + 1)}
+                    >
+                      Sau
+                    </CPaginationItem>
+                  </CPagination>
+                </div>
+              )}
+
+              <div className="mt-3 text-muted small text-center">
+                Hiển thị {resolvedDisputes.length} / {resolvedTotalElements} records
+              </div>
             </>
           )}
         </CCardBody>

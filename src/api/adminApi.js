@@ -208,6 +208,19 @@ export const getDisputes = async (page = 0, size = 10) => {
   }
 };
 
+// GET /api/v1/dispute/resolved - Lấy danh sách resolved disputes
+export const getResolvedDisputes = async (page = 0, size = 10) => {
+  try {
+    const res = await adminAxios.get(`/api/v1/dispute/resolved`, {
+      params: { page, size },
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách resolved disputes:", error);
+    throw error;
+  }
+};
+
 // GET /api/v1/dispute/{disputeId} - Lấy chi tiết một dispute
 export const getDisputeDetail = async (disputeId) => {
   try {
