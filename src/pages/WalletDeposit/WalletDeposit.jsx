@@ -1,13 +1,21 @@
 import { useState } from "react";
 import { Lock } from "lucide-react";
 import vnpayApi from "../../api/vnpayApi";
+import momoApi from "../../api/momoApi";
 import { useWalletBalance } from "../../hooks/useWalletBalance";
+import MomoLoader from "../../components/Loader/MomoLoader";
 import "./WalletDeposit.css";
+
+const PAYMENT_METHODS = {
+    VNPAY: "vnpay",
+    MOMO: "momo",
+};
 
 export default function WalletDeposit() {
     const [amount, setAmount] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS.VNPAY);
     const { balance, formatCurrency } = useWalletBalance();
 
     // Quick amount options (in VND)
@@ -44,27 +52,54 @@ export default function WalletDeposit() {
         try {
             setLoading(true);
 
-            // 📡 Gọi API tạo URL thanh toán
-            const res = await vnpayApi.createPayment(Number(amount));
-            console.log("VNPay response:", res.data);
+            let res;
+            let payUrl;
 
-            // 🔑 Lấy URL trả về đúng key `url_payment`
-            const payUrl =
-                res?.data?.data?.url_payment || // ✅ đúng key từ BE
-                res?.data?.paymentUrl ||
-                res?.data?.data?.paymentUrl ||
-                res?.data?.url;
+            // 📡 Gọi API tạo URL thanh toán theo phương thức đã chọn
+            if (paymentMethod === PAYMENT_METHODS.MOMO) {
+                res = await momoApi.createPayment(Number(amount));
+                console.log("MoMo response:", res.data);
+                // MoMo trả về URL ở key url_payment (giống VNPay)
+                payUrl =
+                    res?.data?.data?.url_payment || // ✅ Key chính xác từ MoMo API
+                    res?.data?.data?.paymentUrl ||
+                    res?.data?.data?.url ||
+                    res?.data?.paymentUrl ||
+                    res?.data?.url;
+            } else {
+                res = await vnpayApi.createPayment(Number(amount));
+                console.log("VNPay response:", res.data);
+                // VNPay trả về URL ở key url_payment
+                payUrl =
+                    res?.data?.data?.url_payment ||
+                    res?.data?.paymentUrl ||
+                    res?.data?.data?.paymentUrl ||
+                    res?.data?.url;
+            }
 
             if (payUrl && typeof payUrl === "string") {
-                console.log("🔗 Redirecting to:", payUrl);
+                console.log(`🔗 Redirecting to ${paymentMethod.toUpperCase()}:`, payUrl);
                 window.location.href = payUrl;
             } else {
                 setError("Không nhận được đường dẫn thanh toán");
+                setLoading(false);
             }
         } catch (err) {
-            console.error("❌ Lỗi tạo thanh toán:", err);
-            setError(err?.message || "Tạo yêu cầu thanh toán thất bại");
-        } finally {
+            console.error(`❌ Lỗi tạo thanh toán ${paymentMethod.toUpperCase()}:`, err);
+            console.error("Error details:", {
+                status: err?.response?.status,
+                data: err?.response?.data,
+                message: err?.message
+            });
+            
+            // Hiển thị message từ backend hoặc message mặc định
+            const errorMessage = 
+                err?.response?.data?.message ||
+                err?.response?.data?.error?.message ||
+                err?.message ||
+                "Tạo yêu cầu thanh toán thất bại. Vui lòng thử lại sau.";
+            
+            setError(errorMessage);
             setLoading(false);
         }
     };
@@ -74,6 +109,8 @@ export default function WalletDeposit() {
 
     return (
         <div className="wallet-deposit-page">
+            {loading && <MomoLoader message="Đang tạo liên kết thanh toán..." />}
+            
             <div className="wallet-deposit-header">
                 <h1 className="page-title">Nạp tiền vào ví</h1>
                 <p className="current-balance">
@@ -82,14 +119,50 @@ export default function WalletDeposit() {
             </div>
 
             <div className="wallet-deposit-card">
+                {/* Payment Method Selector */}
+                <div className="payment-method-selector">
+                    <button
+                        type="button"
+                        className={`payment-method-option ${paymentMethod === PAYMENT_METHODS.VNPAY ? "active" : ""}`}
+                        data-method={PAYMENT_METHODS.VNPAY}
+                        onClick={() => {
+                            setPaymentMethod(PAYMENT_METHODS.VNPAY);
+                            setError("");
+                        }}
+                    >
+                        <div className="payment-method-option-icon vnpay">
+                            <span>VNPAY</span>
+                        </div>
+                        <span>VNPay</span>
+                    </button>
+                    <button
+                        type="button"
+                        className={`payment-method-option ${paymentMethod === PAYMENT_METHODS.MOMO ? "active" : ""}`}
+                        data-method={PAYMENT_METHODS.MOMO}
+                        onClick={() => {
+                            setPaymentMethod(PAYMENT_METHODS.MOMO);
+                            setError("");
+                        }}
+                    >
+                        <div className="payment-method-option-icon momo">
+                            <span>MoMo</span>
+                        </div>
+                        <span>MoMo</span>
+                    </button>
+                </div>
+
                 {/* Payment Method Section */}
-                <div className="payment-method-section">
+                <div className={`payment-method-section ${paymentMethod === PAYMENT_METHODS.MOMO ? "momo" : "vnpay"}`}>
                     <div className="payment-method-header">
-                        <div className="vnpay-icon-wrapper">
-                            <span className="vnpay-text">VNPAY</span>
+                        <div className={`payment-icon-wrapper ${paymentMethod === PAYMENT_METHODS.MOMO ? "momo" : "vnpay"}`}>
+                            <span className="payment-text">
+                                {paymentMethod === PAYMENT_METHODS.MOMO ? "MoMo" : "VNPAY"}
+                            </span>
                         </div>
                         <div className="payment-method-info">
-                            <div className="payment-method-title">Nạp tiền qua VNPAY</div>
+                            <div className="payment-method-title">
+                                Nạp tiền qua {paymentMethod === PAYMENT_METHODS.MOMO ? "MoMo" : "VNPAY"}
+                            </div>
                             <div className="no-fee-badge">Miễn phí giao dịch</div>
                         </div>
                     </div>
@@ -136,7 +209,7 @@ export default function WalletDeposit() {
                     <button
                         type="submit"
                         disabled={loading || !amount || parseInt(amount) < 1000}
-                        className="continue-button"
+                        className={`continue-button ${paymentMethod === PAYMENT_METHODS.MOMO ? "momo" : "vnpay"}`}
                     >
                         {loading ? "Đang chuyển hướng..." : "Tiếp tục"}
                     </button>
