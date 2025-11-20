@@ -59,7 +59,23 @@ function ManagePostsContent() {
       loadPosts(); // Reload
     } catch (error) {
       console.error("Error requesting verification:", error);
-      alert("Gửi yêu cầu thất bại. Vui lòng thử lại!");
+      
+      // Lấy message lỗi từ BE với thứ tự ưu tiên:
+      // 1. error.response.data.error.message (message chi tiết từ BE)
+      // 2. error.response.data.message (message chung)
+      // 3. error.message (message từ axios)
+      // 4. Message mặc định
+      let errorMessage = "Gửi yêu cầu thất bại. Vui lòng thử lại!";
+      
+      if (error?.response?.data?.error?.message) {
+        errorMessage = error.response.data.error.message;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
     }
   };
 
