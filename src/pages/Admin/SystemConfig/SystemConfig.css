@@ -44,3 +44,134 @@
   margin-left: 38rem !important;
 }
 
+/* Refresh button - Icon only style */
+.refresh-button-compact {
+  padding: 8px !important;
+  width: 36px !important;
+  height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  border: 2px solid #dee2e6 !important;
+  background: white !important;
+  color: #6c757d !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+}
+
+.refresh-button-compact:hover:not(:disabled) {
+  background: #f8f9fa !important;
+  border-color: #22c55e !important;
+  color: #22c55e !important;
+  transform: scale(1.05);
+}
+
+.refresh-button-compact:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.refresh-button-compact:disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
+
+/* Refresh button - With text style */
+.refresh-button-with-text {
+  padding: 10px 20px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background: #6c757d !important;
+  color: white !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+}
+
+.refresh-button-with-text:hover:not(:disabled) {
+  background: #5a6268 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.refresh-button-with-text:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.refresh-button-with-text:disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+}
+
+/* Button group container - Đẩy về bên phải */
+.button-group-right {
+  margin-left: 35rem !important;
+}
+
+/* Save changes button - Green style */
+.save-changes-button {
+  padding: 10px 20px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background: #078836 !important;
+  color: white !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  margin-left: 40rem !important;
+}
+
+.save-changes-button:hover:not(:disabled) {
+  background: #16a34a !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3) !important;
+}
+
+.save-changes-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(34, 197, 94, 0.2) !important;
+}
+
+.save-changes-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+  background: #9ca3af !important;
+}
+
+/* Tab selector dropdown styles */
+.system-config-container .form-select {
+  background-color: white;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
+  margin-left: 16rem !important;
+
+}
+
+.system-config-container .form-select:hover {
+  border-color: #22c55e;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
+}
+
+.system-config-container .form-select:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 0.25rem rgba(34, 197, 94, 0.15);
+  outline: none;
+}
+
+.system-config-container .form-select option {
+  padding: 12px;
+  font-size: 15px;
+}

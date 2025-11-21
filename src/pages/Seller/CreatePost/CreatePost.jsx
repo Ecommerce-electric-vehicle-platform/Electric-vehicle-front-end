@@ -7,6 +7,7 @@ import "./CreatePost.css";
 export default function CreatePost() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [sellerId, setSellerId] = useState("");
   const [pictures, setPictures] = useState([]);
   const [pictureUrls, setPictureUrls] = useState([]);
@@ -31,23 +32,26 @@ export default function CreatePost() {
     categoryId: "",
   });
 
-  // Lấy sellerId, để tạo bài đăng 
+  // Lấy sellerId từ localStorage (buyerId chính là sellerId)
   useEffect(() => {
-    loadSellerProfile();
-  }, []);
-
-  const loadSellerProfile = async () => {
-    try {
-      const response = await sellerApi.getSellerProfile();
-      const profile = response?.data?.data;
-      if (profile?.sellerId) {
-        setSellerId(profile.sellerId);
-      }
-    } catch (error) {
-      // Không load được seller ID thì để trống, không báo lỗi
-      console.log("Seller profile not found, continuing without seller ID");
+    // Trong hệ thống này, mỗi seller đều nâng cấp từ buyer
+    // Nên buyerId chính là sellerId
+    console.log("🔍 [CreatePost] Checking localStorage...");
+    console.log("🔍 All localStorage:", { ...localStorage });
+    
+    const buyerId = localStorage.getItem("buyerId");
+    console.log("🔍 buyerId from localStorage:", buyerId, typeof buyerId);
+    
+    if (buyerId) {
+      const sellerIdValue = parseInt(buyerId); // Convert to number
+      console.log("✅ [CreatePost] Using buyerId as sellerId:", sellerIdValue);
+      setSellerId(sellerIdValue);
+    } else {
+      console.error("❌ [CreatePost] No buyerId found in localStorage!");
+      console.error("❌ Available keys:", Object.keys(localStorage));
+      alert("Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại!");
     }
-  };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -88,6 +92,120 @@ export default function CreatePost() {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Validate các field bắt buộc cho AI (không bao gồm description)
+  const validateForAI = () => {
+    const newErrors = {};
+    if (!formData.title.trim()) newErrors.title = "Tiêu đề là bắt buộc";
+    if (!formData.brand.trim()) newErrors.brand = "Thương hiệu là bắt buộc";
+    if (!formData.model.trim()) newErrors.model = "Model là bắt buộc";
+    if (!formData.price || formData.price <= 0)
+      newErrors.price = "Giá phải lớn hơn 0";
+    if (!formData.locationTrading.trim())
+      newErrors.locationTrading = "Địa điểm giao dịch là bắt buộc";
+    if (!formData.categoryId) newErrors.categoryId = "Vui lòng chọn danh mục (BẮT BUỘC cho AI)";
+    if (pictures.length === 0)
+      newErrors.pictures = "Vui lòng thêm ít nhất 1 ảnh";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Gọi AI để tạo mô tả tự động
+  const handleGenerateAIDescription = async () => {
+    console.log("🤖 [AI] Starting AI description generation...");
+    console.log("🤖 [AI] Current categoryId:", formData.categoryId, typeof formData.categoryId);
+    
+    // Kiểm tra categoryId có tồn tại không (BẮT BUỘC theo BE)
+    if (!formData.categoryId) {
+      console.error("❌ [AI] categoryId is missing!");
+      alert("Vui lòng chọn danh mục trước khi sử dụng AI!");
+      return;
+    }
+
+    // Validate các field bắt buộc trước khi gọi AI
+    if (!validateForAI()) {
+      alert("Vui lòng điền đầy đủ các thông tin bắt buộc trước khi sử dụng AI!");
+      return;
+    }
+
+    // Kiểm tra lại có ảnh hay không
+    if (!pictures || pictures.length === 0) {
+      alert("Vui lòng thêm ít nhất 1 ảnh trước khi sử dụng AI!");
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      
+      // Không cần truyền sellerId, chỉ cần categoryId
+      const dataToSend = { ...formData };
+      
+      console.log("🤖 [AI] Data to send:", {
+        categoryId: dataToSend.categoryId,
+        categoryIdType: typeof dataToSend.categoryId,
+        dataToSend: dataToSend,
+        imageFile: pictures[0]?.name,
+        imageFileSize: pictures[0]?.size,
+        imageFileType: pictures[0]?.type
+      });
+      
+      // Gọi API AI với thông tin sản phẩm và ảnh đầu tiên
+      const response = await sellerApi.generateAIDescription(
+        dataToSend, // Thêm sellerId vào data
+        pictures[0] // Gửi ảnh đầu tiên
+      );
+
+      console.log("AI Response:", response);
+
+      if (response?.data?.success) {
+        // Lấy description từ response - có thể có nhiều format khác nhau
+        const aiDescription = response?.data?.data?.description || 
+                             response?.data?.data?.content ||
+                             response?.data?.data?.text ||
+                             response?.data?.message || "";
+        
+        if (aiDescription) {
+          // Tự động điền vào ô mô tả
+          setFormData((prev) => ({ ...prev, description: aiDescription }));
+          // Xóa lỗi của description nếu có
+          if (errors.description) {
+            setErrors((prev) => ({ ...prev, description: "" }));
+          }
+          alert("✅ AI đã tạo mô tả thành công!");
+        } else {
+          throw new Error("AI không trả về mô tả");
+        }
+      } else {
+        throw new Error(response?.data?.message || "AI tạo mô tả thất bại");
+      }
+    } catch (error) {
+      console.error("Lỗi khi gọi AI:", error);
+      console.error("Error response:", error?.response);
+      
+      let errorMsg = "❌ Không thể tạo mô tả bằng AI.\n";
+      
+      // Phân tích lỗi cụ thể
+      if (error?.response?.status === 500) {
+        errorMsg += "Lỗi từ server (500). Có thể do:\n" +
+                   "- AI service (Gemini) chưa được cấu hình\n" +
+                   "- Backend chưa xử lý đúng request\n" +
+                   "- File ảnh không đúng định dạng";
+      } else if (error?.response?.status === 401 || error?.response?.status === 403) {
+        errorMsg += "Lỗi xác thực. Vui lòng đăng nhập lại!";
+      } else if (error?.response?.status === 400) {
+        errorMsg += "Dữ liệu không hợp lệ: " + (error?.response?.data?.message || "");
+      } else if (error?.message?.includes("timeout")) {
+        errorMsg += "Request timeout. AI đang xử lý quá lâu.";
+      } else {
+        errorMsg += error?.response?.data?.message || error?.message || "Vui lòng thử lại!";
+      }
+      
+      alert(errorMsg);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   // Gửi dữ liệu multipart/form-data lên BE
@@ -353,7 +471,17 @@ export default function CreatePost() {
 
             {/* Mô tả */}
             <div className="form-section">
-              <h2>Mô tả chi tiết</h2>
+              <div className="description-header">
+                <h2>Mô tả chi tiết</h2>
+                <button
+                  type="button"
+                  className="btn-ai-generate"
+                  onClick={handleGenerateAIDescription}
+                  disabled={aiLoading || loading}
+                >
+                  {aiLoading ? "🤖 Đang tạo..." : "✨ AI viết giúp"}
+                </button>
+              </div>
               <textarea
                 name="description"
                 value={formData.description}

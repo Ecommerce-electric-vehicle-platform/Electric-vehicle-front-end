@@ -595,6 +595,87 @@ unhidePostById: async (postId) => {
       return [];
     }
   },
+  //================API TÍCH HỢP AI========================
+  // AI: Tạo mô tả sản phẩm tự động bằng AI
+  // API: POST /api/v1/ai/content-upload-post-description
+  // Request: multipart/form-data với file (ảnh) và data (JSON string chứa thông tin sản phẩm)
+  generateAIDescription: async (productInfo, imageFile) => {
+    try {
+      // Kiểm tra file có hợp lệ không
+      if (!imageFile || !(imageFile instanceof File)) {
+        throw new Error("File ảnh không hợp lệ hoặc chưa được chọn");
+      }
+
+      const formData = new FormData();
+      
+      // Append file với tên field là "pictures" theo yêu cầu của backend
+      formData.append("pictures", imageFile);
+      
+      // Validate categoryId (BẮT BUỘC theo BE)
+      if (!productInfo.categoryId) {
+        throw new Error("categoryId is required for AI description generation");
+      }
+
+      // Append data (JSON string chứa thông tin sản phẩm)
+      // LƯU Ý: Backend expect "manufactureYear" (không có 'r'), không phải "manufacturerYear"
+      // LƯU Ý: Backend KHÔNG CẦN sellerId, chỉ cần categoryId
+      const productData = {
+        title: productInfo.title || "",
+        brand: productInfo.brand || "",
+        model: productInfo.model || "",
+        manufactureYear: parseInt(productInfo.manufacturerYear) || new Date().getFullYear(),
+        usedDuration: productInfo.usedDuration || "",
+        color: productInfo.color || "",
+        price: parseFloat(productInfo.price) || 0,
+        conditionLevel: productInfo.conditionLevel || "",
+        locationTrading: productInfo.locationTrading || "",
+        categoryId: parseInt(productInfo.categoryId), // BẮT BUỘC - đảm bảo là number
+        length: productInfo.length || "",
+        width: productInfo.width || "",
+        height: productInfo.height || "",
+        weight: productInfo.weight || ""
+      };
+      
+      const dataJson = JSON.stringify(productData);
+      formData.append("data", dataJson);
+      
+      // Log để debug
+      console.log("[SellerAPI] Calling AI API...");
+      console.log("[SellerAPI] Product data:", productData);
+      console.log("[SellerAPI] CategoryId:", productData.categoryId, typeof productData.categoryId);
+      console.log("[SellerAPI] Image file:", {
+        name: imageFile.name,
+        size: imageFile.size,
+        type: imageFile.type
+      });
+      console.log("[SellerAPI] FormData entries:");
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value instanceof File ? `[File: ${value.name}]` : value);
+      }
+      
+      const response = await axiosInstance.post(
+        "/api/v1/ai/content-upload-post-description",
+        formData,
+        {
+          headers: {
+            // Không set Content-Type, để browser tự set với boundary
+          },
+          timeout: 60000 // 60 seconds timeout cho AI processing
+        }
+      );
+      
+      console.log("[SellerAPI] AI response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error generating AI description:", error);
+      console.error("[SellerAPI] Error details:", {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status
+      });
+      throw error;
+    }
+  },
 
   // Lấy một post cụ thể theo postId (dùng cho EditPost)
   // Sử dụng API list posts và filter theo postId (vì API GET by ID bị lỗi 500)

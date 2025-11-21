@@ -821,8 +821,8 @@ export default function SubscriptionPackages() {
             {/* Prices Section */}
             <div className="mt-4 border-top pt-3">
               <h5>Prices</h5>
-              <CRow>
-                <CCol md={3}>
+              <CRow className="mb-3">
+                <CCol md={12}>
                   <CFormLabel>Price (VND) *</CFormLabel>
                   <CFormInput
                     type="number"
@@ -834,7 +834,9 @@ export default function SubscriptionPackages() {
                     min="0"
                   />
                 </CCol>
-                <CCol md={3}>
+              </CRow>
+              <CRow className="mb-3">
+                <CCol md={12}>
                   <CFormLabel>Duration (Days) *</CFormLabel>
                   <CFormInput
                     type="number"
@@ -849,7 +851,9 @@ export default function SubscriptionPackages() {
                     min="1"
                   />
                 </CCol>
-                <CCol md={2}>
+              </CRow>
+              <CRow className="mb-3">
+                <CCol md={12}>
                   <CFormLabel>Discount (%)</CFormLabel>
                   <CFormInput
                     type="number"
@@ -865,7 +869,9 @@ export default function SubscriptionPackages() {
                     max="100"
                   />
                 </CCol>
-                <CCol md={2}>
+              </CRow>
+              <CRow className="mb-3">
+                <CCol md={12}>
                   <CFormLabel>Currency</CFormLabel>
                   <CFormSelect
                     value={priceForm.currency}
@@ -876,7 +882,9 @@ export default function SubscriptionPackages() {
                     <option value="VND">VND</option>
                   </CFormSelect>
                 </CCol>
-                <CCol md={2} className="d-flex align-items-end">
+              </CRow>
+              <CRow>
+                <CCol md={12}>
                   <CButton
                     color="primary"
                     onClick={handleAddPrice}

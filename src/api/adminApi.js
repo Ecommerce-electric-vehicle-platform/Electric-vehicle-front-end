@@ -552,3 +552,90 @@ export const getPackageSubscribers = async (packageId, page = 0, size = 10) => {
     throw error;
   }
 };
+
+/**
+ * ================================
+ * BAD WORDS MANAGEMENT (Super Admin)
+ * ================================
+ */
+
+// GET /api/v1/admin/system-config/badwords - Lấy danh sách bad words (yêu cầu SUPER_ADMIN)
+export const getBadWords = async () => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/system-config/badwords`);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách bad words:", error);
+    throw error;
+  }
+};
+
+// PUT /api/v1/admin/system-config/badwords - Cập nhật danh sách bad words (yêu cầu SUPER_ADMIN)
+export const updateBadWords = async (badWords) => {
+  try {
+    console.log("Updating Bad Words:", badWords);
+    const res = await adminAxios.put(
+      `/api/v1/admin/system-config/badwords`,
+      { badWords }
+    );
+    console.log("Update Bad Words Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi cập nhật bad words:", error);
+    if (error.response) {
+      console.error("Error response:", error.response.data);
+      console.error("Error status:", error.response.status);
+    }
+    throw error;
+  }
+};
+
+// GET /api/v1/admin/system-config/badwords/whitelist - Lấy danh sách whitelist words (yêu cầu SUPER_ADMIN)
+export const getWhitelistWords = async () => {
+  try {
+    const res = await adminAxios.get(`/api/v1/admin/system-config/badwords/whitelist`);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách whitelist words:", error);
+    throw error;
+  }
+};
+
+// PUT /api/v1/admin/system-config/badwords/whitelist - Cập nhật danh sách whitelist words (yêu cầu SUPER_ADMIN)
+export const updateWhitelistWords = async (badWords) => {
+  try {
+    console.log("Updating Whitelist Words:", badWords);
+    const res = await adminAxios.put(
+      `/api/v1/admin/system-config/badwords/whitelist`,
+      { badWords }
+    );
+    console.log("Update Whitelist Words Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi cập nhật whitelist words:", error);
+    if (error.response) {
+      console.error("Error response:", error.response.data);
+      console.error("Error status:", error.response.status);
+    }
+    throw error;
+  }
+};
+
+// POST /api/v1/admin/system-config/badwords/refresh - Làm mới cache của bad words (yêu cầu SUPER_ADMIN)
+export const refreshBadWordsCache = async () => {
+  try {
+    console.log("Refreshing Bad Words Cache");
+    const res = await adminAxios.post(
+      `/api/v1/admin/system-config/badwords/refresh`
+    );
+    console.log("Refresh Bad Words Cache Response:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("Lỗi khi làm mới cache bad words:", error);
+    if (error.response) {
+      console.error("Error response:", error.response.data);
+      console.error("Error status:", error.response.status);
+    }
+    throw error;
+  }
+};

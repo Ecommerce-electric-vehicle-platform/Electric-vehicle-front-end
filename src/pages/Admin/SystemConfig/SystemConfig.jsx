@@ -24,15 +24,22 @@ import {
   CModalBody,
   CModalFooter,
   CFormSelect,
+  CBadge,
 } from "@coreui/react";
 import {
   updateSystemConfig,
   getAllSystemConfigs,
+  updateBadWords,
+  updateWhitelistWords,
+  refreshBadWordsCache,
 } from "../../../api/adminApi";
-import { Save, RefreshCw, Edit } from "lucide-react";
+import { Save, RefreshCw, Edit, Plus, Trash2, Shield } from "lucide-react";
 import "./SystemConfig.css";
 
 export default function SystemConfig() {
+  // States cho tabs
+  const [activeTab, setActiveTab] = useState("systemConfig");
+
   // States cho danh sách configs
   const [configs, setConfigs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -54,6 +61,23 @@ export default function SystemConfig() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  // States cho Bad Words Management
+  const [badWords, setBadWords] = useState([]);
+  const [badWordsLoading, setBadWordsLoading] = useState(false);
+  const [newBadWord, setNewBadWord] = useState("");
+  const [badWordsError, setBadWordsError] = useState("");
+  const [badWordsSuccess, setBadWordsSuccess] = useState("");
+  const [savingBadWords, setSavingBadWords] = useState(false);
+  const [refreshingCache, setRefreshingCache] = useState(false);
+
+  // States cho Whitelist Management
+  const [whitelistWords, setWhitelistWords] = useState([]);
+  const [whitelistLoading, setWhitelistLoading] = useState(false);
+  const [newWhitelistWord, setNewWhitelistWord] = useState("");
+  const [whitelistError, setWhitelistError] = useState("");
+  const [whitelistSuccess, setWhitelistSuccess] = useState("");
+  const [savingWhitelist, setSavingWhitelist] = useState(false);
 
   // Kiểm tra quyền Super Admin - kiểm tra cả adminRole và adminProfile
   useEffect(() => {
@@ -147,6 +171,264 @@ export default function SystemConfig() {
   useEffect(() => {
     loadConfigs();
   }, [loadConfigs]);
+
+  // Load Bad Words từ system config
+  const loadBadWords = async () => {
+    try {
+      setBadWordsLoading(true);
+      setBadWordsError("");
+      setBadWordsSuccess("");
+      
+      // Load từ system config API
+      const response = await getAllSystemConfigs(0, 100); // Lấy nhiều records
+      const responseData = response?.data?.data || response?.data || {};
+      const content = responseData?.content || responseData?.list || [];
+      
+      // Tìm config có key là "BAD_WORDS"
+      const badWordsConfig = content.find(
+        (config) => config.configKey === "BAD_WORDS"
+      );
+      
+      if (badWordsConfig && badWordsConfig.configValue) {
+        // Parse JSON string thành array
+        try {
+          const parsedWords = JSON.parse(badWordsConfig.configValue);
+          setBadWords(Array.isArray(parsedWords) ? parsedWords : []);
+        } catch (parseError) {
+          console.error("Lỗi parse JSON bad words:", parseError);
+          setBadWords([]);
+          setBadWordsError("Dữ liệu bad words không hợp lệ.");
+        }
+      } else {
+        setBadWords([]);
+      }
+    } catch (err) {
+      console.error("Lỗi khi load bad words:", err);
+      
+      let errorMessage = "Không thể tải danh sách bad words. Vui lòng thử lại.";
+      
+      if (err?.response?.status === 403) {
+        errorMessage = "Chỉ Super Admin mới có thể xem danh sách bad words.";
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      setBadWordsError(errorMessage);
+    } finally {
+      setBadWordsLoading(false);
+    }
+  };
+
+  // Load Whitelist Words từ system config
+  const loadWhitelistWords = async () => {
+    try {
+      setWhitelistLoading(true);
+      setWhitelistError("");
+      setWhitelistSuccess("");
+      
+      // Load từ system config API
+      const response = await getAllSystemConfigs(0, 100); // Lấy nhiều records
+      const responseData = response?.data?.data || response?.data || {};
+      const content = responseData?.content || responseData?.list || [];
+      
+      // Tìm config có key là "BAD_WORDS_WHITELIST"
+      const whitelistConfig = content.find(
+        (config) => config.configKey === "BAD_WORDS_WHITELIST"
+      );
+      
+      if (whitelistConfig && whitelistConfig.configValue) {
+        // Parse JSON string thành array
+        try {
+          const parsedWords = JSON.parse(whitelistConfig.configValue);
+          setWhitelistWords(Array.isArray(parsedWords) ? parsedWords : []);
+        } catch (parseError) {
+          console.error("Lỗi parse JSON whitelist:", parseError);
+          setWhitelistWords([]);
+          setWhitelistError("Dữ liệu whitelist không hợp lệ.");
+        }
+      } else {
+        setWhitelistWords([]);
+      }
+    } catch (err) {
+      console.error("Lỗi khi load whitelist words:", err);
+      
+      let errorMessage = "Không thể tải danh sách whitelist. Vui lòng thử lại.";
+      
+      if (err?.response?.status === 403) {
+        errorMessage = "Chỉ Super Admin mới có thể xem danh sách whitelist.";
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      setWhitelistError(errorMessage);
+    } finally {
+      setWhitelistLoading(false);
+    }
+  };
+
+  // Load data khi chuyển tab
+  useEffect(() => {
+    if (activeTab === "badWords" && isSuperAdmin) {
+      loadBadWords();
+    } else if (activeTab === "whitelist" && isSuperAdmin) {
+      loadWhitelistWords();
+    }
+  }, [activeTab, isSuperAdmin]);
+
+  // Add Bad Word
+  const handleAddBadWord = () => {
+    if (!newBadWord.trim()) {
+      setBadWordsError("Vui lòng nhập từ cần thêm.");
+      return;
+    }
+    
+    if (badWords.includes(newBadWord.trim().toLowerCase())) {
+      setBadWordsError("Từ này đã tồn tại trong danh sách.");
+      return;
+    }
+    
+    setBadWords([...badWords, newBadWord.trim().toLowerCase()]);
+    setNewBadWord("");
+    setBadWordsError("");
+  };
+
+  // Remove Bad Word
+  const handleRemoveBadWord = (word) => {
+    setBadWords(badWords.filter((w) => w !== word));
+  };
+
+  // Save Bad Words
+  const handleSaveBadWords = async () => {
+    if (!isSuperAdmin) {
+      setBadWordsError("Chỉ Super Admin mới có thể cập nhật bad words.");
+      return;
+    }
+
+    try {
+      setSavingBadWords(true);
+      setBadWordsError("");
+      setBadWordsSuccess("");
+      
+      await updateBadWords(badWords);
+      
+      setBadWordsSuccess("Cập nhật danh sách bad words thành công!");
+      setTimeout(() => setBadWordsSuccess(""), 5000);
+      loadBadWords();
+    } catch (err) {
+      console.error("Lỗi khi cập nhật bad words:", err);
+      
+      let errorMessage = "Không thể cập nhật bad words. Vui lòng thử lại.";
+      
+      if (err?.response?.status === 403) {
+        errorMessage = "Chỉ Super Admin mới có thể cập nhật bad words.";
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      setBadWordsError(errorMessage);
+    } finally {
+      setSavingBadWords(false);
+    }
+  };
+
+  // Add Whitelist Word
+  const handleAddWhitelistWord = () => {
+    if (!newWhitelistWord.trim()) {
+      setWhitelistError("Vui lòng nhập từ cần thêm.");
+      return;
+    }
+    
+    if (whitelistWords.includes(newWhitelistWord.trim().toLowerCase())) {
+      setWhitelistError("Từ này đã tồn tại trong danh sách.");
+      return;
+    }
+    
+    setWhitelistWords([...whitelistWords, newWhitelistWord.trim().toLowerCase()]);
+    setNewWhitelistWord("");
+    setWhitelistError("");
+  };
+
+  // Remove Whitelist Word
+  const handleRemoveWhitelistWord = (word) => {
+    setWhitelistWords(whitelistWords.filter((w) => w !== word));
+  };
+
+  // Save Whitelist Words
+  const handleSaveWhitelist = async () => {
+    if (!isSuperAdmin) {
+      setWhitelistError("Chỉ Super Admin mới có thể cập nhật whitelist.");
+      return;
+    }
+
+    try {
+      setSavingWhitelist(true);
+      setWhitelistError("");
+      setWhitelistSuccess("");
+      
+      await updateWhitelistWords(whitelistWords);
+      
+      setWhitelistSuccess("Cập nhật danh sách whitelist thành công!");
+      setTimeout(() => setWhitelistSuccess(""), 5000);
+      loadWhitelistWords();
+    } catch (err) {
+      console.error("Lỗi khi cập nhật whitelist:", err);
+      
+      let errorMessage = "Không thể cập nhật whitelist. Vui lòng thử lại.";
+      
+      if (err?.response?.status === 403) {
+        errorMessage = "Chỉ Super Admin mới có thể cập nhật whitelist.";
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      setWhitelistError(errorMessage);
+    } finally {
+      setSavingWhitelist(false);
+    }
+  };
+
+  // Refresh Bad Words Cache
+  const handleRefreshCache = async () => {
+    if (!isSuperAdmin) {
+      setBadWordsError("Chỉ Super Admin mới có thể làm mới cache.");
+      return;
+    }
+
+    try {
+      setRefreshingCache(true);
+      setBadWordsError("");
+      setBadWordsSuccess("");
+      
+      await refreshBadWordsCache();
+      
+      setBadWordsSuccess("Làm mới cache thành công!");
+      setTimeout(() => setBadWordsSuccess(""), 5000);
+    } catch (err) {
+      console.error("Lỗi khi làm mới cache:", err);
+      
+      let errorMessage = "Không thể làm mới cache. Vui lòng thử lại.";
+      
+      if (err?.response?.status === 403) {
+        errorMessage = "Chỉ Super Admin mới có thể làm mới cache.";
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      setBadWordsError(errorMessage);
+    } finally {
+      setRefreshingCache(false);
+    }
+  };
 
   // Mở modal edit config
   const handleOpenEditModal = async (config) => {
@@ -310,12 +592,22 @@ export default function SystemConfig() {
     }
   };
 
-  // Filter configs theo search key
-  const filteredConfigs = searchKey
-    ? configs.filter((config) =>
-        config.configKey?.toLowerCase().includes(searchKey.toLowerCase())
-      )
-    : configs;
+  // Filter configs theo search key và loại bỏ BAD_WORDS, WHITELIST
+  const filteredConfigs = configs
+    .filter((config) => {
+      // Loại bỏ BAD_WORDS và WHITELIST khỏi system config
+      const configKey = config.configKey?.toUpperCase() || "";
+      if (configKey.includes("BAD_WORDS") || configKey.includes("WHITELIST")) {
+        return false;
+      }
+      
+      // Filter theo search key nếu có
+      if (searchKey) {
+        return config.configKey?.toLowerCase().includes(searchKey.toLowerCase());
+      }
+      
+      return true;
+    });
 
   // Format date
   const formatDate = (dateString) => {
@@ -339,147 +631,484 @@ export default function SystemConfig() {
   return (
     <div className="system-config-container">
       <CCard className="shadow-sm">
-        <CCardHeader className="d-flex justify-content-between align-items-center">
-          <div>
-            <h4 className="mb-0">Quản lý Cấu Hình Hệ Thống</h4>
-            <p className="text-muted mb-0 small">
-            Thiết lập và điều chỉnh các cấu hình chung của hệ thống            </p>
+        <CCardHeader>
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <h4 className="mb-1">Quản lý Cấu Hình Hệ Thống</h4>
+              <p className="text-muted mb-0 small">
+                Thiết lập và điều chỉnh các cấu hình chung của hệ thống
+              </p>
+            </div>
+            
+            {/* Dropdown Select for Tabs */}
+            <div style={{ minWidth: "250px" }}>
+              <CFormSelect
+                value={activeTab}
+                onChange={(e) => setActiveTab(e.target.value)}
+                size="lg"
+                style={{
+                  borderRadius: "8px",
+                  border: "2px solid #e0e0e0",
+                  fontSize: "15px",
+                  fontWeight: "500",
+                  padding: "10px 16px",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                <option value="systemConfig">Cấu hình Ký Quỹ chung</option>
+                {isSuperAdmin && (
+                  <>
+                    <option value="badWords">Từ cấm</option>
+                    <option value="whitelist">Từ an toàn</option>
+                  </>
+                )}
+              </CFormSelect>
+            </div>
           </div>
-          <CButton
-            color="secondary"
-            onClick={loadConfigs}
-            disabled={loading}
-            className="refresh-btn-compact"
-          >
-            <RefreshCw size={16} />
-            Làm mới
-          </CButton>
         </CCardHeader>
         <CCardBody>
-          {/* Thông báo lỗi */}
-          {error && (
-            <CAlert color="danger" dismissible onClose={() => setError("")}>
-              {error}
-            </CAlert>
-          )}
+          {/* System Config Section */}
+          {activeTab === "systemConfig" && (
+            <div>
+              <div className="d-flex align-items-center mb-3">
+                <h5 className="mb-0">Danh sách cấu hình</h5>
+                <CButton
+                  color="secondary"
+                  size="sm"
+                  onClick={loadConfigs}
+                  disabled={loading}
+                  className="refresh-button-with-text button-group-right"
+                >
+                  <RefreshCw size={16} className="me-1" />
+                  Làm mới
+                </CButton>
+              </div>
 
-          {/* Thông báo thành công */}
-          {success && (
-            <CAlert color="success" dismissible onClose={() => setSuccess("")}>
-              {success}
-            </CAlert>
-          )}
-
-          {/* Tìm kiếm */}
-          <CRow className="mb-3">
-            <CCol md={6}>
-              <CFormInput
-                type="text"
-                placeholder="Tìm kiếm theo config key..."
-                value={searchKey}
-                onChange={(e) => setSearchKey(e.target.value)}
-                className="d-flex align-items-center"
-              />
-            </CCol>
-          </CRow>
-
-          {loading ? (
-            <div className="text-center p-5">
-              <CSpinner color="primary" />
-              <p className="mt-3 text-muted">Đang tải dữ liệu...</p>
-            </div>
-          ) : filteredConfigs.length === 0 ? (
-            <div className="text-center p-5">
-              <p className="text-muted">Không có cấu hình nào.</p>
-            </div>
-          ) : (
-            <>
-              <CTable hover responsive>
-                <CTableHead>
-                  <CTableRow>
-                    <CTableHeaderCell>Config Key</CTableHeaderCell>
-                    <CTableHeaderCell>Config Value</CTableHeaderCell>
-                    <CTableHeaderCell>Mô tả</CTableHeaderCell>
-                    <CTableHeaderCell>Ngày tạo</CTableHeaderCell>
-                    <CTableHeaderCell>Ngày cập nhật</CTableHeaderCell>
-                    <CTableHeaderCell>Thao tác</CTableHeaderCell>
-                  </CTableRow>
-                </CTableHead>
-                <CTableBody>
-                  {filteredConfigs.map((config) => (
-                    <CTableRow key={config.configKey || config.id}>
-                      <CTableDataCell>
-                        <strong>{config.configKey || "-"}</strong>
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        <span className="text-break fw-semibold text-primary">
-                          {config.configValue || "-"}
-                        </span>
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        <small className="text-muted">
-                          {config.description || "-"}
-                        </small>
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        <small>{formatDate(config.createdAt)}</small>
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        <small>{formatDate(config.updatedAt)}</small>
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        {isSuperAdmin ? (
-                          <CButton
-                            color="primary"
-                            size="sm"
-                            onClick={() => handleOpenEditModal(config)}
-                            className="d-flex align-items-center gap-1"
-                          >
-                            <Edit size={14} />
-                            Chỉnh sửa
-                          </CButton>
-                        ) : (
-                          <span className="text-muted">-</span>
-                        )}
-                      </CTableDataCell>
-                    </CTableRow>
-                  ))}
-                </CTableBody>
-              </CTable>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="d-flex justify-content-center mt-4">
-                  <CPagination>
-                    <CPaginationItem
-                      disabled={page === 0}
-                      onClick={() => handlePageChange(page - 1)}
-                    >
-                      Trước
-                    </CPaginationItem>
-                    {Array.from({ length: totalPages }, (_, i) => (
-                      <CPaginationItem
-                        key={i}
-                        active={i === page}
-                        onClick={() => handlePageChange(i)}
-                      >
-                        {i + 1}
-                      </CPaginationItem>
-                    ))}
-                    <CPaginationItem
-                      disabled={page === totalPages - 1}
-                      onClick={() => handlePageChange(page + 1)}
-                    >
-                      Sau
-                    </CPaginationItem>
-                  </CPagination>
-                </div>
+              {/* Thông báo lỗi */}
+              {error && (
+                <CAlert color="danger" dismissible onClose={() => setError("")}>
+                  {error}
+                </CAlert>
               )}
 
-              <div className="mt-3 text-muted small text-center">
-                Hiển thị {filteredConfigs.length} / {totalElements} records
+              {/* Thông báo thành công */}
+              {success && (
+                <CAlert color="success" dismissible onClose={() => setSuccess("")}>
+                  {success}
+                </CAlert>
+              )}
+
+              {/* Tìm kiếm */}
+              <CRow className="mb-3">
+                <CCol md={6}>
+                  <CFormInput
+                    type="text"
+                    placeholder="Tìm kiếm theo config key..."
+                    value={searchKey}
+                    onChange={(e) => setSearchKey(e.target.value)}
+                    className="d-flex align-items-center"
+                  />
+                </CCol>
+              </CRow>
+
+              {loading ? (
+                <div className="text-center p-5">
+                  <CSpinner color="primary" />
+                  <p className="mt-3 text-muted">Đang tải dữ liệu...</p>
+                </div>
+              ) : filteredConfigs.length === 0 ? (
+                <div className="text-center p-5">
+                  <p className="text-muted">Không có cấu hình nào.</p>
+                </div>
+              ) : (
+                <>
+                  <CTable hover responsive>
+                    <CTableHead>
+                      <CTableRow>
+                        <CTableHeaderCell>Config Key</CTableHeaderCell>
+                        <CTableHeaderCell>Config Value</CTableHeaderCell>
+                        <CTableHeaderCell>Mô tả</CTableHeaderCell>
+                        <CTableHeaderCell>Ngày tạo</CTableHeaderCell>
+                        <CTableHeaderCell>Ngày cập nhật</CTableHeaderCell>
+                        <CTableHeaderCell>Thao tác</CTableHeaderCell>
+                      </CTableRow>
+                    </CTableHead>
+                    <CTableBody>
+                      {filteredConfigs.map((config) => (
+                        <CTableRow key={config.configKey || config.id}>
+                          <CTableDataCell>
+                            <strong>{config.configKey || "-"}</strong>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <span className="text-break fw-semibold text-primary">
+                              {config.configValue ? `${config.configValue} giây` : "-"}
+                            </span>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <small className="text-muted">
+                              {config.description || "-"}
+                            </small>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <small>{formatDate(config.createdAt)}</small>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <small>{formatDate(config.updatedAt)}</small>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            {isSuperAdmin ? (
+                              <CButton
+                                color="primary"
+                                size="sm"
+                                onClick={() => handleOpenEditModal(config)}
+                                className="d-flex align-items-center gap-1"
+                              >
+                                <Edit size={14} />
+                                Chỉnh sửa
+                              </CButton>
+                            ) : (
+                              <span className="text-muted">-</span>
+                            )}
+                          </CTableDataCell>
+                        </CTableRow>
+                      ))}
+                    </CTableBody>
+                  </CTable>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="d-flex justify-content-center mt-4">
+                      <CPagination>
+                        <CPaginationItem
+                          disabled={page === 0}
+                          onClick={() => handlePageChange(page - 1)}
+                        >
+                          Trước
+                        </CPaginationItem>
+                        {Array.from({ length: totalPages }, (_, i) => (
+                          <CPaginationItem
+                            key={i}
+                            active={i === page}
+                            onClick={() => handlePageChange(i)}
+                          >
+                            {i + 1}
+                          </CPaginationItem>
+                        ))}
+                        <CPaginationItem
+                          disabled={page === totalPages - 1}
+                          onClick={() => handlePageChange(page + 1)}
+                        >
+                          Sau
+                        </CPaginationItem>
+                      </CPagination>
+                    </div>
+                  )}
+
+                  <div className="mt-3 text-muted small text-center">
+                    Hiển thị {filteredConfigs.length} / {totalElements} records
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Bad Words Management Section */}
+          {activeTab === "badWords" && (
+            <div>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h5 className="mb-1">Quản lý Từ cấm</h5>
+                  <p className="text-muted mb-0 small">
+                    Danh sách các từ cấm được lọc trong nội dung người dùng
+                  </p>
+                </div>
+                <div className="d-flex gap-2 button-group-right">
+                  <CButton
+                    color="info"
+                    size="sm"
+                    onClick={handleRefreshCache}
+                    disabled={refreshingCache || !isSuperAdmin}
+                    style={{
+                      padding: "10px 20px",
+                      borderRadius: "8px",
+                      fontWeight: "500",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {refreshingCache ? (
+                      <>
+                        <CSpinner size="sm" className="me-1" />
+                        Đang làm mới...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={16} className="me-1" />
+                        Làm mới Cache
+                      </>
+                    )}
+                  </CButton>
+                  <CButton
+                    color="secondary"
+                    size="sm"
+                    onClick={loadBadWords}
+                    disabled={badWordsLoading}
+                    className="refresh-button-with-text"
+                  >
+                    <RefreshCw size={16} className="me-1" />
+                    Làm mới
+                  </CButton>
+                </div>
               </div>
-            </>
+
+              {/* Thông báo */}
+              {badWordsError && (
+                <CAlert color="danger" dismissible onClose={() => setBadWordsError("")}>
+                  {badWordsError}
+                </CAlert>
+              )}
+              {badWordsSuccess && (
+                <CAlert color="success" dismissible onClose={() => setBadWordsSuccess("")}>
+                  {badWordsSuccess}
+                </CAlert>
+              )}
+
+              {badWordsLoading ? (
+                <div className="text-center p-5">
+                  <CSpinner color="primary" />
+                  <p className="mt-3 text-muted">Đang tải danh sách từ cấm...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Add new bad word */}
+                  <CRow className="mb-4">
+                    <CCol md={8}>
+                      <CFormInput
+                        type="text"
+                        placeholder="Nhập từ cấm mới..."
+                        value={newBadWord}
+                        onChange={(e) => setNewBadWord(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            handleAddBadWord();
+                          }
+                        }}
+                        disabled={!isSuperAdmin}
+                      />
+                    </CCol>
+                    <CCol md={4}>
+                      <CButton
+                        color="primary"
+                        onClick={handleAddBadWord}
+                        disabled={!isSuperAdmin}
+                        className="w-100"
+                      >
+                        <Plus size={16} className="me-1" />
+                        Thêm từ
+                      </CButton>
+                    </CCol>
+                  </CRow>
+
+                  {/* Bad words list */}
+                  <div className="mb-3">
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <strong>Danh sách từ cấm ({badWords.length})</strong>
+                      {badWords.length > 0 && (
+                        <CButton
+                          color="success"
+                          size="sm"
+                          onClick={handleSaveBadWords}
+                          disabled={savingBadWords || !isSuperAdmin}
+                          className="save-changes-button"
+                        >
+                          {savingBadWords ? (
+                            <>
+                              <CSpinner size="sm" className="me-1" />
+                              Đang lưu...
+                            </>
+                          ) : (
+                            <>
+                              <Save size={16} className="me-1" />
+                              Lưu thay đổi
+                            </>
+                          )}
+                        </CButton>
+                      )}
+                    </div>
+                    <div
+                      className="p-3 border rounded"
+                      style={{
+                        maxHeight: "400px",
+                        overflowY: "auto",
+                        backgroundColor: "#f8f9fa",
+                      }}
+                    >
+                      {badWords.length === 0 ? (
+                        <p className="text-muted text-center mb-0">
+                          Chưa có từ cấm nào.
+                        </p>
+                      ) : (
+                        <div className="d-flex flex-wrap gap-2">
+                          {badWords.map((word, index) => (
+                            <CBadge
+                              key={index}
+                              color="danger"
+                              className="d-flex align-items-center gap-2 p-2"
+                              style={{ fontSize: "14px" }}
+                            >
+                              {word}
+                              {isSuperAdmin && (
+                                <Trash2
+                                  size={14}
+                                  style={{ cursor: "pointer" }}
+                                  onClick={() => handleRemoveBadWord(word)}
+                                />
+                              )}
+                            </CBadge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Whitelist Management Section */}
+          {activeTab === "whitelist" && (
+            <div>
+              <div className="d-flex align-items-center mb-3">
+                <div>
+                  <h5 className="mb-1">Quản lý Từ an toàn</h5>
+                  <p className="text-muted mb-0 small">
+                    Danh sách các từ an toàn không bị lọc dù có trong từ cấm
+                  </p>
+                </div>
+                <CButton
+                  color="secondary"
+                  size="sm"
+                  onClick={loadWhitelistWords}
+                  disabled={whitelistLoading}
+                  className="refresh-button-with-text button-group-right"
+                >
+                  <RefreshCw size={16} className="me-1" />
+                  Làm mới
+                </CButton>
+              </div>
+
+              {/* Thông báo */}
+              {whitelistError && (
+                <CAlert color="danger" dismissible onClose={() => setWhitelistError("")}>
+                  {whitelistError}
+                </CAlert>
+              )}
+              {whitelistSuccess && (
+                <CAlert color="success" dismissible onClose={() => setWhitelistSuccess("")}>
+                  {whitelistSuccess}
+                </CAlert>
+              )}
+
+              {whitelistLoading ? (
+                <div className="text-center p-5">
+                  <CSpinner color="primary" />
+                  <p className="mt-3 text-muted">Đang tải danh sách từ an toàn...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Add new whitelist word */}
+                  <CRow className="mb-4">
+                    <CCol md={8}>
+                      <CFormInput
+                        type="text"
+                        placeholder="Nhập từ an toàn mới..."
+                        value={newWhitelistWord}
+                        onChange={(e) => setNewWhitelistWord(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            handleAddWhitelistWord();
+                          }
+                        }}
+                        disabled={!isSuperAdmin}
+                      />
+                    </CCol>
+                    <CCol md={4}>
+                      <CButton
+                        color="primary"
+                        onClick={handleAddWhitelistWord}
+                        disabled={!isSuperAdmin}
+                        className="w-100"
+                      >
+                        <Plus size={16} className="me-1" />
+                        Thêm từ
+                      </CButton>
+                    </CCol>
+                  </CRow>
+
+                  {/* Whitelist words list */}
+                  <div className="mb-3">
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <strong>Danh sách Từ an toàn ({whitelistWords.length})</strong>
+                      {whitelistWords.length > 0 && (
+                        <CButton
+                          color="success"
+                          size="sm"
+                          onClick={handleSaveWhitelist}
+                          disabled={savingWhitelist || !isSuperAdmin}
+                          className="save-changes-button"
+                        >
+                          {savingWhitelist ? (
+                            <>
+                              <CSpinner size="sm" className="me-1" />
+                              Đang lưu...
+                            </>
+                          ) : (
+                            <>
+                              <Save size={16} className="me-1" />
+                              Lưu thay đổi
+                            </>
+                          )}
+                        </CButton>
+                      )}
+                    </div>
+                    <div
+                      className="p-3 border rounded"
+                      style={{
+                        maxHeight: "400px",
+                        overflowY: "auto",
+                        backgroundColor: "#f8f9fa",
+                      }}
+                    >
+                      {whitelistWords.length === 0 ? (
+                        <p className="text-muted text-center mb-0">
+                          Chưa có từ an toàn nào.
+                        </p>
+                      ) : (
+                        <div className="d-flex flex-wrap gap-2">
+                          {whitelistWords.map((word, index) => (
+                            <CBadge
+                              key={index}
+                              color="success"
+                              className="d-flex align-items-center gap-2 p-2"
+                              style={{ fontSize: "14px" }}
+                            >
+                              {word}
+                              {isSuperAdmin && (
+                                <Trash2
+                                  size={14}
+                                  style={{ cursor: "pointer" }}
+                                  onClick={() => handleRemoveWhitelistWord(word)}
+                                />
+                              )}
+                            </CBadge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </CCardBody>
       </CCard>
