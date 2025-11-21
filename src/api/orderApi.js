@@ -830,18 +830,62 @@ export const getOrderReviewById = async (orderId) => {
     try {
         const response = await axiosInstance.get(`/api/v1/order/get-review/${orderId}`);
         const raw = response?.data ?? {};
+        const data = raw?.data ?? null;
 
         // Chỉ trả về review nếu success === true VÀ có data hợp lệ với orderId và rating
-        if (raw.success === true && raw.data && raw.data.orderId && raw.data.rating != null) {
-            const rating = Number(raw.data.rating);
+        if (raw.success === true && data && data.orderId && data.rating != null) {
+            const rating = Number(data.rating);
             // Rating phải trong khoảng 1-5 để hợp lệ
             if (rating >= 1 && rating <= 5) {
+                const reviewIdCandidates = [
+                    data.reviewId,
+                    data.id,
+                    data.review?.id,
+                    data.review?.reviewId,
+                    data.reviewResponse?.id,
+                    data.reviewResponse?.reviewId,
+                    data.orderReviewId,
+                    data.orderReview?.id,
+                    data.orderReviewResponse?.id,
+                    data.reviewDetails?.id,
+                    data.reviewDetails?.reviewId,
+                    data.reviewDto?.id,
+                    data.reviewDto?.reviewId
+                ];
+                if (Array.isArray(data.reviewImages)) {
+                    data.reviewImages.forEach((img) => {
+                        if (!img) return;
+                        reviewIdCandidates.push(
+                            img.reviewId,
+                            img.id,
+                            img.orderReviewId,
+                            img.orderReview?.id,
+                            img.review?.id
+                        );
+                    });
+                }
+                const reviewIdentifier = reviewIdCandidates.find((val) => (
+                    val !== undefined &&
+                    val !== null &&
+                    val !== 0 &&
+                    val !== '0' &&
+                    String(val).trim() !== ''
+                ));
+                const normalizedIdentifier = reviewIdentifier != null ? String(reviewIdentifier).trim() : null;
+                const numericReviewId = normalizedIdentifier && !Number.isNaN(Number(normalizedIdentifier))
+                    ? Number(normalizedIdentifier)
+                    : null;
+
                 return {
                     success: true,
-                    orderId: Number(raw.data.orderId),
+                    reviewId: numericReviewId ?? normalizedIdentifier,
+                    reviewIdentifier: normalizedIdentifier,
+                    id: numericReviewId ?? normalizedIdentifier ?? null,
+                    orderId: Number(data.orderId),
                     rating: rating,
-                    feedback: String(raw.data.feedback ?? ''),
-                    reviewImages: Array.isArray(raw.data.reviewImages) ? raw.data.reviewImages : []
+                    feedback: String(data.feedback ?? ''),
+                    reviewImages: Array.isArray(data.reviewImages) ? data.reviewImages : [],
+                    _raw: data
                 };
             }
         }
@@ -879,6 +923,77 @@ export const hasOrderReview = async (orderId) => {
         return false;
     }
 };
+
+// Update product review for an order
+// PUT /api/v1/order/review/{reviewId}
+// Content-Type: multipart/form-data
+// Parameters:
+// - reviewId: path parameter
+// - request: query parameter (JSON object { rating, feedback })
+// - file: multipart file (optional, replaces old images)
+// - data: multipart field (JSON string of the object)
+export const updateOrderReview = async ({ reviewId, rating, feedback, pictures = [] }) => {
+    const normalizedReviewId = reviewId != null ? String(reviewId).trim() : '';
+    if (!normalizedReviewId || normalizedReviewId === '0') {
+        throw new Error('reviewId is required to update review');
+    }
+
+    try {
+        const fd = new FormData();
+
+        // Theo API docs: request là query parameter (JSON object)
+        const requestData = {
+            rating: Number(rating),
+            feedback: String(feedback || '')
+        };
+
+        // Theo API docs: data là multipart field (JSON string)
+        fd.append('data', JSON.stringify(requestData));
+
+        // Theo API docs: file là multipart file (binary)
+        // Nếu có ảnh mới, thêm vào form data
+        const files = Array.from(pictures || []);
+        files.forEach((file) => {
+            if (file && file instanceof File) {
+                fd.append('file', file);
+            }
+        });
+
+        // Gọi API với reviewId trong path và request trong query
+        const res = await axiosInstance.put(
+            `/api/v1/order/review/${encodeURIComponent(normalizedReviewId)}?request=${encodeURIComponent(JSON.stringify(requestData))}`,
+            fd,
+            {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            }
+        );
+
+        const ok = (res?.data?.success !== false);
+        if (!ok) {
+            // Xử lý lỗi từ backend
+            // Backend trả về: { success: false, message: "...", error: "..." }
+            const backendData = res?.data || {};
+            const errorMessage = backendData.error || backendData.message || 'Backend returned unsuccessful response';
+            throw new Error(errorMessage);
+        }
+
+        return res.data;
+    } catch (error) {
+        // Xử lý lỗi từ backend response
+        if (error?.response?.data) {
+            const backendError = error.response.data;
+            // Ưu tiên lấy error field, sau đó mới đến message
+            const errorMessage = backendError.error || backendError.message || 'Failed to update review';
+            throw new Error(errorMessage);
+        }
+        // Nếu error đã là Error object với message, giữ nguyên
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error(error?.message || 'Failed to update review');
+    }
+};
+
 // tui thêm 2 api này nha Vy !!!!!!!
 
 // Get cancel reasons

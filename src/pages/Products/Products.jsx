@@ -25,6 +25,9 @@ export function Products() {
     const urlBatteryType = searchParams.get('batteryType') || '';
     const urlCondition = searchParams.get('condition') || '';
     const urlLocation = searchParams.get('location') || '';
+    // API search parameters
+    const urlSearchType = searchParams.get('type') || '';
+    const urlSearchValue = searchParams.get('value') || '';
 
     // State management
     const [searchTerm, setSearchTerm] = useState(urlSearchTerm);
@@ -71,9 +74,32 @@ export function Products() {
         setLoading(true);
         setError("");
 
-        if (isSearchMode && searchTerm.trim()) {
-            // Search mode
-            searchProducts({ query: searchTerm, page, size: pageSize })
+        // Kiểm tra nếu có API search parameters (type và value)
+        if (urlSearchType && urlSearchValue) {
+            // API search mode - sử dụng type và value từ URL
+            searchProducts({ 
+                query: urlSearchValue, 
+                type: urlSearchType,
+                page, 
+                size: pageSize 
+            })
+                .then(({ items, totalPages }) => {
+                    if (!mounted) return;
+                    setSearchResults(items || []);
+                    setServerTotalPages(totalPages || 1);
+                    setIsSearchMode(true);
+                })
+                .catch((err) => {
+                    if (!mounted) return;
+                    setError(err?.message || "Không thể tìm kiếm");
+                })
+                .finally(() => {
+                    if (!mounted) return;
+                    setLoading(false);
+                });
+        } else if (isSearchMode && searchTerm.trim()) {
+            // Search mode - tìm kiếm theo title
+            searchProducts({ query: searchTerm, type: 'title', page, size: pageSize })
                 .then(({ items, totalPages }) => {
                     if (!mounted) return;
                     setSearchResults(items || []);
@@ -109,7 +135,7 @@ export function Products() {
         return () => {
             mounted = false;
         };
-    }, [page, pageSize, searchTerm, isSearchMode]);
+    }, [page, pageSize, searchTerm, isSearchMode, urlSearchType, urlSearchValue]);
 
     // Update filters when URL changes
     useEffect(() => {
@@ -120,15 +146,19 @@ export function Products() {
         const newBatteryType = searchParams.get('batteryType') || '';
         const newCondition = searchParams.get('condition') || '';
         const newLocation = searchParams.get('location') || '';
+        // API search parameters
+        const newSearchType = searchParams.get('type') || '';
+        const newSearchValue = searchParams.get('value') || '';
 
-        setSearchTerm(newSearchTerm);
+        setSearchTerm(newSearchTerm || newSearchValue);
         setSelectedBrand(newBrand);
         setSelectedModel(newModel);
         setSelectedCategory(newCategory);
         setSelectedBatteryType(newBatteryType);
         setSelectedCondition(newCondition);
         setSelectedLocation(newLocation || "Tất cả khu vực");
-        setIsSearchMode(!!newSearchTerm);
+        // Nếu có type và value từ API search, set search mode
+        setIsSearchMode(!!(newSearchTerm || (newSearchType && newSearchValue)));
         setPage(1); // Reset to first page when filters change
     }, [searchParams]);
 

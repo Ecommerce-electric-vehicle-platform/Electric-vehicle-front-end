@@ -7,7 +7,7 @@ export default function StarRating({ value = 0, onChange, size = 28, max = 5, re
         if (typeof onChange === 'function') onChange(v);
     };
     return (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {stars.map((v) => {
                 const active = v <= Number(value || 0);
                 return (
@@ -19,15 +19,40 @@ export default function StarRating({ value = 0, onChange, size = 28, max = 5, re
                         style={{
                             width: size,
                             height: size,
-                            borderRadius: 6,
+                            borderRadius: 4,
                             border: 'none',
                             background: 'transparent',
                             cursor: readOnly ? 'default' : 'pointer',
-                            filter: active ? 'drop-shadow(0 0 8px rgba(255,193,7,0.45))' : 'none'
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'transform 0.2s ease',
+                            filter: active ? 'drop-shadow(0 2px 6px rgba(245, 158, 11, 0.4))' : 'none'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!readOnly) {
+                                e.currentTarget.style.transform = 'scale(1.15)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!readOnly) {
+                                e.currentTarget.style.transform = 'scale(1)';
+                            }
                         }}
                     >
-                        <svg width={size} height={size} viewBox="0 0 24 24" fill={active ? '#ffc107' : 'none'} stroke={active ? '#d39e00' : '#adb5bd'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9 12 2" />
+                        <svg 
+                            width={size} 
+                            height={size} 
+                            viewBox="0 0 24 24" 
+                            fill={active ? '#F59E0B' : 'none'} 
+                            stroke={active ? '#D97706' : '#cbd5e1'} 
+                            strokeWidth={active ? '0' : '2'} 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                            style={{ transition: 'all 0.2s ease' }}
+                        >
+                            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
                         </svg>
                     </button>
                 );

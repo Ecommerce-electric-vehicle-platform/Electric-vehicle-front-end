@@ -322,8 +322,16 @@ export default function WalletDashboard() {
             setLoadingTransactions(true);
             setTransactionError(null);
 
-            console.log('🔍 Fetching transaction history...', { page, size });
-            const response = await profileApi.getTransactionHistory(page, size);
+            // Convert 1-based page (UI) to 0-based page (backend)
+            // Frontend uses page 1, 2, 3... but backend expects 0, 1, 2...
+            const backendPage = page - 1;
+
+            console.log('🔍 Fetching transaction history...', { 
+                frontendPage: page, 
+                backendPage: backendPage, 
+                size 
+            });
+            const response = await profileApi.getTransactionHistory(backendPage, size);
 
             // Log full response structure for debugging
             console.log('✅ Full API Response Object:', response);
@@ -413,38 +421,20 @@ export default function WalletDashboard() {
                 console.warn('⚠️ But totalElements:', responseData?.totalElements);
                 console.warn('⚠️ Full responseData:', responseData);
 
-                // This might be a backend bug - content empty but totalElements > 0
-                // Let's check if we need to handle this differently
+                // Check if this is a pagination issue
                 if (responseData?.totalElements > 0 && content.length === 0) {
-                    console.error('❌ BACKEND BUG DETECTED: totalElements > 0 but content is empty!');
-                    console.error('❌ This suggests the backend has a pagination issue');
+                    console.error('❌ Pagination issue detected: totalElements > 0 but content is empty!');
                     console.error('❌ Response structure:', {
                         totalElements: responseData.totalElements,
                         totalPages: responseData.totalPages,
                         currentPage: page,
+                        backendPage: backendPage,
                         pageSize: size,
                         contentLength: content.length,
                         numberOfElements: responseData.numberOfElements,
                         empty: responseData.empty,
                         pageable: responseData.pageable
                     });
-
-                    // WORKAROUND: Try to fetch with page 0 if we're on page 1
-                    // Some backends use 0-based pagination
-                    if (page === 1) {
-                        console.log('🔧 Attempting workaround: Trying page 0 (0-based pagination)...');
-                        try {
-                            const retryResponse = await profileApi.getTransactionHistory(0, size);
-                            const retryData = retryResponse?.data?.data;
-                            if (retryData?.content && retryData.content.length > 0) {
-                                console.log('✅ Workaround succeeded! Found content with page 0');
-                                content = retryData.content;
-                                responseData = retryData;
-                            }
-                        } catch (retryError) {
-                            console.warn('⚠️ Workaround failed:', retryError);
-                        }
-                    }
                 }
             }
 

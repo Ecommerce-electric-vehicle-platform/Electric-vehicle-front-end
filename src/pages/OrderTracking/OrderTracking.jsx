@@ -173,11 +173,19 @@ function OrderTracking() {
         const normalizedMethod = String(method || '').toLowerCase();
         const normalizedRawStatus = String(rawStatus || '').toUpperCase();
 
+        // Xử lý COD: Nếu đơn hàng đã COMPLETED/SUCCESS (người dùng đã xác nhận), 
+        // có nghĩa là đã thanh toán cho shipper rồi
         if (normalizedMethod === 'cod') {
+            // Nếu đơn hàng đã hoàn thành (COMPLETED/SUCCESS), nghĩa là đã thanh toán
+            if (normalizedRawStatus === 'COMPLETED' || normalizedRawStatus === 'SUCCESS') {
+                return { label: 'Đã thanh toán', statusClass: 'paid' };
+            }
+            // Các trạng thái khác (PENDING, PROCESSING, SHIPPED, DELIVERED) = chưa thanh toán
             return { label: 'Chưa thanh toán', statusClass: 'pending' };
         }
 
-        if (normalizedRawStatus === 'PENDING_PAYMENT') {
+        // Xử lý các phương thức thanh toán khác (Ví điện tử, VnPay, etc.)
+        if (normalizedRawStatus === 'PENDING_PAYMENT' || normalizedRawStatus === 'PENDING') {
             return { label: 'Chờ thanh toán', statusClass: 'pending' };
         }
 
@@ -247,14 +255,14 @@ function OrderTracking() {
     };
 
     const handleViewDisputeResult = () => {
-    // Mở component ViewDisputeResult (cần import nó nếu chưa có, hoặc dùng modal/nav)
-    setIsViewingDisputeResult(true); 
-};
+        // Mở component ViewDisputeResult (cần import nó nếu chưa có, hoặc dùng modal/nav)
+        setIsViewingDisputeResult(true);
+    };
 
-// 👇 HÀM ĐÓNG KẾT QUẢ KHIẾU NẠI (Khi người dùng muốn quay lại chi tiết đơn hàng)
-const handleCloseDisputeResult = () => {
-    setIsViewingDisputeResult(false);
-};
+    // 👇 HÀM ĐÓNG KẾT QUẢ KHIẾU NẠI (Khi người dùng muốn quay lại chi tiết đơn hàng)
+    const handleCloseDisputeResult = () => {
+        setIsViewingDisputeResult(false);
+    };
     // Xử lý đánh giá đơn hàng
     const handleRateOrder = () => {
         const realId = order?.realId || order?.id || orderId;
@@ -486,50 +494,50 @@ const handleCloseDisputeResult = () => {
     }, [navigate]);
 
     // === LOGIC FETCH TRẠNG THÁI KHIẾU NẠI ===
-useEffect(() => {
-    let isMounted = true;
-    const checkDisputeStatus = async () => {
-        const realId = order?.realId || order?.id || orderId;
-        if (!realId) return;
+    useEffect(() => {
+        let isMounted = true;
+        const checkDisputeStatus = async () => {
+            const realId = order?.realId || order?.id || orderId;
+            if (!realId) return;
 
-        try {
-            // 1. Kiểm tra đã có khiếu nại nào chưa (Dùng API lấy danh sách)
-            const disputeListRes = await profileApi.getDisputeByOrderId(realId);
-            const data = disputeListRes.data?.data;
-            const disputesArray = Array.isArray(data) ? data : (data ? [data] : []);
-            
-            if (!isMounted) return;
-            
-            const hasDispute = disputesArray.length > 0;
-            setHasAnyDispute(hasDispute);
+            try {
+                // 1. Kiểm tra đã có khiếu nại nào chưa (Dùng API lấy danh sách)
+                const disputeListRes = await profileApi.getDisputeByOrderId(realId);
+                const data = disputeListRes.data?.data;
+                const disputesArray = Array.isArray(data) ? data : (data ? [data] : []);
 
-            if (hasDispute) {
-                // 2. Nếu đã có, kiểm tra có đang Pending không (Dùng API mới)
-                const pendingRes = await profileApi.checkOrderDisputePendingStatus(realId);
-                const isPending = pendingRes.data?.data === true;
-                
                 if (!isMounted) return;
-                setIsDisputePending(isPending);
-            } else {
-                setIsDisputePending(false);
-            }
 
-        } catch (error) {
-            if (isMounted) {
-                // Nếu API trả lỗi (vd: 404/không tìm thấy), coi như chưa có khiếu nại
-                console.warn('[OrderTracking] Failed to check dispute status:', error);
-                setHasAnyDispute(false);
-                setIsDisputePending(false);
+                const hasDispute = disputesArray.length > 0;
+                setHasAnyDispute(hasDispute);
+
+                if (hasDispute) {
+                    // 2. Nếu đã có, kiểm tra có đang Pending không (Dùng API mới)
+                    const pendingRes = await profileApi.checkOrderDisputePendingStatus(realId);
+                    const isPending = pendingRes.data?.data === true;
+
+                    if (!isMounted) return;
+                    setIsDisputePending(isPending);
+                } else {
+                    setIsDisputePending(false);
+                }
+
+            } catch (error) {
+                if (isMounted) {
+                    // Nếu API trả lỗi (vd: 404/không tìm thấy), coi như chưa có khiếu nại
+                    console.warn('[OrderTracking] Failed to check dispute status:', error);
+                    setHasAnyDispute(false);
+                    setIsDisputePending(false);
+                }
             }
+        };
+
+        if (orderId) {
+            checkDisputeStatus();
         }
-    };
 
-    if (orderId) {
-        checkDisputeStatus();
-    }
-
-    return () => { isMounted = false; };
-}, [orderId, order?.realId, order?.id]); 
+        return () => { isMounted = false; };
+    }, [orderId, order?.realId, order?.id]);
 
 
 
@@ -699,24 +707,25 @@ useEffect(() => {
                                     mappedOrder.status = statusResponse.status;
                                     mappedOrder.rawStatus = statusResponse.rawStatus || mappedOrder.rawStatus;
 
-                                    // Nếu đơn hàng đã giao, kiểm tra xem đã có đánh giá chưa
-                                    if (statusResponse.status === 'delivered') {
+                                    // Nếu đơn hàng đã giao hoặc completed, kiểm tra xem đã có đánh giá chưa
+                                    if (statusResponse.status === 'delivered' || statusResponse.status === 'completed') {
                                         try {
                                             const reviewStatus = await hasOrderReview(realOrderId);
+                                            console.log('[OrderTracking] Review status checked on load:', reviewStatus, 'for order:', realOrderId);
                                             setHasReview(reviewStatus);
                                         } catch (reviewError) {
                                             console.warn('[OrderTracking] Failed to check review status:', reviewError);
                                         }
-                                    } else {
-                                        setHasReview(false);
                                     }
+                                    // KHÔNG set false ở đây - để tránh reset khi order đã completed nhưng status response chưa đúng
                                 }
                             } catch (error) {
                                 console.warn('[OrderTracking] Failed to get order status from API:', error);
-                                // Nếu API fail nhưng order status từ order detail là delivered, vẫn check review
-                                if (mappedOrder.status === 'delivered') {
+                                // Nếu API fail nhưng order status từ order detail là delivered hoặc completed, vẫn check review
+                                if (mappedOrder.status === 'delivered' || mappedOrder.status === 'completed') {
                                     try {
                                         const reviewStatus = await hasOrderReview(realOrderId);
+                                        console.log('[OrderTracking] Review status checked (error fallback):', reviewStatus, 'for order:', realOrderId);
                                         setHasReview(reviewStatus);
                                     } catch (reviewError) {
                                         console.warn('[OrderTracking] Failed to check review status:', reviewError);
@@ -724,10 +733,11 @@ useEffect(() => {
                                 }
                             }
                         } else {
-                            // Nếu không lấy được status từ shipping API nhưng order status từ order detail là delivered
-                            if (mappedOrder.status === 'delivered') {
+                            // Nếu không lấy được status từ shipping API nhưng order status từ order detail là delivered hoặc completed
+                            if (mappedOrder.status === 'delivered' || mappedOrder.status === 'completed') {
                                 try {
                                     const reviewStatus = await hasOrderReview(realOrderId);
+                                    console.log('[OrderTracking] Review status checked (no status API):', reviewStatus, 'for order:', realOrderId);
                                     setHasReview(reviewStatus);
                                 } catch (reviewError) {
                                     console.warn('[OrderTracking] Failed to check review status:', reviewError);
@@ -766,6 +776,20 @@ useEffect(() => {
                             }
                             return mappedOrder;
                         });
+
+                        // Đảm bảo check review status sau khi update order state (nếu order đã delivered/completed)
+                        if (mappedOrder.status === 'delivered' || mappedOrder.status === 'completed') {
+                            const finalRealOrderId = orderDetailData.id || orderId;
+                            if (finalRealOrderId) {
+                                hasOrderReview(finalRealOrderId)
+                                    .then(reviewStatus => {
+                                        console.log('[OrderTracking] Review status checked after state update:', reviewStatus, 'for order:', finalRealOrderId);
+                                        setHasReview(reviewStatus);
+                                    })
+                                    .catch(console.warn);
+                            }
+                        }
+
                         setLoading(false);
                         return;
                     }
@@ -806,24 +830,24 @@ useEffect(() => {
                                 if (statusResponse.success && statusResponse.status) {
                                     mapped.status = statusResponse.status;
 
-                                    // Nếu đơn hàng đã giao, kiểm tra xem đã có đánh giá chưa
-                                    if (statusResponse.status === 'delivered') {
+                                    // Nếu đơn hàng đã giao hoặc completed, kiểm tra xem đã có đánh giá chưa
+                                    if (statusResponse.status === 'delivered' || statusResponse.status === 'completed') {
                                         try {
                                             const reviewStatus = await hasOrderReview(realOrderId);
+                                            console.log('[OrderTracking] Review status checked (history fallback):', reviewStatus, 'for order:', realOrderId);
                                             setHasReview(reviewStatus);
                                         } catch (reviewError) {
                                             console.warn('[OrderTracking] Failed to check review status:', reviewError);
                                         }
-                                    } else {
-                                        setHasReview(false);
                                     }
+                                    // KHÔNG set false ở đây - để tránh reset khi order đã completed nhưng status response chưa đúng
                                 }
                             } catch (error) {
                                 console.warn('[OrderTracking] Failed to get order status from API:', error);
                             }
                         }
 
-                        // Nếu order đã delivered hoặc completed, check review status
+                        // Nếu order đã delivered hoặc completed, check review status (đảm bảo check ngay cả khi không có status API)
                         if (mapped.status === 'delivered' || mapped.status === 'completed') {
                             const realIdForReview = beOrder._raw?.id ?? beOrder.id;
                             if (realIdForReview) {
@@ -905,11 +929,16 @@ useEffect(() => {
                             mapped.buyerName = buyerName;
                         }
 
-                        // Nếu order đã delivered hoặc completed, check review status
+                        // Nếu order đã delivered hoặc completed, check review status (đảm bảo check ngay cả khi load từ localStorage)
                         if (mapped.status === 'delivered' || mapped.status === 'completed') {
                             const realIdForReview = foundOrder._raw?.id ?? foundOrder.id ?? orderId;
                             if (realIdForReview) {
-                                hasOrderReview(realIdForReview).then(setHasReview).catch(console.warn);
+                                hasOrderReview(realIdForReview)
+                                    .then(reviewStatus => {
+                                        console.log('[OrderTracking] Review status checked (localStorage fallback):', reviewStatus, 'for order:', realIdForReview);
+                                        setHasReview(reviewStatus);
+                                    })
+                                    .catch(console.warn);
                             }
                         }
 
@@ -1036,10 +1065,14 @@ useEffect(() => {
                             // Nếu đơn hàng đã giao hoặc completed, luôn kiểm tra review status
                             if (orderDetailData.status === 'delivered' || prevOrder.status === 'delivered' ||
                                 orderDetailData.status === 'completed' || prevOrder.status === 'completed') {
-                                hasOrderReview(realOrderId).then(setHasReview).catch(console.warn);
-                            } else {
-                                setHasReview(false);
+                                hasOrderReview(realOrderId)
+                                    .then(reviewStatus => {
+                                        console.log('[OrderTracking] Review status refreshed in auto-refresh:', reviewStatus, 'for order:', realOrderId);
+                                        setHasReview(reviewStatus);
+                                    })
+                                    .catch(console.warn);
                             }
+                            // KHÔNG set false ở đây - để tránh reset khi order đã completed
 
                             if (statusChanged || cancelChanged || orderDetailData.updatedAt !== prevOrder.estimatedDelivery) {
                                 console.log(`[OrderTracking] Order updated: status=${orderDetailData.status}, canceledAt=${orderDetailData.canceledAt}`);
@@ -1200,6 +1233,69 @@ useEffect(() => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [order?.id, order?.realId, orderId]); // Chỉ chạy khi orderId thay đổi
 
+    // Refresh hasReview khi quay lại từ trang review (khi location thay đổi hoặc component mount lại)
+    useEffect(() => {
+        if (!order || !orderId) return;
+
+        const realOrderId = order.realId || order.id || orderId;
+        if (!realOrderId) return;
+
+        // Kiểm tra xem đơn hàng đã completed hoặc delivered chưa
+        const rawStatusUpper = String(order?.rawStatus || order?._raw?.rawStatus || order?._raw?.status || '').toUpperCase();
+        const normalizedStatus = String(order?.status || '').toLowerCase();
+        const isOrderCompleted = ['COMPLETED', 'SUCCESS'].includes(rawStatusUpper) ||
+            normalizedStatus === 'completed' ||
+            normalizedStatus === 'success';
+        const isDelivered = normalizedStatus === 'delivered' || rawStatusUpper === 'DELIVERED' || isOrderCompleted;
+
+        // Nếu đơn hàng đã completed hoặc delivered, refresh review status
+        if (isDelivered || isOrderCompleted) {
+            hasOrderReview(realOrderId)
+                .then(reviewStatus => {
+                    console.log('[OrderTracking] Refreshed review status:', reviewStatus, 'for order:', realOrderId);
+                    setHasReview(reviewStatus);
+                })
+                .catch(error => {
+                    console.warn('[OrderTracking] Failed to refresh review status:', error);
+                });
+        }
+    }, [location.pathname, location.key, order?.id, order?.realId, order?.status, orderId]); // Refresh khi location thay đổi hoặc order status thay đổi
+
+    // Refresh hasReview khi window focus (khi quay lại tab từ trang review)
+    useEffect(() => {
+        if (!order || !orderId) return;
+
+        const realOrderId = order.realId || order.id || orderId;
+        if (!realOrderId) return;
+
+        const handleFocus = () => {
+            const currentOrder = order; // Capture current order value
+            if (!currentOrder) return;
+
+            const rawStatusUpper = String(currentOrder?.rawStatus || currentOrder?._raw?.rawStatus || currentOrder?._raw?.status || '').toUpperCase();
+            const normalizedStatus = String(currentOrder?.status || '').toLowerCase();
+            const isOrderCompleted = ['COMPLETED', 'SUCCESS'].includes(rawStatusUpper) ||
+                normalizedStatus === 'completed' ||
+                normalizedStatus === 'success';
+            const isDelivered = normalizedStatus === 'delivered' || rawStatusUpper === 'DELIVERED' || isOrderCompleted;
+
+            if (isDelivered || isOrderCompleted) {
+                hasOrderReview(realOrderId)
+                    .then(reviewStatus => {
+                        console.log('[OrderTracking] Refreshed review status on window focus:', reviewStatus);
+                        setHasReview(reviewStatus);
+                    })
+                    .catch(error => {
+                        console.warn('[OrderTracking] Failed to refresh review status on focus:', error);
+                    });
+            }
+        };
+
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [order?.id, order?.realId, order?.status, orderId]);
+
     useEffect(() => {
         if (!order) return;
         const status = String(order.status || '').toLowerCase();
@@ -1296,16 +1392,16 @@ useEffect(() => {
 
     // 👇 HÀM ĐÓNG FORM (Dùng khi Submit thành công hoặc nhấn Hủy)
     const handleDisputeFormClose = (submittedSuccessfully = false) => {
-    setIsDisputeFormVisible(false);
-    
-    if (submittedSuccessfully) {
-        showToastMessage("Đơn khiếu nại đã được gửi thành công!");
-        
-        // CẬP NHẬT TRẠNG THÁI UI:
-        setHasAnyDispute(true);    // Kích hoạt nút "Xem khiếu nại đã gửi"
-        setIsDisputePending(true); // Kích hoạt logic chặn trên nút "Gửi khiếu nại"
-    }
-};
+        setIsDisputeFormVisible(false);
+
+        if (submittedSuccessfully) {
+            showToastMessage("Đơn khiếu nại đã được gửi thành công!");
+
+            // CẬP NHẬT TRẠNG THÁI UI:
+            setHasAnyDispute(true);    // Kích hoạt nút "Xem khiếu nại đã gửi"
+            setIsDisputePending(true); // Kích hoạt logic chặn trên nút "Gửi khiếu nại"
+        }
+    };
     // Xử lý về trang chủ
     const handleGoHome = () => {
         navigate('/');
@@ -1351,7 +1447,7 @@ useEffect(() => {
         );
     }
 
-   if (!order)  {
+    if (!order) {
         return (
             <>
                 {toastPortal}
@@ -1369,24 +1465,24 @@ useEffect(() => {
         );
     }
 
-if (isViewingDisputeResult) {
-    return (
-        <div className="order-tracking-page">
-            <div className="order-tracking-container">
-                <button 
-                    className="btn btn-secondary back-to-tracking-btn"
-                    onClick={handleCloseDisputeResult}
-                    style={{ marginBottom: '20px' }}
-                >
-                    <ArrowLeft size={18} style={{ marginRight: '8px' }} />
-                    Quay lại chi tiết đơn hàng #{order.id}
-                </button>
-                {/* Sử dụng ViewDisputeResult component */}
-                <ViewDisputeResult orderId={realIdForOrder} /> 
+    if (isViewingDisputeResult) {
+        return (
+            <div className="order-tracking-page">
+                <div className="order-tracking-container">
+                    <button
+                        className="btn btn-secondary back-to-tracking-btn"
+                        onClick={handleCloseDisputeResult}
+                        style={{ marginBottom: '20px' }}
+                    >
+                        <ArrowLeft size={18} style={{ marginRight: '8px' }} />
+                        Quay lại chi tiết đơn hàng #{order.id}
+                    </button>
+                    {/* Sử dụng ViewDisputeResult component */}
+                    <ViewDisputeResult orderId={realIdForOrder} />
+                </div>
             </div>
-        </div>
-    );
-}
+        );
+    }
     // Get status from multiple possible locations (same as in handleConfirmOrder)
     const rawStatusUpper = String(
         order?.rawStatus ||
@@ -1843,50 +1939,55 @@ if (isViewingDisputeResult) {
                                                 />
                                             ) : (
                                                 // Nếu Form KHÔNG mở, hiển thị các nút hành động
-                                                <>
-                                                    {/* NÚT 1: Gửi khiếu nại (Luôn hiển thị khi Form đóng) */}
-                                                    
-                                                    <AnimatedButton
-                                                        variant="warning"
-                                                        onClick={handleRaiseDisputeClick}
-                                                        size="sm"
-                                                    >
-                                                        <MessageSquareWarning size={16} />
-                                                        Gửi khiếu nại
-                                                    </AnimatedButton>
-
-                                                    {/* NÚT 2: Xem khiếu nại đã gửi (Chỉ hiển thị khi đã có dispute) */}
-                                                    {hasAnyDispute && (
+                                                // CHỈ hiển thị khi đơn hàng đã được xác nhận (COMPLETED)
+                                                isOrderCompleted && (
+                                                    <>
+                                                        {/* NÚT 1: Gửi khiếu nại (Chỉ hiển thị sau khi xác nhận đơn hàng) */}
                                                         <AnimatedButton
-                                                            variant="secondary" // Có thể dùng màu khác để phân biệt
-                                                            onClick={handleViewDisputeResult}
+                                                            variant="warning"
+                                                            onClick={handleRaiseDisputeClick}
                                                             size="sm"
                                                         >
                                                             <MessageSquareWarning size={16} />
-                                                            Xem khiếu nại đã gửi
+                                                            Gửi khiếu nại
                                                         </AnimatedButton>
-                                                    )}
-                                                </>
+
+                                                        {/* NÚT 2: Xem khiếu nại đã gửi (Chỉ hiển thị khi đã có dispute) */}
+                                                        {hasAnyDispute && (
+                                                            <AnimatedButton
+                                                                variant="secondary" // Có thể dùng màu khác để phân biệt
+                                                                onClick={handleViewDisputeResult}
+                                                                size="sm"
+                                                            >
+                                                                <MessageSquareWarning size={16} />
+                                                                Xem khiếu nại đã gửi
+                                                            </AnimatedButton>
+                                                        )}
+                                                    </>
+                                                )
                                             )}
-                                            {hasReview ? (
-                                                <AnimatedButton
-                                                    variant="secondary"
-                                                    onClick={handleViewReview}
-                                                    size="sm"
-                                                >
-                                                    <Star size={16} />
-                                                    Xem đánh giá
-                                                </AnimatedButton>
-                                            ) : (
-                                                <AnimatedButton
-                                                    variant="success"
-                                                    shimmer={true}
-                                                    onClick={handleRateOrder}
-                                                    size="sm"
-                                                >
-                                                    <Star size={16} />
-                                                    Đánh giá
-                                                </AnimatedButton>
+                                            {/* NÚT ĐÁNH GIÁ: Chỉ hiển thị sau khi xác nhận đơn hàng */}
+                                            {isOrderCompleted && (
+                                                hasReview ? (
+                                                    <AnimatedButton
+                                                        variant="secondary"
+                                                        onClick={handleViewReview}
+                                                        size="sm"
+                                                    >
+                                                        <Star size={16} />
+                                                        Xem đánh giá
+                                                    </AnimatedButton>
+                                                ) : (
+                                                    <AnimatedButton
+                                                        variant="success"
+                                                        shimmer={true}
+                                                        onClick={handleRateOrder}
+                                                        size="sm"
+                                                    >
+                                                        <Star size={16} />
+                                                        Đánh giá
+                                                    </AnimatedButton>
+                                                )
                                             )}
                                         </div>
                                     </div>
