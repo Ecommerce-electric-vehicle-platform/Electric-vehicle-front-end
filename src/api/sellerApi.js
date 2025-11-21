@@ -616,39 +616,35 @@ unhidePostById: async (postId) => {
         throw new Error("categoryId is required for AI description generation");
       }
 
-      // Append data (JSON string chứa thông tin sản phẩm)
+      // Append từng field riêng biệt vào FormData (cùng cấp với pictures)
       // LƯU Ý: Backend expect "manufactureYear" (không có 'r'), không phải "manufacturerYear"
-      // LƯU Ý: Backend KHÔNG CẦN sellerId, chỉ cần categoryId
-      const productData = {
-        title: productInfo.title || "",
-        brand: productInfo.brand || "",
-        model: productInfo.model || "",
-        manufactureYear: parseInt(productInfo.manufacturerYear) || new Date().getFullYear(),
-        usedDuration: productInfo.usedDuration || "",
-        color: productInfo.color || "",
-        price: parseFloat(productInfo.price) || 0,
-        conditionLevel: productInfo.conditionLevel || "",
-        locationTrading: productInfo.locationTrading || "",
-        categoryId: parseInt(productInfo.categoryId), // BẮT BUỘC - đảm bảo là number
-        length: productInfo.length || "",
-        width: productInfo.width || "",
-        height: productInfo.height || "",
-        weight: productInfo.weight || ""
-      };
+      // Mỗi field là một entry riêng, KHÔNG gom vào JSON string
       
-      const dataJson = JSON.stringify(productData);
-      formData.append("data", dataJson);
+      formData.append("title", productInfo.title || "");
+      formData.append("brand", productInfo.brand || "");
+      formData.append("model", productInfo.model || "");
+      formData.append("manufactureYear", parseInt(productInfo.manufacturerYear) || new Date().getFullYear());
+      formData.append("usedDuration", productInfo.usedDuration || "");
+      formData.append("color", productInfo.color || "");
+      formData.append("price", parseFloat(productInfo.price) || 0);
+      formData.append("conditionLevel", productInfo.conditionLevel || "");
+      formData.append("locationTrading", productInfo.locationTrading || "");
+      formData.append("categoryId", parseInt(productInfo.categoryId)); // BẮT BUỘC
+      
+      // Thêm dimensions nếu có
+      if (productInfo.length) formData.append("length", productInfo.length);
+      if (productInfo.width) formData.append("width", productInfo.width);
+      if (productInfo.height) formData.append("height", productInfo.height);
+      if (productInfo.weight) formData.append("weight", productInfo.weight);
       
       // Log để debug
       console.log("[SellerAPI] Calling AI API...");
-      console.log("[SellerAPI] Product data:", productData);
-      console.log("[SellerAPI] CategoryId:", productData.categoryId, typeof productData.categoryId);
       console.log("[SellerAPI] Image file:", {
         name: imageFile.name,
         size: imageFile.size,
         type: imageFile.type
       });
-      console.log("[SellerAPI] FormData entries:");
+      console.log("[SellerAPI] FormData entries (mỗi field riêng biệt):");
       for (let [key, value] of formData.entries()) {
         console.log(`  ${key}:`, value instanceof File ? `[File: ${value.name}]` : value);
       }

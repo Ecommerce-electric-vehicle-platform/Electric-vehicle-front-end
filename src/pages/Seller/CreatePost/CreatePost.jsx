@@ -114,12 +114,12 @@ export default function CreatePost() {
 
   // Gọi AI để tạo mô tả tự động
   const handleGenerateAIDescription = async () => {
-    console.log("🤖 [AI] Starting AI description generation...");
-    console.log("🤖 [AI] Current categoryId:", formData.categoryId, typeof formData.categoryId);
+    console.log("[AI] Starting AI description generation...");
+    console.log("[AI] Current categoryId:", formData.categoryId, typeof formData.categoryId);
     
     // Kiểm tra categoryId có tồn tại không (BẮT BUỘC theo BE)
     if (!formData.categoryId) {
-      console.error("❌ [AI] categoryId is missing!");
+      console.error("[AI] categoryId is missing!");
       alert("Vui lòng chọn danh mục trước khi sử dụng AI!");
       return;
     }
@@ -142,7 +142,7 @@ export default function CreatePost() {
       // Không cần truyền sellerId, chỉ cần categoryId
       const dataToSend = { ...formData };
       
-      console.log("🤖 [AI] Data to send:", {
+      console.log("[AI] Data to send:", {
         categoryId: dataToSend.categoryId,
         categoryIdType: typeof dataToSend.categoryId,
         dataToSend: dataToSend,
@@ -160,20 +160,21 @@ export default function CreatePost() {
       console.log("AI Response:", response);
 
       if (response?.data?.success) {
-        // Lấy description từ response - có thể có nhiều format khác nhau
-        const aiDescription = response?.data?.data?.description || 
-                             response?.data?.data?.content ||
-                             response?.data?.data?.text ||
-                             response?.data?.message || "";
+        // Lấy description từ response.data.data (là string trực tiếp)
+        const aiDescription = response?.data?.data || "";
         
         if (aiDescription) {
-          // Tự động điền vào ô mô tả
+          // \n trong string sẽ tự động hiển thị như xuống dòng trong textarea
+          // Không cần xử lý gì thêm, textarea tự động nhận diện \n
           setFormData((prev) => ({ ...prev, description: aiDescription }));
+          
           // Xóa lỗi của description nếu có
           if (errors.description) {
             setErrors((prev) => ({ ...prev, description: "" }));
           }
-          alert("✅ AI đã tạo mô tả thành công!");
+          
+          console.log("[AI] Description received and filled!");
+          alert("AI đã tạo mô tả thành công!");
         } else {
           throw new Error("AI không trả về mô tả");
         }
@@ -184,7 +185,7 @@ export default function CreatePost() {
       console.error("Lỗi khi gọi AI:", error);
       console.error("Error response:", error?.response);
       
-      let errorMsg = "❌ Không thể tạo mô tả bằng AI.\n";
+      let errorMsg = " Không thể tạo mô tả bằng AI.\n";
       
       // Phân tích lỗi cụ thể
       if (error?.response?.status === 500) {
