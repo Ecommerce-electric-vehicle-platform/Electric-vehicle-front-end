@@ -117,21 +117,78 @@
 }
 
 .follow-btn {
-    width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    width: 100%;
+    padding: 10px 16px;
+    margin-top: 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
     transition: all 0.2s ease;
-    margin-top: 8px;
+    border: none;
+}
+
+.follow-btn.follow-mode {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); /* Cam Gradient */
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3); /* Bóng màu cam */
+}
+
+.follow-btn.follow-mode:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+}
+
+/* TRẠNG THÁI 2: ĐANG FOLLOW -> Nút Bỏ theo dõi (Màu Đỏ nhạt cảnh báo) */
+.follow-btn.unfollow-mode {
+    background: #fee2e2; /* Nền đỏ rất nhạt */
+    color: #ef4444;      /* Chữ đỏ */
+    border: 1px solid #fca5a5; /* Viền đỏ nhạt */
+}
+
+.follow-btn.unfollow-mode:hover {
+    background: #fecaca; /* Đậm hơn chút khi hover */
+    color: #dc2626;
+    border-color: #ef4444;
+}
+
+/* STYLE CHO TAG "ĐANG THEO DÕI" (Màu Xanh Lá Nhạt - Mint) */
+.following-status-tag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    
+    /* Căn giữa */
+    margin: 0 auto 12px auto;
+    
+    /* Màu sắc: Nền xanh mint nhạt + Chữ xanh đậm */
+    background-color: #ecfdf5; 
+    color: #10b981;
+    border: 1px solid #d1fae5;
+    
+    /* Kích thước */
+    padding: 4px 14px;
+    border-radius: 20px; /* Bo tròn viên thuốc */
+    font-size: 12px;
+    font-weight: 600;
+    width: fit-content;
+}
+
+/* Hiệu ứng Loading ... */
+.loader-dots {
+    animation: opacity-pulse 1s infinite;
+}
+
+@keyframes opacity-pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
 }
 
 .follow-btn:hover {

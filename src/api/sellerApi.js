@@ -596,6 +596,9 @@ unhidePostById: async (postId) => {
     }
   },
 
+
+
+
   // Lấy một post cụ thể theo postId (dùng cho EditPost)
   // Sử dụng API list posts và filter theo postId (vì API GET by ID bị lỗi 500)
   // LƯU Ý: KHÔNG gọi trực tiếp GET /api/v1/seller/{postId} vì endpoint này không tồn tại
@@ -620,6 +623,7 @@ unhidePostById: async (postId) => {
         console.log(`[sellerApi.getPostById] Seller ID: ${finalSellerId}`);
       }
       
+
       // Lấy danh sách posts của seller (KHÔNG gọi GET /api/v1/seller/{postId})
       console.log(`[sellerApi.getPostById] Fetching products for seller ${finalSellerId}...`);
       const products = await sellerApi.getProductsBySeller(finalSellerId, { page: 0, size: 100 });
@@ -643,6 +647,67 @@ unhidePostById: async (postId) => {
     }
   },
 
+
+  // =======================THEO DÕI SELLER TỪ BUYER========================
+  // API: POST /api/v1/buyer/follow/{sellerId}
+  followSeller: async (sellerId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.post(
+        `/api/v1/buyer/follow/${sellerId}`,
+        {}, // Body rỗng
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+      // Trả về toàn bộ data để lấy field "success" và "message"
+      return response.data; 
+    } catch (error) {
+      console.error("[SellerAPI] Error following seller:", error);
+      throw error;
+    }
+  },
+
+  // 2. Hủy theo dõi Seller
+  // API: DELETE /api/v1/buyer/follow/{sellerId}
+  unfollowSeller: async (sellerId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.delete(
+        `/api/v1/buyer/follow/${sellerId}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("[SellerAPI] Error unfollowing seller:", error);
+      throw error;
+    }
+  },
+
+  // 3. Kiểm tra trạng thái (đã follow chưa)
+  // API: GET /api/v1/buyer/follow/{sellerId}/status
+  checkFollowStatus: async (sellerId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.get(
+        `/api/v1/buyer/follow/${sellerId}/status`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        }
+      );
+      return response.data; 
+    } catch (error) {
+      console.error("[SellerAPI] Error checking follow status:", error);
+      throw error;
+    }
+  },
+
 };
+
+
 
 export default sellerApi;

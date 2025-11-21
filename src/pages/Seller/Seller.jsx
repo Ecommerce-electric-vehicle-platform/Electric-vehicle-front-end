@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 import "./Seller.css";
 import sellerApi from '../../api/sellerApi';
 import { addToWishlist, fetchWishlist } from '../../api/wishlistApi';
-import { Package, Plus, BarChart3, Star, MapPin, Calendar, Clock, MessageCircle, Users, Heart, Shield } from "lucide-react";
+import { Package, Plus, BarChart3,
+         Star, MapPin, Calendar, 
+         Clock, MessageCircle, 
+         Users, Heart, Shield, 
+         UserPlus, UserCheck, UserMinus 
+        } from "lucide-react";
 
 export function Seller() {
     const { id: sellerId } = useParams();
@@ -34,6 +39,11 @@ export function Seller() {
          Number(currentUserBuyerId) === Number(viewedSellerBuyerId))
     );
     
+    // following feature 
+
+    const [isFollowing, setIsFollowing] = useState(false); // Trạng thái follow
+    const [followLoading, setFollowLoading] = useState(false); // Loading khi bấm nút
+
     console.log("[Seller] sellerId from URL:", sellerId);
     console.log("[Seller] currentUserBuyerId:", currentUserBuyerId);
     console.log("[Seller] viewedSellerBuyerId:", viewedSellerBuyerId);
@@ -381,6 +391,121 @@ export function Seller() {
         }
     };
 
+    // xu ly phan following
+    useEffect(() => {
+        let mounted = true;
+        const accessToken = localStorage.getItem("accessToken");
+        
+        // Chỉ check khi đã đăng nhập, có sellerId và KHÔNG phải xem shop mình
+        if (accessToken && sellerId && !isViewingOwnProfile) {
+            sellerApi.checkFollowStatus(sellerId)
+                .then((response) => {
+                    if (!mounted) return;
+                    // JSON trả về: { success: true, data: { isFollowing: true/false, ... } }
+                    if (response && response.success && response.data) {
+                        setIsFollowing(response.data.isFollowing);
+                    }
+                })
+                .catch((err) => {
+                    console.error("[Seller] Error checking follow status:", err);
+                });
+        }
+        return () => { mounted = false; };
+    }, [sellerId, isViewingOwnProfile]);
+
+    // ========================================================================
+    // === 2. HÀM XỬ LÝ LOGIC BẤM NÚT (POST / DELETE API) ===
+    // ========================================================================
+    const handleFollowAction = async () => {
+        const accessToken = localStorage.getItem("accessToken");
+        
+        // 1. Validate Login
+        if (!accessToken) {
+            alert("Vui lòng đăng nhập để thực hiện chức năng này!");
+            return;
+        }
+
+        // 2. Chặn spam click
+        if (followLoading) return;
+
+        // === TRƯỜNG HỢP A: ĐANG FOLLOW -> MUỐN HỦY (DELETE) ===
+        if (isFollowing) {
+            // Popup xác nhận Yes/No
+            const confirmUnfollow = window.confirm("Bạn muốn bỏ theo dõi người bán chứ?");
+            
+            if (confirmUnfollow) { // Nếu chọn YES
+                setFollowLoading(true);
+                try {
+                    console.log("[Seller] Action: Unfollow");
+                    const res = await sellerApi.unfollowSeller(sellerId);
+                    
+                    if (res && res.success) {
+                        setIsFollowing(false); // Đổi nút về "Theo dõi"
+                        
+                        // Giảm số follower hiển thị ngay lập tức (Optimistic Update)
+                        if (seller) {
+                            setSeller(prev => ({ 
+                                ...prev, 
+                                followerCount: Math.max(0, (prev.followerCount || 0) - 1) 
+                            }));
+                        }
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert("Lỗi khi bỏ theo dõi.");
+                } finally {
+                    setFollowLoading(false);
+                }
+            }
+        } 
+        
+        // === TRƯỜNG HỢP B: CHƯA FOLLOW -> MUỐN THEO DÕI (POST) ===
+        else {
+            setFollowLoading(true);
+            try {
+                console.log("[Seller] Action: Follow");
+                const res = await sellerApi.followSeller(sellerId);
+                
+                if (res && res.success) {
+                    setIsFollowing(true); // Đổi nút thành "Bỏ theo dõi"
+                    
+                    // Lấy tên Shop từ Response để hiện Popup
+                    // Cấu trúc JSON: { data: { seller: { storeName: "..." } } }
+                    const storeName = res.data?.seller?.storeName || res.data?.seller?.sellerName || "Shop này";
+                    
+                    // Popup thông báo thành công
+                    alert(`Bạn đã theo dõi "${storeName}" thành công!`);
+
+                    // Tăng số follower hiển thị ngay lập tức
+                    if (seller) {
+                        setSeller(prev => ({ 
+                            ...prev, 
+                            followerCount: (prev.followerCount || 0) + 1 
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error("[Seller] Follow error:", error);
+                const msg = error?.response?.data?.message || "";
+                const errData = error?.response?.data?.error || "";
+
+                // Validate: Không cho tự follow
+                if (msg.includes("Cannot follow yourself") || errData.includes("Cannot follow yourself")) {
+                    alert("Bạn không thể tự theo dõi chính mình!");
+                } 
+                // Validate: Đã follow rồi (đồng bộ lại UI)
+                else if (msg.includes("Already following") || errData.includes("Already following")) {
+                    setIsFollowing(true); 
+                    alert("Hệ thống cập nhật: Bạn đang theo dõi shop này rồi.");
+                } else {
+                    alert("Có lỗi xảy ra, vui lòng thử lại.");
+                }
+            } finally {
+                setFollowLoading(false);
+            }
+        }
+    };
+
     return (
         <div className="seller-page">
             <div className="seller-layout">
@@ -450,6 +575,39 @@ export function Seller() {
                                     <Calendar size={16} />
                                     <span>Đã tham gia: <strong>{seller.joinDate}</strong></span>
                                 </div>
+                            )}
+
+                            {/* 6. NÚT THEO DÕI (MỚI THÊM - QUAN TRỌNG NHẤT) */}
+                            {/* Logic: Ẩn nếu đang xem chính mình. Nút đổi màu/icon dựa trên isFollowing */}
+                            {!isViewingOwnProfile && (
+                                <>
+                                    <button 
+                                        onClick={handleFollowAction}
+                                        disabled={followLoading}
+                                        className={`follow-btn ${isFollowing ? 'unfollow-mode' : 'follow-mode'}`}
+                                    >
+                                        {followLoading ? (
+                                            <span className="loader-dots">...</span>
+                                        ) : isFollowing ? (
+                                            <>
+                                                <UserMinus size={18} />
+                                                <span>Bỏ theo dõi</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <UserPlus size={18} />
+                                                <span>Theo dõi</span>
+                                            </>
+                                        )}
+                                    </button>
+                                    
+                                    {/* Tag trạng thái nhỏ bên dưới nút (chỉ hiện khi đang follow) */}
+                                    {isFollowing && (
+                                        <div className="following-status-tag">
+                                            <UserCheck size={14} /> Đang theo dõi
+                                        </div>
+                                    )}
+                                </>
                             )}
 
                             {/* Address */}
