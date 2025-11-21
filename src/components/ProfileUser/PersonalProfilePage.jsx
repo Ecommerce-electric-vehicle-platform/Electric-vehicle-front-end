@@ -11,7 +11,7 @@ import SellerDocumentView from "./SellerDocumentView";
 //THÊM IMPORT OrderList 
 import OrderList from "../../pages/OrderList/OrderList.jsx";
 import ViewDisputeResult from "./ViewDisputeResult.jsx";
-
+import MyFollowingList from "./MyFollowingList";
 
 
 
@@ -95,6 +95,7 @@ export default function PersonalProfilePage() {
       case "seller-docs": setActiveSection("Quản lý giấy tờ kinh doanh"); break;
       case "disputes": setActiveSection("Xem khiếu nại"); break;
       // XÓA case "dispute" (Logic xử lý Dispute giờ nằm trong OrderList)
+      case "following": setActiveSection("Theo dõi của tôi"); break;
       default: break; // Giữ nguyên nếu tab không hợp lệ
     }
   }, [location.search]); // Chạy lại khi URL search thay đổi
@@ -161,6 +162,7 @@ export default function PersonalProfilePage() {
           {activeSection === "Xem khiếu nại" && <ViewDisputeResult /> }
 
           {activeSection === "Ví điện tử" && <PersonalEWallet />}
+          {activeSection === "Theo dõi của tôi" && <MyFollowingList />}
           {activeSection === "Nâng cấp thành người bán" && (
             <UpgradeToSeller
               onGoToProfile={() => setActiveSection("Hồ sơ cá nhân")}
