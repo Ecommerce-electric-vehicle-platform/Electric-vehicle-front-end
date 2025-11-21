@@ -148,6 +148,17 @@ checkOrderDisputePendingStatus: (orderId) => {
     });
   },
 
+  // Lấy danh sách các Shop mà Buyer đang theo dõi
+  // API: GET /api/v1/buyer/following?page=0&size=10
+  getFollowedSellers: (page = 0, size = 10) => {
+    return axiosInstance.get('/api/v1/buyer/following', {
+      params: { 
+        page: page, 
+        size: size 
+      }
+    });
+  },
+
 };
 
 

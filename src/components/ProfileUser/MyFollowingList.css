@@ -1,0 +1,226 @@
+.following-page {
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    min-height: 400px;
+}
+
+.following-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.following-loading, .following-error {
+    padding: 40px;
+    text-align: center;
+    color: #6b7280;
+}
+
+/* --- EMPTY STATE --- */
+.empty-following {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 0;
+    gap: 16px;
+}
+
+.empty-following p {
+    font-size: 16px;
+    color: #6b7280;
+}
+
+.explore-btn {
+    padding: 10px 24px;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.explore-btn:hover {
+    background-color: #059669;
+}
+
+/* --- GRID LAYOUT --- */
+.following-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Tự động chia cột */
+    gap: 20px;
+}
+
+/* --- CARD STYLE --- */
+.following-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    background: #fff;
+}
+
+.following-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+    border-color: #10b981;
+}
+
+.card-header {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.shop-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.shop-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.shop-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.shop-name:hover {
+    color: #10b981;
+}
+
+.shop-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.truncate-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* --- BUTTONS --- */
+.card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.follow-date {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 4px;
+}
+
+/* CSS MỚI CHO PHÂN TRANG */
+.pagination-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid #f3f4f6;
+}
+
+.page-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid #e5e7eb;
+    background-color: #fff;
+    cursor: pointer;
+    color: #374151;
+    transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+    background-color: #10b981;
+    color: white;
+    border-color: #10b981;
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #f9fafb;
+}
+
+.page-info {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4b5563;
+}
+
+.view-btn {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.view-btn:hover {
+    background-color: #e5e7eb;
+}
+
+.unfollow-btn {
+    background-color: #fff;
+    border-color: #fee2e2;
+    color: #ef4444;
+}
+
+.unfollow-btn:hover {
+    background-color: #fee2e2;
+}
+
+.loader-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
