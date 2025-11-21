@@ -44,12 +44,53 @@ export const PRODUCT_TYPE_FILTERS = {
     BATTERY: "battery",
 };
 
+const CATEGORY_ID_MAP = {
+    1: PRODUCT_TYPE_FILTERS.VEHICLE,
+    2: PRODUCT_TYPE_FILTERS.BATTERY,
+};
+
 export const removeDiacritics = (text) => {
     if (!text) return "";
     return text
         .toString()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D");
+};
+
+const getNumericCategoryId = (product) => {
+    const candidates = [
+        product?.categoryId,
+        product?.category_id,
+        product?.category,
+        product?._raw?.categoryId,
+        product?._raw?.category_id,
+        product?._raw?.category,
+        product?._raw?.categorySlug,
+        product?._raw?.categoryName,
+    ];
+
+    for (const candidate of candidates) {
+        if (candidate === null || candidate === undefined) continue;
+
+        if (typeof candidate === "number" && Number.isFinite(candidate)) {
+            return candidate;
+        }
+
+        if (typeof candidate === "string") {
+            const trimmed = candidate.trim();
+            if (/^\d+$/.test(trimmed)) {
+                return Number(trimmed);
+            }
+        }
+
+        if (typeof candidate === "object" && candidate !== null) {
+            const nested = getNumericCategoryId(candidate);
+            if (nested) return nested;
+        }
+    }
+    return null;
 };
 
 export const detectProductType = (product) => {
@@ -60,6 +101,8 @@ export const detectProductType = (product) => {
         if (!value) return;
         if (typeof value === "string") {
             categoryCandidates.push(value);
+        } else if (typeof value === "number") {
+            categoryCandidates.push(String(value));
         } else if (typeof value === "object") {
             if (value?.name) categoryCandidates.push(value.name);
             if (value?.slug) categoryCandidates.push(value.slug);
@@ -73,6 +116,11 @@ export const detectProductType = (product) => {
     pushCategoryCandidate(product._raw?.category);
     pushCategoryCandidate(product._raw?.categorySlug);
     pushCategoryCandidate(product._raw?.productType);
+
+    const numericCategoryId = getNumericCategoryId(product);
+    if (numericCategoryId != null && CATEGORY_ID_MAP[numericCategoryId]) {
+        return CATEGORY_ID_MAP[numericCategoryId];
+    }
 
     const normalizedCategories = categoryCandidates
         .map((value) => removeDiacritics(value).toLowerCase())

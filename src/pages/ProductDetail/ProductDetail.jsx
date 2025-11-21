@@ -415,15 +415,6 @@ function ProductDetail() {
     // Tạo danh sách ảnh (giả sử có nhiều ảnh)
     const productImages = product.images || [product.image];
 
-    // Market price data
-    const marketPriceData = {
-        lowest: 8260000,
-        highest: 10100000,
-        currentDiscount: 21,
-    };
-
-    const pricePercentage = ((product.price - marketPriceData.lowest) / (marketPriceData.highest - marketPriceData.lowest)) * 100;
-
     return (
         <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
             <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 16px", paddingTop: "calc(4rem + 32px)" }}>
@@ -779,101 +770,6 @@ function ProductDetail() {
                                     </div>
 
                                     <div style={{ height: "1px", backgroundColor: "#e5e7eb", margin: "16px 0" }} />
-
-                                    {/* Market Price */}
-                                    <div
-                                        style={{
-                                            marginBottom: "16px",
-                                            borderRadius: "10px",
-                                            backgroundColor: "#f9fafb",
-                                            padding: "18px",
-                                            border: "1px solid #e5e7eb"
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                marginBottom: "10px",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                fontSize: "14px",
-                                            }}
-                                        >
-                                            <span style={{ fontWeight: 600, color: "#1f2937" }}>Giá xe mới trên thị trường</span>
-                                            <Info size={16} color="#6b7280" />
-                                        </div>
-                                        <p style={{ marginBottom: "16px", fontSize: "13px", color: "#6b7280", lineHeight: "1.5" }}>
-                                            Giá thực tế của loại xe này trên thị trường
-                                        </p>
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                fontSize: "14px",
-                                            }}
-                                        >
-                                            <div>
-                                                <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Giá thấp nhất</p>
-                                                <p style={{ fontWeight: 600, fontSize: "16px", color: "#1f2937" }}>
-                                                    {(marketPriceData.lowest / 1000000).toFixed(1)} triệu VNĐ
-                                                </p>
-                                            </div>
-                                            <div style={{ textAlign: "right" }}>
-                                                <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Giá cao nhất</p>
-                                                <p style={{ fontWeight: 600, fontSize: "16px", color: "#1f2937" }}>
-                                                    {(marketPriceData.highest / 1000000).toFixed(1)} triệu VNĐ
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Price Progress */}
-                                    <div style={{ marginBottom: "24px" }}>
-                                        <div
-                                            style={{
-                                                marginBottom: "8px",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                fontSize: "14px",
-                                            }}
-                                        >
-                                            <span style={{ fontWeight: 500, color: "#374151" }}>Giá hiện tại</span>
-                                            <span
-                                                style={{
-                                                    padding: "4px 10px",
-                                                    borderRadius: "6px",
-                                                    backgroundColor: "rgba(16, 185, 129, 0.15)",
-                                                    color: "#059669",
-                                                    fontSize: "12px",
-                                                    fontWeight: 600,
-                                                    border: "1px solid rgba(16, 185, 129, 0.2)",
-                                                }}
-                                            >
-                                                Tiết kiệm {marketPriceData.currentDiscount}%
-                                            </span>
-                                        </div>
-                                        <div
-                                            style={{
-                                                position: "relative",
-                                                height: "8px",
-                                                width: "100%",
-                                                overflow: "hidden",
-                                                borderRadius: "9999px",
-                                                backgroundColor: "#f3f4f6",
-                                            }}
-                                        >
-                                            <div
-                                                style={{
-                                                    height: "100%",
-                                                    background: "linear-gradient(to right, #10b981, #3b82f6)",
-                                                    width: `${pricePercentage}%`,
-                                                    transition: "width 0.3s",
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
 
                                     <button
                                         onClick={isGuest ? handleRequireLogin : () => navigate(`/place-order/${product.id}`, { state: { product } })}

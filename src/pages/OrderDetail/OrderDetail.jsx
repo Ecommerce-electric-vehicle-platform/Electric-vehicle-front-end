@@ -153,23 +153,25 @@ function OrderDetail() {
                                 normalized_status: statusResponse.status
                             }));
 
-                            // Nếu đơn hàng đã giao, kiểm tra xem đã có đánh giá chưa
-                            if (statusResponse.status === 'delivered') {
+                            // Nếu đơn hàng đã giao hoặc completed, kiểm tra xem đã có đánh giá chưa
+                            if (statusResponse.status === 'delivered' || statusResponse.status === 'completed') {
                                 try {
                                     const reviewStatus = await hasOrderReview(realOrderId);
+                                    console.log('[OrderDetail] Review status checked:', reviewStatus, 'for order:', realOrderId);
                                     setHasReview(reviewStatus);
                                 } catch (reviewError) {
                                     console.warn('[OrderDetail] Failed to check review status:', reviewError);
                                 }
-                            } else {
-                                setHasReview(false);
                             }
+                            // KHÔNG set false ở đây - để tránh reset khi order đã completed nhưng status response chưa đúng
                         } else {
-                            // Nếu không lấy được status từ shipping API nhưng order status từ order detail là DELIVERED
+                            // Nếu không lấy được status từ shipping API nhưng order status từ order detail là DELIVERED hoặc COMPLETED
                             const orderStatusUpper = String(normalized.order_status || '').toUpperCase();
-                            if (orderStatusUpper === 'DELIVERED' || normalized.normalized_status === 'delivered') {
+                            if (orderStatusUpper === 'DELIVERED' || normalized.normalized_status === 'delivered' ||
+                                orderStatusUpper === 'COMPLETED' || normalized.normalized_status === 'completed') {
                                 try {
                                     const reviewStatus = await hasOrderReview(realOrderId);
+                                    console.log('[OrderDetail] Review status checked (fallback):', reviewStatus, 'for order:', realOrderId);
                                     setHasReview(reviewStatus);
                                 } catch (reviewError) {
                                     console.warn('[OrderDetail] Failed to check review status:', reviewError);
@@ -178,11 +180,13 @@ function OrderDetail() {
                         }
                     } catch (error) {
                         console.warn('[OrderDetail] Failed to get order status from API:', error);
-                        // Nếu API fail nhưng order status là DELIVERED, vẫn check review
+                        // Nếu API fail nhưng order status là DELIVERED hoặc COMPLETED, vẫn check review
                         const orderStatusUpper = String(normalized.order_status || '').toUpperCase();
-                        if (orderStatusUpper === 'DELIVERED' || normalized.normalized_status === 'delivered') {
+                        if (orderStatusUpper === 'DELIVERED' || normalized.normalized_status === 'delivered' ||
+                            orderStatusUpper === 'COMPLETED' || normalized.normalized_status === 'completed') {
                             try {
                                 const reviewStatus = await hasOrderReview(realOrderId);
+                                console.log('[OrderDetail] Review status checked (error fallback):', reviewStatus, 'for order:', realOrderId);
                                 setHasReview(reviewStatus);
                             } catch (reviewError) {
                                 console.warn('[OrderDetail] Failed to check review status:', reviewError);
@@ -267,10 +271,15 @@ function OrderDetail() {
 
                         updateOrderData(prevData => {
                             if (!prevData || prevData.order_status === backendStatus) {
-                                // Nếu status không thay đổi nhưng là delivered, vẫn check review status
-                                if (statusResponse.status === 'delivered') {
+                                // Nếu status không thay đổi nhưng là delivered hoặc completed, vẫn check review status
+                                if (statusResponse.status === 'delivered' || statusResponse.status === 'completed') {
                                     const realId = prevData.id || orderId;
-                                    hasOrderReview(realId).then(setHasReview).catch(console.warn);
+                                    hasOrderReview(realId)
+                                        .then(reviewStatus => {
+                                            console.log('[OrderDetail] Review status refreshed in auto-refresh:', reviewStatus);
+                                            setHasReview(reviewStatus);
+                                        })
+                                        .catch(console.warn);
                                 }
                                 return prevData;
                             }
@@ -282,13 +291,17 @@ function OrderDetail() {
                                 normalized_status: statusResponse.status
                             };
 
-                            // Nếu đơn hàng đã giao, kiểm tra xem đã có đánh giá chưa
-                            if (statusResponse.status === 'delivered') {
+                            // Nếu đơn hàng đã giao hoặc completed, kiểm tra xem đã có đánh giá chưa
+                            if (statusResponse.status === 'delivered' || statusResponse.status === 'completed') {
                                 const realId = updatedData.id || orderId;
-                                hasOrderReview(realId).then(setHasReview).catch(console.warn);
-                            } else {
-                                setHasReview(false);
+                                hasOrderReview(realId)
+                                    .then(reviewStatus => {
+                                        console.log('[OrderDetail] Review status refreshed:', reviewStatus);
+                                        setHasReview(reviewStatus);
+                                    })
+                                    .catch(console.warn);
                             }
+                            // KHÔNG set false ở đây - để tránh reset khi order đã completed
 
                             return updatedData;
                         });
@@ -311,6 +324,69 @@ function OrderDetail() {
 
         return () => clearInterval(intervalId);
     }, [orderData, orderId, updateOrderData]); // Chỉ chạy khi orderId thay đổi
+
+    // Refresh hasReview khi quay lại từ trang review (khi location thay đổi hoặc component mount lại)
+    useEffect(() => {
+        if (!orderData || !orderId) return;
+
+        const realOrderId = orderData.id || orderId;
+        if (!realOrderId) return;
+
+        // Kiểm tra xem đơn hàng đã completed hoặc delivered chưa
+        const orderStatusUpper = String(orderData?.order_status || '').toUpperCase();
+        const normalizedStatus = String(orderData?.normalized_status || '').toLowerCase();
+        const isOrderCompleted = ['COMPLETED', 'SUCCESS'].includes(orderStatusUpper) ||
+            normalizedStatus === 'completed' ||
+            normalizedStatus === 'success';
+        const isDelivered = normalizedStatus === 'delivered' || orderStatusUpper === 'DELIVERED' || isOrderCompleted;
+
+        // Nếu đơn hàng đã completed hoặc delivered, refresh review status
+        if (isDelivered || isOrderCompleted) {
+            hasOrderReview(realOrderId)
+                .then(reviewStatus => {
+                    console.log('[OrderDetail] Refreshed review status:', reviewStatus, 'for order:', realOrderId);
+                    setHasReview(reviewStatus);
+                })
+                .catch(error => {
+                    console.warn('[OrderDetail] Failed to refresh review status:', error);
+                });
+        }
+    }, [location.pathname, location.key, orderData?.id, orderData?.order_status, orderData?.normalized_status, orderId]); // Refresh khi location thay đổi hoặc order status thay đổi
+
+    // Refresh hasReview khi window focus (khi quay lại tab từ trang review)
+    useEffect(() => {
+        if (!orderData || !orderId) return;
+
+        const realOrderId = orderData.id || orderId;
+        if (!realOrderId) return;
+
+        const handleFocus = () => {
+            const currentOrderData = orderData; // Capture current orderData value
+            if (!currentOrderData) return;
+
+            const orderStatusUpper = String(currentOrderData?.order_status || '').toUpperCase();
+            const normalizedStatus = String(currentOrderData?.normalized_status || '').toLowerCase();
+            const isOrderCompleted = ['COMPLETED', 'SUCCESS'].includes(orderStatusUpper) ||
+                normalizedStatus === 'completed' ||
+                normalizedStatus === 'success';
+            const isDelivered = normalizedStatus === 'delivered' || orderStatusUpper === 'DELIVERED' || isOrderCompleted;
+
+            if (isDelivered || isOrderCompleted) {
+                hasOrderReview(realOrderId)
+                    .then(reviewStatus => {
+                        console.log('[OrderDetail] Refreshed review status on window focus:', reviewStatus);
+                        setHasReview(reviewStatus);
+                    })
+                    .catch(error => {
+                        console.warn('[OrderDetail] Failed to refresh review status on focus:', error);
+                    });
+            }
+        };
+
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [orderData?.id, orderData?.order_status, orderData?.normalized_status, orderId]);
 
     // Hàm format trạng thái đơn hàng
     const getOrderStatusText = (status) => {
@@ -884,26 +960,31 @@ function OrderDetail() {
                                         {confirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
                                     </button>
                                 )}
-                                <button
-                                    className="btn btn-warning"
-                                    onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}
-                                >
-                                    <MessageSquareWarning style={{ marginRight: 6 }} /> Khiếu nại
-                                </button>
-                                {hasReview ? (
-                                    <button
-                                        className="btn btn-secondary"
-                                        onClick={handleViewReview}
-                                    >
-                                        <Star style={{ marginRight: 6 }} /> Xem đánh giá
-                                    </button>
-                                ) : (
-                                    <button
-                                        className="btn btn-success"
-                                        onClick={handleRateOrder}
-                                    >
-                                        <Star style={{ marginRight: 6 }} /> Đánh giá
-                                    </button>
+                                {/* Chỉ hiển thị nút khiếu nại và đánh giá sau khi đơn hàng đã được xác nhận */}
+                                {isOrderCompleted && (
+                                    <>
+                                        <button
+                                            className="btn btn-warning"
+                                            onClick={() => alert('Khiếu nại đơn hàng (sẽ triển khai)')}
+                                        >
+                                            <MessageSquareWarning style={{ marginRight: 6 }} /> Khiếu nại
+                                        </button>
+                                        {hasReview ? (
+                                            <button
+                                                className="btn btn-secondary"
+                                                onClick={handleViewReview}
+                                            >
+                                                <Star style={{ marginRight: 6 }} /> Xem đánh giá
+                                            </button>
+                                        ) : (
+                                            <button
+                                                className="btn btn-success"
+                                                onClick={handleRateOrder}
+                                            >
+                                                <Star style={{ marginRight: 6 }} /> Đánh giá
+                                            </button>
+                                        )}
+                                    </>
                                 )}
                                 {orderData?.invoice?.need_invoice && (
                                     <button

@@ -270,23 +270,52 @@ export function getDefaultCategoryStructure() {
 export function buildProductFilterUrl(filters) {
     const params = new URLSearchParams();
 
+    // API search parameters (ưu tiên)
+    if (filters.type) {
+        params.append('type', filters.type);
+    }
+    if (filters.value) {
+        params.append('value', filters.value);
+    }
+
+    // Legacy filter parameters (vẫn giữ để tương thích)
     if (filters.category) {
         params.append('category', filters.category);
     }
     if (filters.brand) {
         params.append('brand', filters.brand);
+        // Nếu có brand nhưng chưa có type, set type=brand và value=brand
+        if (!filters.type) {
+            params.set('type', 'brand');
+            params.set('value', filters.brand);
+        }
     }
     if (filters.model) {
         params.append('model', filters.model);
+        // Nếu có model nhưng chưa có type, set type=model và value=model
+        if (!filters.type) {
+            params.set('type', 'model');
+            params.set('value', filters.model);
+        }
     }
     if (filters.batteryType) {
         params.append('batteryType', filters.batteryType);
     }
     if (filters.condition) {
         params.append('condition', filters.condition);
+        // Nếu có condition nhưng chưa có type, set type=conditionLevel và value=condition
+        if (!filters.type) {
+            params.set('type', 'conditionLevel');
+            params.set('value', filters.condition);
+        }
     }
     if (filters.location) {
         params.append('location', filters.location);
+        // Nếu có location nhưng chưa có type, set type=locationTrading và value=location
+        if (!filters.type) {
+            params.set('type', 'locationTrading');
+            params.set('value', filters.location);
+        }
     }
     if (filters.minPrice) {
         params.append('minPrice', filters.minPrice);
@@ -296,6 +325,11 @@ export function buildProductFilterUrl(filters) {
     }
     if (filters.search) {
         params.append('search', filters.search);
+        // Nếu có search nhưng chưa có type, set type=title và value=search
+        if (!filters.type) {
+            params.set('type', 'title');
+            params.set('value', filters.search);
+        }
     }
 
     return params.toString();

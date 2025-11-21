@@ -1359,10 +1359,8 @@ function OrderList() {
             confirmed: { icon: CheckCircle, color: '#0d6efd', label: 'Đã xác nhận' },
             shipping: { icon: Truck, color: '#0d6efd', label: 'Đang giao' },
             delivered: { icon: Package, color: '#28a745', label: 'Đã giao' },
-            // Đã sửa thành 'canceled'
-
-            canceled: { icon: AlertCircle, color: '#dc3545', label: 'Đã hủy' } // <-- SỬA TẠI ĐÂY
-
+            completed: { icon: Package, color: '#28a745', label: 'Đã giao' }, // COMPLETED orders should show as "Đã giao"
+            canceled: { icon: AlertCircle, color: '#dc3545', label: 'Đã hủy' }
         };
         return statusConfig[status] || statusConfig.pending;
     };
@@ -1602,11 +1600,11 @@ function OrderList() {
                                         const hasDispute = Boolean(order.disputeExists);
 
                                         // Chỉ cho gửi khiếu nại khi:
-                                        // - đơn delivered hoặc completed
+                                        // - đơn đã được xác nhận (completed) - KHÔNG phải chỉ delivered
                                         // - chưa bị hủy
                                         // - chưa có dispute hoặc dispute bị REJECTED
                                         const canDispute =
-                                            (displayStatus === "delivered" || displayStatus === "completed") &&
+                                            isCompleted &&
                                             !isCancelled &&
                                             (disputeStatus === null || disputeStatus === "REJECTED");
 
@@ -1712,21 +1710,23 @@ function OrderList() {
                                                             </button>
                                                         )}
 
-                                                        {/* 2. NÚT ĐÁNH GIÁ / XEM ĐÁNH GIÁ */}
-                                                        {reviewedMap[order.id]?.hasReview ? (
-                                                            <button
-                                                                className="btn btn-secondary btn-sm btn-animate"
-                                                                onClick={(e) => { e.stopPropagation(); handleViewReview(order.id, order); }}
-                                                            >
-                                                                Xem đánh giá
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                className="btn btn-success btn-sm btn-animate"
-                                                                onClick={(e) => { e.stopPropagation(); handleRateOrder(order.id, order); }}
-                                                            >
-                                                                Đánh giá
-                                                            </button>
+                                                        {/* 2. NÚT ĐÁNH GIÁ / XEM ĐÁNH GIÁ - Chỉ hiển thị sau khi đơn hàng đã được xác nhận */}
+                                                        {isCompleted && (
+                                                            reviewedMap[order.id]?.hasReview ? (
+                                                                <button
+                                                                    className="btn btn-secondary btn-sm btn-animate"
+                                                                    onClick={(e) => { e.stopPropagation(); handleViewReview(order.id, order); }}
+                                                                >
+                                                                    Xem đánh giá
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    className="btn btn-success btn-sm btn-animate"
+                                                                    onClick={(e) => { e.stopPropagation(); handleRateOrder(order.id, order); }}
+                                                                >
+                                                                    Đánh giá
+                                                                </button>
+                                                            )
                                                         )}
 
                                                         {/* 3. NÚT KHIẾU NẠI (Vàng) - Cổng kiểm tra Pending */}

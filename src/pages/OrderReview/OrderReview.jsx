@@ -2,8 +2,46 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import StarRating from '../../components/Rating/StarRating';
 import ImageUploader from '../../components/Rating/ImageUploader';
-import { createOrderReview, getOrderDetails, getOrderReview } from '../../api/orderApi';
+import { createOrderReview, getOrderDetails, getOrderReview, updateOrderReview } from '../../api/orderApi';
 import './OrderReview.css';
+
+const resolveReviewIdentifier = (review) => {
+    if (!review || typeof review !== 'object') return null;
+    const candidates = [
+        review.reviewIdentifier,
+        review.reviewId,
+        review.id,
+        review._raw?.reviewIdentifier,
+        review._raw?.reviewId,
+        review._raw?.id,
+        review._raw?.review?.id,
+        review._raw?.review?.reviewId,
+        review._raw?.reviewResponse?.id,
+        review._raw?.reviewResponse?.reviewId,
+        review._raw?.orderReview?.id,
+        review._raw?.orderReviewResponse?.id
+    ];
+    if (Array.isArray(review.reviewImages)) {
+        review.reviewImages.forEach((img) => {
+            if (!img) return;
+            candidates.push(
+                img.reviewId,
+                img.id,
+                img.orderReviewId,
+                img.orderReview?.id,
+                img.review?.id
+            );
+        });
+    }
+    const found = candidates.find((val) => (
+        val !== undefined &&
+        val !== null &&
+        val !== 0 &&
+        val !== '0' &&
+        String(val).trim() !== ''
+    ));
+    return found != null ? String(found).trim() : null;
+};
 
 export default function OrderReview() {
     const { orderId } = useParams();
@@ -17,6 +55,8 @@ export default function OrderReview() {
     const [pictures, setPictures] = useState([]);
     const [existingReview, setExistingReview] = useState(null);
     const [isViewMode, setIsViewMode] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     useEffect(() => {
         let mounted = true;
@@ -109,6 +149,7 @@ export default function OrderReview() {
         e.preventDefault();
         if (!canSubmit || submitting) return;
         setSubmitting(true);
+        setErrorMessage(''); // Clear previous errors
         try {
             const rawId = location?.state?.orderIdRaw;
             const submitOrderId = Number(rawId ?? orderId); // đảm bảo gửi dạng số đúng với BE
@@ -119,11 +160,106 @@ export default function OrderReview() {
             const returnPath = location?.state?.from || '/orders';
             navigate(returnPath, { replace: true, state: { toast: 'Cảm ơn bạn đã đánh giá!' } });
         } catch (err) {
-            alert('Gửi đánh giá thất bại. Vui lòng thử lại.');
+            const errorMsg = err?.message || 'Gửi đánh giá thất bại. Vui lòng thử lại.';
+            setErrorMessage(errorMsg);
             console.error(err);
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        if (!canSubmit || submitting) return;
+
+        const reviewIdForUpdate = resolveReviewIdentifier(existingReview);
+        if (!reviewIdForUpdate) {
+            setErrorMessage('Không tìm thấy ID đánh giá. Vui lòng thử lại.');
+            return;
+        }
+
+        setSubmitting(true);
+        setErrorMessage(''); // Clear previous errors
+        try {
+            // Lọc chỉ lấy File objects từ pictures (bỏ qua URL strings)
+            const filePictures = pictures.filter(pic => pic instanceof File);
+
+            console.log('[OrderReview] Updating review with reviewId =', reviewIdForUpdate, 'rating =', Number(rating), 'feedbackLen =', feedback.trim().length);
+            await updateOrderReview({
+                reviewId: reviewIdForUpdate,
+                rating: Number(rating),
+                feedback: feedback.trim(),
+                pictures: filePictures
+            });
+
+            // Reload review data và quay về view mode
+            const rawId = location?.state?.orderIdRaw;
+            const checkId = rawId ?? orderId;
+            const reviewData = await getOrderReview(checkId);
+            if (reviewData && reviewData.hasReview && reviewData.review) {
+                setExistingReview(reviewData.review);
+                setRating(Number(reviewData.review.rating ?? 0));
+                setFeedback(String(reviewData.review.feedback ?? ''));
+                if (Array.isArray(reviewData.review.reviewImages) && reviewData.review.reviewImages.length > 0) {
+                    const imageUrls = reviewData.review.reviewImages.map(img =>
+                        typeof img === 'string' ? img : (img.imageUrl || img.url || '')
+                    ).filter(Boolean);
+                    setPictures(imageUrls);
+                } else {
+                    setPictures([]);
+                }
+            }
+
+            setIsEditMode(false);
+            setIsViewMode(true);
+            setErrorMessage(''); // Clear any previous errors
+
+            // Show success message (có thể dùng toast notification nếu có)
+            alert('Đánh giá đã được cập nhật thành công!');
+        } catch (err) {
+            // Xử lý lỗi từ backend
+            let errorMsg = err?.message || 'Cập nhật đánh giá thất bại. Vui lòng thử lại.';
+
+            // Kiểm tra lỗi về system wallet đã hoàn thành
+            // Backend trả về: "Cannot update review. The system wallet for this order has already been completed."
+            const errorMsgLower = errorMsg.toLowerCase();
+            if (errorMsgLower.includes('system wallet') ||
+                errorMsgLower.includes('is_solved') ||
+                errorMsgLower.includes('already been completed') ||
+                errorMsgLower.includes('cannot update review')) {
+                errorMsg = 'Không thể cập nhật đánh giá. Hệ thống ví cho đơn hàng này đã được hoàn thành.';
+            }
+
+            setErrorMessage(errorMsg);
+            console.error('[OrderReview] Update review error:', err);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleEditClick = () => {
+        setIsEditMode(true);
+        setIsViewMode(false);
+        setErrorMessage('');
+    };
+
+    const handleCancelEdit = () => {
+        // Restore original review data
+        if (existingReview) {
+            setRating(Number(existingReview.rating ?? 0));
+            setFeedback(String(existingReview.feedback ?? ''));
+            if (Array.isArray(existingReview.reviewImages) && existingReview.reviewImages.length > 0) {
+                const imageUrls = existingReview.reviewImages.map(img =>
+                    typeof img === 'string' ? img : (img.imageUrl || img.url || '')
+                ).filter(Boolean);
+                setPictures(imageUrls);
+            } else {
+                setPictures([]);
+            }
+        }
+        setIsEditMode(false);
+        setIsViewMode(true);
+        setErrorMessage('');
     };
 
     return (
@@ -134,10 +270,17 @@ export default function OrderReview() {
                     <span className="crumb-sep">/</span>
                     <button type="button" className="crumb" onClick={() => navigate(-1)}>Đơn #{order?.orderCode || orderId}</button>
                     <span className="crumb-sep">/</span>
-                    <span className="crumb current">{isViewMode ? 'Xem đánh giá' : 'Viết đánh giá'}</span>
+                    <span className="crumb current">{isEditMode ? 'Chỉnh sửa đánh giá' : (isViewMode ? 'Xem đánh giá' : 'Viết đánh giá')}</span>
                 </div>
 
-                <h1 className="page-title">{isViewMode ? 'Xem đánh giá' : 'Đánh giá sản phẩm'}</h1>
+                <div style={{ marginBottom: '32px' }}>
+                    <h1 className="page-title">{isEditMode ? 'Chỉnh sửa đánh giá' : (isViewMode ? 'Xem đánh giá' : 'Đánh giá sản phẩm')}</h1>
+                    {!isViewMode && !isEditMode && (
+                        <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: '16px' }}>
+                            Chia sẻ trải nghiệm của bạn để giúp cộng đồng đưa ra quyết định tốt hơn ⚡
+                        </p>
+                    )}
+                </div>
 
                 <div className="card">
                     <div className="card-product">
@@ -150,7 +293,7 @@ export default function OrderReview() {
                         </div>
                     </div>
 
-                    {isViewMode && existingReview && (
+                    {isViewMode && existingReview && !isEditMode && (
                         <div className="card-section">
                             <div className="section">
                                 <div className="section-title">Đánh giá tổng quan</div>
@@ -184,15 +327,32 @@ export default function OrderReview() {
                             )}
 
                             <div className="submit-wrap">
-                                <button type="button" className="btn-submit" onClick={() => navigate('/orders')} style={{ background: '#64748b' }}>
-                                    Quay lại danh sách đơn hàng
+                                <button
+                                    type="button"
+                                    className="btn-primary"
+                                    onClick={handleEditClick}
+                                >
+                                    Chỉnh sửa đánh giá
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={() => navigate('/orders')}
+                                >
+                                    Quay lại
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {!isViewMode && (
-                        <form className="card-section" onSubmit={handleSubmit}>
+                    {(isEditMode || (!isViewMode && !existingReview)) && (
+                        <form className="card-section" onSubmit={isEditMode ? handleUpdate : handleSubmit}>
+                            {errorMessage && (
+                                <div className="error-message">
+                                    {errorMessage}
+                                </div>
+                            )}
+
                             <div className="section">
                                 <div className="section-title">Đánh giá tổng quan</div>
                                 <StarRating value={rating} onChange={setRating} size={36} />
@@ -217,12 +377,29 @@ export default function OrderReview() {
                             <div className="section">
                                 <div className="section-title">Thêm ảnh hoặc video</div>
                                 <ImageUploader files={pictures} onChange={setPictures} max={6} />
-                                <div className="hint">Hỗ trợ PNG, JPG hoặc MP4 (tối đa 800x400px).</div>
+                                <div className="hint">Hỗ trợ PNG, JPG hoặc MP4 (tối đa 800x400px). {isEditMode && 'Nếu bạn tải ảnh mới, ảnh cũ sẽ bị thay thế.'}</div>
                             </div>
 
                             <div className="submit-wrap">
-                                <button type="submit" className="btn-submit" disabled={!canSubmit || submitting}>
-                                    {submitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+                                {isEditMode && (
+                                    <button
+                                        type="button"
+                                        className="btn-cancel"
+                                        onClick={handleCancelEdit}
+                                        disabled={submitting}
+                                    >
+                                        Hủy
+                                    </button>
+                                )}
+                                <button
+                                    type="submit"
+                                    className="btn-submit"
+                                    disabled={!canSubmit || submitting}
+                                >
+                                    {submitting
+                                        ? (isEditMode ? 'Đang cập nhật...' : 'Đang gửi...')
+                                        : (isEditMode ? 'Cập nhật đánh giá' : 'Gửi đánh giá')
+                                    }
                                 </button>
                             </div>
                         </form>

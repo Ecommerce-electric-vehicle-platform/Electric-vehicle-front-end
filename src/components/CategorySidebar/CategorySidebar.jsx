@@ -156,23 +156,27 @@ export function CategorySidebar({ onClose, isOpen = true }) {
         navigate(`/products?${params}`)
     }
 
-    // Xử lý click vào brand - navigate đến trang products với filter brand và category
+    // Xử lý click vào brand - navigate đến trang products với API search type=brand
     const handleBrandClick = (categoryId, brand, e) => {
         e.stopPropagation() // Ngăn category click
         const params = buildProductFilterUrl({
             category: categoryId,
-            brand: brand
+            type: 'brand',
+            value: brand,
+            brand: brand // Giữ để tương thích
         })
         navigate(`/products?${params}`)
     }
 
-    // Xử lý click vào model - navigate đến trang products với filter model, brand và category
+    // Xử lý click vào model - navigate đến trang products với API search type=model
     const handleModelClick = (categoryId, brand, model, e) => {
         e.stopPropagation() // Ngăn brand click
         const params = buildProductFilterUrl({
             category: categoryId,
-            brand: brand,
-            model: model
+            type: 'model',
+            value: model,
+            brand: brand, // Giữ để tương thích
+            model: model // Giữ để tương thích
         })
         navigate(`/products?${params}`)
     }
