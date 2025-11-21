@@ -595,6 +595,83 @@ unhidePostById: async (postId) => {
       return [];
     }
   },
+  //================API TÍCH HỢP AI========================
+  // AI: Tạo mô tả sản phẩm tự động bằng AI
+  // API: POST /api/v1/ai/content-upload-post-description
+  // Request: multipart/form-data với file (ảnh) và data (JSON string chứa thông tin sản phẩm)
+  generateAIDescription: async (productInfo, imageFile) => {
+    try {
+      // Kiểm tra file có hợp lệ không
+      if (!imageFile || !(imageFile instanceof File)) {
+        throw new Error("File ảnh không hợp lệ hoặc chưa được chọn");
+      }
+
+      const formData = new FormData();
+      
+      // Append file với tên field là "pictures" theo yêu cầu của backend
+      formData.append("pictures", imageFile);
+      
+      // Validate categoryId (BẮT BUỘC theo BE)
+      if (!productInfo.categoryId) {
+        throw new Error("categoryId is required for AI description generation");
+      }
+
+      // Append từng field riêng biệt vào FormData (cùng cấp với pictures)
+      // LƯU Ý: Backend expect "manufactureYear" (không có 'r'), không phải "manufacturerYear"
+      // Mỗi field là một entry riêng, KHÔNG gom vào JSON string
+      
+      formData.append("title", productInfo.title || "");
+      formData.append("brand", productInfo.brand || "");
+      formData.append("model", productInfo.model || "");
+      formData.append("manufactureYear", parseInt(productInfo.manufacturerYear) || new Date().getFullYear());
+      formData.append("usedDuration", productInfo.usedDuration || "");
+      formData.append("color", productInfo.color || "");
+      formData.append("price", parseFloat(productInfo.price) || 0);
+      formData.append("conditionLevel", productInfo.conditionLevel || "");
+      formData.append("locationTrading", productInfo.locationTrading || "");
+      formData.append("categoryId", parseInt(productInfo.categoryId)); // BẮT BUỘC
+      
+      // Thêm dimensions nếu có
+      if (productInfo.length) formData.append("length", productInfo.length);
+      if (productInfo.width) formData.append("width", productInfo.width);
+      if (productInfo.height) formData.append("height", productInfo.height);
+      if (productInfo.weight) formData.append("weight", productInfo.weight);
+      
+      // Log để debug
+      console.log("[SellerAPI] Calling AI API...");
+      console.log("[SellerAPI] Image file:", {
+        name: imageFile.name,
+        size: imageFile.size,
+        type: imageFile.type
+      });
+      console.log("[SellerAPI] FormData entries (mỗi field riêng biệt):");
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value instanceof File ? `[File: ${value.name}]` : value);
+      }
+      
+      const response = await axiosInstance.post(
+        "/api/v1/ai/content-upload-post-description",
+        formData,
+        {
+          headers: {
+            // Không set Content-Type, để browser tự set với boundary
+          },
+          timeout: 60000 // 60 seconds timeout cho AI processing
+        }
+      );
+      
+      console.log("[SellerAPI] AI response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error generating AI description:", error);
+      console.error("[SellerAPI] Error details:", {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status
+      });
+      throw error;
+    }
+  },
 
 
 

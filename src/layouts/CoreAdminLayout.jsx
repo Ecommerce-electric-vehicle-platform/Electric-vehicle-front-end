@@ -280,7 +280,7 @@ const CoreAdminLayout = () => {
             </div>
           </div>
 
-          {/* Cấu hình Escrow */}
+          {/* Cấu hình chung Hệ thống */}
           <div style={{ marginBottom: "4px" }}>
             <a
               href="/admin/system-config"
@@ -302,7 +302,7 @@ const CoreAdminLayout = () => {
               }}
             >
               <MdBuild style={{ marginRight: "12px", fontSize: "18px" }} />
-              Cấu hình Ký Quỹ chung
+              Cấu hình Hệ thống
             </a>
           </div>
 
@@ -637,7 +637,7 @@ const CoreAdminLayout = () => {
                 alignItems: "center",
                 justifyContent: "center",
               }}
-              title="Cấu hình Ký Quỹ chung"
+              title="Cấu hình Hệ thống"
             >
               <MdBuild />
             </a>
