@@ -620,22 +620,3 @@ export const updateWhitelistWords = async (badWords) => {
     throw error;
   }
 };
-
-// POST /api/v1/admin/system-config/badwords/refresh - Làm mới cache của bad words (yêu cầu SUPER_ADMIN)
-export const refreshBadWordsCache = async () => {
-  try {
-    console.log("Refreshing Bad Words Cache");
-    const res = await adminAxios.post(
-      `/api/v1/admin/system-config/badwords/refresh`
-    );
-    console.log("Refresh Bad Words Cache Response:", res.data);
-    return res.data;
-  } catch (error) {
-    console.error("Lỗi khi làm mới cache bad words:", error);
-    if (error.response) {
-      console.error("Error response:", error.response.data);
-      console.error("Error status:", error.response.status);
-    }
-    throw error;
-  }
-};

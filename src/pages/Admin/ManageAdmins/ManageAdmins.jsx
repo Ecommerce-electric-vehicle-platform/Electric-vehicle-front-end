@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   CCard,
   CCardBody,
@@ -19,7 +19,7 @@ import {
   CPaginationItem,
   CAlert,
 } from "@coreui/react";
-import { Eye, X, ChevronLeft, ChevronRight, ShieldX, Power, PowerOff } from "lucide-react";
+import { Eye, X, ChevronLeft, ChevronRight, ShieldX, Power, PowerOff, CheckCircle } from "lucide-react";
 import { getAdminList, getAdminProfileById, blockAccount } from "../../../api/adminApi";
 import adminAxios from "../../../api/adminAxios";
 import "./ManageAdmins.css";
@@ -40,6 +40,10 @@ export default function ManageAdmins() {
   const [adminToToggle, setAdminToToggle] = useState(null);
   const [toggleReason, setToggleReason] = useState("");
   const [isToggling, setIsToggling] = useState(false);
+  
+  // Modal thông báo thành công
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -48,6 +52,8 @@ export default function ManageAdmins() {
     gender: "MALE",
     avatarFile: null,
   });
+  const fileInputRef = useRef(null);
+  const [isSelectingFile, setIsSelectingFile] = useState(false);
 
   const random10Digits = () =>
     Math.floor(1000000000 + Math.random() * 9000000000).toString();
@@ -179,7 +185,7 @@ export default function ManageAdmins() {
         });
       });
       
-      // Hiển thị thông báo thành công
+      // Hiển thị modal thông báo thành công
       const isSuccess = response?.success === true || response?.message?.includes("SUCCESS");
       if (isSuccess) {
         setError("");
@@ -187,6 +193,10 @@ export default function ManageAdmins() {
         setShowToggleModal(false);
         setAdminToToggle(null);
         setToggleReason("");
+        
+        // Hiển thị modal thông báo thành công
+        setSuccessMessage(`Đã ${actionText} tài khoản Admin thành công!`);
+        setShowSuccessModal(true);
         
         // Reload lại dữ liệu từ server sau khi block/unblock
         setTimeout(() => {
@@ -498,11 +508,20 @@ export default function ManageAdmins() {
       </CCard>
 
       {/* Modal tạo admin */}
-      <CModal visible={showCreate} onClose={() => setShowCreate(false)}>
+      <CModal 
+        visible={showCreate} 
+        onClose={() => {
+          // Chỉ đóng modal nếu không đang chọn file
+          if (!isSelectingFile) {
+            setShowCreate(false);
+          }
+        }}
+        backdrop={!isSelectingFile ? true : "static"}
+      >
         <CModalHeader>
           <CModalTitle>Tạo Quản Trị Viên mới</CModalTitle>
         </CModalHeader>
-        <CModalBody>
+        <CModalBody onClick={(e) => e.stopPropagation()}>
           {error && <div className="alert alert-danger">{error}</div>}
 
           <div className="mb-3">
@@ -558,16 +577,37 @@ export default function ManageAdmins() {
             </select>
           </div>
 
-          <div className="mb-3">
+          <div className="mb-3" onClick={(e) => e.stopPropagation()}>
             <label className="form-label">Ảnh đại diện (tuỳ chọn)</label>
             <input
+              ref={fileInputRef}
               type="file"
               className="form-control"
               accept="image/*"
-              onChange={(e) =>
-                setForm({ ...form, avatarFile: e.target.files[0] })
-              }
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsSelectingFile(true);
+
+              }}
+              onFocus={() => setIsSelectingFile(true)}
+              onBlur={() => {
+                // Delay để đảm bảo file picker đã đóng
+                setTimeout(() => setIsSelectingFile(false), 300);
+              }}
+              onChange={(e) => {
+                e.stopPropagation();
+                const file = e.target.files[0];
+                if (file) {
+                  setForm({ ...form, avatarFile: file });
+                }
+                setIsSelectingFile(false);
+              }}
             />
+            {form.avatarFile && (
+              <small className="text-success d-block mt-1">
+                ✓ Đã chọn: {form.avatarFile.name}
+              </small>
+            )}
           </div>
         </CModalBody>
         <CModalFooter>
@@ -822,6 +862,25 @@ export default function ManageAdmins() {
           </div>
         </div>
       )}
+
+      {/* Modal thông báo thành công */}
+      <CModal visible={showSuccessModal} onClose={() => setShowSuccessModal(false)}>
+        <CModalHeader>
+          <CModalTitle>Thành công</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <div className="text-center py-3">
+            <CheckCircle size={48} className="text-success mb-3" />
+            <p className="mb-0">{successMessage}</p>
+          </div>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="success" onClick={() => setShowSuccessModal(false)}>
+            OK
+          </CButton>
+        </CModalFooter>
+      </CModal>
     </div>
   );
 }
+

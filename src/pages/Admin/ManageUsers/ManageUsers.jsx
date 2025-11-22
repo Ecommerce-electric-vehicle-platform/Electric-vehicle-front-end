@@ -22,9 +22,20 @@ import {
   PowerOff,
   Eye,
   X,
+  CheckCircle,
 } from "lucide-react";
 import { getBuyerList, getSellerList, blockAccount } from "../../../api/adminApi";
 import "./ManageUsers.css";
+
+// Helper function để map role sang tiếng Việt
+const mapRoleToVietnamese = (role) => {
+  if (!role) return "NGƯỜI MUA";
+  const roleMap = {
+    BUYER: "NGƯỜI MUA",
+    SELLER: "NGƯỜI BÁN",
+  };
+  return roleMap[role.toUpperCase()] || role;
+};
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -41,6 +52,10 @@ export default function ManageUsers() {
   const [toggleReason, setToggleReason] = useState("");
   const [toggleAction, setToggleAction] = useState(null); // { accountType, accountId, action, actionText, isActive }
   const [isToggling, setIsToggling] = useState(false);
+  
+  // Modal thông báo thành công
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Normalize dữ liệu buyer thành format chung
   const normalizeBuyer = (buyer) => {
@@ -449,13 +464,14 @@ export default function ManageUsers() {
       setToggleAction(null);
       setToggleReason("");
       
-      // Hiển thị thông báo
+      // Hiển thị modal thông báo thành công
       if (isSuccess) {
-        alert(`Đã ${actionText} tài khoản thành công!`);
+        setSuccessMessage(`Đã ${actionText} tài khoản thành công!`);
       } else {
         // Nếu có lỗi mail server nhưng account vẫn bị block
-        alert(`Đã ${actionText} tài khoản nhưng có lỗi gửi email. Vui lòng kiểm tra lại.`);
+        setSuccessMessage(`Đã ${actionText} tài khoản nhưng có lỗi gửi email. Vui lòng kiểm tra lại.`);
       }
+      setShowSuccessModal(true);
       
       // Reload lại dữ liệu từ server sau khi block/unblock
       // Tăng thời gian delay để đảm bảo backend đã cập nhật database xong
@@ -542,8 +558,8 @@ export default function ManageUsers() {
           onChange={(e) => setFilterRole(e.target.value)}
         >
           <option value="">Tất cả</option>
-          <option value="BUYER">Buyer</option>
-          <option value="SELLER">Seller</option>
+          <option value="BUYER">Người mua</option>
+          <option value="SELLER">Người bán</option>
         </select>
       </div>
 
@@ -595,11 +611,11 @@ export default function ManageUsers() {
                       <CBadge
                         className={user.role === "SELLER" ? "role-seller-badge" : "role-buyer-badge"}
                       >
-                        {user.role || "BUYER"}
+                        {mapRoleToVietnamese(user.role)}
                       </CBadge>
                         {user.hasUpgradedToSeller && (
                           <CBadge className="role-upgraded-badge mt-1">
-                            Đã nâng cấp lên Seller
+                            ĐÃ NÂNG CẤP LÊN NGƯỜI BÁN
                           </CBadge>
                         )}
                       </div>
@@ -718,14 +734,16 @@ export default function ManageUsers() {
                           <tr>
                             <th>Vai trò:</th>
                             <td>
-                              <CBadge color={selectedUser.role === "SELLER" ? "success" : "secondary"}>
-                                {selectedUser.role || "BUYER"}
-                              </CBadge>
-                              {selectedUser.hasUpgradedToSeller && (
-                                <CBadge color="info" className="ms-2">
-                                  Đã nâng cấp lên Seller
+                              <div className="d-flex flex-column gap-2">
+                                <CBadge className={selectedUser.role === "SELLER" ? "role-seller-badge" : "role-buyer-badge"}>
+                                  {mapRoleToVietnamese(selectedUser.role)}
                                 </CBadge>
-                              )}
+                                {selectedUser.hasUpgradedToSeller && (
+                                  <CBadge className="role-upgraded-badge">
+                                    ĐÃ NÂNG CẤP LÊN NGƯỜI BÁN
+                                  </CBadge>
+                                )}
+                              </div>
                             </td>
                           </tr>
                           <tr>
@@ -977,13 +995,13 @@ export default function ManageUsers() {
                   <li><strong>Email:</strong> {userToToggle.email || "N/A"}</li>
                   <li><strong>Vai trò:</strong> 
                     {userToToggle.hasUpgradedToSeller ? (
-                      <span className="ms-2">
-                        <CBadge className="role-buyer-badge me-1">BUYER</CBadge>
-                        <CBadge className="role-upgraded-badge">Đã nâng cấp lên Seller</CBadge>
-                      </span>
+                      <div className="d-flex flex-column gap-2 ms-2">
+                        <CBadge className="role-buyer-badge">NGƯỜI MUA</CBadge>
+                        <CBadge className="role-upgraded-badge">ĐÃ NÂNG CẤP LÊN NGƯỜI BÁN</CBadge>
+                      </div>
                     ) : (
                       <CBadge className={`ms-2 ${userToToggle.role === "SELLER" ? "role-seller-badge" : "role-buyer-badge"}`}>
-                        {userToToggle.role || "BUYER"}
+                        {mapRoleToVietnamese(userToToggle.role)}
                       </CBadge>
                     )}
                   </li>
@@ -1057,6 +1075,24 @@ export default function ManageUsers() {
                 )}
               </>
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Modal thông báo thành công */}
+      <CModal visible={showSuccessModal} onClose={() => setShowSuccessModal(false)}>
+        <CModalHeader>
+          <CModalTitle>Thành công</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <div className="text-center py-3">
+            <CheckCircle size={48} className="text-success mb-3" />
+            <p className="mb-0">{successMessage}</p>
+          </div>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="success" onClick={() => setShowSuccessModal(false)}>
+            OK
           </CButton>
         </CModalFooter>
       </CModal>

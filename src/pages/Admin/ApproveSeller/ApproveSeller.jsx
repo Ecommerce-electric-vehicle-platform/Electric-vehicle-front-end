@@ -48,6 +48,10 @@ export default function ApproveSeller() {
   const [rejectReason, setRejectReason] = useState("");
   const [selectedSeller, setSelectedSeller] = useState(null);
 
+  // Modal thông báo thành công
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
   // Modal chi tiết
   const [detailModal, setDetailModal] = useState(false);
   const [detailSeller, setDetailSeller] = useState(null);
@@ -100,12 +104,13 @@ export default function ApproveSeller() {
         message,
       });
 
-      // Hiển thị thông báo thành công
+      // Hiển thị thông báo thành công bằng modal
       if (decision === "APPROVED") {
-        alert("Phê duyệt thành công! Buyer sẽ nhận được thông báo realtime.");
+        setSuccessMessage("Phê duyệt thành công! Buyer sẽ nhận được thông báo realtime.");
       } else {
-        alert("Đã từ chối yêu cầu nâng cấp seller.");
+        setSuccessMessage("Đã từ chối yêu cầu nâng cấp seller.");
       }
+      setShowSuccessModal(true);
 
       // sau khi duyệt hoặc từ chối thì reload danh sách từ đầu
       setPage(0);
@@ -133,9 +138,10 @@ export default function ApproveSeller() {
   // ===== Xác nhận từ chối =====
   const confirmReject = () => {
     if (!rejectReason.trim()) {
-      alert("Vui lòng nhập lý do từ chối!");
+      setError("Vui lòng nhập lý do từ chối!");
       return;
     }
+    setError(""); // Clear error nếu có
     handleDecision(selectedSeller.sellerId, "REJECTED", rejectReason);
     setRejectModal(false);
   };
@@ -506,6 +512,24 @@ export default function ApproveSeller() {
           >
             Đóng
           </button>
+        </CModalFooter>
+      </CModal>
+
+      {/* Modal thông báo thành công */}
+      <CModal visible={showSuccessModal} onClose={() => setShowSuccessModal(false)}>
+        <CModalHeader>
+          <CModalTitle>Thành công</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <div className="text-center py-3">
+            <CheckCircle size={48} className="text-success mb-3" />
+            <p className="mb-0">{successMessage}</p>
+          </div>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="success" onClick={() => setShowSuccessModal(false)}>
+            OK
+          </CButton>
         </CModalFooter>
       </CModal>
     </div>

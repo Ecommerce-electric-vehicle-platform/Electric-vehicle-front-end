@@ -51,6 +51,8 @@ export default function ReviewPosts() {
   const [showModal, setShowModal] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const [postToApprove, setPostToApprove] = useState(null);
   const [postToReject, setPostToReject] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -110,8 +112,10 @@ export default function ReviewPosts() {
         passed: true,
         rejectedReason: "",
       });
+      setSuccessMessage(`Đã phê duyệt bài đăng #${postToApprove.postId} thành công!`);
       setShowApproveModal(false);
       setPostToApprove(null);
+      setShowSuccessModal(true);
       await loadPosts();
     } catch (err) {
       console.error("Lỗi khi phê duyệt:", err);
@@ -140,9 +144,11 @@ export default function ReviewPosts() {
         passed: false,
         rejectedReason: rejectReason.trim(),
       });
+      setSuccessMessage(`Đã từ chối bài đăng #${postToReject.postId} thành công!`);
       setShowRejectModal(false);
       setPostToReject(null);
       setRejectReason("");
+      setShowSuccessModal(true);
       await loadPosts();
     } catch (err) {
       console.error("Lỗi khi từ chối:", err);
@@ -158,13 +164,16 @@ export default function ReviewPosts() {
 
       <CCard className="shadow-sm">
         <CCardBody>
+          {error && (
+            <CAlert color="danger" dismissible onClose={() => setError("")} className="mb-3">
+              {error}
+            </CAlert>
+          )}
           {loading ? (
             <div className="text-center py-4">
               <CSpinner color="primary" />
               <p className="text-muted mt-2">Đang tải dữ liệu...</p>
             </div>
-          ) : error ? (
-            <div className="alert alert-danger">{error}</div>
           ) : (
             <CTable hover responsive>
               <CTableHead color="light">
@@ -662,6 +671,24 @@ export default function ReviewPosts() {
                 Xác nhận từ chối
               </>
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Modal thông báo thành công */}
+      <CModal visible={showSuccessModal} onClose={() => setShowSuccessModal(false)}>
+        <CModalHeader>
+          <CModalTitle>Thành công</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <div className="text-center py-3">
+            <CheckCircle size={48} className="text-success mb-3" />
+            <p className="mb-0">{successMessage}</p>
+          </div>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="success" onClick={() => setShowSuccessModal(false)}>
+            OK
           </CButton>
         </CModalFooter>
       </CModal>

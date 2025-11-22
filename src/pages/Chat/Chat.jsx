@@ -46,9 +46,10 @@ export function Chat() {
         localStorage.getItem('chat_autoReply_message') || "Xin chào! Hiện chúng tôi đang bận, sẽ phản hồi sớm nhất."
     );
     const [isQuickRepliesModalOpen, setIsQuickRepliesModalOpen] = useState(false);
-    const [quickReplies, setQuickReplies] = useState(() => {
+    // Quick replies cho buyer (người mua)
+    const [quickRepliesBuyer, setQuickRepliesBuyer] = useState(() => {
         try {
-            const saved = localStorage.getItem('chat_quickReplies');
+            const saved = localStorage.getItem('chat_quickReplies_buyer');
             const parsed = saved ? JSON.parse(saved) : null;
             const defaults = [
                 "Xe/Pin còn bảo hành không?",
@@ -68,6 +69,35 @@ export function Chat() {
             ];
         }
     });
+
+    // Quick replies cho seller (người bán)
+    const [quickRepliesSeller, setQuickRepliesSeller] = useState(() => {
+        try {
+            const saved = localStorage.getItem('chat_quickReplies_seller');
+            const parsed = saved ? JSON.parse(saved) : null;
+            const defaults = [
+                "Xin chào! Bạn muốn tìm hiểu về sản phẩm nào?",
+                "Bạn có cần hỗ trợ thêm thông tin gì không?"
+            ];
+            return (parsed && Array.isArray(parsed) ? parsed : defaults).slice(0, 5);
+        } catch {
+            return [
+                "Xin chào! Bạn muốn tìm hiểu về sản phẩm nào?",
+                "Bạn có cần hỗ trợ thêm thông tin gì không?"
+            ];
+        }
+    });
+
+    // Helper function để lấy quick replies phù hợp dựa vào userRole
+    const getQuickReplies = () => userRole === 'seller' ? quickRepliesSeller : quickRepliesBuyer;
+    const setQuickReplies = (value) => {
+        if (userRole === 'seller') {
+            setQuickRepliesSeller(value);
+        } else {
+            setQuickRepliesBuyer(value);
+        }
+    };
+    const quickReplies = getQuickReplies();
     const [newQuickReply, setNewQuickReply] = useState("");
     const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
     const [selectedConversationIds, setSelectedConversationIds] = useState([]);
@@ -199,22 +229,50 @@ export function Chat() {
             }
             
             // Lấy buyerId, sellerId và userRole để xác định sender
-            const buyerId = localStorage.getItem('buyerId');
-            const sellerId = localStorage.getItem('sellerId');
+            const currentBuyerId = localStorage.getItem('buyerId');
+            const currentSellerId = localStorage.getItem('sellerId');
             const currentUserRole = localStorage.getItem('userRole') || 'buyer';
             
-            // Xác định currentUserId: ID của người đang đăng nhập
-            const currentUserId = currentUserRole === 'seller' && sellerId ? sellerId : buyerId;
+            // Lấy buyerId và sellerId từ conversation để xác định currentUserId chính xác
+            // Cần so sánh với conversation để biết user hiện tại là buyer hay seller trong conversation này
+            const conversationBuyerId = selectedChat?.conversationBuyerId || selectedChat?._raw?.buyerId;
+            const conversationSellerId = selectedChat?.conversationSellerId || selectedChat?._raw?.sellerId;
+            
+            // Xác định user hiện tại là buyer hay seller trong conversation này
+            const isCurrentUserBuyer = currentBuyerId && conversationBuyerId && String(currentBuyerId) === String(conversationBuyerId);
+            const isCurrentUserSeller = currentSellerId && conversationSellerId && String(currentSellerId) === String(conversationSellerId);
+            
+            // Xác định currentUserId: ID của người đang đăng nhập trong conversation này
+            let currentUserId = null;
+            if (isCurrentUserSeller) {
+                currentUserId = conversationSellerId;
+            } else if (isCurrentUserBuyer) {
+                currentUserId = conversationBuyerId;
+            } else {
+                // Fallback: dựa vào userRole và localStorage
+                currentUserId = currentUserRole === 'seller' && currentSellerId ? currentSellerId : currentBuyerId;
+            }
+            
+            console.log("[Chat] Message loading - User identification:", {
+                currentBuyerId,
+                currentSellerId,
+                currentUserRole,
+                conversationBuyerId,
+                conversationSellerId,
+                isCurrentUserBuyer,
+                isCurrentUserSeller,
+                currentUserId
+            });
             
             
             // Transform messages từ BE format sang format UI
             const transformedMessages = messagesData.map((msg) => {
                 const msgSenderId = msg.senderId || msg.sender?.id || msg.sender;
                 
-                // Xác định sender dựa vào senderId và buyerId
-                // Nếu senderId === buyerId → sender là "buyer"
-                // Nếu senderId !== buyerId → sender là "seller"
-                const isBuyer = buyerId && String(msgSenderId) === String(buyerId);
+                // Xác định sender dựa vào senderId và conversationBuyerId
+                // Nếu senderId === conversationBuyerId → sender là "buyer"
+                // Nếu senderId !== conversationBuyerId → sender là "seller"
+                const isBuyer = conversationBuyerId && String(msgSenderId) === String(conversationBuyerId);
                 
                 // Xác định tin nhắn có phải của mình không (để hiển thị sent/received)
                 const isMyMessage = currentUserId && String(msgSenderId) === String(currentUserId);
@@ -286,13 +344,66 @@ export function Chat() {
             console.log("[Chat] Conversations extracted:", conversations);
             
             if (Array.isArray(conversations) && conversations.length > 0) {
+                // Lấy thông tin user hiện tại để xác định hiển thị tên đúng người đối diện
+                const currentBuyerId = localStorage.getItem('buyerId');
+                const currentSellerId = localStorage.getItem('sellerId');
+                const currentUserRole = localStorage.getItem('userRole') || 'buyer';
+                
                 // Transform conversations và fetch seller info cho mỗi conversation
                 const transformedChatsPromises = conversations.map(async (conv) => {
                     console.log("[Chat] Mapping conversation:", conv);
+                    console.log("[Chat] Current user info:", {
+                        currentBuyerId,
+                        currentSellerId,
+                        currentUserRole,
+                        convBuyerId: conv.buyerId,
+                        convSellerId: conv.sellerId
+                    });
+                    
+                    // Xác định user hiện tại là ai trong conversation này
+                    const isCurrentUserSeller = currentSellerId && String(conv.sellerId) === String(currentSellerId);
+                    const isCurrentUserBuyer = currentBuyerId && String(conv.buyerId) === String(currentBuyerId);
+                    
+                    console.log("[Chat] User identification:", {
+                        isCurrentUserSeller,
+                        isCurrentUserBuyer,
+                        buyerIdMatch: currentBuyerId && String(conv.buyerId) === String(currentBuyerId),
+                        sellerIdMatch: currentSellerId && String(conv.sellerId) === String(currentSellerId)
+                    });
+                    
+                    // Hiển thị tên và avatar của người đối diện
+                    // Nếu user là seller -> hiển thị buyer
+                    // Nếu user là buyer -> hiển thị seller
+                    let displayName = "Người dùng";
+                    let displayAvatar = "/default-avatar.png";
+                    
+                    // Ưu tiên kiểm tra bằng ID, nếu không match thì dùng userRole
+                    if (isCurrentUserSeller) {
+                        // User là seller (xác định bằng ID), hiển thị thông tin buyer
+                        displayName = conv.buyerName || "Người mua";
+                        displayAvatar = conv.buyerAvatar || "/default-avatar.png";
+                        console.log("[Chat] User is seller (by ID), displaying buyer:", displayName);
+                    } else if (isCurrentUserBuyer) {
+                        // User là buyer (xác định bằng ID), hiển thị thông tin seller (sẽ được update sau nếu fetch được seller info)
+                        displayName = conv.sellerStoreName || conv.sellerName || "Người bán";
+                        displayAvatar = conv.sellerAvatar || "/default-avatar.png";
+                        console.log("[Chat] User is buyer (by ID), displaying seller:", displayName);
+                    } else if (currentUserRole === 'seller') {
+                        // Fallback: dựa vào userRole, user là seller
+                        displayName = conv.buyerName || "Người mua";
+                        displayAvatar = conv.buyerAvatar || "/default-avatar.png";
+                        console.log("[Chat] User is seller (by role), displaying buyer:", displayName);
+                    } else {
+                        // Fallback: user là buyer
+                        displayName = conv.sellerStoreName || conv.sellerName || "Người bán";
+                        displayAvatar = conv.sellerAvatar || "/default-avatar.png";
+                        console.log("[Chat] User is buyer (by role), displaying seller:", displayName);
+                    }
+                    
                     const chatItem = {
                         id: conv.id || conv.conversationId,
-                        name: conv.sellerName || conv.buyerName || conv.seller?.sellerName || conv.buyer?.username || "Người dùng",
-                        avatar: conv.sellerAvatar || conv.buyerAvatar || conv.seller?.avatar || conv.buyer?.avatar || "/default-avatar.png",
+                        name: displayName,
+                        avatar: displayAvatar,
                         lastMessage: conv.lastMessage?.content || conv.lastMessage || "",
                         time: formatTime(conv.lastMessage?.createdAt || conv.lastMessage?.sendAt),
                         unread: conv.unreadCount || 0,
@@ -302,6 +413,9 @@ export function Chat() {
                         postId: conv.postId,
                         sellerInfo: null, // Sẽ được fill sau
                         productInfo: null, // Thông tin sản phẩm để phân biệt conversations
+                        // Lưu buyerId và sellerId từ conversation để dùng khi gửi tin nhắn
+                        conversationBuyerId: conv.buyerId,
+                        conversationSellerId: conv.sellerId,
                         // Lưu thêm raw data để debug
                         _raw: conv
                     };
@@ -322,13 +436,16 @@ export function Chat() {
                             console.error("[Chat] Error loading product info for conversation:", conv.id, error);
                         }
                         
-                        // Nếu là buyer và có postId, fetch seller info
-                        if (userRole === 'buyer') {
+                        // Chỉ fetch seller info nếu user là buyer (để hiển thị seller info)
+                        // KHÔNG fetch nếu user là seller (vì đã hiển thị buyer info rồi)
+                        const isUserBuyer = isCurrentUserBuyer || (!isCurrentUserSeller && currentUserRole === 'buyer');
+                        
+                        if (isUserBuyer && conv.postId) {
                             try {
                                 const sellerData = await sellerApi.getSellerByProductId(conv.postId);
                                 if (sellerData?.data?.data) {
                                     chatItem.sellerInfo = sellerData.data.data;
-                                    // Update name và avatar từ seller info
+                                    // Update name và avatar từ seller info (vì user là buyer)
                                     chatItem.name = sellerData.data.data.storeName || sellerData.data.data.sellerName || chatItem.name;
                                     chatItem.avatar = sellerData.data.data.avatar || chatItem.avatar;
                                 } else if (sellerData?.data) {
@@ -428,20 +545,53 @@ export function Chat() {
                 // Add the new message to the messages state
                 if (chatMessage.conversationId || chatMessage.conversation?.id) {
                     const conversationId = chatMessage.conversationId || chatMessage.conversation.id;
+                    const currentBuyerId = localStorage.getItem('buyerId');
+                    const currentSellerId = localStorage.getItem('sellerId');
                     const currentUserRole = localStorage.getItem('userRole') || 'buyer';
+                    
+                    // Lấy thông tin conversation từ chatList hoặc selectedChat để xác định buyerId và sellerId
+                    const conversation = chatList.find(c => (c.id === conversationId || c.conversationId === conversationId)) 
+                        || selectedChat;
+                    const conversationBuyerId = conversation?.conversationBuyerId || conversation?._raw?.buyerId;
+                    const conversationSellerId = conversation?.conversationSellerId || conversation?._raw?.sellerId;
                     
                     // Xác định sender giống như logic trong loadMessages
                     const msgSenderId = chatMessage.senderId || chatMessage.sender?.id || chatMessage.sender;
-                    const sellerId = localStorage.getItem('sellerId');
                     
-                    // Xác định sender dựa vào senderId và buyerId
-                    const isBuyer = buyerId && String(msgSenderId) === String(buyerId);
+                    // Xác định sender dựa vào senderId và conversationBuyerId
+                    const isBuyer = conversationBuyerId && String(msgSenderId) === String(conversationBuyerId);
                     
-                    // Xác định currentUserId: ID của người đang đăng nhập
-                    const currentUserId = currentUserRole === 'seller' && sellerId ? sellerId : buyerId;
+                    // Xác định user hiện tại là buyer hay seller trong conversation này
+                    const isCurrentUserBuyer = currentBuyerId && conversationBuyerId && String(currentBuyerId) === String(conversationBuyerId);
+                    const isCurrentUserSeller = currentSellerId && conversationSellerId && String(currentSellerId) === String(conversationSellerId);
+                    
+                    // Xác định currentUserId: ID của người đang đăng nhập trong conversation này
+                    let currentUserId = null;
+                    if (isCurrentUserSeller) {
+                        currentUserId = conversationSellerId;
+                    } else if (isCurrentUserBuyer) {
+                        currentUserId = conversationBuyerId;
+                    } else {
+                        // Fallback: dựa vào userRole và localStorage
+                        currentUserId = currentUserRole === 'seller' && currentSellerId ? currentSellerId : currentBuyerId;
+                    }
                     
                     // Xác định tin nhắn có phải của mình không
                     const isMyMessage = currentUserId && String(msgSenderId) === String(currentUserId);
+                    
+                    console.log("[Chat] WebSocket message - User identification:", {
+                        conversationId,
+                        currentBuyerId,
+                        currentSellerId,
+                        currentUserRole,
+                        conversationBuyerId,
+                        conversationSellerId,
+                        isCurrentUserBuyer,
+                        isCurrentUserSeller,
+                        currentUserId,
+                        msgSenderId,
+                        isMyMessage
+                    });
                     
                     setMessages(prev => {
                         const currentMessages = prev[conversationId] || [];
@@ -522,9 +672,15 @@ export function Chat() {
         localStorage.setItem('chat_autoReply_message', autoReplyMessage);
     }, [autoReplyMessage]);
 
+    // Lưu quick replies riêng cho buyer
     useEffect(() => {
-        localStorage.setItem('chat_quickReplies', JSON.stringify(quickReplies));
-    }, [quickReplies]);
+        localStorage.setItem('chat_quickReplies_buyer', JSON.stringify(quickRepliesBuyer));
+    }, [quickRepliesBuyer]);
+
+    // Lưu quick replies riêng cho seller
+    useEffect(() => {
+        localStorage.setItem('chat_quickReplies_seller', JSON.stringify(quickRepliesSeller));
+    }, [quickRepliesSeller]);
 
     useEffect(() => {
         localStorage.setItem('chat_hidden_ids', JSON.stringify(hiddenConversationIds));
@@ -583,22 +739,38 @@ export function Chat() {
         if (!message.trim() || !selectedChat) return;
         
         const messageText = message.trim();
-        const buyerId = localStorage.getItem('buyerId');
+        const currentBuyerId = localStorage.getItem('buyerId');
+        const currentSellerId = localStorage.getItem('sellerId');
+        const currentUserRole = localStorage.getItem('userRole') || 'buyer';
         
-        if (!buyerId) {
+        // Xác định buyerId của conversation (không phải buyerId của user hiện tại)
+        // API cần buyerId của conversation để xác định ai là buyer trong conversation đó
+        const conversationBuyerId = selectedChat.conversationBuyerId || selectedChat._raw?.buyerId;
+        
+        if (!conversationBuyerId) {
+            alert("Không thể xác định người dùng. Vui lòng đăng nhập lại!");
+            return;
+        }
+
+        // Kiểm tra user hiện tại có trong conversation không
+        const isCurrentUserBuyer = currentBuyerId && String(selectedChat.conversationBuyerId) === String(currentBuyerId);
+        const isCurrentUserSeller = currentSellerId && String(selectedChat.conversationSellerId) === String(currentSellerId);
+        
+        if (!isCurrentUserBuyer && !isCurrentUserSeller && currentUserRole !== 'buyer' && currentUserRole !== 'seller') {
             alert("Không thể xác định người dùng. Vui lòng đăng nhập lại!");
             return;
         }
 
         try {
             // Lấy currentUserId để xác định isMyMessage
-            const sellerId = localStorage.getItem('sellerId');
-            const currentUserId = userRole === 'seller' && sellerId ? sellerId : buyerId;
+            const currentUserId = isCurrentUserSeller && currentSellerId 
+                ? currentSellerId 
+                : (isCurrentUserBuyer ? currentBuyerId : (currentUserRole === 'seller' && currentSellerId ? currentSellerId : currentBuyerId));
             
-            // Gửi tin nhắn lên BE
+            // Gửi tin nhắn lên BE - cần gửi buyerId của conversation
             await chatApi.sendMessage(
                 selectedChat.conversationId || selectedChat.id,
-                buyerId,
+                conversationBuyerId, // buyerId của conversation, không phải của user hiện tại
                 selectedChat.postId,
                 messageText,
                 null // Không có file
@@ -668,22 +840,37 @@ export function Chat() {
     const handleSendImage = async () => {
         if (!selectedChat || !selectedImagePreviewUrl || !selectedImageFile) return;
         
-        const buyerId = localStorage.getItem('buyerId');
+        const currentBuyerId = localStorage.getItem('buyerId');
+        const currentSellerId = localStorage.getItem('sellerId');
+        const currentUserRole = localStorage.getItem('userRole') || 'buyer';
         
-        if (!buyerId) {
+        // Xác định buyerId của conversation (không phải buyerId của user hiện tại)
+        const conversationBuyerId = selectedChat.conversationBuyerId || selectedChat._raw?.buyerId;
+        
+        if (!conversationBuyerId) {
+            alert("Không thể xác định người dùng. Vui lòng đăng nhập lại!");
+            return;
+        }
+
+        // Kiểm tra user hiện tại có trong conversation không
+        const isCurrentUserBuyer = currentBuyerId && String(selectedChat.conversationBuyerId) === String(currentBuyerId);
+        const isCurrentUserSeller = currentSellerId && String(selectedChat.conversationSellerId) === String(currentSellerId);
+        
+        if (!isCurrentUserBuyer && !isCurrentUserSeller && currentUserRole !== 'buyer' && currentUserRole !== 'seller') {
             alert("Không thể xác định người dùng. Vui lòng đăng nhập lại!");
             return;
         }
 
         try {
             // Lấy currentUserId để xác định isMyMessage
-            const sellerId = localStorage.getItem('sellerId');
-            const currentUserId = userRole === 'seller' && sellerId ? sellerId : buyerId;
+            const currentUserId = isCurrentUserSeller && currentSellerId 
+                ? currentSellerId 
+                : (isCurrentUserBuyer ? currentBuyerId : (currentUserRole === 'seller' && currentSellerId ? currentSellerId : currentBuyerId));
             
-            // Gửi ảnh lên BE
+            // Gửi ảnh lên BE - cần gửi buyerId của conversation
             await chatApi.sendMessage(
                 selectedChat.conversationId || selectedChat.id,
-                buyerId,
+                conversationBuyerId, // buyerId của conversation, không phải của user hiện tại
                 selectedChat.postId,
                 "", // Không có text
                 selectedImageFile // Có file ảnh
@@ -937,9 +1124,15 @@ export function Chat() {
                                         <div className="chat-header-details">
                                             <div className="chat-header-name-row">
                                                 <h3>
-                                                    {sellerInfo?.storeName || sellerInfo?.sellerName || selectedChat.name}
+                                                    {/* Khi user là buyer: hiển thị sellerInfo, nếu không có thì dùng selectedChat.name */}
+                                                    {/* Khi user là seller: hiển thị selectedChat.name (đã là buyerName) */}
+                                                    {userRole === 'buyer' 
+                                                        ? (sellerInfo?.storeName || sellerInfo?.sellerName || selectedChat.name)
+                                                        : selectedChat.name
+                                                    }
                                                 </h3>
-                                                {sellerInfo?.status === 'ACCEPTED' && (
+                                                {/* Chỉ hiển thị badge "Đã xác thực" khi user là buyer và seller đã được xác thực */}
+                                                {userRole === 'buyer' && sellerInfo?.status === 'ACCEPTED' && (
                                                     <span className="chat-status-verified">Đã xác thực</span>
                                                 )}
                                             </div>
@@ -976,7 +1169,12 @@ export function Chat() {
                                                     </div>
                                                     <div className="profile-info">
                                                         <div className="profile-name">
-                                                            {sellerInfo?.storeName || sellerInfo?.sellerName || selectedChat.name}
+                                                            {/* Khi user là buyer: hiển thị sellerInfo, nếu không có thì dùng selectedChat.name */}
+                                                            {/* Khi user là seller: hiển thị selectedChat.name (đã là buyerName) */}
+                                                            {userRole === 'buyer' 
+                                                                ? (sellerInfo?.storeName || sellerInfo?.sellerName || selectedChat.name)
+                                                                : selectedChat.name
+                                                            }
                                                         </div>
                                                         <button className="view-page-btn" onClick={() => { window.location.href = `/seller/${selectedChat.id}`; }}>
                                                             <ExternalLink size={14} />
