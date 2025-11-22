@@ -1,4 +1,4 @@
-# 🚗 GreenTrade Plaform 
+# 🚗 GreenTrade Electric Vehicle Plaform 
 
 **Nền tảng giao dịch Pin & Xe điện đã qua sử dụng**
 
@@ -45,7 +45,7 @@ Electric Vehicle Marketplace là nền tảng thương mại điện tử chuyê
 - 💰 Quản lý ví và rút tiền
 
 ### 👨‍💼 Quản trị viên (Admin)
-- 👥 Quản lý người dùng và người bán
+- 👥 Quản lý người dùng
 - ✅ Duyệt đăng ký người bán
 - 📝 Kiểm duyệt bài đăng
 - ⚖️ Xử lý tranh chấp
@@ -331,12 +331,12 @@ Distributed under the MIT License.
 
 ## 📞 Support & Contact
 
-**Team**: Electric Vehicle Development Team  
-**Email**: contact@evmarketplace.com  
-**Project**: SWP391 - Electric Vehicle Marketplace
+**Team**: GreenTrade Electric Vehicle Development Team  
+**Email**: green.trade.platform.391@gmail.com  
+**Project**: SWP391 - GreenTrade Electric Vehicle
 
 ---
 
 Made with ❤️ by Electric Vehicle Team
 
-**Last updated**: 2024
+**Last updated**: 2025
