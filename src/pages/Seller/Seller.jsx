@@ -25,7 +25,7 @@ export function Seller() {
     
     // State để lưu buyerId của user hiện tại (từ localStorage)
     const currentUserBuyerId = localStorage.getItem("buyerId");
-    
+   // const currentSellerId = localStorage.getItem("sellerId");
     // State để lưu buyerId của seller đang được xem (từ seller profile)
     const [viewedSellerBuyerId, setViewedSellerBuyerId] = useState(null);
     
@@ -392,23 +392,41 @@ export function Seller() {
     };
 
     // xu ly phan following
-    useEffect(() => {
+    // useEffect(() => {
+    //     let mounted = true;
+    //     const accessToken = localStorage.getItem("accessToken");
+        
+    //     // Chỉ check khi đã đăng nhập, có sellerId và KHÔNG phải xem shop mình
+    //     if (accessToken && sellerId && !isViewingOwnProfile) {
+    //         sellerApi.checkFollowStatus(sellerId)
+    //             .then((response) => {
+    //                 if (!mounted) return;
+    //                 // JSON trả về: { success: true, data: { isFollowing: true/false, ... } }
+    //                 if (response && response.success && response.data) {
+    //                     setIsFollowing(response.data.isFollowing);
+    //                 }
+    //             })
+    //             .catch((err) => {
+    //                 console.error("[Seller] Error checking follow status:", err);
+    //             });
+    //     }
+    //     return () => { mounted = false; };
+    // }, [sellerId, isViewingOwnProfile]);
+
+     useEffect(() => {
         let mounted = true;
         const accessToken = localStorage.getItem("accessToken");
         
-        // Chỉ check khi đã đăng nhập, có sellerId và KHÔNG phải xem shop mình
-        if (accessToken && sellerId && !isViewingOwnProfile) {
+        // [TEST MODE] Đã comment điều kiện !isViewingOwnProfile để hiện nút cho bạn test
+        if (accessToken && sellerId /* && !isViewingOwnProfile */) {
             sellerApi.checkFollowStatus(sellerId)
                 .then((response) => {
                     if (!mounted) return;
-                    // JSON trả về: { success: true, data: { isFollowing: true/false, ... } }
                     if (response && response.success && response.data) {
                         setIsFollowing(response.data.isFollowing);
                     }
                 })
-                .catch((err) => {
-                    console.error("[Seller] Error checking follow status:", err);
-                });
+                .catch((err) => console.error("[Seller] Error checking follow status:", err));
         }
         return () => { mounted = false; };
     }, [sellerId, isViewingOwnProfile]);
@@ -416,89 +434,184 @@ export function Seller() {
     // ========================================================================
     // === 2. HÀM XỬ LÝ LOGIC BẤM NÚT (POST / DELETE API) ===
     // ========================================================================
+    // const handleFollowAction = async () => {
+    //     const accessToken = localStorage.getItem("accessToken");
+        
+    //     // 1. Validate Login
+    //     if (!accessToken) {
+    //         alert("Vui lòng đăng nhập để thực hiện chức năng này!");
+    //         return;
+    //     }
+
+    //     // 2. Chặn spam click
+    //     if (followLoading) return;
+
+    //     // === TRƯỜNG HỢP A: ĐANG FOLLOW -> MUỐN HỦY (DELETE) ===
+    //     if (isFollowing) {
+    //         // Popup xác nhận Yes/No
+    //         const confirmUnfollow = window.confirm("Bạn muốn bỏ theo dõi người bán chứ?");
+            
+    //         if (confirmUnfollow) { // Nếu chọn YES
+    //             setFollowLoading(true);
+    //             try {
+    //                 console.log("[Seller] Action: Unfollow");
+    //                 const res = await sellerApi.unfollowSeller(sellerId);
+                    
+    //                 if (res && res.success) {
+    //                     setIsFollowing(false); // Đổi nút về "Theo dõi"
+                        
+    //                     // Giảm số follower hiển thị ngay lập tức (Optimistic Update)
+    //                     if (seller) {
+    //                         setSeller(prev => ({ 
+    //                             ...prev, 
+    //                             followerCount: Math.max(0, (prev.followerCount || 0) - 1) 
+    //                         }));
+    //                     }
+    //                 }
+    //             } catch (error) {
+    //                 console.error(error);
+    //                 alert("Lỗi khi bỏ theo dõi.");
+    //             } finally {
+    //                 setFollowLoading(false);
+    //             }
+    //         }
+    //     } 
+        
+    //     // === TRƯỜNG HỢP B: CHƯA FOLLOW -> MUỐN THEO DÕI (POST) ===
+    //     else {
+    //         setFollowLoading(true);
+    //         try {
+    //             console.log("[Seller] Action: Follow");
+    //             const res = await sellerApi.followSeller(sellerId);
+                
+    //             if (res && res.success) {
+    //                 setIsFollowing(true); // Đổi nút thành "Bỏ theo dõi"
+                    
+    //                 // Lấy tên Shop từ Response để hiện Popup
+    //                 // Cấu trúc JSON: { data: { seller: { storeName: "..." } } }
+    //                 const storeName = res.data?.seller?.storeName || res.data?.seller?.sellerName || "Shop này";
+                    
+    //                 // Popup thông báo thành công
+    //                 alert(`Bạn đã theo dõi "${storeName}" thành công!`);
+
+    //                 // Tăng số follower hiển thị ngay lập tức
+    //                 if (seller) {
+    //                     setSeller(prev => ({ 
+    //                         ...prev, 
+    //                         followerCount: (prev.followerCount || 0) + 1 
+    //                     }));
+    //                 }
+    //             }
+    //         } catch (error) {
+    //             console.error("[Seller] Follow error:", error);
+    //             const msg = error?.response?.data?.message || "";
+    //             const errData = error?.response?.data?.error || "";
+
+    //             // Validate: Không cho tự follow
+    //             if (msg.includes("Cannot follow yourself") || errData.includes("Cannot follow yourself")) {
+    //                 alert("Bạn không thể tự theo dõi chính mình!");
+    //             } 
+    //             // Validate: Đã follow rồi (đồng bộ lại UI)
+    //             else if (msg.includes("Already following") || errData.includes("Already following")) {
+    //                 setIsFollowing(true); 
+    //                 alert("Hệ thống cập nhật: Bạn đang theo dõi shop này rồi.");
+    //             } else {
+    //                 alert("Có lỗi xảy ra, vui lòng thử lại.");
+    //             }
+    //         } finally {
+    //             setFollowLoading(false);
+    //         }
+    //     }
+    // };
+
     const handleFollowAction = async () => {
         const accessToken = localStorage.getItem("accessToken");
         
-        // 1. Validate Login
         if (!accessToken) {
             alert("Vui lòng đăng nhập để thực hiện chức năng này!");
             return;
         }
 
-        // 2. Chặn spam click
         if (followLoading) return;
 
-        // === TRƯỜNG HỢP A: ĐANG FOLLOW -> MUỐN HỦY (DELETE) ===
+        // A: UNFOLLOW
         if (isFollowing) {
-            // Popup xác nhận Yes/No
-            const confirmUnfollow = window.confirm("Bạn muốn bỏ theo dõi người bán chứ?");
+            const confirm = window.confirm("Bạn có chắc chắn muốn bỏ theo dõi người bán này không?");
             
-            if (confirmUnfollow) { // Nếu chọn YES
+            if (confirm) {
                 setFollowLoading(true);
                 try {
-                    console.log("[Seller] Action: Unfollow");
                     const res = await sellerApi.unfollowSeller(sellerId);
-                    
                     if (res && res.success) {
-                        setIsFollowing(false); // Đổi nút về "Theo dõi"
-                        
-                        // Giảm số follower hiển thị ngay lập tức (Optimistic Update)
+                        setIsFollowing(false);
                         if (seller) {
                             setSeller(prev => ({ 
                                 ...prev, 
                                 followerCount: Math.max(0, (prev.followerCount || 0) - 1) 
                             }));
                         }
+                    } else {
+                        alert(res?.message || "Lỗi khi bỏ theo dõi.");
                     }
                 } catch (error) {
                     console.error(error);
-                    alert("Lỗi khi bỏ theo dõi.");
+                    alert("Lỗi kết nối khi bỏ theo dõi.");
                 } finally {
                     setFollowLoading(false);
                 }
             }
         } 
-        
-        // === TRƯỜNG HỢP B: CHƯA FOLLOW -> MUỐN THEO DÕI (POST) ===
+        // B: FOLLOW
         else {
             setFollowLoading(true);
             try {
-                console.log("[Seller] Action: Follow");
                 const res = await sellerApi.followSeller(sellerId);
                 
+                // 1. THÀNH CÔNG
                 if (res && res.success) {
-                    setIsFollowing(true); // Đổi nút thành "Bỏ theo dõi"
-                    
-                    // Lấy tên Shop từ Response để hiện Popup
-                    // Cấu trúc JSON: { data: { seller: { storeName: "..." } } }
-                    const storeName = res.data?.seller?.storeName || res.data?.seller?.sellerName || "Shop này";
-                    
-                    // Popup thông báo thành công
+                    setIsFollowing(true); 
+                    const storeName = res.data?.seller?.storeName || "Shop này";
                     alert(`Bạn đã theo dõi "${storeName}" thành công!`);
 
-                    // Tăng số follower hiển thị ngay lập tức
                     if (seller) {
                         setSeller(prev => ({ 
                             ...prev, 
                             followerCount: (prev.followerCount || 0) + 1 
                         }));
                     }
+                } 
+                // 2. THẤT BẠI LOGIC (HTTP 200 nhưng success: false)
+                else {
+                    console.log("Follow logic failed:", res);
+                    const msg = res?.message || "";
+                    const errText = res?.error || "";
+
+                    // Check lỗi tự follow
+                    if (msg.includes("Cannot follow yourself") || errText.includes("Cannot follow yourself")) {
+                        alert("Bạn không thể tự theo dõi chính mình!"); 
+                    } 
+                    // Check lỗi đã follow rồi
+                    else if (msg.includes("Already following") || errText.includes("Already following")) {
+                        setIsFollowing(true); 
+                        alert("Hệ thống cập nhật: Bạn đang theo dõi shop này rồi.");
+                    } else {
+                        alert(msg || "Có lỗi xảy ra, vui lòng thử lại.");
+                    }
                 }
             } catch (error) {
-                console.error("[Seller] Follow error:", error);
-                const msg = error?.response?.data?.message || "";
-                const errData = error?.response?.data?.error || "";
+                // 3. LỖI MẠNG (HTTP 400, 500)
+                console.error("[Seller] Follow network error:", error);
+                const resData = error?.response?.data || {};
+                const msg = resData.message || "";
+                const errText = resData.error || "";
 
-                // Validate: Không cho tự follow
-                if (msg.includes("Cannot follow yourself") || errData.includes("Cannot follow yourself")) {
+                if (msg.includes("Cannot follow yourself") || errText.includes("Cannot follow yourself")) {
                     alert("Bạn không thể tự theo dõi chính mình!");
-                } 
-                // Validate: Đã follow rồi (đồng bộ lại UI)
-                else if (msg.includes("Already following") || errData.includes("Already following")) {
+                } else if (msg.includes("Already following")) {
                     setIsFollowing(true); 
                     alert("Hệ thống cập nhật: Bạn đang theo dõi shop này rồi.");
                 } else {
-                    alert("Có lỗi xảy ra, vui lòng thử lại.");
+                    alert(msg || errText || "Có lỗi xảy ra, vui lòng thử lại.");
                 }
             } finally {
                 setFollowLoading(false);
