@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import profileApi from "../../api/profileApi";
 import sellerApi from "../../api/sellerApi"; 
-import { MapPin, UserMinus, ExternalLink, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react"; // Thêm icon mũi tên
+import { MapPin, UserMinus, ExternalLink, 
+    AlertCircle, ChevronLeft, 
+    ChevronRight } from "lucide-react"; // Thêm icon mũi tên
 import "./MyFollowingList.css";
 
 export default function MyFollowingList() {
