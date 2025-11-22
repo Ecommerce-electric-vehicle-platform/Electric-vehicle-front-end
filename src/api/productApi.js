@@ -1,6 +1,55 @@
 import axiosInstance from "./axiosInstance";
 
 /**
+ * GET /api/v1/post-product/category?name={categoryName}&page={page}&size={size}
+ * Filter products by category name (Xe điện, Pin điện)
+ */
+export async function fetchPostProductsByCategory({ categoryName, page = 1, size = 12 } = {}) {
+    if (!categoryName) {
+        throw new Error("Category name is required");
+    }
+
+    const pageIndex = Math.max(0, Number(page) - 1);
+    const response = await axiosInstance.get("/api/v1/post-product/category", {
+        params: {
+            name: categoryName,
+            page: pageIndex,
+            size
+        },
+    });
+
+    const raw = response?.data ?? {};
+    const pageObj = raw?.data || raw;
+
+    const content =
+        pageObj?.postList ||
+        pageObj?.content ||
+        pageObj?.items ||
+        pageObj?.results ||
+        pageObj?.list ||
+        (Array.isArray(pageObj) ? pageObj : []);
+
+    const totalPages =
+        pageObj?.meta?.totalPage ??
+        pageObj?.totalPages ??
+        pageObj?.page?.totalPages ??
+        1;
+
+    const totalElements =
+        pageObj?.meta?.totalElements ??
+        pageObj?.totalElements ??
+        pageObj?.page?.totalElements ??
+        (Array.isArray(content) ? content.length : 0);
+
+    return {
+        items: Array.isArray(content) ? content : [],
+        totalPages: Number(totalPages) || 1,
+        totalElements: Number(totalElements) || 0,
+        raw,
+    };
+}
+
+/**
  * GET /api/v1/post-product?page={page}&size={size}
  */
 export async function fetchPostProducts({ page = 1, size = 12, params = {} } = {}) {

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { MapPin, Search, Filter, SortAsc, ArrowRight, ArrowLeft, Grid3x3, List, X, Sparkles, Zap, Car, Battery } from "lucide-react";
 import "../../components/VehicleShowcase/VehicleShowcase.css";
 import "./Products.css";
-import { fetchPostProducts, normalizeProduct } from "../../api/productApi";
+import { fetchPostProducts, fetchPostProductsByCategory, normalizeProduct } from "../../api/productApi";
 import { searchProducts } from "../../api/searchApi";
 import { ProductCard } from "../../components/ProductCard/ProductCard";
 import { GlobalSearch } from "../../components/GlobalSearch/GlobalSearch";
@@ -115,27 +115,62 @@ export function Products() {
                 });
         } else {
             // Normal mode
-            const params = {};
-            fetchPostProducts({ page, size: pageSize, params })
-                .then(({ items, totalPages }) => {
-                    if (!mounted) return;
-                    setItems(items || []);
-                    setServerTotalPages(totalPages || 1);
-                })
-                .catch((err) => {
-                    if (!mounted) return;
-                    setError(err?.message || "Không thể tải sản phẩm");
-                })
-                .finally(() => {
-                    if (!mounted) return;
-                    setLoading(false);
-                });
+            // Nếu có productTypeFilter, gọi API /api/v1/post-product/category với category name
+            if (productTypeFilter === PRODUCT_TYPE_FILTERS.VEHICLE) {
+                // Filter "Xe điện"
+                fetchPostProductsByCategory({ categoryName: "Xe điện", page, size: pageSize })
+                    .then(({ items, totalPages }) => {
+                        if (!mounted) return;
+                        setItems(items || []);
+                        setServerTotalPages(totalPages || 1);
+                    })
+                    .catch((err) => {
+                        if (!mounted) return;
+                        setError(err?.message || "Không thể tải sản phẩm");
+                    })
+                    .finally(() => {
+                        if (!mounted) return;
+                        setLoading(false);
+                    });
+            } else if (productTypeFilter === PRODUCT_TYPE_FILTERS.BATTERY) {
+                // Filter "Pin điện"
+                fetchPostProductsByCategory({ categoryName: "Pin điện", page, size: pageSize })
+                    .then(({ items, totalPages }) => {
+                        if (!mounted) return;
+                        setItems(items || []);
+                        setServerTotalPages(totalPages || 1);
+                    })
+                    .catch((err) => {
+                        if (!mounted) return;
+                        setError(err?.message || "Không thể tải sản phẩm");
+                    })
+                    .finally(() => {
+                        if (!mounted) return;
+                        setLoading(false);
+                    });
+            } else {
+                // Filter "Tất cả" - gọi API bình thường không filter
+                fetchPostProducts({ page, size: pageSize, params: {} })
+                    .then(({ items, totalPages }) => {
+                        if (!mounted) return;
+                        setItems(items || []);
+                        setServerTotalPages(totalPages || 1);
+                    })
+                    .catch((err) => {
+                        if (!mounted) return;
+                        setError(err?.message || "Không thể tải sản phẩm");
+                    })
+                    .finally(() => {
+                        if (!mounted) return;
+                        setLoading(false);
+                    });
+            }
         }
 
         return () => {
             mounted = false;
         };
-    }, [page, pageSize, searchTerm, isSearchMode, urlSearchType, urlSearchValue]);
+    }, [page, pageSize, searchTerm, isSearchMode, urlSearchType, urlSearchValue, productTypeFilter]);
 
     // Update filters when URL changes
     useEffect(() => {
