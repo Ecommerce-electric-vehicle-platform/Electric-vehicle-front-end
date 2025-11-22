@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { CheckCircle, XCircle } from "lucide-react";
 import { ServicePackageGuard } from "../../../components/ServicePackageGuard/ServicePackageGuard";
 import sellerApi from "../../../api/sellerApi";
 import "./CreatePost.css";
@@ -13,6 +15,11 @@ export default function CreatePost() {
   const [pictureUrls, setPictureUrls] = useState([]);
   const [errors, setErrors] = useState({});
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiModalMessage, setAiModalMessage] = useState("");
+  const [aiModalType, setAiModalType] = useState("success"); // "success" or "error"
 
   const [formData, setFormData] = useState({
     title: "",
@@ -119,19 +126,25 @@ export default function CreatePost() {
     // Kiểm tra categoryId có tồn tại không (BẮT BUỘC theo BE)
     if (!formData.categoryId) {
       console.error("[AI] categoryId is missing!");
-      alert("Vui lòng chọn danh mục trước khi sử dụng AI!");
+      setAiModalMessage("Vui lòng chọn danh mục trước khi sử dụng AI!");
+      setAiModalType("error");
+      setShowAIModal(true);
       return;
     }
 
     // Validate các field bắt buộc trước khi gọi AI
     if (!validateForAI()) {
-      alert("Vui lòng điền đầy đủ các thông tin bắt buộc trước khi sử dụng AI!");
+      setAiModalMessage("Vui lòng điền đầy đủ các thông tin bắt buộc trước khi sử dụng AI!");
+      setAiModalType("error");
+      setShowAIModal(true);
       return;
     }
 
     // Kiểm tra lại có ảnh hay không
     if (!pictures || pictures.length === 0) {
-      alert("Vui lòng thêm ít nhất 1 ảnh trước khi sử dụng AI!");
+      setAiModalMessage("Vui lòng thêm ít nhất 1 ảnh trước khi sử dụng AI!");
+      setAiModalType("error");
+      setShowAIModal(true);
       return;
     }
 
@@ -173,7 +186,9 @@ export default function CreatePost() {
           }
           
           console.log("[AI] Description received and filled!");
-          alert("AI đã tạo mô tả thành công!");
+          setAiModalMessage("AI đã tạo mô tả thành công!");
+          setAiModalType("success");
+          setShowAIModal(true);
         } else {
           throw new Error("AI không trả về mô tả");
         }
@@ -202,7 +217,9 @@ export default function CreatePost() {
         errorMsg += error?.response?.data?.message || error?.message || "Vui lòng thử lại!";
       }
       
-      alert(errorMsg);
+      setAiModalMessage(errorMsg);
+      setAiModalType("error");
+      setShowAIModal(true);
     } finally {
       setAiLoading(false);
     }
@@ -252,8 +269,8 @@ export default function CreatePost() {
       );
 
       if (response?.data?.success) {
-        alert("Đăng tin thành công!");
-        navigate("/seller/manage-posts");
+        setSuccessMessage("Đăng tin thành công!");
+        setShowSuccessModal(true);
       } else {
         throw new Error(response?.data?.message || "Tạo bài thất bại");
       }
@@ -554,6 +571,72 @@ export default function CreatePost() {
           </form>
         </div>
       </div>
+
+      {/* Modal thông báo thành công - Render ở top level với Portal */}
+      {showSuccessModal && createPortal(
+        <div className="success-modal-overlay" onClick={() => {
+          setShowSuccessModal(false);
+          navigate("/seller/manage-posts");
+        }}>
+          <div className="success-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="success-modal-header">
+              <h3 className="success-modal-title">Thành công</h3>
+            </div>
+            <div className="success-modal-body">
+              <div className="text-center py-3">
+                <CheckCircle size={48} className="success-icon mb-3" />
+                <p className="mb-0" style={{ fontSize: '16px', fontWeight: '500' }}>{successMessage}</p>
+              </div>
+            </div>
+            <div className="success-modal-footer">
+              <button
+                className="success-modal-button"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate("/seller/manage-posts");
+                }}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal thông báo AI - Success hoặc Error - Render ở top level với Portal */}
+      {showAIModal && createPortal(
+        <div className="success-modal-overlay" onClick={() => setShowAIModal(false)}>
+          <div className={`success-modal ${aiModalType === 'error' ? 'ai-error-modal' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className={`success-modal-header ${aiModalType === 'error' ? 'ai-error-header' : ''}`}>
+              <h3 className="success-modal-title">
+                {aiModalType === 'error' ? 'Lỗi' : 'Thành công'}
+              </h3>
+            </div>
+            <div className="success-modal-body">
+              <div className="text-center py-3">
+                {aiModalType === 'error' ? (
+                  <XCircle size={48} className="ai-error-icon mb-3" />
+                ) : (
+                  <CheckCircle size={48} className="success-icon mb-3" />
+                )}
+                <p className="mb-0" style={{ fontSize: '16px', fontWeight: '500', whiteSpace: 'pre-line' }}>
+                  {aiModalMessage}
+                </p>
+              </div>
+            </div>
+            <div className="success-modal-footer">
+              <button
+                className={`success-modal-button ${aiModalType === 'error' ? 'ai-error-button' : ''}`}
+                onClick={() => setShowAIModal(false)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </ServicePackageGuard>
   );
 }

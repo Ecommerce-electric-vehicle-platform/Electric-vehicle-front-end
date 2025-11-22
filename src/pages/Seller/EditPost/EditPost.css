@@ -365,3 +365,138 @@ textarea:focus {
     font-size: 1.5rem;
   }
 }
+
+/* Custom Success Modal - giống CreatePost */
+.success-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10000 !important;
+  padding: 20px;
+  animation: fadeIn 0.3s ease-out;
+  overflow-y: auto;
+  /* Đảm bảo modal luôn hiển thị ở giữa viewport */
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.success-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 0;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+  overflow: hidden;
+  position: relative !important;
+  margin: 0 auto !important;
+  /* Đảm bảo modal luôn ở giữa màn hình */
+  flex-shrink: 0;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.success-modal-header {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  padding: 1.5rem;
+  border-radius: 16px 16px 0 0;
+}
+
+.success-modal-title {
+  margin: 0;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.success-modal-body {
+  padding: 2rem;
+}
+
+.success-icon {
+  color: #28a745;
+  display: block;
+  margin: 0 auto;
+}
+
+.success-modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: center;
+}
+
+.success-modal-button {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.success-modal-button:hover {
+  background: linear-gradient(135deg, #218838 0%, #1ea580 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.success-modal-button:active {
+  transform: translateY(0);
+}
+
+/* AI Modal Error Styles */
+.ai-error-modal .success-modal-header {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.ai-error-header {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+}
+
+.ai-error-icon {
+  color: #dc3545;
+  display: block;
+  margin: 0 auto;
+}
+
+.ai-error-button {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+}
+
+.ai-error-button:hover {
+  background: linear-gradient(135deg, #c82333 0%, #bd2130 100%) !important;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3) !important;
+}

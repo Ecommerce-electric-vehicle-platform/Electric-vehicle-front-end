@@ -1,6 +1,8 @@
 // src/pages/Seller/ManagePosts/ManagePosts.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { CheckCircle, XCircle } from "lucide-react";
 import { ServicePackageGuard, usePackage } from "../../../components/ServicePackageGuard/ServicePackageGuard";
 import sellerApi from "../../../api/sellerApi";
 import "./ManagePosts.css";
@@ -13,6 +15,12 @@ function ManagePostsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all"); // all, displaying, approved, pending, rejected, hidden, sold
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState("success"); // "success" or "error"
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmModalMessage, setConfirmModalMessage] = useState("");
+  const [confirmModalAction, setConfirmModalAction] = useState(null); // Function to execute on confirm
 
   useEffect(() => {
     loadPosts();
@@ -46,74 +54,83 @@ function ManagePostsContent() {
     }
   };
 
-  const handleRequestVerification = async (postId) => {
-    if (
-      !window.confirm("Bạn có chắc muốn gửi yêu cầu xác minh bài đăng này?")
-    ) {
-      return;
-    }
-
-    try {
-      await sellerApi.requestPostVerification(postId);
-      alert("Yêu cầu xác minh đã được gửi!");
-      loadPosts(); // Reload
-    } catch (error) {
-      console.error("Error requesting verification:", error);
-      
-      // Lấy message lỗi từ BE với thứ tự ưu tiên:
-      // 1. error.response.data.error.message (message chi tiết từ BE)
-      // 2. error.response.data.message (message chung)
-      // 3. error.message (message từ axios)
-      // 4. Message mặc định
-      let errorMessage = "Gửi yêu cầu thất bại. Vui lòng thử lại!";
-      
-      if (error?.response?.data?.error?.message) {
-        errorMessage = error.response.data.error.message;
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
+  const handleRequestVerification = (postId) => {
+    // Hiển thị modal xác nhận
+    setConfirmModalMessage("Bạn có chắc muốn gửi yêu cầu xác minh bài đăng này?");
+    setConfirmModalAction(() => async () => {
+      setShowConfirmModal(false);
+      try {
+        await sellerApi.requestPostVerification(postId);
+        setModalMessage("Yêu cầu xác minh đã được gửi!");
+        setModalType("success");
+        setShowModal(true);
+        loadPosts(); // Reload
+      } catch (error) {
+        console.error("Error requesting verification:", error);
+        
+        // Lấy message lỗi từ BE với thứ tự ưu tiên:
+        // 1. error.response.data.error.message (message chi tiết từ BE)
+        // 2. error.response.data.message (message chung)
+        // 3. error.message (message từ axios)
+        // 4. Message mặc định
+        let errorMessage = "Gửi yêu cầu thất bại. Vui lòng thử lại!";
+        
+        if (error?.response?.data?.error?.message) {
+          errorMessage = error.response.data.error.message;
+        } else if (error?.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
+        
+        setModalMessage(errorMessage);
+        setModalType("error");
+        setShowModal(true);
       }
-      
-      alert(errorMessage);
-    }
+    });
+    setShowConfirmModal(true);
   };
 
   const handleHidePost = async (postId) => {
-    if (
-      !window.confirm(
-        "Bạn có chắc muốn ẩn tin đăng này? Tin đăng sẽ không hiển thị cho người mua nhưng vẫn được lưu trong hệ thống."
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await sellerApi.hidePostById(postId);
-      alert("Ẩn tin đăng thành công!");
-      loadPosts(); // Reload
-    } catch (error) {
-      console.error("Error hiding post:", error);
-      alert("Ẩn tin đăng thất bại. Vui lòng thử lại!");
-    }
+    // Hiển thị modal xác nhận
+    setConfirmModalMessage("Bạn có chắc muốn ẩn tin đăng này? Tin đăng sẽ không hiển thị cho người mua nhưng vẫn được lưu trong hệ thống.");
+    setConfirmModalAction(() => async () => {
+      setShowConfirmModal(false);
+      try {
+        await sellerApi.hidePostById(postId);
+        setModalMessage("Ẩn tin đăng thành công!");
+        setModalType("success");
+        setShowModal(true);
+        loadPosts(); // Reload
+      } catch (error) {
+        console.error("Error hiding post:", error);
+        setModalMessage("Ẩn tin đăng thất bại. Vui lòng thử lại!");
+        setModalType("error");
+        setShowModal(true);
+      }
+    });
+    setShowConfirmModal(true);
   };
 
   const handleUnhidePost = async (postId) => {
-    if (
-      !window.confirm(
-        "Bạn có chắc muốn bỏ ẩn tin đăng này? Tin đăng sẽ trở lại và hiển thị cho người mua."
-      )
-    ) {
-      return;
-    }
-    try {
-      await sellerApi.unhidePostById(postId);
-      alert("Bỏ ẩn tin đăng thành công!");
-      loadPosts();
-    } catch (error) {
-      console.error("Error unhiding post:", error);
-      alert("Bỏ ẩn tin đăng thất bại. Vui lòng thử lại!");
-    }
+    // Hiển thị modal xác nhận
+    setConfirmModalMessage("Bạn có chắc muốn bỏ ẩn tin đăng này? Tin đăng sẽ trở lại và hiển thị cho người mua.");
+    setConfirmModalAction(() => async () => {
+      setShowConfirmModal(false);
+      try {
+        await sellerApi.unhidePostById(postId);
+        setModalMessage("Bỏ ẩn tin đăng thành công!");
+        setModalType("success");
+        setShowModal(true);
+        loadPosts();
+      } catch (error) {
+        console.error("Error unhiding post:", error);
+        setModalMessage("Bỏ ẩn tin đăng thất bại. Vui lòng thử lại!");
+        setModalType("error");
+        setShowModal(true);
+      }
+    });
+    setShowConfirmModal(true);
   };
 
   const filteredPosts = posts.filter((post) => {
@@ -371,6 +388,77 @@ function ManagePostsContent() {
             </div>
           )}
       </div>
+
+      {/* Modal xác nhận - Render ở top level với Portal */}
+      {showConfirmModal && createPortal(
+        <div className="success-modal-overlay" onClick={() => setShowConfirmModal(false)}>
+          <div className="success-modal confirmation-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="success-modal-header confirmation-modal-header">
+              <h3 className="success-modal-title">Xác nhận</h3>
+            </div>
+            <div className="success-modal-body">
+              <div className="text-center py-3">
+                <p className="mb-0" style={{ fontSize: '16px', fontWeight: '500', whiteSpace: 'pre-line' }}>
+                  {confirmModalMessage}
+                </p>
+              </div>
+            </div>
+            <div className="success-modal-footer confirmation-modal-footer">
+              <button
+                className="confirmation-modal-button cancel"
+                onClick={() => setShowConfirmModal(false)}
+              >
+                Hủy
+              </button>
+              <button
+                className="confirmation-modal-button confirm"
+                onClick={() => {
+                  if (confirmModalAction) {
+                    confirmModalAction();
+                  }
+                }}
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal thông báo - Success hoặc Error - Render ở top level với Portal */}
+      {showModal && createPortal(
+        <div className="success-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className={`success-modal ${modalType === 'error' ? 'ai-error-modal' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className={`success-modal-header ${modalType === 'error' ? 'ai-error-header' : ''}`}>
+              <h3 className="success-modal-title">
+                {modalType === 'error' ? 'Lỗi' : 'Thành công'}
+              </h3>
+            </div>
+            <div className="success-modal-body">
+              <div className="text-center py-3">
+                {modalType === 'error' ? (
+                  <XCircle size={48} className="ai-error-icon mb-3" />
+                ) : (
+                  <CheckCircle size={48} className="success-icon mb-3" />
+                )}
+                <p className="mb-0" style={{ fontSize: '16px', fontWeight: '500', whiteSpace: 'pre-line' }}>
+                  {modalMessage}
+                </p>
+              </div>
+            </div>
+            <div className="success-modal-footer">
+              <button
+                className={`success-modal-button ${modalType === 'error' ? 'ai-error-button' : ''}`}
+                onClick={() => setShowModal(false)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
