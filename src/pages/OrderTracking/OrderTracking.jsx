@@ -1582,6 +1582,21 @@ function OrderTracking() {
         );
     }
 
+    const rawStatusUpper = String(
+        order?.rawStatus ||
+        order?._raw?.status ||
+        order?._raw?.orderStatus ||
+        order?._raw?.rawStatus ||
+        ''
+    ).toUpperCase();
+    const normalizedStatus = String(order?.status || '').toLowerCase();
+    const realIdForOrder = order?.realId || order?.id || orderId;
+
+    // Check if order is completed from multiple sources
+    const isOrderCompleted = ['COMPLETED', 'SUCCESS'].includes(rawStatusUpper) ||
+        normalizedStatus === 'completed' ||
+        normalizedStatus === 'success';
+
     if (isViewingDisputeResult) {
         return (
             <div className="order-tracking-page">
@@ -1601,20 +1616,7 @@ function OrderTracking() {
         );
     }
     // Get status from multiple possible locations (same as in handleConfirmOrder)
-    const rawStatusUpper = String(
-        order?.rawStatus ||
-        order?._raw?.status ||
-        order?._raw?.orderStatus ||
-        order?._raw?.rawStatus ||
-        ''
-    ).toUpperCase();
-    const normalizedStatus = String(order?.status || '').toLowerCase();
-    const realIdForOrder = order?.realId || order?.id || orderId;
-
-    // Check if order is completed from multiple sources
-    const isOrderCompleted = ['COMPLETED', 'SUCCESS'].includes(rawStatusUpper) ||
-        normalizedStatus === 'completed' ||
-        normalizedStatus === 'success';
+    
 
     // Đảm bảo completedAt luôn được set khi đơn hàng ở trạng thái completed
     // completedAt chính là updatedAt khi đơn hàng ở trạng thái COMPLETED
