@@ -1,10 +1,10 @@
 // src/components/Toast/Toast.jsx
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bell } from "lucide-react";
+import { Bell, CheckCircle, AlertCircle, Info, XCircle } from "lucide-react";
 import "./Toast.css";
 
-export function Toast({ message, show, onClose, duration = 3000 }) {
+export function Toast({ message, show, onClose, duration = 3000, type = "info" }) {
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -31,13 +31,27 @@ export function Toast({ message, show, onClose, duration = 3000 }) {
     }, 300); // Animation duration
   };
 
+  const getIcon = () => {
+    switch (type) {
+      case "success":
+        return <CheckCircle size={20} />;
+      case "error":
+        return <XCircle size={20} />;
+      case "warning":
+        return <AlertCircle size={20} />;
+      case "info":
+      default:
+        return <Info size={20} />;
+    }
+  };
+
   if (!isVisible) return null;
 
   return createPortal(
     <div className={`toast-container ${isExiting ? "toast-exit" : "toast-enter"}`}>
-      <div className="toast-content">
+      <div className={`toast-content toast-${type}`}>
         <div className="toast-icon">
-          <Bell size={20} />
+          {getIcon()}
         </div>
         <div className="toast-message">{message}</div>
         <button className="toast-close" onClick={handleClose}>
