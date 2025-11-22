@@ -79,6 +79,7 @@ function OrderTracking() {
     const [invoiceData, setInvoiceData] = useState(null);
     const [invoiceLoading, setInvoiceLoading] = useState(false);
     const [invoiceError, setInvoiceError] = useState('');
+    const [hasInvoiceAttempted, setHasInvoiceAttempted] = useState(false); // Track if we've tried to load invoice
 
     const showToastMessage = (message) => {
         if (!message) return;
@@ -463,12 +464,14 @@ function OrderTracking() {
         const realId = targetOrderId || order?.realId || order?.id || orderId;
         if (!realId) {
             setInvoiceError('Không tìm thấy mã đơn hàng để tải hóa đơn.');
+            setHasInvoiceAttempted(true);
             return;
         }
 
         setInvoiceLoading(true);
         setInvoiceError('');
         setInvoiceData(null);
+        setHasInvoiceAttempted(true);
 
         try {
             const response = await getOrderInvoice(realId);
@@ -483,15 +486,22 @@ function OrderTracking() {
                     setInvoiceError(fallbackMessage);
                 }
             } else {
+                // If API returns success:false, invoice might not exist yet
                 const fallbackMessage = response.message || 'Không thể tải hóa đơn. Vui lòng thử lại sau.';
                 setInvoiceError(fallbackMessage);
                 setInvoiceData(null);
             }
         } catch (error) {
             console.error('❌ Error fetching invoice:', error);
-            const message = error?.response?.data?.message || error?.message || 'Không thể tải hóa đơn. Vui lòng thử lại sau.';
-            setInvoiceError(message);
-            setInvoiceData(null);
+            // If 404, invoice doesn't exist - don't show error, just don't show invoice section
+            if (error?.response?.status === 404) {
+                setInvoiceError('');
+                setInvoiceData(null);
+            } else {
+                const message = error?.response?.data?.message || error?.message || 'Không thể tải hóa đơn. Vui lòng thử lại sau.';
+                setInvoiceError(message);
+                setInvoiceData(null);
+            }
         } finally {
             setInvoiceLoading(false);
         }
@@ -586,7 +596,13 @@ function OrderTracking() {
         return () => { isMounted = false; };
     }, [orderId, order?.realId, order?.id]);
 
-
+    // Reset invoice state when orderId changes
+    useEffect(() => {
+        setInvoiceData(null);
+        setInvoiceLoading(false);
+        setInvoiceError('');
+        setHasInvoiceAttempted(false);
+    }, [orderId]);
 
     // Tải thông tin đơn hàng - ưu tiên Order Detail API, fallback order history hoặc localStorage
     useEffect(() => {
@@ -698,8 +714,8 @@ function OrderTracking() {
                                     false
                                 );
                                 const hasInvoiceFlag = Boolean(
-                                    orderDetailData._raw?.needInvoice || 
-                                    orderDetailData._raw?.need_order_invoice || 
+                                    orderDetailData._raw?.needInvoice ||
+                                    orderDetailData._raw?.need_order_invoice ||
                                     orderDetailData.needInvoice ||
                                     orderDetailData.need_order_invoice ||
                                     false
@@ -864,12 +880,10 @@ function OrderTracking() {
                             }
                         }
 
-                        // Load invoice if needInvoice is true
-                        if (mappedOrder.needInvoice) {
-                            const realOrderId = orderDetailData.id || orderId;
-                            if (realOrderId) {
-                                loadInvoice(realOrderId);
-                            }
+                        // Always try to load invoice for the order (regardless of flags)
+                        // Reuse realOrderId from above (line 792)
+                        if (realOrderId) {
+                            loadInvoice(realOrderId);
                         }
 
                         setLoading(false);
@@ -965,12 +979,10 @@ function OrderTracking() {
                             return mapped;
                         });
 
-                        // Load invoice if needInvoice is true
-                        if (mapped.needInvoice) {
-                            const realIdForInvoice = beOrder._raw?.id ?? beOrder.id ?? orderId;
-                            if (realIdForInvoice) {
-                                loadInvoice(realIdForInvoice);
-                            }
+                        // Always try to load invoice for the order (regardless of flags)
+                        const realIdForInvoice = beOrder._raw?.id ?? beOrder.id ?? orderId;
+                        if (realIdForInvoice) {
+                            loadInvoice(realIdForInvoice);
                         }
 
                         setLoading(false);
@@ -1427,7 +1439,7 @@ function OrderTracking() {
         );
         const needInvoice = Boolean(
             hasInvoiceApi ||
-            item._raw?.needInvoice || 
+            item._raw?.needInvoice ||
             item._raw?.need_order_invoice ||
             item.needInvoice ||
             item.need_order_invoice ||
@@ -2120,7 +2132,15 @@ function OrderTracking() {
 
                             {/* Hóa đơn điện tử - đặt sau phần hỗ trợ */}
                             {(() => {
-                                // Kiểm tra nhiều nguồn: invoiceApi URL hoặc các flag boolean
+                                // Show invoice section if:
+                                // 1. We have invoice data (successfully loaded)
+                                // 2. We're currently loading invoice
+                                // 3. Order has invoice flags/URLs indicating invoice should exist
+                                // 4. We've attempted to load and got an error (to show retry option)
+                                const hasInvoiceData = Boolean(invoiceData);
+                                const isInvoiceLoading = invoiceLoading;
+
+                                // Check for invoice flags/URLs in order data
                                 const hasInvoiceApi = Boolean(
                                     order?._raw?.invoiceApi ||
                                     order?.invoiceApi ||
@@ -2132,104 +2152,111 @@ function OrderTracking() {
                                     order?._raw?.need_order_invoice ||
                                     false
                                 );
-                                const hasInvoice = hasInvoiceApi || hasInvoiceFlag;
+                                const hasInvoiceIndicators = hasInvoiceApi || hasInvoiceFlag;
+
+                                // Show if we have data, are loading, have indicators, or have attempted (even if failed)
+                                const shouldShowInvoice = hasInvoiceData || isInvoiceLoading || hasInvoiceIndicators || (hasInvoiceAttempted && invoiceError);
+
                                 console.log('[OrderTracking] Rendering invoice section check:', {
                                     orderId: order?.id || orderId,
+                                    hasInvoiceData,
+                                    isInvoiceLoading,
+                                    hasInvoiceIndicators,
+                                    hasInvoiceAttempted,
+                                    invoiceError: invoiceError || 'none',
                                     invoiceApi: order?._raw?.invoiceApi || order?.invoiceApi,
                                     needInvoice: order?.needInvoice,
                                     _raw_needInvoice: order?._raw?.needInvoice,
                                     _raw_need_order_invoice: order?._raw?.need_order_invoice,
-                                    hasInvoiceApi,
-                                    hasInvoiceFlag,
-                                    willRender: hasInvoice
+                                    willRender: shouldShowInvoice
                                 });
-                                return hasInvoice;
+                                return shouldShowInvoice;
                             })() && (
-                                <div className="info-card invoice-card">
-                                    <div className="card-head">
-                                        <h4>
-                                            <FileText size={16} className="card-icon" />
-                                            Hóa đơn điện tử
-                                        </h4>
-                                    </div>
-                                    {invoiceLoading ? (
-                                        <div className="invoice-loading-state">
-                                            <div className="spinner-small" style={{ display: 'inline-block', marginRight: '8px', width: '16px', height: '16px', border: '2px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}></div>
-                                            <span>Đang tải hóa đơn...</span>
+                                    <div className="info-card invoice-card">
+                                        <div className="card-head">
+                                            <h4>
+                                                <FileText size={16} className="card-icon" />
+                                                Hóa đơn điện tử
+                                            </h4>
                                         </div>
-                                    ) : invoiceData?.pdfUrl ? (
-                                        <div className="invoice-ready-state">
-                                            <div className="invoice-info">
-                                                <div className="invoice-info-line">
-                                                    <span className="invoice-label">Mã hóa đơn:</span>
-                                                    <strong className="invoice-value">{invoiceData.invoiceNumber || invoiceData.invoiceId || '--'}</strong>
+                                        {invoiceLoading ? (
+                                            <div className="invoice-loading-state">
+                                                <div className="spinner-small" style={{ display: 'inline-block', marginRight: '8px', width: '16px', height: '16px', border: '2px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}></div>
+                                                <span>Đang tải hóa đơn...</span>
+                                            </div>
+                                        ) : invoiceData?.pdfUrl ? (
+                                            <div className="invoice-ready-state">
+                                                <div className="invoice-info">
+                                                    <div className="invoice-info-line">
+                                                        <span className="invoice-label">Mã hóa đơn:</span>
+                                                        <strong className="invoice-value">{invoiceData.invoiceNumber || invoiceData.invoiceId || '--'}</strong>
+                                                    </div>
+                                                </div>
+                                                <div className="invoice-actions-group">
+                                                    <a
+                                                        href={invoiceData.pdfUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        download
+                                                        className="btn btn-primary invoice-download-link"
+                                                        title="Tải hóa đơn PDF"
+                                                    >
+                                                        <Download size={18} />
+                                                        <span>Tải hóa đơn</span>
+                                                    </a>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary invoice-refresh-btn"
+                                                        onClick={() => {
+                                                            const realId = order?.realId || order?.id || orderId;
+                                                            if (realId) loadInvoice(realId);
+                                                        }}
+                                                        title="Tải lại hóa đơn"
+                                                    >
+                                                        <RefreshCw size={16} />
+                                                        <span>Tải lại</span>
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div className="invoice-actions-group">
-                                                <a
-                                                    href={invoiceData.pdfUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    download
-                                                    className="btn btn-primary invoice-download-link"
-                                                    title="Tải hóa đơn PDF"
-                                                >
-                                                    <Download size={18} />
-                                                    <span>Tải hóa đơn</span>
-                                                </a>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-secondary invoice-refresh-btn"
-                                                    onClick={() => {
-                                                        const realId = order?.realId || order?.id || orderId;
-                                                        if (realId) loadInvoice(realId);
-                                                    }}
-                                                    title="Tải lại hóa đơn"
-                                                >
-                                                    <RefreshCw size={16} />
-                                                    <span>Tải lại</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="invoice-pending-state">
-                                            <div className={`invoice-message ${invoiceError ? 'invoice-error' : 'invoice-info'}`}>
-                                                {invoiceError ? (
-                                                    <>
-                                                        <AlertCircle size={18} />
-                                                        <span>{invoiceError}</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Clock size={18} />
-                                                        <span>Hóa đơn đang được xử lý. Vui lòng thử lại sau ít phút.</span>
-                                                    </>
+                                        ) : (
+                                            <div className="invoice-pending-state">
+                                                <div className={`invoice-message ${invoiceError ? 'invoice-error' : 'invoice-info'}`}>
+                                                    {invoiceError ? (
+                                                        <>
+                                                            <AlertCircle size={18} />
+                                                            <span>{invoiceError}</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Clock size={18} />
+                                                            <span>Hóa đơn đang được xử lý. Vui lòng thử lại sau ít phút.</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div className="invoice-actions-group">
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary invoice-retry-btn"
+                                                        onClick={() => {
+                                                            const realId = order?.realId || order?.id || orderId;
+                                                            if (realId) loadInvoice(realId);
+                                                        }}
+                                                        disabled={!orderId}
+                                                        title="Thử tải lại hóa đơn"
+                                                    >
+                                                        <RefreshCw size={16} />
+                                                        <span>Thử lại</span>
+                                                    </button>
+                                                </div>
+                                                {invoiceData?.invoiceNumber && (
+                                                    <div className="invoice-hint">
+                                                        Mã hóa đơn: <strong>{invoiceData.invoiceNumber}</strong>
+                                                    </div>
                                                 )}
                                             </div>
-                                            <div className="invoice-actions-group">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-secondary invoice-retry-btn"
-                                                    onClick={() => {
-                                                        const realId = order?.realId || order?.id || orderId;
-                                                        if (realId) loadInvoice(realId);
-                                                    }}
-                                                    disabled={!orderId}
-                                                    title="Thử tải lại hóa đơn"
-                                                >
-                                                    <RefreshCw size={16} />
-                                                    <span>Thử lại</span>
-                                                </button>
-                                            </div>
-                                            {invoiceData?.invoiceNumber && (
-                                                <div className="invoice-hint">
-                                                    Mã hóa đơn: <strong>{invoiceData.invoiceNumber}</strong>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                        )}
+                                    </div>
+                                )}
                         </div>
                     </div>
                 </div>
