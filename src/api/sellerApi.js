@@ -625,7 +625,7 @@ unhidePostById: async (postId) => {
       formData.append("model", productInfo.model || "");
       formData.append("manufactureYear", parseInt(productInfo.manufacturerYear) || new Date().getFullYear());
       formData.append("usedDuration", productInfo.usedDuration || "");
-      formData.append("color", productInfo.color || "");
+      // Đã xóa field color - không gửi lên backend
       formData.append("price", parseFloat(productInfo.price) || 0);
       formData.append("conditionLevel", productInfo.conditionLevel || "");
       formData.append("locationTrading", productInfo.locationTrading || "");

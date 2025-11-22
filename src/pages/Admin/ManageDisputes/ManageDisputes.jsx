@@ -64,6 +64,10 @@ export default function ManageDisputes() {
   const [disputeDetail, setDisputeDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [resolving, setResolving] = useState(false);
+  
+  // Modal thông báo thành công
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Decision form state
   const [decisionForm, setDecisionForm] = useState({
@@ -191,7 +195,9 @@ export default function ManageDisputes() {
             : 0,
       });
 
-      alert("Quyết định đã được gửi thành công!");
+      // Hiển thị modal thông báo thành công
+      setSuccessMessage("Quyết định đã được gửi thành công!");
+      setShowSuccessModal(true);
       setShowDecisionModal(false);
       setSelectedDispute(null);
       fetchData(); // Reload danh sách
@@ -860,26 +866,20 @@ export default function ManageDisputes() {
 
             <div className="mb-3">
               <label className="form-label">
-                <strong>Loại giải quyết *</strong>
+                <strong>Loại giải quyết</strong>
               </label>
-              <CFormSelect
-                value={decisionForm.resolutionType}
-                onChange={(e) =>
-                  setDecisionForm({
-                    ...decisionForm,
-                    resolutionType: e.target.value,
-                  })
-                }
-                disabled={decisionForm.decision === "REJECTED"}
-              >
-                <option value="REFUND">Hoàn tiền</option>
-                <option value="REJECTED">Từ chối</option>
-              </CFormSelect>
-              {decisionForm.decision === "REJECTED" && (
+              <div className="p-2 bg-light rounded border">
+                {decisionForm.decision === "ACCEPTED" ? (
+                  <span className="text-primary fw-semibold">Hoàn tiền</span>
+                ) : (
+                  <span className="text-danger fw-semibold">Từ chối</span>
+                )}
                 <small className="text-muted d-block mt-1">
-                  Khi từ chối, loại giải quyết sẽ tự động là "REJECTED"
+                  {decisionForm.decision === "ACCEPTED"
+                    ? "Khi chấp nhận, loại giải quyết sẽ tự động là 'Hoàn tiền'"
+                    : "Khi từ chối, loại giải quyết sẽ tự động là 'Từ chối'"}
                 </small>
-              )}
+              </div>
             </div>
 
             {decisionForm.decision === "ACCEPTED" &&
@@ -965,6 +965,24 @@ export default function ManageDisputes() {
                 Xác nhận quyết định
               </>
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Modal thông báo thành công */}
+      <CModal visible={showSuccessModal} onClose={() => setShowSuccessModal(false)}>
+        <CModalHeader>
+          <CModalTitle>Thành công</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <div className="text-center py-3">
+            <CheckCircle size={48} className="text-success mb-3" />
+            <p className="mb-0">{successMessage}</p>
+          </div>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="success" onClick={() => setShowSuccessModal(false)}>
+            OK
           </CButton>
         </CModalFooter>
       </CModal>

@@ -20,7 +20,6 @@ export default function CreatePost() {
     model: "",
     manufacturerYear: new Date().getFullYear(), // hiển thị cho người dùng
     usedDuration: "",
-    color: "",
     price: "",
     length: "",
     width: "",
@@ -240,7 +239,7 @@ export default function CreatePost() {
       formDataToSend.append("width", formData.width);
       formDataToSend.append("height", formData.height);
       formDataToSend.append("weight", formData.weight);
-      formDataToSend.append("color", formData.color);
+      // Đã xóa field color - không gửi lên backend
       formDataToSend.append("description", formData.description);
       formDataToSend.append("locationTrading", formData.locationTrading);
       formDataToSend.append("categoryId", formData.categoryId);
@@ -455,17 +454,6 @@ export default function CreatePost() {
                     <option value="Fair">Khá</option>
                     <option value="Poor">Cần sửa chữa</option>
                   </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Màu sắc</label>
-                  <input
-                    type="text"
-                    name="color"
-                    value={formData.color}
-                    onChange={handleChange}
-                    placeholder="VD: Đen, Trắng, Đỏ..."
-                  />
                 </div>
               </div>
             </div>

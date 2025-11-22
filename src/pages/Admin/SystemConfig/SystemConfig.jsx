@@ -31,7 +31,6 @@ import {
   getAllSystemConfigs,
   updateBadWords,
   updateWhitelistWords,
-  refreshBadWordsCache,
 } from "../../../api/adminApi";
 import { Save, RefreshCw, Edit, Plus, Trash2, Shield } from "lucide-react";
 import "./SystemConfig.css";
@@ -69,7 +68,6 @@ export default function SystemConfig() {
   const [badWordsError, setBadWordsError] = useState("");
   const [badWordsSuccess, setBadWordsSuccess] = useState("");
   const [savingBadWords, setSavingBadWords] = useState(false);
-  const [refreshingCache, setRefreshingCache] = useState(false);
 
   // States cho Whitelist Management
   const [whitelistWords, setWhitelistWords] = useState([]);
@@ -395,40 +393,6 @@ export default function SystemConfig() {
     }
   };
 
-  // Refresh Bad Words Cache
-  const handleRefreshCache = async () => {
-    if (!isSuperAdmin) {
-      setBadWordsError("Chỉ Super Admin mới có thể làm mới cache.");
-      return;
-    }
-
-    try {
-      setRefreshingCache(true);
-      setBadWordsError("");
-      setBadWordsSuccess("");
-      
-      await refreshBadWordsCache();
-      
-      setBadWordsSuccess("Làm mới cache thành công!");
-      setTimeout(() => setBadWordsSuccess(""), 5000);
-    } catch (err) {
-      console.error("Lỗi khi làm mới cache:", err);
-      
-      let errorMessage = "Không thể làm mới cache. Vui lòng thử lại.";
-      
-      if (err?.response?.status === 403) {
-        errorMessage = "Chỉ Super Admin mới có thể làm mới cache.";
-      } else if (err?.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err?.message) {
-        errorMessage = err.message;
-      }
-      
-      setBadWordsError(errorMessage);
-    } finally {
-      setRefreshingCache(false);
-    }
-  };
 
   // Mở modal edit config
   const handleOpenEditModal = async (config) => {
@@ -824,30 +788,6 @@ export default function SystemConfig() {
                   </p>
                 </div>
                 <div className="d-flex gap-2 button-group-right">
-                  <CButton
-                    color="info"
-                    size="sm"
-                    onClick={handleRefreshCache}
-                    disabled={refreshingCache || !isSuperAdmin}
-                    style={{
-                      padding: "10px 20px",
-                      borderRadius: "8px",
-                      fontWeight: "500",
-                      fontSize: "14px",
-                    }}
-                  >
-                    {refreshingCache ? (
-                      <>
-                        <CSpinner size="sm" className="me-1" />
-                        Đang làm mới...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw size={16} className="me-1" />
-                        Làm mới Cache
-                      </>
-                    )}
-                  </CButton>
                   <CButton
                     color="secondary"
                     size="sm"
