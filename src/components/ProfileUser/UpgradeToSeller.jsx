@@ -621,7 +621,7 @@ if (statusCheckError) {
           {/* === 2. Thông tin từ OCR (Bây giờ có thể chỉnh sửa) === */}
           <div className="form-group">
             <label htmlFor="ocrFullName" className="form-label">
-              Full name
+              Họ và tên *
             </label>
             <input
               id="ocrFullName"
@@ -634,7 +634,7 @@ if (statusCheckError) {
           </div>
           <div className="form-group">
             <label htmlFor="identityNumberOcr" className="form-label">
-              Identity number *
+              Số CMND/CCCD *
             </label>
             <input
               id="identityNumberOcr"
@@ -657,7 +657,7 @@ if (statusCheckError) {
           </div>
           <div className="form-group">
             <label htmlFor="ocrNationality" className="form-label">
-              Nationality
+              Quốc tịch
             </label>
             <input
               id="ocrNationality"
@@ -685,7 +685,7 @@ if (statusCheckError) {
           {/* === 3. Thông tin cần nhập tay === */}
           <div className="form-group">
             <label htmlFor="storeName" className="form-label">
-              Store name *
+              Tên cửa hàng *
             </label>
             <input
               id="storeName"
@@ -706,7 +706,7 @@ if (statusCheckError) {
           </div>
           <div className="form-group">
             <label htmlFor="taxNumber" className="form-label">
-              Tax number *
+              Mã số thuế *
             </label>
             <input
               id="taxNumber"

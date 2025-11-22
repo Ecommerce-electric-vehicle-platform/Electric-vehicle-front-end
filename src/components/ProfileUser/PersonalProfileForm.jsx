@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import profileApi from "../../api/profileApi";
 import { useAddressLoading } from "./hooks/useAddressLoading";
 import "./PersonalProfileForm.css";
+import Modal from "../Modal/Modal";
+
 
 // --- TIỆN ÍCH ---
 const transformOptions = (data) => {
@@ -98,6 +100,22 @@ export default function PersonalProfileForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [isNewUser, setIsNewUser] = useState(true);
+
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info", // 'success' | 'error' | 'info'
+  });
+
+
+  const showModal = (title, message, type = "info") => {
+    setModalState({ isOpen: true, title, message, type });
+  };
+
+  const closeModal = () => {
+    setModalState((prev) => ({ ...prev, isOpen: false }));
+  };
 
   // === useEffect (Load data) ===
   useEffect(() => {
@@ -258,7 +276,12 @@ export default function PersonalProfileForm() {
     }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      alert("Vui lòng điền đầy đủ và chính xác các thông tin.");
+      //alert("Vui lòng điền đầy đủ và chính xác các thông tin.");
+      showModal(  // hàm này nhận 3 tham số: title, message, type
+        "Lỗi nhập liệu",                              // Tiêu đề
+        "Vui lòng điền đầy đủ và chính xác các thông tin.", // Nội dung
+        "error"                                       // Loại (màu đỏ)
+    );
       return;
     }
 
@@ -302,7 +325,7 @@ export default function PersonalProfileForm() {
       if (!responseBody.success) throw new Error(responseBody.message);
 
       const savedData = responseBody.data || {};
-      alert("Lưu hồ sơ thành công!");
+      showModal("Thành công", "Hồ sơ đã được cập nhật thành công!", "success");
 
       // 🔹 === LOGIC SỬA LỖI AVATAR === 🔹
       const newServerUrl = savedData.avatarUrl; // Lấy URL MỚI từ API
@@ -344,15 +367,56 @@ export default function PersonalProfileForm() {
       setIsNewUser(false);
       setIsViewMode(true); // Chuyển về "Chế độ Xem"
     } catch (error) {
-      if (error.response?.data?.errors) {
-        setErrors(error.response.data.errors || {});
-      } else {
-        alert(error.response?.data?.message || error.message || "Không thể lưu hồ sơ.");
+    console.error("Chi tiết lỗi:", error);
+
+    const responseData = error.response?.data;
+    // Lấy thông báo lỗi sâu (nơi chứa câu SQL báo trùng)
+    const deepErrorMessage = responseData?.error?.message || "";
+    // Lấy thông báo lỗi nông (thường là "Internal Server Error")
+    const topLevelMessage = responseData?.message || error.message || "Không thể lưu hồ sơ.";
+
+    // === 1. XỬ LÝ LỖI TRÙNG LẶP (Quan trọng nhất) ===
+    if (deepErrorMessage.includes("Duplicate entry")) {
+      let userMsg = "Thông tin này đã tồn tại trên hệ thống.";
+
+      // Kiểm tra xem trùng SĐT hay Email
+      // Regex: tìm chuỗi số từ 9-11 ký tự trong dấu nháy đơn (vd: '0658909954')
+      if (deepErrorMessage.match(/'\d{9,11}'/) || deepErrorMessage.toLowerCase().includes("phone")) {
+         userMsg = "Số điện thoại này đã được đăng ký bởi tài khoản khác.";
+         // Bôi đỏ ô input SĐT
+         setErrors((prev) => ({ ...prev, phoneNumber: "SĐT đã tồn tại" }));
+      } 
+      else if (deepErrorMessage.includes("@") || deepErrorMessage.toLowerCase().includes("email")) {
+         userMsg = "Email này đã được đăng ký bởi tài khoản khác.";
+         // Bôi đỏ ô input Email
+         setErrors((prev) => ({ ...prev, email: "Email đã tồn tại" }));
       }
-    } finally {
-      setIsLoading(false);
+
+      showModal("Dữ liệu trùng lặp", userMsg, "error");
+      return;
     }
-  };
+
+    // === 2. XỬ LÝ LỖI VALIDATION (Nếu backend trả về danh sách errors) ===
+    if (responseData?.errors) {
+      setErrors(responseData.errors);
+      showModal("Lỗi nhập liệu", "Vui lòng kiểm tra các trường báo đỏ.", "error");
+      return;
+    }
+
+    // === 3. XỬ LÝ LỖI SERVER CHUNG CHUNG ===
+    let finalMsg = topLevelMessage;
+    
+    // Nếu lỗi là "Internal Server Error" hoặc là lỗi Java quá dài, ta đổi thành câu thân thiện
+    if (finalMsg === "Internal Server Error" || deepErrorMessage.length > 50) {
+      finalMsg = "Lỗi hệ thống (500). Vui lòng thử lại sau.";
+    }
+
+    showModal("Thất Bại", finalMsg, "error");
+
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // -----------------------------
   // === RENDER (View Mode) ===
@@ -410,6 +474,16 @@ export default function PersonalProfileForm() {
   // ----------------------------------------------------
   return (
     <div className="profile-form-container">
+
+      {/* this block code is use for modal */}
+      <Modal 
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+      />
+
       <h2 className="form-title">
         {isNewUser ? "Hoàn tất hồ sơ" : "Chỉnh sửa hồ sơ"}
       </h2>
@@ -435,7 +509,7 @@ export default function PersonalProfileForm() {
 
         {/* 🔹 FULL NAME (Nằm sau Avatar) 🔹 */}
         <div className="form-field">
-          <label htmlFor="fullName" className="form-label">Full name*</label>
+          <label htmlFor="fullName" className="form-label">Họ và tên*</label>
           <div className="input-wrapper">
             <input
               id="fullName" name="fullName" type="text"
@@ -450,7 +524,7 @@ export default function PersonalProfileForm() {
 
         {/* Phone number */}
         <div className="form-field">
-          <label htmlFor="phoneNumber" className="form-label">Phone number*</label>
+          <label htmlFor="phoneNumber" className="form-label">Số điện thoại*</label>
           <div className="input-wrapper">
             <input
               id="phoneNumber" name="phoneNumber" type="tel"
@@ -480,7 +554,7 @@ export default function PersonalProfileForm() {
 
         {/* Gender */}
         <div className="form-field">
-          <label className="form-label">Gender*</label>
+          <label className="form-label">Giới tính*</label>
           <div className="radio-group">
             <label className="radio-label">
               <input type="radio" name="gender" value="male"
@@ -500,7 +574,7 @@ export default function PersonalProfileForm() {
 
         {/* Birthday */}
         <div className="form-field">
-          <label htmlFor="dob" className="form-label">Birthday*</label>
+          <label htmlFor="dob" className="form-label">Ngày sinh*</label>
           <div className="input-wrapper">
             <input
               id="dob" name="dob" type="date"
@@ -595,7 +669,7 @@ export default function PersonalProfileForm() {
               id="street"
               name="street"
               type="text"
-              placeholder="Ví dụ: 7 Đ. D1, Long Thạnh Mỹ, Thủ Đức"
+              placeholder="Ví dụ: 838 Đ.D8"
               value={formData.street}
               onChange={handleChange}
               onBlur={handleBlur}
