@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Battery, Car, MapPin, ArrowRight, Filter, SortAsc, Zap } from "lucide-react"
 import "./VehicleShowcase.css"
 import { useNavigate } from "react-router-dom"
-import { fetchPostProducts, normalizeProduct } from "../../api/productApi"
+import { fetchPostProducts, fetchPostProductsByCategory, normalizeProduct } from "../../api/productApi"
 import { ProductCard } from "../ProductCard/ProductCard"
 import { GlobalSearch } from "../GlobalSearch/GlobalSearch"
 import { useFavoritesList } from "../../hooks/useFavorite"
@@ -31,12 +31,30 @@ export function VehicleShowcase() {
     let mounted = true
     setLoading(true)
     setError("")
-    fetchPostProducts({ page: 1, size: 24 })
-      .then(({ items }) => { if (mounted) setItemsRaw(items || []) })
-      .catch((err) => { if (mounted) setError(err?.message || "Không thể tải dữ liệu") })
-      .finally(() => { if (mounted) setLoading(false) })
+    
+    // Nếu có productTypeFilter, gọi API /api/v1/post-product/category với category name
+    if (productTypeFilter === PRODUCT_TYPE_FILTERS.VEHICLE) {
+      // Filter "Xe điện"
+      fetchPostProductsByCategory({ categoryName: "Xe điện", page: 1, size: 24 })
+        .then(({ items }) => { if (mounted) setItemsRaw(items || []) })
+        .catch((err) => { if (mounted) setError(err?.message || "Không thể tải dữ liệu") })
+        .finally(() => { if (mounted) setLoading(false) })
+    } else if (productTypeFilter === PRODUCT_TYPE_FILTERS.BATTERY) {
+      // Filter "Pin điện"
+      fetchPostProductsByCategory({ categoryName: "Pin điện", page: 1, size: 24 })
+        .then(({ items }) => { if (mounted) setItemsRaw(items || []) })
+        .catch((err) => { if (mounted) setError(err?.message || "Không thể tải dữ liệu") })
+        .finally(() => { if (mounted) setLoading(false) })
+    } else {
+      // Filter "Tất cả" - gọi API bình thường không filter
+      fetchPostProducts({ page: 1, size: 24 })
+        .then(({ items }) => { if (mounted) setItemsRaw(items || []) })
+        .catch((err) => { if (mounted) setError(err?.message || "Không thể tải dữ liệu") })
+        .finally(() => { if (mounted) setLoading(false) })
+    }
+    
     return () => { mounted = false }
-  }, [])
+  }, [productTypeFilter])
 
   const items = useMemo(
     () =>
