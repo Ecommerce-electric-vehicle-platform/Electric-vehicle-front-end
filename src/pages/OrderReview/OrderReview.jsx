@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import StarRating from '../../components/Rating/StarRating';
 import ImageUploader from '../../components/Rating/ImageUploader';
 import { createOrderReview, getOrderDetails, getOrderReview, updateOrderReview } from '../../api/orderApi';
+import { Toast } from '../../components/Toast/Toast';
 import './OrderReview.css';
 
 const resolveReviewIdentifier = (review) => {
@@ -57,6 +58,8 @@ export default function OrderReview() {
     const [isViewMode, setIsViewMode] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
+    const [toastMessage, setToastMessage] = useState('');
+    const [showToast, setShowToast] = useState(false);
 
     useEffect(() => {
         let mounted = true;
@@ -231,7 +234,8 @@ export default function OrderReview() {
                 setErrorMessage(''); // Clear any previous errors
 
                 // Show success message
-                alert('Đánh giá đã được cập nhật thành công!');
+                setToastMessage('Đánh giá đã được cập nhật thành công!');
+                setShowToast(true);
             } else {
                 // Nếu không load được review mới, vẫn cập nhật state với data đã submit
                 console.warn('[OrderReview] Could not reload review, using submitted data');
@@ -239,7 +243,8 @@ export default function OrderReview() {
                 setFeedback(String(feedback.trim()));
                 setIsEditMode(false);
                 setIsViewMode(true);
-                alert('Đánh giá đã được cập nhật thành công!');
+                setToastMessage('Đánh giá đã được cập nhật thành công!');
+                setShowToast(true);
             }
         } catch (err) {
             // Xử lý lỗi từ backend
@@ -438,6 +443,13 @@ export default function OrderReview() {
                     )}
                 </div>
             </div>
+            <Toast
+                message={toastMessage}
+                show={showToast}
+                onClose={() => setShowToast(false)}
+                type="success"
+                duration={3000}
+            />
         </div>
     );
 }
