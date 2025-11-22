@@ -184,38 +184,63 @@ export default function OrderReview() {
             // Lọc chỉ lấy File objects từ pictures (bỏ qua URL strings)
             const filePictures = pictures.filter(pic => pic instanceof File);
 
-            console.log('[OrderReview] Updating review with reviewId =', reviewIdForUpdate, 'rating =', Number(rating), 'feedbackLen =', feedback.trim().length);
-            await updateOrderReview({
+            console.log('[OrderReview] Updating review with reviewId =', reviewIdForUpdate, 'rating =', Number(rating), 'feedbackLen =', feedback.trim().length, 'picturesCount =', filePictures.length);
+
+            // Gọi API update review
+            const updateResult = await updateOrderReview({
                 reviewId: reviewIdForUpdate,
                 rating: Number(rating),
                 feedback: feedback.trim(),
                 pictures: filePictures
             });
 
-            // Reload review data và quay về view mode
+            console.log('[OrderReview] Update result:', updateResult);
+
+            // Đợi một chút để backend xử lý xong (tránh cache issue)
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Reload review data từ backend để lấy data mới nhất (force refresh để tránh cache)
             const rawId = location?.state?.orderIdRaw;
             const checkId = rawId ?? orderId;
-            const reviewData = await getOrderReview(checkId);
+
+            console.log('[OrderReview] Reloading review for orderId =', checkId, '(force refresh)');
+            const reviewData = await getOrderReview(checkId, true); // Force refresh để lấy data mới
+
+            console.log('[OrderReview] Reloaded review data:', reviewData);
+
             if (reviewData && reviewData.hasReview && reviewData.review) {
+                // Cập nhật state với data mới từ backend
                 setExistingReview(reviewData.review);
                 setRating(Number(reviewData.review.rating ?? 0));
                 setFeedback(String(reviewData.review.feedback ?? ''));
+
+                // Cập nhật ảnh từ review mới
                 if (Array.isArray(reviewData.review.reviewImages) && reviewData.review.reviewImages.length > 0) {
                     const imageUrls = reviewData.review.reviewImages.map(img =>
-                        typeof img === 'string' ? img : (img.imageUrl || img.url || '')
+                        typeof img === 'string' ? img : (img.imageUrl || img.url || img.image || '')
                     ).filter(Boolean);
                     setPictures(imageUrls);
+                    console.log('[OrderReview] Updated pictures:', imageUrls);
                 } else {
                     setPictures([]);
                 }
+
+                // Chuyển về view mode
+                setIsEditMode(false);
+                setIsViewMode(true);
+                setErrorMessage(''); // Clear any previous errors
+
+                // Show success message
+                alert('Đánh giá đã được cập nhật thành công!');
+            } else {
+                // Nếu không load được review mới, vẫn cập nhật state với data đã submit
+                console.warn('[OrderReview] Could not reload review, using submitted data');
+                setRating(Number(rating));
+                setFeedback(String(feedback.trim()));
+                setIsEditMode(false);
+                setIsViewMode(true);
+                alert('Đánh giá đã được cập nhật thành công!');
             }
-
-            setIsEditMode(false);
-            setIsViewMode(true);
-            setErrorMessage(''); // Clear any previous errors
-
-            // Show success message (có thể dùng toast notification nếu có)
-            alert('Đánh giá đã được cập nhật thành công!');
         } catch (err) {
             // Xử lý lỗi từ backend
             let errorMsg = err?.message || 'Cập nhật đánh giá thất bại. Vui lòng thử lại.';
@@ -227,17 +252,24 @@ export default function OrderReview() {
                 errorMsgLower.includes('is_solved') ||
                 errorMsgLower.includes('already been completed') ||
                 errorMsgLower.includes('cannot update review')) {
-                errorMsg = 'Không thể cập nhật đánh giá. Hệ thống ví cho đơn hàng này đã được hoàn thành.';
+                errorMsg = 'Không thể cập nhật đánh giá. Giao dịch thanh toán cho đơn hàng này đã được hoàn tất, do đó đánh giá không thể chỉnh sửa. Nếu bạn muốn thay đổi đánh giá, vui lòng liên hệ bộ phận hỗ trợ khách hàng.';
             }
 
             setErrorMessage(errorMsg);
             console.error('[OrderReview] Update review error:', err);
+
+            // Log chi tiết để debug
+            if (err?.response?.data) {
+                console.error('[OrderReview] Backend error details:', err.response.data);
+            }
         } finally {
             setSubmitting(false);
         }
     };
 
     const handleEditClick = () => {
+        // Hiển thị cảnh báo trước khi cho phép edit
+        // (Backend sẽ kiểm tra system wallet status khi submit, nhưng có thể thêm check ở đây nếu có API)
         setIsEditMode(true);
         setIsViewMode(false);
         setErrorMessage('');

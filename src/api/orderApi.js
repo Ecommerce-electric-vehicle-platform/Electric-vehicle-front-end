@@ -826,9 +826,13 @@ export const createOrderReview = async ({ orderId, rating, feedback, pictures = 
 
 // GET /api/v1/order/get-review/{orderId}
 // Lấy đánh giá của đơn hàng từ Backend
-export const getOrderReviewById = async (orderId) => {
+export const getOrderReviewById = async (orderId, forceRefresh = false) => {
     try {
-        const response = await axiosInstance.get(`/api/v1/order/get-review/${orderId}`);
+        // Thêm timestamp để tránh cache nếu cần force refresh
+        const url = forceRefresh
+            ? `/api/v1/order/get-review/${orderId}?t=${Date.now()}`
+            : `/api/v1/order/get-review/${orderId}`;
+        const response = await axiosInstance.get(url);
         const raw = response?.data ?? {};
         const data = raw?.data ?? null;
 
@@ -902,10 +906,10 @@ export const getOrderReviewById = async (orderId) => {
 
 // Kiểm tra đơn hàng đã có đánh giá hay chưa
 // Trả về { hasReview: boolean, review: object|null }
-export const getOrderReview = async (orderId) => {
+export const getOrderReview = async (orderId, forceRefresh = false) => {
     // Chỉ dùng API từ BE - không fallback localStorage để tránh hiển thị sai
     try {
-        const review = await getOrderReviewById(orderId);
+        const review = await getOrderReviewById(orderId, forceRefresh);
         if (review && review.success && review.orderId && review.rating >= 1 && review.rating <= 5) {
             return { hasReview: true, review };
         }
@@ -929,9 +933,9 @@ export const hasOrderReview = async (orderId) => {
 // Content-Type: multipart/form-data
 // Parameters:
 // - reviewId: path parameter
-// - request: query parameter (JSON object { rating, feedback })
-// - file: multipart file (optional, replaces old images)
-// - data: multipart field (JSON string of the object)
+// - rating: multipart field (number)
+// - feedback: multipart field (string)
+// - pictures: multipart files (optional, replaces old images)
 export const updateOrderReview = async ({ reviewId, rating, feedback, pictures = [] }) => {
     const normalizedReviewId = reviewId != null ? String(reviewId).trim() : '';
     if (!normalizedReviewId || normalizedReviewId === '0') {
@@ -941,32 +945,35 @@ export const updateOrderReview = async ({ reviewId, rating, feedback, pictures =
     try {
         const fd = new FormData();
 
-        // Theo API docs: request là query parameter (JSON object)
-        const requestData = {
-            rating: Number(rating),
-            feedback: String(feedback || '')
-        };
+        // Gửi các field phẳng giống như createOrderReview để nhất quán với backend
+        fd.append('rating', String(rating));
+        fd.append('feedback', String(feedback || ''));
 
-        // Theo API docs: data là multipart field (JSON string)
-        fd.append('data', JSON.stringify(requestData));
-
-        // Theo API docs: file là multipart file (binary)
-        // Nếu có ảnh mới, thêm vào form data
-        const files = Array.from(pictures || []);
+        // Thêm ảnh mới nếu có (chỉ lấy File objects, bỏ qua URL strings)
+        const files = Array.from(pictures || []).filter(pic => pic instanceof File);
         files.forEach((file) => {
-            if (file && file instanceof File) {
-                fd.append('file', file);
+            if (file) {
+                fd.append('pictures', file);
             }
         });
 
-        // Gọi API với reviewId trong path và request trong query
+        console.log('[orderApi] updateOrderReview - Request:', {
+            reviewId: normalizedReviewId,
+            rating: Number(rating),
+            feedback: String(feedback || ''),
+            picturesCount: files.length
+        });
+
+        // Gọi API với reviewId trong path
         const res = await axiosInstance.put(
-            `/api/v1/order/review/${encodeURIComponent(normalizedReviewId)}?request=${encodeURIComponent(JSON.stringify(requestData))}`,
+            `/api/v1/order/review/${encodeURIComponent(normalizedReviewId)}`,
             fd,
             {
                 headers: { 'Content-Type': 'multipart/form-data' }
             }
         );
+
+        console.log('[orderApi] updateOrderReview - Response:', res?.data);
 
         const ok = (res?.data?.success !== false);
         if (!ok) {
@@ -974,11 +981,14 @@ export const updateOrderReview = async ({ reviewId, rating, feedback, pictures =
             // Backend trả về: { success: false, message: "...", error: "..." }
             const backendData = res?.data || {};
             const errorMessage = backendData.error || backendData.message || 'Backend returned unsuccessful response';
+            console.error('[orderApi] updateOrderReview - Backend error:', errorMessage);
             throw new Error(errorMessage);
         }
 
         return res.data;
     } catch (error) {
+        console.error('[orderApi] updateOrderReview - Error:', error);
+
         // Xử lý lỗi từ backend response
         if (error?.response?.data) {
             const backendError = error.response.data;

@@ -335,30 +335,30 @@ function PlaceOrder() {
                 return { ...item, id, name, description };
             });
 
-            // Show all shipping partners from API
-            if (normalizedList && normalizedList.length > 0) {
-                setShippingPartners(normalizedList);
+            // Chỉ lọc và hiển thị GHN (Giao Hàng Nhanh)
+            const ghnPartners = normalizedList.filter(partner => {
+                const name = partner.name?.toLowerCase() || '';
+                return name.includes('ghn') || 
+                       name.includes('giao hàng nhanh') || 
+                       name.includes('giaohangnhanh');
+            });
 
-                // Auto-select first fast delivery option
-                const fastDeliveryPartner = normalizedList.find(partner =>
-                    partner.name?.toLowerCase().includes('nhanh') ||
-                    partner.name?.toLowerCase().includes('fast') ||
-                    partner.description?.toLowerCase().includes('nhanh') ||
-                    partner.description?.toLowerCase().includes('fast')
-                );
+            // Show only GHN shipping partners from API
+            if (ghnPartners && ghnPartners.length > 0) {
+                setShippingPartners(ghnPartners);
 
-                if (fastDeliveryPartner) {
+                // Auto-select first GHN partner
+                const ghnPartner = ghnPartners[0];
+                if (ghnPartner) {
                     setOrderData(prev => ({
                         ...prev,
-                        shippingPartnerId: fastDeliveryPartner.id
+                        shippingPartnerId: ghnPartner.id
                     }));
                 }
             } else {
-                // Fallback data if API fails
+                // Fallback data if API fails - chỉ GHN
                 setShippingPartners([
-                    { id: 1, name: 'Giao hàng nhanh', description: 'Giao hàng nhanh trong 24h', fee: 50000 },
-                    { id: 2, name: 'Giao hàng tiêu chuẩn', description: 'Giao hàng tiêu chuẩn 2-3 ngày', fee: 30000 },
-                    { id: 3, name: 'Giao hàng tiết kiệm', description: 'Giao hàng tiết kiệm 3-5 ngày', fee: 20000 }
+                    { id: 1, name: 'Giao hàng nhanh', description: 'Giao hàng nhanh trong 24h', fee: 50000 }
                 ]);
 
                 setOrderData(prev => ({
@@ -368,11 +368,9 @@ function PlaceOrder() {
             }
         } catch (error) {
             console.error('Error loading shipping partners:', error);
-            // Set default shipping partners if API fails
+            // Set default shipping partner if API fails - chỉ GHN
             setShippingPartners([
-                { id: 1, name: 'Giao hàng nhanh', description: 'Giao hàng nhanh trong 24h', fee: 50000 },
-                { id: 2, name: 'Giao hàng tiêu chuẩn', description: 'Giao hàng tiêu chuẩn 2-3 ngày', fee: 30000 },
-                { id: 3, name: 'Giao hàng tiết kiệm', description: 'Giao hàng tiết kiệm 3-5 ngày', fee: 20000 }
+                { id: 1, name: 'Giao hàng nhanh', description: 'Giao hàng nhanh trong 24h', fee: 50000 }
             ]);
 
             setOrderData(prev => ({
@@ -2149,8 +2147,13 @@ function PlaceOrder() {
                                         <label className="form-label">Chọn đối tác vận chuyển *</label>
                                         <div className="shipping-partners-container" ref={shippingPartnersRef}>
                                             <div
-                                                className="shipping-partner-selected"
-                                                onClick={() => setShowShippingOptions(!showShippingOptions)}
+                                                className={`shipping-partner-selected ${shippingPartners.length <= 1 ? 'no-dropdown' : ''}`}
+                                                onClick={() => {
+                                                    if (shippingPartners.length > 1) {
+                                                        setShowShippingOptions(!showShippingOptions);
+                                                    }
+                                                }}
+                                                style={{ cursor: shippingPartners.length <= 1 ? 'default' : 'pointer' }}
                                             >
                                                 <div className="shipping-partner-info">
                                                     <div className="shipping-partner-name">
@@ -2176,7 +2179,9 @@ function PlaceOrder() {
                                                         {shippingPartners.find(p => p.id === orderData.shippingPartnerId)?.description || 'Giao hàng nhanh trong 24h'}
                                                     </div>
                                                 </div>
-                                                {showShippingOptions ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                {shippingPartners.length > 1 && (
+                                                    showShippingOptions ? <ChevronUp size={20} /> : <ChevronDown size={20} />
+                                                )}
                                             </div>
 
                                             {showShippingOptions && (
@@ -2184,22 +2189,15 @@ function PlaceOrder() {
                                                     {shippingPartners
                                                         .filter((partner) => partner.id !== orderData.shippingPartnerId)
                                                         .map((partner) => {
-                                                            const isFastDelivery = partner.name?.toLowerCase().includes('nhanh') ||
-                                                                partner.name?.toLowerCase().includes('fast') ||
-                                                                partner.description?.toLowerCase().includes('nhanh') ||
-                                                                partner.description?.toLowerCase().includes('fast');
                                                             const isSelected = orderData.shippingPartnerId === partner.id;
-                                                            const isDisabled = !isFastDelivery;
 
                                                             return (
                                                                 <div
                                                                     key={partner.id}
-                                                                    className={`shipping-partner-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                                                                    className={`shipping-partner-option ${isSelected ? 'selected' : ''}`}
                                                                     onClick={() => {
-                                                                        if (!isDisabled) {
-                                                                            handleShippingPartnerChange(partner.id);
-                                                                            setShowShippingOptions(false);
-                                                                        }
+                                                                        handleShippingPartnerChange(partner.id);
+                                                                        setShowShippingOptions(false);
                                                                     }}
                                                                 >
                                                                     <div className="shipping-partner-info">
@@ -2216,9 +2214,6 @@ function PlaceOrder() {
                                                                                             />
                                                                                         )}
                                                                                         {partner.name}
-                                                                                        {isDisabled && (
-                                                                                            <span className="disabled-tooltip">(Không khả dụng)</span>
-                                                                                        )}
                                                                                     </>
                                                                                 );
                                                                             })()}
@@ -2233,7 +2228,7 @@ function PlaceOrder() {
                                             )}
                                         </div>
                                         <small className="form-help">
-                                            Hiện tại chỉ hỗ trợ giao hàng nhanh để đảm bảo chất lượng dịch vụ tốt nhất
+                                            Hiện tại chỉ hỗ trợ Giao Hàng Nhanh (GHN) để đảm bảo chất lượng dịch vụ tốt nhất
                                         </small>
                                     </div>
                                 </div>
