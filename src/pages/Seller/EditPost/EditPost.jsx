@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { CheckCircle, XCircle } from "lucide-react";
 import { ServicePackageGuard } from "../../../components/ServicePackageGuard/ServicePackageGuard";
 import sellerApi from "../../../api/sellerApi";
 import { normalizeProduct } from "../../../api/productApi";
@@ -14,6 +16,11 @@ export default function EditPost() {
   const [newPictures, setNewPictures] = useState([]); // Ảnh mới được chọn
   const [existingImages, setExistingImages] = useState([]); // Ảnh cũ từ backend
   const [errors, setErrors] = useState({});
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState("success"); // "success" or "error"
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -81,8 +88,12 @@ export default function EditPost() {
         setExistingImages(existingImages);
       } catch (err) {
         console.error("Lỗi tải bài đăng:", err);
-        alert("Không thể tải dữ liệu bài đăng này: " + (err?.message || "Lỗi không xác định"));
-        navigate("/seller/manage-posts");
+        setModalMessage("Không thể tải dữ liệu bài đăng này: " + (err?.message || "Lỗi không xác định"));
+        setModalType("error");
+        setShowModal(true);
+        setTimeout(() => {
+          navigate("/seller/manage-posts");
+        }, 2000);
       } finally {
         setLoading(false);
       }
@@ -103,7 +114,9 @@ export default function EditPost() {
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length + existingImages.length + newPictures.length > 10) {
-      alert("Tối đa 10 ảnh!");
+      setModalMessage("Tối đa 10 ảnh!");
+      setModalType("error");
+      setShowModal(true);
       return;
     }
     setNewPictures((prev) => [...prev, ...files]);
@@ -141,7 +154,9 @@ export default function EditPost() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) {
-      alert("Vui lòng kiểm tra lại thông tin!");
+      setModalMessage("Vui lòng kiểm tra lại thông tin!");
+      setModalType("error");
+      setShowModal(true);
       return;
     }
 
@@ -234,7 +249,7 @@ export default function EditPost() {
             // Tất cả đều fail
             const errorDetails = failedDownloads.map(f => `- Ảnh ${f.index + 1}: ${f.error}`).join('\n');
             console.error("[EditPost] All image downloads failed:", errorDetails);
-            alert(
+            setModalMessage(
               "Không thể tải ảnh cũ từ server.\n\n" +
               "Nguyên nhân có thể:\n" +
               "- Lỗi kết nối mạng\n" +
@@ -242,6 +257,8 @@ export default function EditPost() {
               "- Lỗi CORS (Cross-Origin Resource Sharing)\n\n" +
               "Giải pháp: Vui lòng thêm ít nhất 1 ảnh mới để cập nhật bài đăng."
             );
+            setModalType("error");
+            setShowModal(true);
             setLoading(false);
             return;
           }
@@ -258,16 +275,20 @@ export default function EditPost() {
           }
         } catch (error) {
           console.error("[EditPost] Unexpected error loading existing images:", error);
-          alert(
+          setModalMessage(
             "Lỗi khi tải ảnh cũ: " + error.message + "\n\n" +
             "Vui lòng thêm ít nhất 1 ảnh mới để tiếp tục cập nhật bài đăng."
           );
+          setModalType("error");
+          setShowModal(true);
           setLoading(false);
           return;
         }
       } else {
         // Không có ảnh nào: báo lỗi
-        alert("Vui lòng thêm ít nhất 1 ảnh!");
+        setModalMessage("Vui lòng thêm ít nhất 1 ảnh!");
+        setModalType("error");
+        setShowModal(true);
         setLoading(false);
         return;
       }
@@ -275,8 +296,11 @@ export default function EditPost() {
       // Gọi API update với FormData (multipart/form-data)
       const response = await sellerApi.updatePostById(postId, formDataToSend);
       if (response?.data?.success) {
-        alert("Cập nhật bài đăng thành công!");
-        navigate("/seller/manage-posts");
+        setSuccessMessage("Cập nhật bài đăng thành công!");
+        setShowSuccessModal(true);
+        setTimeout(() => {
+          navigate("/seller/manage-posts");
+        }, 1500);
       } else {
         throw new Error(response?.data?.message || "Cập nhật thất bại");
       }
@@ -291,16 +315,26 @@ export default function EditPost() {
       
       // Xử lý lỗi cụ thể
       if (error?.response?.status === 401 || error?.response?.status === 403) {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
-        navigate("/login");
+        setModalMessage("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+        setModalType("error");
+        setShowModal(true);
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
       } else if (error?.response?.status === 404) {
-        alert("Không tìm thấy bài đăng này!");
+        setModalMessage("Không tìm thấy bài đăng này!");
+        setModalType("error");
+        setShowModal(true);
       } else if (error?.response?.status === 500) {
         const errorMsg = error?.response?.data?.message || error?.message || "Lỗi server. Vui lòng thử lại sau!";
-        alert("Lỗi server: " + errorMsg);
+        setModalMessage("Lỗi server: " + errorMsg);
+        setModalType("error");
+        setShowModal(true);
       } else {
         const errorMsg = error?.response?.data?.message || error?.message || "Vui lòng thử lại!";
-        alert("Lỗi khi cập nhật bài đăng: " + errorMsg);
+        setModalMessage("Lỗi khi cập nhật bài đăng: " + errorMsg);
+        setModalType("error");
+        setShowModal(true);
       }
     } finally {
       setLoading(false);
@@ -619,6 +653,72 @@ export default function EditPost() {
           </form>
         </div>
       </div>
+
+      {/* Modal thông báo thành công - Render ở top level với Portal */}
+      {showSuccessModal && createPortal(
+        <div className="success-modal-overlay" onClick={() => {
+          setShowSuccessModal(false);
+          navigate("/seller/manage-posts");
+        }}>
+          <div className="success-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="success-modal-header">
+              <h3 className="success-modal-title">Thành công</h3>
+            </div>
+            <div className="success-modal-body">
+              <div className="text-center py-3">
+                <CheckCircle size={48} className="success-icon mb-3" />
+                <p className="mb-0" style={{ fontSize: '16px', fontWeight: '500' }}>{successMessage}</p>
+              </div>
+            </div>
+            <div className="success-modal-footer">
+              <button
+                className="success-modal-button"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate("/seller/manage-posts");
+                }}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal thông báo lỗi - Render ở top level với Portal */}
+      {showModal && createPortal(
+        <div className="success-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className={`success-modal ${modalType === 'error' ? 'ai-error-modal' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className={`success-modal-header ${modalType === 'error' ? 'ai-error-header' : ''}`}>
+              <h3 className="success-modal-title">
+                {modalType === 'error' ? 'Lỗi' : 'Thành công'}
+              </h3>
+            </div>
+            <div className="success-modal-body">
+              <div className="text-center py-3">
+                {modalType === 'error' ? (
+                  <XCircle size={48} className="ai-error-icon mb-3" />
+                ) : (
+                  <CheckCircle size={48} className="success-icon mb-3" />
+                )}
+                <p className="mb-0" style={{ fontSize: '16px', fontWeight: '500', whiteSpace: 'pre-line' }}>
+                  {modalMessage}
+                </p>
+              </div>
+            </div>
+            <div className="success-modal-footer">
+              <button
+                className={`success-modal-button ${modalType === 'error' ? 'ai-error-button' : ''}`}
+                onClick={() => setShowModal(false)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </ServicePackageGuard>
   );
 }
