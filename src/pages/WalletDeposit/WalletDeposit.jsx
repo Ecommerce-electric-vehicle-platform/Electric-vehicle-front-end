@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Lock, AlertCircle } from "lucide-react";
 import vnpayApi from "../../api/vnpayApi";
 import momoApi from "../../api/momoApi";
@@ -12,11 +13,32 @@ const PAYMENT_METHODS = {
 };
 
 export default function WalletDeposit() {
+    const location = useLocation();
     const [amount, setAmount] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS.VNPAY);
     const { balance, formatCurrency } = useWalletBalance();
+
+    // Lưu returnUrl và các thông tin đơn hàng từ location state hoặc localStorage
+    useEffect(() => {
+        const returnUrl = location.state?.returnUrl || localStorage.getItem('walletDepositReturnUrl');
+        if (returnUrl && !localStorage.getItem('walletDepositReturnUrl')) {
+            localStorage.setItem('walletDepositReturnUrl', returnUrl);
+        }
+        // Lưu product state nếu có
+        if (location.state?.product && !localStorage.getItem('walletDepositProductState')) {
+            localStorage.setItem('walletDepositProductState', JSON.stringify(location.state.product));
+        }
+        // Lưu orderData nếu có
+        if (location.state?.orderData && !localStorage.getItem('walletDepositOrderData')) {
+            localStorage.setItem('walletDepositOrderData', JSON.stringify(location.state.orderData));
+        }
+        // Lưu addressStates nếu có
+        if (location.state?.addressStates && !localStorage.getItem('walletDepositAddressStates')) {
+            localStorage.setItem('walletDepositAddressStates', JSON.stringify(location.state.addressStates));
+        }
+    }, [location.state]);
 
     // Quick amount options (in VND)
     const quickAmounts = [500000, 1000000, 2000000, 5000000];

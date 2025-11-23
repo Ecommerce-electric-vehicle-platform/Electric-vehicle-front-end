@@ -158,8 +158,71 @@ export default function VnPayReturn() {
 
                 {/* Actions */}
                 <div style={{ marginTop: 20, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+                    {/* Nút quay lại đặt hàng nếu có returnUrl và thanh toán thành công */}
+                    {status.ok && (() => {
+                        const returnUrl = localStorage.getItem('walletDepositReturnUrl');
+                        const productState = localStorage.getItem('walletDepositProductState');
+                        const orderDataState = localStorage.getItem('walletDepositOrderData');
+                        const addressStatesState = localStorage.getItem('walletDepositAddressStates');
+                        if (returnUrl) {
+                            return (
+                                <button
+                                    onClick={() => {
+                                        // Khôi phục tất cả state nếu có
+                                        let state = {};
+                                        if (productState) {
+                                            try {
+                                                state.product = JSON.parse(productState);
+                                            } catch (e) {
+                                                console.error('Error parsing product state:', e);
+                                            }
+                                        }
+                                        if (orderDataState) {
+                                            try {
+                                                state.orderData = JSON.parse(orderDataState);
+                                            } catch (e) {
+                                                console.error('Error parsing order data state:', e);
+                                            }
+                                        }
+                                        if (addressStatesState) {
+                                            try {
+                                                state.addressStates = JSON.parse(addressStatesState);
+                                            } catch (e) {
+                                                console.error('Error parsing address states:', e);
+                                            }
+                                        }
+                                        // Xóa tất cả dữ liệu sau khi sử dụng
+                                        localStorage.removeItem('walletDepositReturnUrl');
+                                        localStorage.removeItem('walletDepositProductState');
+                                        localStorage.removeItem('walletDepositOrderData');
+                                        localStorage.removeItem('walletDepositAddressStates');
+                                        navigate(returnUrl, { state });
+                                    }}
+                                    style={{
+                                        padding: "10px 16px",
+                                        borderRadius: 10,
+                                        border: "none",
+                                        background: "#10B981",
+                                        color: "#fff",
+                                        cursor: "pointer",
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    Quay lại đặt hàng
+                                </button>
+                            );
+                        }
+                        return null;
+                    })()}
                     <button
-                        onClick={() => navigate("/profile?tab=wallet")}
+                        onClick={() => {
+                            // Xóa tất cả dữ liệu khi người dùng chọn về trang cá nhân
+                            localStorage.removeItem('walletDepositReturnUrl');
+                            localStorage.removeItem('walletDepositProductState');
+                            localStorage.removeItem('walletDepositOrderData');
+                            localStorage.removeItem('walletDepositAddressStates');
+                            navigate("/profile?tab=wallet");
+                        }}
                         style={{
                             padding: "10px 16px",
                             borderRadius: 10,
@@ -187,7 +250,14 @@ export default function VnPayReturn() {
                         </button>
                     ) : (
                         <button
-                            onClick={() => navigate("/wallet/deposit")}
+                            onClick={() => {
+                                // Xóa tất cả dữ liệu khi người dùng chọn nạp thêm
+                                localStorage.removeItem('walletDepositReturnUrl');
+                                localStorage.removeItem('walletDepositProductState');
+                                localStorage.removeItem('walletDepositOrderData');
+                                localStorage.removeItem('walletDepositAddressStates');
+                                navigate("/wallet/deposit");
+                            }}
                             style={{
                                 padding: "10px 16px",
                                 borderRadius: 10,

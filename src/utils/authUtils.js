@@ -142,6 +142,47 @@ export async function getValidToken() {
 }
 
 /**
+ *  Lấy thông tin user hiện tại từ localStorage
+ */
+export function getCurrentUser() {
+  const username = localStorage.getItem("username");
+  const email = localStorage.getItem("userEmail");
+  const authType = localStorage.getItem("authType");
+  const sellerId = localStorage.getItem("sellerId");
+  const buyerId = localStorage.getItem("buyerId");
+  const userRole = localStorage.getItem("userRole");
+
+  // Xác định role từ authType hoặc userRole
+  let role = null;
+  if (authType === "seller" || userRole === "seller" || sellerId) {
+    role = "SELLER";
+  } else if (authType === "user" || userRole === "buyer" || buyerId) {
+    role = "BUYER";
+  }
+
+  if (!username && !email) {
+    return null;
+  }
+
+  return {
+    username,
+    email,
+    role,
+    sellerId,
+    buyerId,
+    authType,
+  };
+}
+
+/**
+ *  Kiểm tra có refresh token không
+ */
+export function hasRefreshToken() {
+  const refreshToken = localStorage.getItem("refreshToken");
+  return !!refreshToken;
+}
+
+/**
  *  Logout user & điều hướng về trang chủ
  */
 export function logout() {

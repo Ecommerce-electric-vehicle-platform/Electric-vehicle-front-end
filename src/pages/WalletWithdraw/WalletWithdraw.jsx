@@ -19,6 +19,11 @@ export default function WalletWithdraw() {
         setAmount(quickAmount.toString());
         setError("");
         setSuccess("");
+        
+        // Validate quick amount against balance
+        if (quickAmount > balance) {
+            setError(`Số tiền rút không được vượt quá số dư hiện tại (${formatCurrency(balance)})`);
+        }
     };
 
     const formatInputAmount = (value) => {
@@ -33,6 +38,14 @@ export default function WalletWithdraw() {
 
         if (!amount || Number(amount) <= 0) {
             setError("Số tiền phải lớn hơn 0");
+            return;
+        }
+
+        const withdrawAmount = Number(amount);
+        
+        // Validate amount against balance
+        if (withdrawAmount > balance) {
+            setError(`Số tiền rút (${formatCurrency(withdrawAmount)}) vượt quá số dư hiện tại (${formatCurrency(balance)}). Vui lòng nhập số tiền nhỏ hơn hoặc bằng số dư.`);
             return;
         }
 
@@ -102,6 +115,11 @@ export default function WalletWithdraw() {
                                     setAmount(numericValue);
                                     setError("");
                                     setSuccess("");
+                                    
+                                    // Validate amount against balance in real-time
+                                    if (numericValue && Number(numericValue) > balance) {
+                                        setError(`Số tiền rút không được vượt quá số dư hiện tại (${formatCurrency(balance)})`);
+                                    }
                                 }}
                                 className="amount-input"
                                 placeholder="0"
@@ -147,7 +165,7 @@ export default function WalletWithdraw() {
 
                     <button
                         type="submit"
-                        disabled={loading || !amount || parseInt(amount, 10) < 1000 || !!success}
+                        disabled={loading || !amount || parseInt(amount, 10) < 1000 || parseInt(amount, 10) > balance || !!success}
                         className="continue-button withdraw-continue-button"
                     >
                         {loading ? "Đang xử lý..." : "Xác nhận rút"}
