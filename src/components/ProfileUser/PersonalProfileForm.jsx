@@ -431,6 +431,13 @@ export default function PersonalProfileForm() {
 
     return (
       <div className="profile-view-container">
+      <Modal 
+          isOpen={modalState.isOpen}
+          onClose={closeModal}
+          title={modalState.title}
+          message={modalState.message}
+          type={modalState.type}
+        />
         <h2 className="form-title">Personal profile</h2>
         <div className="profile-view-avatar">
           <img
