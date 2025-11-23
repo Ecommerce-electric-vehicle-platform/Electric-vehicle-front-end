@@ -428,7 +428,7 @@ export default function SellerBuyPackage({ userRole }) { // Nhận userRole qua 
                 <div className="package-header">
                   <h2 className="package-name">{pkg.name}</h2>
                   {/* Badge Admin Bảo Chứng chỉ hiện nếu canVerify = true */}
-                  {canVerify && <span className="badge-verified">Admin Bảo Chứng</span>}
+                  {canVerify && <span className="badge-verified">Gói được xác thực</span>}
                 </div>
 
                 <div className="package-description">

@@ -1,11 +1,11 @@
-/* General container styles (can be shared or defined in a global CSS) */
+/* General container styles */
 .seller-container {
-    max-width: 600px;
+    max-width: 600px; /* Độ rộng tối đa của toàn bộ form */
     margin: 40px auto;
     padding: 20px;
     font-family: Arial, Helvetica, sans-serif;
-    animation: fadeInUp 0.6s ease-out both; /* Optional animation */
-    text-align: center; /* Center align most content */
+    animation: fadeInUp 0.6s ease-out both;
+    text-align: center;
 }
 
 /* Header styles */
@@ -22,47 +22,51 @@
     font-family: inherit;
 }
 
-/* Status Text styles (Replaces the status card) */
+/* Status Text styles */
 .status-text-accepted {
     font-size: 16px;
     font-weight: 600;
     color: #1f2937;
-    margin-bottom: 30px; /* Space before info card */
+    margin-bottom: 30px;
     font-family: inherit;
 }
 
 .status-label { font-weight: 700; }
-.status-label.accepted { color: #16a34a; } /* Dark Green for accepted status text */
+.status-label.accepted { color: #16a34a; }
 
-/* Card styles (Only for info card now) */
+/* Card styles (Base) */
 .seller-card {
     background: white;
     border-radius: 8px;
     padding: 25px;
-    margin-bottom: 30px; /* Space before button */
+    margin-bottom: 30px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     font-family: inherit;
 }
 
-/* Info card specific styles */
-.info-card.accepted-info-card { /* Use specific class if needed */
-    background-color: #f3f4f6; /* Very light grey background */
+/* === SỬA PHẦN NÀY: Info card specific styles === */
+.info-card.accepted-info-card {
+    background-color: #f3f4f6;
     border: none;
     box-shadow: none;
     border-radius: 4px;
-    text-align: left; /* Align text left inside the card */
-    display: inline-block; /* Make card only as wide as content */
-    padding: 20px 30px; /* Adjust padding */
-    margin: 0 auto 30px auto; /* Center the card itself */
+    text-align: left;
+    
+    /* CŨ: display: inline-block; -> làm khung bị co theo nội dung */
+    /* MỚI: */
+    display: block;            /* Chiếm toàn bộ dòng */
+    width: 100%;               /* Rộng 100% so với container cha (600px) */
+    box-sizing: border-box;    /* Tính cả padding vào width để không bị tràn */
+    
+    padding: 20px 30px;
+    margin: 0 auto 30px auto;
 }
 
 .info-section {
     display: flex;
     flex-direction: column;
-    gap: 15px; /* Adjust spacing */
+    gap: 15px;
 }
-
-
 
 .info-value {
     font-size: 16px;
@@ -77,33 +81,39 @@
 .button-container {
     display: flex;
     justify-content: center;
-    margin-top: 20px; /* Adjust space above button */
+    margin-top: 20px;
+    width: 100%; /* Đảm bảo container nút cũng full width */
 }
 
-/* Button styles (copy from combined CSS or define here) */
-.btn { /* Basic button reset/base */
+/* === SỬA PHẦN NÀY: Button styles === */
+.btn {
     border: none;
     font-family: inherit;
     cursor: pointer;
     text-align: center;
     transition: all 0.2s ease;
 }
+
 .btn-primary.accepted-screen-button {
     padding: 12px 32px;
-    border-radius: 24px; /* Pill shape like image */
+    border-radius: 24px;
     font-size: 16px;
     font-weight: 600;
-    background-color: #a3e635; /* Brighter lime green like image */
-    color: #1f2937; /* Dark text */
+    background-color: #a3e635;
+    color: #1f2937;
+
+    /* MỚI: Thêm width 100% để bằng khung trắng ở trên */
+    width: 100%; 
+    display: block; /* Đảm bảo nút nhận width */
 }
+
 .btn-primary.accepted-screen-button:hover {
-    background-color: #84cc16; /* Slightly darker lime */
+    background-color: #84cc16;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(163, 230, 53, 0.3); /* Lime glow */
+    box-shadow: 0 4px 12px rgba(163, 230, 53, 0.3);
 }
 
-
-/* Optional: Loading and Error message styles */
+/* Loading and Error message styles */
 .loading {
     text-align: center; padding: 40px; color: #6b7280; font-size: 16px; font-family: inherit;
 }
@@ -112,7 +122,7 @@
     text-align: center; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-family: inherit; font-weight: 500;
 }
 
-/* Optional: Animation */
+/* Animation */
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(15px); }
     to { opacity: 1; transform: translateY(0); }

@@ -574,93 +574,204 @@ export default function UpgradeToSeller({ onGoToProfile, onKycAccepted }) {
 
   // --- Submit KYC ---
   // --- Submit KYC ---
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   if (isLoading || isOcrLoading) return; // Chặn submit khi đang loading
+  //   setShowLoadingMessage(false);
+
+  //   const formErrors = validateForm();
+  //   if (Object.keys(formErrors).length > 0) {
+  //     // ... (Giữ nguyên logic focus lỗi) ...
+  //     const firstErrorField = Object.keys(formErrors)[0];
+  //     const firstErrorElement =
+  //       document.getElementById(firstErrorField) ||
+  //       document.getElementById("identityNumberOcr") ||
+  //       document.getElementById("ocrFullName") ||
+  //       document.getElementById("ocrNationality") ||
+  //       document.getElementById("ocrHome");
+  //     if (firstErrorElement?.focus) {
+  //       try {
+  //         firstErrorElement.focus();
+  //       } catch {
+  //         console.warn("Could not focus error field:", firstErrorField);
+  //       }
+  //     }
+  //     alert("Vui lòng kiểm tra lại các thông tin lỗi.");
+  //     return;
+  //   }
+
+  //   setIsLoading(true); // Bật loading submit
+  //   setShowLoadingMessage(true);
+  //   try {
+  //     const formBody = new FormData();
+  //     // Dữ liệu nhập tay
+  //     formBody.append("storeName", formData.storeName);
+  //     formBody.append("taxNumber", formData.taxNumber);
+  //     // Dữ liệu từ OCR (đã qua chỉnh sửa của người dùng)
+  //     formBody.append("identityNumber", ocrData.id);
+  //     formBody.append("nationality", ocrData.nationality);
+  //     formBody.append("home", ocrData.home);
+  //     formBody.append("sellerName", ocrData.name);
+
+  //     // Các file
+  //     formBody.append("front of identity", formData.frontOfIdentity);
+  //     formBody.append("back of identity", formData.backOfIdentity);
+  //     formBody.append("business license", formData.businessLicense);
+  //     formBody.append("store policy", formData.storePolicy);
+  //     formBody.append("selfie", formData.selfie);
+
+  //     const response = await profileApi.verifyKyc(formBody);
+
+  //     // --- BƯỚC MỚI: XỬ LÝ LỖI REJECTED CỤ THỂ ---
+  //     if (
+  //       response.data?.success === true && // LƯU Ý: Success: true ở level ngoài cùng
+  //       response.data?.data?.status === "REJECTED" &&
+  //       response.data?.data?.message === "Face not matched"
+  //     ) {
+  //       setShowLoadingMessage(false);
+  //       alert("Ảnh trên căn cước công dân không trùng với ảnh chân dung, vui lòng điền lại đơn.");
+  //       // KHÔNG CHUYỂN sang PENDING, giữ lại form.
+  //       return; // Thoát khỏi hàm try
+  //     }
+  //     // --- KẾT THÚC BƯỚC MỚI ---
+
+  //     if (!response.data?.success)
+  //       throw new Error(response.data?.message || "Lỗi gửi đơn KYC.");
+
+  //     // --- THÀNH CÔNG -> Chuyển sang PENDING (ÁP DỤNG cho success: true + status: PENDING) ---
+  //     setShowLoadingMessage(false);
+  //     // Cập nhật sellerData để truyền cho màn Pending
+  //     setSellerData((prev) => ({
+  //       ...prev,
+  //       storeName: formData.storeName,
+  //       createAt:
+  //         response.data?.data?.createAt ||
+  //         prev?.createAt ||
+  //         new Date().toISOString(),
+  //     }));
+  //     setKycStatus("PENDING"); // Chuyển giao diện
+  //   } catch (error) {
+  //     console.error("KYC Submission Error:", error);
+  //     setShowLoadingMessage(false);
+  //     alert(
+  //       error.response?.data?.message ||
+  //       error.message ||
+  //       "Không thể gửi đơn KYC."
+  //     );
+  //     if (error.response?.data?.errors) setErrors(error.response.data.errors);
+  //   } finally {
+  //     setIsLoading(false); // Tắt loading submit
+  //   }
+  // };
+
+  // --- Submit KYC ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isLoading || isOcrLoading) return; // Chặn submit khi đang loading
+    if (isLoading || isOcrLoading) return;
     setShowLoadingMessage(false);
 
+    // 1. Validate Form
     const formErrors = validateForm();
     if (Object.keys(formErrors).length > 0) {
-      // ... (Giữ nguyên logic focus lỗi) ...
-      const firstErrorField = Object.keys(formErrors)[0];
-      const firstErrorElement =
-        document.getElementById(firstErrorField) ||
-        document.getElementById("identityNumberOcr") ||
-        document.getElementById("ocrFullName") ||
-        document.getElementById("ocrNationality") ||
-        document.getElementById("ocrHome");
-      if (firstErrorElement?.focus) {
-        try {
-          firstErrorElement.focus();
-        } catch {
-          console.warn("Could not focus error field:", firstErrorField);
-        }
-      }
-      alert("Vui lòng kiểm tra lại các thông tin lỗi.");
+      showModal("Thông tin chưa hợp lệ", "Vui lòng kiểm tra lại các trường báo lỗi màu đỏ.", "error");
       return;
     }
 
-    setIsLoading(true); // Bật loading submit
+    setIsLoading(true);
     setShowLoadingMessage(true);
+
     try {
-      const formBody = new FormData();
-      // Dữ liệu nhập tay
-      formBody.append("storeName", formData.storeName);
-      formBody.append("taxNumber", formData.taxNumber);
-      // Dữ liệu từ OCR (đã qua chỉnh sửa của người dùng)
-      formBody.append("identityNumber", ocrData.id);
-      formBody.append("nationality", ocrData.nationality);
-      formBody.append("home", ocrData.home);
-      formBody.append("sellerName", ocrData.name);
+        const formBody = new FormData();
+        formBody.append("storeName", formData.storeName);
+        formBody.append("taxNumber", formData.taxNumber);
+        formBody.append("identityNumber", ocrData.id);
+        formBody.append("nationality", ocrData.nationality);
+        formBody.append("home", ocrData.home);
+        formBody.append("sellerName", ocrData.name); 
+        formBody.append("front of identity", formData.frontOfIdentity);
+        formBody.append("back of identity", formData.backOfIdentity);
+        formBody.append("business license", formData.businessLicense);
+        formBody.append("store policy", formData.storePolicy);
+        formBody.append("selfie", formData.selfie);
 
-      // Các file
-      formBody.append("front of identity", formData.frontOfIdentity);
-      formBody.append("back of identity", formData.backOfIdentity);
-      formBody.append("business license", formData.businessLicense);
-      formBody.append("store policy", formData.storePolicy);
-      formBody.append("selfie", formData.selfie);
+        const response = await profileApi.verifyKyc(formBody);
+        const resData = response.data; // Data trả về từ server
 
-      const response = await profileApi.verifyKyc(formBody);
+        // ==============================================================
+        // 🔥 GỘP 2 TRƯỜNG HỢP LỖI KHUÔN MẶT (FACE MATCHING) TẠI ĐÂY
+        // ==============================================================
+        
+        // Case 1: Server trả về status REJECTED và message "Face not matched"
+        const isExplicitReject = 
+            resData?.data?.status === "REJECTED" && 
+            (resData?.data?.message === "Face not matched" || resData?.data?.reason === "Face verification failed");
 
-      // --- BƯỚC MỚI: XỬ LÝ LỖI REJECTED CỤ THỂ ---
-      if (
-        response.data?.success === true && // LƯU Ý: Success: true ở level ngoài cùng
-        response.data?.data?.status === "REJECTED" &&
-        response.data?.data?.message === "Face not matched"
-      ) {
+        // Case 2: Server bị lỗi Java (NullPointer) khi đang so sánh
+        const isJavaCrash = 
+            resData?.message === "KYC INFORMATION FAILED." && 
+            typeof resData?.error === "string" &&
+            (resData.error.includes("java.lang.Number.doubleValue") || resData.error.includes("java.util.Map.get"));
+
+        // ==> NẾU DÍNH 1 TRONG 2 LỖI TRÊN -> HIỆN MODAL KHÔNG TRÙNG KHỚP
+        if (isExplicitReject || isJavaCrash) {
+            setShowLoadingMessage(false);
+            showModal(
+                "Xác thực khuôn mặt thất bại",
+                "Ảnh chân dung (Selfie) không trùng khớp với ảnh trên CCCD. Vui lòng chụp lại rõ nét hơn.",
+                "error"
+            );
+            return; // Dừng ngay, không chạy tiếp
+        }
+        // ==============================================================
+
+        // Nếu success = false mà không phải lỗi khuôn mặt -> Ném lỗi xuống catch
+        if (!resData?.success) {
+            throw new Error(resData?.message || "Lỗi gửi đơn KYC.");
+        }
+
+        // === THÀNH CÔNG ===
         setShowLoadingMessage(false);
-        alert("Ảnh trên căn cước công dân không trùng với ảnh chân dung, vui lòng điền lại đơn.");
-        // KHÔNG CHUYỂN sang PENDING, giữ lại form.
-        return; // Thoát khỏi hàm try
-      }
-      // --- KẾT THÚC BƯỚC MỚI ---
+        setSellerData((prev) => ({
+            ...prev,
+            storeName: formData.storeName,
+            createAt: resData?.data?.createAt || prev?.createAt || new Date().toISOString(),
+        }));
+        setKycStatus("PENDING");
 
-      if (!response.data?.success)
-        throw new Error(response.data?.message || "Lỗi gửi đơn KYC.");
-
-      // --- THÀNH CÔNG -> Chuyển sang PENDING (ÁP DỤNG cho success: true + status: PENDING) ---
-      setShowLoadingMessage(false);
-      // Cập nhật sellerData để truyền cho màn Pending
-      setSellerData((prev) => ({
-        ...prev,
-        storeName: formData.storeName,
-        createAt:
-          response.data?.data?.createAt ||
-          prev?.createAt ||
-          new Date().toISOString(),
-      }));
-      setKycStatus("PENDING"); // Chuyển giao diện
     } catch (error) {
-      console.error("KYC Submission Error:", error);
-      setShowLoadingMessage(false);
-      alert(
-        error.response?.data?.message ||
-        error.message ||
-        "Không thể gửi đơn KYC."
-      );
-      if (error.response?.data?.errors) setErrors(error.response.data.errors);
+        console.error("KYC Error:", error);
+        setShowLoadingMessage(false);
+
+        const resData = error.response?.data || {};
+
+        // Check lại lần nữa trong catch (đề phòng server trả về mã lỗi 400/500 thay vì 200)
+        const isExplicitReject = 
+            resData?.data?.status === "REJECTED" && 
+            (resData?.data?.message === "Face not matched" || resData?.data?.reason === "Face verification failed");
+        
+        const isJavaCrash = 
+            resData?.message === "KYC INFORMATION FAILED." && 
+            typeof resData?.error === "string" &&
+            (resData.error.includes("java.lang.Number.doubleValue") || resData.error.includes("java.util.Map.get"));
+
+        if (isExplicitReject || isJavaCrash) {
+             showModal(
+                "Xác thực khuôn mặt thất bại",
+                "Ảnh chân dung (Selfie) không trùng khớp với ảnh trên CCCD. Vui lòng chụp lại rõ nét hơn.",
+                "error"
+            );
+            return;
+        }
+
+        // Các lỗi khác
+        showModal(
+            "Gửi đơn thất bại",
+            resData.message || error.message || "Không thể gửi đơn KYC.",
+            "error"
+        );
+        if (resData.errors) setErrors(resData.errors);
     } finally {
-      setIsLoading(false); // Tắt loading submit
+        setIsLoading(false);
     }
   };
 
