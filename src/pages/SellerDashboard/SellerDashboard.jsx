@@ -1268,7 +1268,7 @@ function SellerDashboard() {
               </div>
 
               <div className="order-actions">
-                {order.status === "PENDING" && (
+                {order.status === "PENDING" && orderFilter !== "all" && (
                   <button
                     className="btn btn-success"
                     onClick={() =>
