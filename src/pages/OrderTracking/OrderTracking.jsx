@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     ArrowLeft,
@@ -54,14 +54,43 @@ import DisputeModal from '../../components/ui/DisputeModal';
 import CancelOrderRequest from '../../components/CancelOrderModal/CancelOrderRequest';
 import { Toast } from '../../components/Toast/Toast';
 import ViewDisputeResult from '../../components/ProfileUser/ViewDisputeResult';
+import { useAuth } from '../../hooks/useAuth';
 
 function OrderTracking() {
     const { orderId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const { isSeller: isSellerFromAuth, user } = useAuth();
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isGuest, setIsGuest] = useState(true);
+
+    // Helper function để kiểm tra role seller - kiểm tra từ nhiều nguồn
+    const checkIsSeller = useCallback(() => {
+        // 1. Kiểm tra từ user object từ useAuth
+        if (user?.role === 'SELLER') {
+            return true;
+        }
+        // 2. Kiểm tra từ hàm isSellerFromAuth
+        if (isSellerFromAuth && typeof isSellerFromAuth === 'function') {
+            try {
+                const result = isSellerFromAuth();
+                if (result === true) {
+                    return true;
+                }
+            } catch (e) {
+                console.warn('[OrderTracking] Error calling isSellerFromAuth:', e);
+            }
+        }
+        // 3. Fallback: kiểm tra trực tiếp từ localStorage
+        const authType = localStorage.getItem("authType");
+        const userRole = localStorage.getItem("userRole");
+        const sellerId = localStorage.getItem("sellerId");
+        return authType === "seller" || userRole === "seller" || !!sellerId;
+    }, [user, isSellerFromAuth]);
+
+    // Sử dụng useMemo để cache giá trị isSeller
+    const isSeller = useMemo(() => checkIsSeller(), [checkIsSeller]);
     const [hasReview, setHasReview] = useState(false); // Trạng thái đánh giá
     const [cancelReasonMap, setCancelReasonMap] = useState({});
 
@@ -1616,7 +1645,7 @@ function OrderTracking() {
         );
     }
     // Get status from multiple possible locations (same as in handleConfirmOrder)
-    
+
 
     // Đảm bảo completedAt luôn được set khi đơn hàng ở trạng thái completed
     // completedAt chính là updatedAt khi đơn hàng ở trạng thái COMPLETED
@@ -1661,7 +1690,7 @@ function OrderTracking() {
                 <div className="order-tracking-container">
                     {/* Header */}
                     <div className="order-tracking-header">
-                        <h1 className="page-title">Theo dõi đơn hàng</h1>
+                        <h1 className="page-title">{isSeller ? 'Chi tiết đơn hàng' : 'Theo dõi đơn hàng'}</h1>
                         <div className="page-meta">
                             <div className="meta-left">
                                 <span className="chip">
@@ -1706,7 +1735,7 @@ function OrderTracking() {
                                     <div className="delivered-texts">
                                         <h2>Đã giao thành công</h2>
                                         <p>
-                                            Mã đơn <span className="badge-code">#{order.id}</span> đã được giao tới bạn
+                                            Mã đơn <span className="badge-code">#{order.id}</span> {isSeller ? 'đã được giao tới người mua' : 'đã được giao tới bạn'}
                                             {order.deliveredAt ? ` vào ${formatDateTime(order.deliveredAt)}` : ''}
                                             {completedAt && (
                                                 <span> và đã được xác nhận hoàn thành vào {formatDateTime(completedAt)}</span>
@@ -1757,8 +1786,12 @@ function OrderTracking() {
                                     <div className="success-icon">
                                         <CheckCircle size={28} color="#2bb673" />
                                     </div>
-                                    <h2 className="success-title">Đặt hàng thành công!</h2>
-                                    <p className="success-subtitle">Cảm ơn bạn đã đặt hàng. Đơn hàng của bạn đang được xử lý.</p>
+                                    <h2 className="success-title">{isSeller ? 'Đơn hàng đã được đặt' : 'Đặt hàng thành công!'}</h2>
+                                    <p className="success-subtitle">
+                                        {isSeller
+                                            ? 'Người mua đã đặt hàng thành công. Đơn hàng đang được xử lý.'
+                                            : 'Cảm ơn bạn đã đặt hàng. Đơn hàng của bạn đang được xử lý.'}
+                                    </p>
                                 </div>
                             )}
 
@@ -1808,7 +1841,7 @@ function OrderTracking() {
                             {/* Danh sách sản phẩm (theo mẫu) */}
                             <div className="order-items-card">
                                 <div className="card-head">
-                                    <h3>Chi tiết đơn hàng</h3>
+                                    <h3>{isSeller ? 'Chi tiết đơn hàng của người mua' : 'Chi tiết đơn hàng'}</h3>
                                     <span className="code-badge">#{order.id}</span>
                                 </div>
                                 {(order.items && Array.isArray(order.items) && order.items.length > 0)
@@ -1879,7 +1912,7 @@ function OrderTracking() {
                                     <div className="card-head">
                                         <h4>
                                             <MapPin size={16} className="card-icon" />
-                                            Thông tin giao hàng
+                                            {isSeller ? 'Thông tin giao hàng của người mua' : 'Thông tin giao hàng'}
                                         </h4>
                                     </div>
                                     <div className="info-line"><User size={16} /> {order.buyerName}</div>
@@ -1909,7 +1942,7 @@ function OrderTracking() {
                                     <div className="card-head">
                                         <h4>
                                             <CreditCard size={16} className="card-icon" />
-                                            Phương thức thanh toán
+                                            {isSeller ? 'Phương thức thanh toán của người mua' : 'Phương thức thanh toán'}
                                         </h4>
                                     </div>
                                     <div className="payment-method">
@@ -1947,12 +1980,14 @@ function OrderTracking() {
                             </div>
 
                             {/* Action buttons */}
-                            <div className="action-buttons-bottom">
-                                <button className="btn btn-primary continue-shopping-btn" onClick={() => navigate('/products')}>
-                                    <Home className="btn-icon" />
-                                    Tiếp tục mua sắm
-                                </button>
-                            </div>
+                            {!isSeller && (
+                                <div className="action-buttons-bottom">
+                                    <button className="btn btn-primary continue-shopping-btn" onClick={() => navigate('/products')}>
+                                        <Home className="btn-icon" />
+                                        Tiếp tục mua sắm
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Cột phải - Hành động & hỗ trợ (tổng tiền đã chuyển sang chi tiết đơn hàng) */}
@@ -1963,16 +1998,29 @@ function OrderTracking() {
                             <div className="order-actions">
                                 {order.status === 'pending' && (
                                     <div className="action-buttons">
-                                        <AnimatedButton
-                                            variant="primary"
-                                            shimmer={true}
-                                            onClick={handleContactSeller}
-                                            className="action-btn-primary"
-                                        >
-                                            <Phone size={18} />
-                                            Liên hệ người bán
-                                        </AnimatedButton>
-                                        {!isCancelModalVisible && (
+                                        {!isSeller && (
+                                            <AnimatedButton
+                                                variant="primary"
+                                                shimmer={true}
+                                                onClick={handleContactSeller}
+                                                className="action-btn-primary"
+                                            >
+                                                <Phone size={18} />
+                                                Liên hệ người bán
+                                            </AnimatedButton>
+                                        )}
+                                        {isSeller && (
+                                            <AnimatedButton
+                                                variant="primary"
+                                                shimmer={true}
+                                                onClick={handleContactSeller}
+                                                className="action-btn-primary"
+                                            >
+                                                <Phone size={18} />
+                                                Liên hệ người mua
+                                            </AnimatedButton>
+                                        )}
+                                        {!isSeller && !isCancelModalVisible && (
                                             <AnimatedButton
                                                 variant="outline-danger"
                                                 onClick={handleCancelOrderClick} // 👈 Gắn hàm mở Modal
@@ -1987,15 +2035,28 @@ function OrderTracking() {
 
                                 {order.status === 'confirmed' && (
                                     <div className="action-buttons">
-                                        <AnimatedButton
-                                            variant="primary"
-                                            shimmer={true}
-                                            onClick={handleContactSeller}
-                                            className="action-btn-primary"
-                                        >
-                                            <Phone size={18} />
-                                            Liên hệ người bán
-                                        </AnimatedButton>
+                                        {!isSeller && (
+                                            <AnimatedButton
+                                                variant="primary"
+                                                shimmer={true}
+                                                onClick={handleContactSeller}
+                                                className="action-btn-primary"
+                                            >
+                                                <Phone size={18} />
+                                                Liên hệ người bán
+                                            </AnimatedButton>
+                                        )}
+                                        {isSeller && (
+                                            <AnimatedButton
+                                                variant="primary"
+                                                shimmer={true}
+                                                onClick={handleContactSeller}
+                                                className="action-btn-primary"
+                                            >
+                                                <Phone size={18} />
+                                                Liên hệ người mua
+                                            </AnimatedButton>
+                                        )}
                                         <div className="status-note status-note-animated">
                                             <Clock className="note-icon" />
                                             <span>Đơn hàng đang được chuẩn bị</span>
@@ -2005,15 +2066,28 @@ function OrderTracking() {
 
                                 {order.status === 'shipping' && (
                                     <div className="action-buttons">
-                                        <AnimatedButton
-                                            variant="primary"
-                                            shimmer={true}
-                                            onClick={handleContactSeller}
-                                            className="action-btn-primary"
-                                        >
-                                            <Phone size={18} />
-                                            Liên hệ người bán
-                                        </AnimatedButton>
+                                        {!isSeller && (
+                                            <AnimatedButton
+                                                variant="primary"
+                                                shimmer={true}
+                                                onClick={handleContactSeller}
+                                                className="action-btn-primary"
+                                            >
+                                                <Phone size={18} />
+                                                Liên hệ người bán
+                                            </AnimatedButton>
+                                        )}
+                                        {isSeller && (
+                                            <AnimatedButton
+                                                variant="primary"
+                                                shimmer={true}
+                                                onClick={handleContactSeller}
+                                                className="action-btn-primary"
+                                            >
+                                                <Phone size={18} />
+                                                Liên hệ người mua
+                                            </AnimatedButton>
+                                        )}
                                         <div className="status-note status-note-animated status-note-shipping">
                                             <Truck className="note-icon" />
                                             <span>Đơn hàng đang trên đường</span>
@@ -2031,78 +2105,80 @@ function OrderTracking() {
                                                     : 'Đơn hàng đã được giao thành công'}
                                             </span>
                                         </div>
-                                        <div className="delivered-action-buttons">
-                                            {/* Chỉ hiển thị nút xác nhận khi đơn hàng ở trạng thái delivered và chưa completed */}
-                                            {canConfirmOrder && (
-                                                <AnimatedButton
-                                                    variant="primary"
-                                                    shimmer={true}
-                                                    onClick={handleConfirmOrder}
-                                                    size="sm"
-                                                    disabled={confirming}
-                                                >
-                                                    {confirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
-                                                </AnimatedButton>
-                                            )}
-                                            {isDisputeFormVisible ? (
-                                                <DisputeForm
-                                                    initialOrderId={order.realId || order.id || orderId}
-                                                    onCancelDispute={handleDisputeFormClose}
-                                                    onDisputeSubmitted={() => handleDisputeFormClose(true)}
-                                                />
-                                            ) : (
-                                                // Nếu Form KHÔNG mở, hiển thị các nút hành động
-                                                // CHỈ hiển thị khi đơn hàng đã được xác nhận (COMPLETED)
-                                                isOrderCompleted && (
-                                                    <>
-                                                        {/* NÚT 1: Gửi khiếu nại (Chỉ hiển thị sau khi xác nhận đơn hàng) */}
-                                                        <AnimatedButton
-                                                            variant="warning"
-                                                            onClick={handleRaiseDisputeClick}
-                                                            size="sm"
-                                                        >
-                                                            <MessageSquareWarning size={16} />
-                                                            Gửi khiếu nại
-                                                        </AnimatedButton>
-
-                                                        {/* NÚT 2: Xem khiếu nại đã gửi (Chỉ hiển thị khi đã có dispute) */}
-                                                        {hasAnyDispute && (
+                                        {!isSeller && (
+                                            <div className="delivered-action-buttons">
+                                                {/* Chỉ hiển thị nút xác nhận khi đơn hàng ở trạng thái delivered và chưa completed */}
+                                                {canConfirmOrder && (
+                                                    <AnimatedButton
+                                                        variant="primary"
+                                                        shimmer={true}
+                                                        onClick={handleConfirmOrder}
+                                                        size="sm"
+                                                        disabled={confirming}
+                                                    >
+                                                        {confirming ? 'Đang xác nhận...' : 'Xác nhận đơn hàng'}
+                                                    </AnimatedButton>
+                                                )}
+                                                {isDisputeFormVisible ? (
+                                                    <DisputeForm
+                                                        initialOrderId={order.realId || order.id || orderId}
+                                                        onCancelDispute={handleDisputeFormClose}
+                                                        onDisputeSubmitted={() => handleDisputeFormClose(true)}
+                                                    />
+                                                ) : (
+                                                    // Nếu Form KHÔNG mở, hiển thị các nút hành động
+                                                    // CHỈ hiển thị khi đơn hàng đã được xác nhận (COMPLETED)
+                                                    isOrderCompleted && (
+                                                        <>
+                                                            {/* NÚT 1: Gửi khiếu nại (Chỉ hiển thị sau khi xác nhận đơn hàng) */}
                                                             <AnimatedButton
-                                                                variant="secondary" // Có thể dùng màu khác để phân biệt
-                                                                onClick={handleViewDisputeResult}
+                                                                variant="warning"
+                                                                onClick={handleRaiseDisputeClick}
                                                                 size="sm"
                                                             >
                                                                 <MessageSquareWarning size={16} />
-                                                                Xem khiếu nại đã gửi
+                                                                Gửi khiếu nại
                                                             </AnimatedButton>
-                                                        )}
-                                                    </>
-                                                )
-                                            )}
-                                            {/* NÚT ĐÁNH GIÁ: Chỉ hiển thị sau khi xác nhận đơn hàng */}
-                                            {isOrderCompleted && (
-                                                hasReview ? (
-                                                    <AnimatedButton
-                                                        variant="secondary"
-                                                        onClick={handleViewReview}
-                                                        size="sm"
-                                                    >
-                                                        <Star size={16} />
-                                                        Xem đánh giá
-                                                    </AnimatedButton>
-                                                ) : (
-                                                    <AnimatedButton
-                                                        variant="success"
-                                                        shimmer={true}
-                                                        onClick={handleRateOrder}
-                                                        size="sm"
-                                                    >
-                                                        <Star size={16} />
-                                                        Đánh giá
-                                                    </AnimatedButton>
-                                                )
-                                            )}
-                                        </div>
+
+                                                            {/* NÚT 2: Xem khiếu nại đã gửi (Chỉ hiển thị khi đã có dispute) */}
+                                                            {hasAnyDispute && (
+                                                                <AnimatedButton
+                                                                    variant="secondary" // Có thể dùng màu khác để phân biệt
+                                                                    onClick={handleViewDisputeResult}
+                                                                    size="sm"
+                                                                >
+                                                                    <MessageSquareWarning size={16} />
+                                                                    Xem khiếu nại đã gửi
+                                                                </AnimatedButton>
+                                                            )}
+                                                        </>
+                                                    )
+                                                )}
+                                                {/* NÚT ĐÁNH GIÁ: Chỉ hiển thị sau khi xác nhận đơn hàng */}
+                                                {isOrderCompleted && (
+                                                    hasReview ? (
+                                                        <AnimatedButton
+                                                            variant="secondary"
+                                                            onClick={handleViewReview}
+                                                            size="sm"
+                                                        >
+                                                            <Star size={16} />
+                                                            Xem đánh giá
+                                                        </AnimatedButton>
+                                                    ) : (
+                                                        <AnimatedButton
+                                                            variant="success"
+                                                            shimmer={true}
+                                                            onClick={handleRateOrder}
+                                                            size="sm"
+                                                        >
+                                                            <Star size={16} />
+                                                            Đánh giá
+                                                        </AnimatedButton>
+                                                    )
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -2132,8 +2208,8 @@ function OrderTracking() {
                                 </AnimatedButton>
                             </div>
 
-                            {/* Hóa đơn điện tử - đặt sau phần hỗ trợ */}
-                            {(() => {
+                            {/* Hóa đơn điện tử - đặt sau phần hỗ trợ - CHỈ hiển thị cho buyer */}
+                            {!isSeller && (() => {
                                 // Show invoice section if:
                                 // 1. We have invoice data (successfully loaded)
                                 // 2. We're currently loading invoice
@@ -2263,26 +2339,31 @@ function OrderTracking() {
                     </div>
                 </div>
             </div>
-            <DisputeModal // Dùng lại DisputeModal , nếu đổi là CustomModel thì rõ ràng hơn, tại...
-                isOpen={isCancelModalVisible}
-                onClose={handleCancelFormClose}
-            >
-                <CancelOrderRequest
-                    orderId={order.realId || order.id || orderId}
-                    onCancelSuccess={handleCancelFormClose} // Form gọi hàm này khi hủy thành công
-                    onBack={handleCancelFormClose} // Form gọi hàm này khi bấm nút Back/Hủy trong Form
-                />
-            </DisputeModal>
-            <DisputeModal
-                isOpen={isDisputeFormVisible}
-                onClose={handleDisputeFormClose}
-            >
-                <DisputeForm
-                    initialOrderId={order.realId || order.id || orderId}
-                    // Truyền hàm đóng modal khi gửi thành công HOẶC hủy
-                    onCancelDispute={handleDisputeFormClose}
-                />
-            </DisputeModal>
+            {/* Chỉ hiển thị modals cho buyer, không hiển thị cho seller */}
+            {!isSeller && (
+                <>
+                    <DisputeModal // Dùng lại DisputeModal , nếu đổi là CustomModel thì rõ ràng hơn, tại...
+                        isOpen={isCancelModalVisible}
+                        onClose={handleCancelFormClose}
+                    >
+                        <CancelOrderRequest
+                            orderId={order.realId || order.id || orderId}
+                            onCancelSuccess={handleCancelFormClose} // Form gọi hàm này khi hủy thành công
+                            onBack={handleCancelFormClose} // Form gọi hàm này khi bấm nút Back/Hủy trong Form
+                        />
+                    </DisputeModal>
+                    <DisputeModal
+                        isOpen={isDisputeFormVisible}
+                        onClose={handleDisputeFormClose}
+                    >
+                        <DisputeForm
+                            initialOrderId={order.realId || order.id || orderId}
+                            // Truyền hàm đóng modal khi gửi thành công HOẶC hủy
+                            onCancelDispute={handleDisputeFormClose}
+                        />
+                    </DisputeModal>
+                </>
+            )}
         </>
     );
 }

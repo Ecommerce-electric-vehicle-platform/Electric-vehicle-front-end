@@ -338,9 +338,9 @@ function PlaceOrder() {
             // Chỉ lọc và hiển thị GHN (Giao Hàng Nhanh)
             const ghnPartners = normalizedList.filter(partner => {
                 const name = partner.name?.toLowerCase() || '';
-                return name.includes('ghn') || 
-                       name.includes('giao hàng nhanh') || 
-                       name.includes('giaohangnhanh');
+                return name.includes('ghn') ||
+                    name.includes('giao hàng nhanh') ||
+                    name.includes('giaohangnhanh');
             });
 
             // Show only GHN shipping partners from API
@@ -503,6 +503,113 @@ function PlaceOrder() {
             }));
         }
     }, [location.state, product]);
+
+    // Khôi phục thông tin đơn hàng sau khi quay lại từ trang nạp tiền
+    useEffect(() => {
+        // Ưu tiên lấy từ location.state (nếu navigate từ VnPayReturn/MoMoReturn)
+        // Nếu không có thì lấy từ localStorage
+        let orderDataToRestore = location.state?.orderData;
+        if (!orderDataToRestore) {
+            const saved = localStorage.getItem('walletDepositOrderData');
+            if (saved) {
+                try {
+                    orderDataToRestore = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Error parsing saved order data:', e);
+                }
+            }
+        }
+
+        let addressStatesToRestore = location.state?.addressStates;
+        if (!addressStatesToRestore) {
+            const saved = localStorage.getItem('walletDepositAddressStates');
+            if (saved) {
+                try {
+                    addressStatesToRestore = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Error parsing saved address states:', e);
+                }
+            }
+        }
+
+        let productToRestore = location.state?.product;
+        if (!productToRestore) {
+            const saved = localStorage.getItem('walletDepositProductState');
+            if (saved) {
+                try {
+                    productToRestore = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Error parsing saved product:', e);
+                }
+            }
+        }
+
+        if (orderDataToRestore || addressStatesToRestore || productToRestore) {
+            console.log('🔄 Khôi phục thông tin đơn hàng sau khi nạp tiền');
+
+            // Khôi phục product nếu có (chỉ khi chưa có product)
+            if (productToRestore && !product) {
+                setProduct(productToRestore);
+            }
+
+            // Khôi phục orderData nếu có
+            if (orderDataToRestore) {
+                try {
+                    setOrderData(prev => {
+                        // Chỉ khôi phục các trường người dùng đã nhập, không ghi đè các giá trị tính toán
+                        return {
+                            ...prev,
+                            // Thông tin người dùng đã nhập
+                            buyer_name: orderDataToRestore.buyer_name || prev.buyer_name,
+                            buyer_email: orderDataToRestore.buyer_email || prev.buyer_email,
+                            phoneNumber: orderDataToRestore.phoneNumber || prev.phoneNumber,
+                            delivery_phone: orderDataToRestore.delivery_phone || prev.delivery_phone,
+                            delivery_note: orderDataToRestore.delivery_note || prev.delivery_note,
+                            need_order_invoice: orderDataToRestore.need_order_invoice !== undefined ? orderDataToRestore.need_order_invoice : prev.need_order_invoice,
+                            // Địa chỉ
+                            street: orderDataToRestore.street || prev.street,
+                            provinceId: orderDataToRestore.provinceId || prev.provinceId,
+                            districtId: orderDataToRestore.districtId || prev.districtId,
+                            wardId: orderDataToRestore.wardId || prev.wardId,
+                            // Đối tác vận chuyển và phương thức thanh toán
+                            shippingPartnerId: orderDataToRestore.shippingPartnerId || prev.shippingPartnerId,
+                            paymentId: orderDataToRestore.paymentId || prev.paymentId,
+                            payment_method: orderDataToRestore.payment_method || prev.payment_method,
+                            // Giữ nguyên các giá trị tính toán (sẽ được tính lại sau)
+                            // shippingFee, total_price, final_price sẽ được tính lại
+                            postProductId: orderDataToRestore.postProductId || prev.postProductId,
+                            username: orderDataToRestore.username || prev.username
+                        };
+                    });
+                } catch (e) {
+                    console.error('Error restoring order data:', e);
+                }
+            }
+
+            // Khôi phục address states nếu có
+            if (addressStatesToRestore) {
+                try {
+                    if (addressStatesToRestore.selectedProvince) {
+                        setSelectedProvince(addressStatesToRestore.selectedProvince);
+                    }
+                    if (addressStatesToRestore.selectedDistrict) {
+                        setSelectedDistrict(addressStatesToRestore.selectedDistrict);
+                    }
+                    if (addressStatesToRestore.selectedWard) {
+                        setSelectedWard(addressStatesToRestore.selectedWard);
+                    }
+                } catch (e) {
+                    console.error('Error restoring address states:', e);
+                }
+            }
+
+            // Xóa dữ liệu đã khôi phục để tránh khôi phục lại lần sau
+            localStorage.removeItem('walletDepositOrderData');
+            localStorage.removeItem('walletDepositAddressStates');
+            localStorage.removeItem('walletDepositProductState');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.state]); // Chạy khi location.state thay đổi hoặc component mount
 
     // Kiểm tra sản phẩm còn hàng
     const checkProductAvailability = useCallback(() => {
@@ -695,7 +802,43 @@ function PlaceOrder() {
                     type: 'primary',
                     onClick: () => {
                         setShowModal(false);
-                        navigate('/wallet/deposit');
+                        // Lưu returnUrl để quay lại trang đặt hàng sau khi nạp tiền
+                        const returnUrl = location.pathname + location.search;
+                        localStorage.setItem('walletDepositReturnUrl', returnUrl);
+
+                        // Lưu thông tin product vào state để khôi phục sau khi nạp tiền
+                        if (product) {
+                            localStorage.setItem('walletDepositProductState', JSON.stringify(product));
+                        }
+
+                        // Lưu toàn bộ thông tin đơn hàng đã nhập để khôi phục sau khi nạp tiền
+                        const orderDataToSave = {
+                            ...orderData,
+                            // Đảm bảo lưu cả selectedProvince, selectedDistrict, selectedWard
+                            // vì có thể chúng chưa được set vào orderData
+                            provinceId: orderData.provinceId || selectedProvince,
+                            districtId: orderData.districtId || selectedDistrict,
+                            wardId: orderData.wardId || selectedWard
+                        };
+                        localStorage.setItem('walletDepositOrderData', JSON.stringify(orderDataToSave));
+
+                        // Lưu các state địa chỉ riêng biệt
+                        const addressStates = {
+                            selectedProvince: selectedProvince || orderData.provinceId || '',
+                            selectedDistrict: selectedDistrict || orderData.districtId || '',
+                            selectedWard: selectedWard || orderData.wardId || ''
+                        };
+                        localStorage.setItem('walletDepositAddressStates', JSON.stringify(addressStates));
+
+                        navigate('/wallet/deposit', {
+                            state: {
+                                returnUrl: returnUrl,
+                                fromPlaceOrder: true,
+                                product: product,
+                                orderData: orderDataToSave,
+                                addressStates: addressStates
+                            }
+                        });
                     }
                 },
                 {
@@ -706,7 +849,7 @@ function PlaceOrder() {
             ]
         });
         setShowModal(true);
-    }, [navigate]);
+    }, [navigate, location.pathname, location.search, product, orderData, selectedProvince, selectedDistrict, selectedWard]);
 
     // Xử lý thay đổi input
     const handleInputChange = (field, value) => {
@@ -1651,7 +1794,7 @@ function PlaceOrder() {
                     createdBy: currentUsername // Alias cho compatibility
                 };
 
-                
+
                 // Lưu đơn hàng vào localStorage riêng của từng user
                 const resolvedStorageKey = currentUsername ? storageKey : 'orders_guest';
                 const existingOrders = JSON.parse(localStorage.getItem(resolvedStorageKey) || '[]');

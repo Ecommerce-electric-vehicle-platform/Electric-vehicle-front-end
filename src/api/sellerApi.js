@@ -71,7 +71,7 @@ const sellerApi = {
     }
   },
 
-   //============= PHẨN QUẢN LÝ TIN ĐĂNG ============================
+  //============= PHẨN QUẢN LÝ TIN ĐĂNG ============================
   // Gửi yêu cầu xác minh bài đăng
   requestPostVerification: async (postId) => {
     try {
@@ -115,141 +115,141 @@ const sellerApi = {
   },
 
   // Cập nhật bài đăng sản phẩm bằng postId (dùng cho Seller)
-// API yêu cầu: PUT /api/v1/post-product/{postId} với multipart/form-data
-// Request body: FormData với các field: title, brand, model, manufactureYear, usedDuration, 
-//               conditionLevel, price, width, height, length, weight, description, 
-//               locationTrading, categoryId, pictures (URLs hoặc Files)
-updatePostById: async (postId, productData, existingImageUrls = []) => {
-  try {
-    // Tạo FormData từ productData
-    // LƯU Ý: Authorization header sẽ được axios interceptor tự động thêm
-    const formData = new FormData();
-    
-    // Nếu productData đã là FormData, sử dụng trực tiếp
-    if (productData instanceof FormData) {
-      // Copy tất cả entries từ FormData cũ
-      for (let [key, value] of productData.entries()) {
-        if (key === "pictures" && value instanceof File) {
-          // Giữ nguyên File objects
-          formData.append("pictures", value);
-        } else if (key !== "pictures") {
-          // Copy các field khác
-          formData.append(key, value);
+  // API yêu cầu: PUT /api/v1/post-product/{postId} với multipart/form-data
+  // Request body: FormData với các field: title, brand, model, manufactureYear, usedDuration, 
+  //               conditionLevel, price, width, height, length, weight, description, 
+  //               locationTrading, categoryId, pictures (URLs hoặc Files)
+  updatePostById: async (postId, productData, existingImageUrls = []) => {
+    try {
+      // Tạo FormData từ productData
+      // LƯU Ý: Authorization header sẽ được axios interceptor tự động thêm
+      const formData = new FormData();
+
+      // Nếu productData đã là FormData, sử dụng trực tiếp
+      if (productData instanceof FormData) {
+        // Copy tất cả entries từ FormData cũ
+        for (let [key, value] of productData.entries()) {
+          if (key === "pictures" && value instanceof File) {
+            // Giữ nguyên File objects
+            formData.append("pictures", value);
+          } else if (key !== "pictures") {
+            // Copy các field khác
+            formData.append(key, value);
+          }
         }
+      } else {
+        // Nếu là object, chuyển đổi sang FormData
+        Object.entries(productData).forEach(([key, value]) => {
+          if (key === "pictures" && Array.isArray(value)) {
+            // Xử lý pictures array
+            value.forEach((pic) => {
+              if (pic instanceof File) {
+                formData.append("pictures", pic);
+              } else if (pic && typeof pic === 'string') {
+                // Nếu là URL string, append như string
+                formData.append("pictures", pic);
+              }
+            });
+          } else if (value !== undefined && value !== null && value !== '') {
+            // Append các field khác
+            formData.append(key, value);
+          }
+        });
       }
-    } else {
-      // Nếu là object, chuyển đổi sang FormData
-      Object.entries(productData).forEach(([key, value]) => {
-        if (key === "pictures" && Array.isArray(value)) {
-          // Xử lý pictures array
-          value.forEach((pic) => {
-            if (pic instanceof File) {
-              formData.append("pictures", pic);
-            } else if (pic && typeof pic === 'string') {
-              // Nếu là URL string, append như string
-              formData.append("pictures", pic);
-            }
-          });
-        } else if (value !== undefined && value !== null && value !== '') {
-          // Append các field khác
-          formData.append(key, value);
-        }
+
+      // Kết hợp URLs ảnh cũ (nếu có)
+      if (existingImageUrls && existingImageUrls.length > 0) {
+        existingImageUrls.forEach((url) => {
+          if (url && typeof url === 'string') {
+            formData.append("pictures", url);
+          }
+        });
+      }
+
+      // Debug: Log FormData contents
+      const formDataEntries = [];
+      for (let [key, value] of formData.entries()) {
+        formDataEntries.push({
+          key,
+          value: value instanceof File ? `[File: ${value.name}]` : value
+        });
+      }
+      console.log("[SellerAPI] FormData entries:", formDataEntries);
+
+      // Gọi API PUT với multipart/form-data
+      // Endpoint theo Swagger: PUT /api/v1/post-product/{postId}
+      // Backend expect:
+      // - @ModelAttribute UpdatePostProductRequest (form fields riêng lẻ: title, brand, model, etc.)
+      // - @RequestPart("pictures") List<MultipartFile> files (files với name "pictures")
+      // 
+      // QUAN TRỌNG: 
+      // - KHÔNG set Content-Type thủ công! Axios sẽ tự động set với boundary cho multipart/form-data
+      // - Authorization header sẽ được interceptor tự động thêm (từ tokenManager.getValidToken())
+      // - Interceptor sẽ tự động lấy token từ tokenManager.getValidToken() và thêm vào header
+      console.log("[SellerAPI] Calling PUT /api/v1/post-product/" + postId);
+      console.log("[SellerAPI] Using multipart/form-data");
+      console.log("[SellerAPI] Authorization will be handled by axios interceptor");
+
+      const response = await axiosInstance.put(
+        `/api/v1/seller/${postId}`,
+        formData
+        // KHÔNG set headers ở đây - để interceptor xử lý Authorization và axios xử lý Content-Type
+      );
+
+      console.log("[SellerAPI] Update response:", response.data);
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error updating product post:", error);
+      console.error("[SellerAPI] Error response:", error?.response?.data);
+      console.error("[SellerAPI] Error status:", error?.response?.status);
+      console.error("[SellerAPI] Error config:", {
+        url: error?.config?.url,
+        method: error?.config?.method,
+        headers: error?.config?.headers
       });
+      throw error;
     }
-    
-    // Kết hợp URLs ảnh cũ (nếu có)
-    if (existingImageUrls && existingImageUrls.length > 0) {
-      existingImageUrls.forEach((url) => {
-        if (url && typeof url === 'string') {
-          formData.append("pictures", url);
-        }
-      });
-    }
-    
-    // Debug: Log FormData contents
-    const formDataEntries = [];
-    for (let [key, value] of formData.entries()) {
-      formDataEntries.push({
-        key,
-        value: value instanceof File ? `[File: ${value.name}]` : value
-      });
-    }
-    console.log("[SellerAPI] FormData entries:", formDataEntries);
-    
-    // Gọi API PUT với multipart/form-data
-    // Endpoint theo Swagger: PUT /api/v1/post-product/{postId}
-    // Backend expect:
-    // - @ModelAttribute UpdatePostProductRequest (form fields riêng lẻ: title, brand, model, etc.)
-    // - @RequestPart("pictures") List<MultipartFile> files (files với name "pictures")
-    // 
-    // QUAN TRỌNG: 
-    // - KHÔNG set Content-Type thủ công! Axios sẽ tự động set với boundary cho multipart/form-data
-    // - Authorization header sẽ được interceptor tự động thêm (từ tokenManager.getValidToken())
-    // - Interceptor sẽ tự động lấy token từ tokenManager.getValidToken() và thêm vào header
-    console.log("[SellerAPI] Calling PUT /api/v1/post-product/" + postId);
-    console.log("[SellerAPI] Using multipart/form-data");
-    console.log("[SellerAPI] Authorization will be handled by axios interceptor");
-    
-    const response = await axiosInstance.put(
-      `/api/v1/seller/${postId}`,
-      formData
-      // KHÔNG set headers ở đây - để interceptor xử lý Authorization và axios xử lý Content-Type
-    );
-    
-    console.log("[SellerAPI] Update response:", response.data);
-    return response;
-  } catch (error) {
-    console.error("[SellerAPI] Error updating product post:", error);
-    console.error("[SellerAPI] Error response:", error?.response?.data);
-    console.error("[SellerAPI] Error status:", error?.response?.status);
-    console.error("[SellerAPI] Error config:", {
-      url: error?.config?.url,
-      method: error?.config?.method,
-      headers: error?.config?.headers
-    });
-    throw error;
-  }
-},
+  },
 
   // Ẩn sản phẩm theo postId (dùng cho Seller)
-hidePostById: async (postId) => {
-  try {
-    const accessToken = localStorage.getItem("accessToken");
-    const response = await axiosInstance.post(
-      `/api/v1/seller/hide/${postId}?is_hide=true`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
+  hidePostById: async (postId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.post(
+        `/api/v1/seller/hide/${postId}?is_hide=true`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
         }
-      }
-    );
-    return response;
-  } catch (error) {
-    console.error("[SellerAPI] Error hiding post by id:", error);
-    throw error;
-  }
-},
+      );
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error hiding post by id:", error);
+      throw error;
+    }
+  },
 
-// Hiện lại sản phẩm theo postId (dùng cho Seller)
-unhidePostById: async (postId) => {
-  try {
-    const accessToken = localStorage.getItem("accessToken");
-    const response = await axiosInstance.post(
-      `/api/v1/seller/hide/${postId}?is_hide=false`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
+  // Hiện lại sản phẩm theo postId (dùng cho Seller)
+  unhidePostById: async (postId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axiosInstance.post(
+        `/api/v1/seller/hide/${postId}?is_hide=false`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
         }
-      }
-    );
-    return response;
-  } catch (error) {
-    console.error("[SellerAPI] Error unhiding post by id:", error);
-    throw error;
-  }
-},
+      );
+      return response;
+    } catch (error) {
+      console.error("[SellerAPI] Error unhiding post by id:", error);
+      throw error;
+    }
+  },
 
   // Lấy thông tin seller theo postId
   getSellerByPostId: async (postId) => {
@@ -420,7 +420,7 @@ unhidePostById: async (postId) => {
       throw error;
     }
   },
-//==============SELLER DASHBOARD=====================================
+  //==============SELLER DASHBOARD=====================================
 
   // Lấy tổng số đơn hàng của seller hiện tại (tất cả status)
   // API: GET /api/v1/seller/total-order?page=0&size=10
@@ -474,7 +474,7 @@ unhidePostById: async (postId) => {
       throw error;
     }
   },
-//=======================LẤY SỐ LƯỢNG SẢN PHẨM ĐANG BÁN - SELLER DASHBOARD LUÔN========================
+  //=======================LẤY SỐ LƯỢNG SẢN PHẨM ĐANG BÁN - SELLER DASHBOARD LUÔN========================
   // Lấy tổng số sản phẩm đang bán (active posts) của seller hiện tại
   // API: GET /api/v1/seller/active-post
   getActivePosts: async () => {
@@ -553,18 +553,18 @@ unhidePostById: async (postId) => {
         hasContent: !!data.content,
         productsCount: Array.isArray(products) ? products.length : 0
       });
-      
+
       // Normalize products để đảm bảo có field sold và isSold
       // API có thể trả về sold, isSold, hoặc is_sold
       const normalizedProducts = Array.isArray(products) ? products.map(product => {
         // Ưu tiên trường sold từ backend, fallback về isSold/is_sold
         const soldValue = product.sold !== undefined ? product.sold :
-                         product.isSold !== undefined ? product.isSold : 
-                         product.is_sold !== undefined ? product.is_sold : 
-                         false;
-        
+          product.isSold !== undefined ? product.isSold :
+            product.is_sold !== undefined ? product.is_sold :
+              false;
+
         const soldBoolean = Boolean(soldValue === true || soldValue === 1 || soldValue === "true");
-        
+
         return {
           ...product,
           sold: soldBoolean, // Trường sold chính (ưu tiên)
@@ -572,7 +572,7 @@ unhidePostById: async (postId) => {
           is_sold: soldBoolean // Giữ lại cả snake_case để tương thích
         };
       }) : [];
-      
+
       if (normalizedProducts.length > 0) {
         console.log('[sellerApi.getProductsBySeller] First product sellerId:', normalizedProducts[0].sellerId || normalizedProducts[0].seller_id || 'N/A');
         console.log('[sellerApi.getProductsBySeller] First product sold fields:', {
@@ -584,7 +584,7 @@ unhidePostById: async (postId) => {
           originalIs_sold: products[0]?.is_sold
         });
       }
-      
+
       return normalizedProducts;
     } catch (error) {
       if ([401, 403, 404].includes(error?.response?.status)) {
@@ -607,10 +607,10 @@ unhidePostById: async (postId) => {
       }
 
       const formData = new FormData();
-      
+
       // Append file với tên field là "pictures" theo yêu cầu của backend
       formData.append("pictures", imageFile);
-      
+
       // Validate categoryId (BẮT BUỘC theo BE)
       if (!productInfo.categoryId) {
         throw new Error("categoryId is required for AI description generation");
@@ -619,7 +619,7 @@ unhidePostById: async (postId) => {
       // Append từng field riêng biệt vào FormData (cùng cấp với pictures)
       // LƯU Ý: Backend expect "manufactureYear" (không có 'r'), không phải "manufacturerYear"
       // Mỗi field là một entry riêng, KHÔNG gom vào JSON string
-      
+
       formData.append("title", productInfo.title || "");
       formData.append("brand", productInfo.brand || "");
       formData.append("model", productInfo.model || "");
@@ -630,13 +630,13 @@ unhidePostById: async (postId) => {
       formData.append("conditionLevel", productInfo.conditionLevel || "");
       formData.append("locationTrading", productInfo.locationTrading || "");
       formData.append("categoryId", parseInt(productInfo.categoryId)); // BẮT BUỘC
-      
+
       // Thêm dimensions nếu có
       if (productInfo.length) formData.append("length", productInfo.length);
       if (productInfo.width) formData.append("width", productInfo.width);
       if (productInfo.height) formData.append("height", productInfo.height);
       if (productInfo.weight) formData.append("weight", productInfo.weight);
-      
+
       // Log để debug
       console.log("[SellerAPI] Calling AI API...");
       console.log("[SellerAPI] Image file:", {
@@ -648,7 +648,7 @@ unhidePostById: async (postId) => {
       for (let [key, value] of formData.entries()) {
         console.log(`  ${key}:`, value instanceof File ? `[File: ${value.name}]` : value);
       }
-      
+
       const response = await axiosInstance.post(
         "/api/v1/ai/content-upload-post-description",
         formData,
@@ -659,7 +659,7 @@ unhidePostById: async (postId) => {
           timeout: 60000 // 60 seconds timeout cho AI processing
         }
       );
-      
+
       console.log("[SellerAPI] AI response:", response.data);
       return response;
     } catch (error) {
@@ -686,9 +686,9 @@ unhidePostById: async (postId) => {
     }
     try {
       console.log(`[sellerApi.getPostById] Loading post ${postId}...`);
-      
+
       let finalSellerId = sellerId;
-      
+
       // Nếu không có sellerId, lấy từ profile
       if (!finalSellerId) {
         console.log(`[sellerApi.getPostById] Getting seller profile...`);
@@ -699,23 +699,23 @@ unhidePostById: async (postId) => {
         finalSellerId = sellerProfile.sellerId;
         console.log(`[sellerApi.getPostById] Seller ID: ${finalSellerId}`);
       }
-      
+
 
       // Lấy danh sách posts của seller (KHÔNG gọi GET /api/v1/seller/{postId})
       console.log(`[sellerApi.getPostById] Fetching products for seller ${finalSellerId}...`);
       const products = await sellerApi.getProductsBySeller(finalSellerId, { page: 0, size: 100 });
       console.log(`[sellerApi.getPostById] Found ${products.length} products`);
-      
+
       // Tìm post theo postId
       const post = products.find(
         (p) => String(p?.postId || p?.id || p?.post_id) === String(postId)
       );
-      
+
       if (!post) {
         console.error(`[sellerApi.getPostById] Post ${postId} not found in seller's products`);
         throw new Error(`Không tìm thấy bài đăng với ID: ${postId}. Có thể bài đăng không thuộc về seller này.`);
       }
-      
+
       console.log(`[sellerApi.getPostById] Found post:`, post);
       return post;
     } catch (error) {
@@ -740,7 +740,7 @@ unhidePostById: async (postId) => {
         }
       );
       // Trả về toàn bộ data để lấy field "success" và "message"
-      return response.data; 
+      return response.data;
     } catch (error) {
       console.error("[SellerAPI] Error following seller:", error);
       throw error;
@@ -776,7 +776,7 @@ unhidePostById: async (postId) => {
           headers: { Authorization: `Bearer ${accessToken}` }
         }
       );
-      return response.data; 
+      return response.data;
     } catch (error) {
       console.error("[SellerAPI] Error checking follow status:", error);
       throw error;
